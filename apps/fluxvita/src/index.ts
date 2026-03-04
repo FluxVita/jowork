@@ -26,6 +26,7 @@ import {
   memoryRouter,
   contextRouter,
   statsRouter,
+  modelsRouter,
 } from '@jowork/core';
 
 import { activatePremium, dispatch } from '@jowork/premium';
@@ -89,6 +90,7 @@ async function main(): Promise<void> {
       expressApp.use(contextRouter());
       expressApp.use(premiumRouter());
       expressApp.use(statsRouter());
+      expressApp.use(modelsRouter());
       expressApp.use(schedulerRouter());
       expressApp.use(networkRouter());
       expressApp.use(adminRouter());

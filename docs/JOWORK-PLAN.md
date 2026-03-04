@@ -184,7 +184,7 @@
 | Phase 32：SSE 流式聊天端点 | ✅ 完成 | 2026-03-05 | chatStream()异步生成器（Anthropic streaming API）+ POST /api/sessions/:id/messages/stream SSE端点（chunk/done/error事件）；pnpm lint+test全绿（217/217） |
 | Phase 33：Connector Fetch + Search API | ✅ 完成 | 2026-03-05 | connectorSearch()函数（能力门控，无search抛NOT_SUPPORTED）+ POST /api/connectors/:id/fetch + POST /api/connectors/:id/search；pnpm lint+test全绿（222/222） |
 | Phase 34：前端 SSE 流式渲染 + 停止生成 | ✅ 完成 | 2026-03-05 | apps/jowork + apps/fluxvita 均升级为 SSE stream 端点；流式光标+停止按钮；pnpm lint+test全绿（222/222） |
-| Phase 35：OpenAI-compatible 流式 + Ollama 开箱即用 | 🔄 进行中 | 2026-03-05 | - |
+| Phase 35：OpenAI-compatible 流式 + Ollama 开箱即用 | ✅ 完成 | 2026-03-05 | streamOpenAI()（OpenAI SSE格式）+ chatStream()路由到openai format + discoverOllamaModels()自动发现 + /api/models路由（providers/active/ollama-discover）；pnpm lint+test全绿（231/231） |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*
@@ -2996,6 +2996,16 @@ GET /health → {
 - [x] 切换 session 时自动中止当前流
 - [x] apps/fluxvita `index.html` 同步升级（保留 FluxVita 品牌色 + Premium 引擎标签）
 - [x] pnpm lint+test 全绿（222/222）
+
+### Phase 35: OpenAI-compatible 流式 + Ollama 开箱即用（0.5 天）
+
+- [x] `streamOpenAI()` — 解析 OpenAI SSE 格式（`choices[0].delta.content`），与 Ollama / OpenAI 完全兼容
+- [x] `chatStream()` 路由：`apiFormat === 'openai'` 时调用 `streamOpenAI()`，不再 fallback 为非流式
+- [x] `discoverOllamaModels()` — 调用 `GET /api/tags`（2秒超时），离线时静默返回空数组
+- [x] `modelsRouter()` — 3 个端点：`/api/models/providers`（所有注册的 provider）、`/api/models/active`（当前 env 配置）、`/api/models/ollama/discover`（实时发现）
+- [x] 两个 app 均挂载 `modelsRouter()`
+- [x] 9 个新测试覆盖：Ollama 离线/在线/非ok响应、OpenAI 流式 chunk/错误/空 delta、provider 列表/active/discover 端点
+- [x] pnpm lint+test 全绿（231/231）
 
 **AI 辅助开发预计总工期：6-10 个工作日**（全程 AI 写代码，人工只做决策/审查/测试）
 

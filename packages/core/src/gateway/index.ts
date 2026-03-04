@@ -19,3 +19,4 @@ export { connectorsRouter } from './routes/connectors.js';
 export { memoryRouter } from './routes/memory.js';
 export { contextRouter } from './routes/context.js';
 export { statsRouter } from './routes/stats.js';
+export { modelsRouter } from './routes/models.js';

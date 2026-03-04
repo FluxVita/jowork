@@ -67,11 +67,12 @@ export async function chat(
   throw new Error(`Unknown API format: ${String(provider.apiFormat)}`);
 }
 
-// ─── chatStream() — yields text chunks via Anthropic streaming API ────────────
+// ─── chatStream() — yields text chunks via native streaming APIs ──────────────
 
 /**
- * Stream a chat response from the configured provider (Anthropic only).
- * Yields text chunks as they arrive. Falls back to non-streaming for other providers.
+ * Stream a chat response from the configured provider.
+ * Supports Anthropic native SSE and OpenAI-compatible SSE (Ollama, OpenAI, etc.)
+ * Yields text chunks as they arrive.
  */
 export async function* chatStream(
   messages: ChatMessage[],
@@ -84,9 +85,36 @@ export async function* chatStream(
     return;
   }
 
-  // Fallback: non-streaming providers return the full response as a single chunk
+  if (provider.apiFormat === 'openai') {
+    yield* streamOpenAI(messages, provider, model, apiKey, opts);
+    return;
+  }
+
+  // Fallback for unknown formats
   const response = await chat(messages, opts);
   yield response.content;
+}
+
+// ─── Ollama model auto-discovery ──────────────────────────────────────────────
+
+interface OllamaTagsResponse {
+  models: Array<{ name: string; size: number }>;
+}
+
+/**
+ * Discover locally running Ollama models.
+ * Returns an empty array if Ollama is not running.
+ */
+export async function discoverOllamaModels(): Promise<string[]> {
+  const endpoint = process.env['OLLAMA_HOST'] ?? 'http://localhost:11434';
+  try {
+    const res = await fetch(`${endpoint}/api/tags`, { signal: AbortSignal.timeout(2000) });
+    if (!res.ok) return [];
+    const data = await res.json() as OllamaTagsResponse;
+    return data.models.map(m => m.name);
+  } catch {
+    return [];
+  }
 }
 
 async function* streamAnthropic(
@@ -245,4 +273,76 @@ async function callOpenAI(
   const data = await res.json() as OpenAIResponse;
   const content = data.choices[0]?.message.content ?? '';
   return { content, inputTokens: data.usage.prompt_tokens, outputTokens: data.usage.completion_tokens };
+}
+
+// ─── OpenAI-compatible SSE streaming ─────────────────────────────────────────
+
+interface OpenAIStreamChunk {
+  choices: Array<{ delta: { content?: string }; finish_reason?: string | null }>;
+}
+
+async function* streamOpenAI(
+  messages: ChatMessage[],
+  provider: ModelProvider,
+  modelId: string,
+  apiKey: string,
+  opts: ChatOptions,
+): AsyncGenerator<string> {
+  const allMessages = messages.map(m => ({ role: m.role, content: m.content }));
+  const systemMsg = opts.systemPrompt;
+  if (systemMsg) allMessages.unshift({ role: 'system', content: systemMsg });
+
+  const body: Record<string, unknown> = {
+    model: modelId,
+    max_tokens: opts.maxTokens ?? 8096,
+    messages: allMessages,
+    stream: true,
+  };
+
+  const headers: Record<string, string> = { 'content-type': 'application/json' };
+  if (apiKey) headers['authorization'] = `Bearer ${apiKey}`;
+
+  const res = await fetch(`${provider.endpoint}/chat/completions`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`${provider.name} API error ${res.status}: ${text}`);
+  }
+
+  if (!res.body) throw new Error(`No response body from ${provider.name} streaming`);
+
+  const decoder = new TextDecoder();
+  const reader = res.body.getReader();
+  let buf = '';
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buf += decoder.decode(value, { stream: true });
+      const lines = buf.split('\n');
+      buf = lines.pop() ?? '';
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const data = line.slice(6).trim();
+        if (data === '[DONE]') return;
+
+        try {
+          const chunk = JSON.parse(data) as OpenAIStreamChunk;
+          const text = chunk.choices[0]?.delta?.content;
+          if (text) yield text;
+        } catch {
+          // ignore malformed SSE lines
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
 }
