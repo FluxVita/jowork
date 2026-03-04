@@ -3,7 +3,7 @@
 
 import { Router } from 'express';
 import { authenticate, requireRole, getEdition } from '@jowork/core';
-import { isKlaudeRunning, startKlaude, getKlaudeBaseUrl } from '@jowork/premium';
+import { isKlaudeRunning, startKlaude, getKlaudeBaseUrl, getSubscriptionState } from '@jowork/premium';
 
 export function premiumRouter(): Router {
   const router = Router();
@@ -37,6 +37,21 @@ export function premiumRouter(): Router {
       const running = await isKlaudeRunning();
       res.json({ started: running });
     } catch (err) { next(err); }
+  });
+
+  // GET /api/premium/subscription — current subscription status
+  // Returns plan, status, expiresAt so the admin UI can show upgrade prompts.
+  router.get('/api/premium/subscription', authenticate, requireRole('admin'), (_req, res) => {
+    const state = getSubscriptionState();
+    res.json({
+      status: state.status,
+      plan: state.plan,
+      expiresAt: state.expiresAt,
+      lastFetchedAt: state.lastFetchedAt,
+      upgradeUrl: state.status === 'expired' || state.status === 'grace_period'
+        ? 'https://jowork.work/pricing'
+        : null,
+    });
   });
 
   // Feishu OAuth callback stub — FluxVita-specific, actual OAuth handled externally

@@ -1,6 +1,7 @@
 // @jowork/premium — commercial edition entry point
 
 export * from './edition.js';
+export * from './subscription/index.js';
 export * from './agent/engines/dispatcher.js';
 export * from './agent/tools/index.js';
 export * from './memory/embedding.js';

@@ -30,11 +30,16 @@ import { statsRouter } from './routes/stats.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = join(__dirname, '..', 'public');
 
-// Activate premium at startup (license key from env, empty = dev mode)
-const licenseKey = process.env['JOWORK_LICENSE_KEY'] ?? '';
-activatePremium(licenseKey || undefined);
+// Activate premium at startup — subscription token from env, empty = dev mode
+// activatePremium is async now; call inside main() after config.dataDir is available
 
 async function main(): Promise<void> {
+  // Activate premium before DB open so edition limits are set correctly
+  await activatePremium({
+    token: process.env['JOWORK_SUBSCRIPTION_TOKEN'] ?? '',
+    dataDir: config.dataDir,
+  });
+
   const db = openDb(config.dataDir);
   initSchema(db); // ensures tables exist for old installs before migrate()
   const { applied } = await migrate(db, { dataDir: config.dataDir });

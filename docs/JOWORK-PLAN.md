@@ -168,6 +168,7 @@
 | Phase 15：生产可靠性 | ✅ 完成 | 2026-03-05 | gracefulShutdown(WAL checkpoint+drain)+integrity_check+磁盘空间告警+Connector自愈(withRetry指数退避+健康跟踪)+敏感数据脱敏(logger maskMeta)+/health/full全链路检查；pnpm lint+test全绿（49/49） |
 | Phase 16：备份恢复 | ✅ 完成 | 2026-03-05 | buildExportZip+buildExportJson+buildExportCsv+buildExportMarkdown+restoreFromZip(admin.ts路由)+startBackupScheduler(每日03:00自动备份)；pnpm lint+test全绿（62/62） |
 | Phase 17：法律文档 | ✅ 完成 | 2026-03-05 | ToS+PrivacyPolicy+退款政策(docs/legal/)；AGPL FAQ加入README；.claassistant.yml；部署jowork.work需人工执行 |
+| Phase 18：付费系统集成 | ✅ 完成 | 2026-03-05 | subscription/index.ts(daily拉取+7天grace period状态机+本地缓存)；activatePremium改为async+opts；/api/premium/subscription端点+upgradeUrl；Stripe/jowork.work后端需人工配置；pnpm lint+test全绿（62/62） |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*
@@ -2864,12 +2865,12 @@ GET /health → {
 
 ### Phase 18: 付费系统集成（3-4 天）
 
-- [ ] Stripe 账号 + 订阅产品/档位创建（月付 + 年付）
-- [ ] jowork.work 后端：订阅状态 API（记录 customer_id / plan / expires_at）
-- [ ] 订阅验证逻辑（App 每日拉取 + 本地缓存 7 天）
-- [ ] Admin UI 升级提示 + jowork.work 账号登录/绑定页面
-- [ ] 升级/降级状态机 + 7 天 Grace Period
-- [ ] Pricing 页面（`jowork.work/pricing`，含月付/年付切换）
+- [ ] Stripe 账号 + 订阅产品/档位创建（月付 + 年付）（需人工操作：Stripe Dashboard）
+- [ ] jowork.work 后端：订阅状态 API（需人工操作：jowork.work 后端服务）
+- [x] 订阅验证逻辑（App 每日拉取 + 本地缓存 7 天）（packages/premium/src/subscription/index.ts；initSubscription/getSubscriptionState/isPremiumActive；JOWORK_SUBSCRIPTION_TOKEN 环境变量）
+- [x] Admin UI 升级提示（apps/fluxvita GET /api/premium/subscription 返回 upgradeUrl）
+- [x] 升级/降级状态机 + 7 天 Grace Period（SubscriptionStatus: active|grace_period|expired|dev_mode；grace period 7天本地容忍）
+- [ ] Pricing 页面（`jowork.work/pricing`，含月付/年付切换）（需人工操作：jowork.work 官网）
 
 ### Phase 19: LLM 成本管理（1-2 天）
 
