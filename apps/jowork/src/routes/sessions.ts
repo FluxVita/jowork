@@ -42,11 +42,13 @@ export function sessionsRouter(): Router {
     } catch (err) { next(err); }
   });
 
-  // Get session with messages
+  // Get session with messages — enforces ownership (cross-user protection)
   router.get('/api/sessions/:id', authenticate, (req, res, next) => {
     try {
       const db = getDb();
-      const session = db.prepare(`SELECT * FROM sessions WHERE id = ?`).get(String(req.params['id'])) as { id: string; agent_id: string; user_id: string; title: string; created_at: string; updated_at: string } | undefined;
+      const userId = req.auth!.userId;
+      // Include user_id in WHERE clause to prevent cross-user access
+      const session = db.prepare(`SELECT * FROM sessions WHERE id = ? AND user_id = ?`).get(String(req.params['id']), userId) as { id: string; agent_id: string; user_id: string; title: string; created_at: string; updated_at: string } | undefined;
       if (!session) { res.status(404).json({ error: 'NOT_FOUND' }); return; }
       const messages = db.prepare(`SELECT * FROM messages WHERE session_id = ? ORDER BY created_at`).all(session.id) as Array<{ id: string; session_id: string; role: string; content: string; created_at: string }>;
       res.json({

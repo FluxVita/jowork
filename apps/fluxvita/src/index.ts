@@ -22,6 +22,7 @@ import { memoryRouter } from './routes/memory.js';
 import { connectorsRouter } from './routes/connectors.js';
 import { contextRouter } from './routes/context.js';
 import { premiumRouter } from './routes/premium.js';
+import { statsRouter } from './routes/stats.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = join(__dirname, '..', 'public');
@@ -68,6 +69,7 @@ async function main(): Promise<void> {
       expressApp.use(connectorsRouter());
       expressApp.use(contextRouter());
       expressApp.use(premiumRouter());
+      expressApp.use(statsRouter());
 
       // Serve FluxVita SPA from public/
       if (existsSync(join(PUBLIC_DIR, 'index.html'))) {

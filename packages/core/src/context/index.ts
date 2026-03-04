@@ -12,10 +12,13 @@ import type {
   ContextDocId,
   ContextDocType,
   ContextLayer,
+  Role,
+  SensitivityLevel,
   UserId,
 } from '../types.js';
 import { getDb } from '../datamap/db.js';
 import { generateId, nowISO } from '../utils/index.js';
+import { canReadSensitivity } from '../policy/index.js';
 
 // ─── CRUD ────────────────────────────────────────────────────────────────────
 
@@ -26,6 +29,7 @@ export interface CreateContextDocInput {
   content: string;
   docType?: ContextDocType;
   isForced?: boolean;
+  sensitivity?: SensitivityLevel;
   createdBy: string;
 }
 
@@ -39,16 +43,17 @@ export function createContextDoc(input: CreateContextDocInput): ContextDoc {
     content: input.content,
     docType: input.docType ?? 'manual',
     isForced: input.isForced ?? false,
+    sensitivity: input.sensitivity ?? 'internal',
     createdBy: input.createdBy,
     updatedAt: nowISO(),
   };
 
   db.prepare(`
-    INSERT INTO context_docs (id, layer, scope_id, title, content, doc_type, is_forced, created_by, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO context_docs (id, layer, scope_id, title, content, doc_type, is_forced, sensitivity, created_by, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     doc.id, doc.layer, doc.scopeId, doc.title, doc.content,
-    doc.docType, doc.isForced ? 1 : 0, doc.createdBy, doc.updatedAt,
+    doc.docType, doc.isForced ? 1 : 0, doc.sensitivity, doc.createdBy, doc.updatedAt,
   );
 
   // Sync FTS
@@ -127,6 +132,12 @@ export interface AssembleContextOptions {
   query: string;
   /** Max number of FTS-matched docs to include (default: 8) */
   topN?: number;
+  /**
+   * Role of the requesting user — used by Context PEP to filter out docs
+   * with sensitivity above the user's clearance. Defaults to 'owner'
+   * (personal mode: no restriction).
+   */
+  userRole?: Role;
 }
 
 export interface AssembledContext {
@@ -148,12 +159,15 @@ export function assembleContext(opts: AssembleContextOptions): AssembledContext 
   const db = getDb();
   const topN = opts.topN ?? 8;
   const MAX_CHARS = 32_000; // ~8K tokens
+  const userRole: Role = opts.userRole ?? 'owner';
 
   const includedDocIds: string[] = [];
   const sections: string[] = [];
   let usedChars = 0;
 
   function addDoc(doc: ContextDoc, label: string): boolean {
+    // Context PEP: skip docs above the user's sensitivity clearance
+    if (!canReadSensitivity(userRole, doc.sensitivity)) return false;
     const text = `### ${label}: ${doc.title}\n\n${doc.content}\n`;
     if (usedChars + text.length > MAX_CHARS) return false;
     sections.push(text);
@@ -275,6 +289,7 @@ interface RawRow {
   content: string;
   doc_type: string;
   is_forced: number;
+  sensitivity: string;
   created_by: string;
   updated_at: string;
 }
@@ -288,6 +303,7 @@ function fromRow(row: RawRow): ContextDoc {
     content: row.content,
     docType: row.doc_type as ContextDocType,
     isForced: row.is_forced === 1,
+    sensitivity: (row.sensitivity as SensitivityLevel) ?? 'internal',
     createdBy: row.created_by,
     updatedAt: row.updated_at,
   };

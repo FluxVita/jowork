@@ -33,6 +33,11 @@ interface GitHubIssue {
 }
 
 class GitHubConnector implements JoworkConnector {
+  // Public repos are 'public'; private repos are 'internal'. We default to
+  // 'internal' since we can't know at manifest time. FetchedContent.sensitivity
+  // can override per-item (e.g. private: true → 'confidential').
+  readonly defaultSensitivity = 'internal' as const;
+
   readonly manifest: ConnectorManifest = {
     id: 'github',
     name: 'GitHub',

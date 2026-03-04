@@ -1,7 +1,7 @@
 // @jowork/core/connectors — connector registry and base interface
 // Connectors: feishu, gitlab, linear, posthog, figma, email, oss
 
-import type { ConnectorConfig, ConnectorId, ConnectorKind } from '../types.js';
+import type { ConnectorConfig, ConnectorId, ConnectorKind, SensitivityLevel } from '../types.js';
 import { getDb } from '../datamap/db.js';
 import { generateId, nowISO } from '../utils/index.js';
 import { getEdition } from '../edition.js';
@@ -30,11 +30,15 @@ export interface FetchResult {
   content: string;
   url?: string;
   updatedAt?: string;
+  /** Suggested sensitivity for data retrieved from this connector. Defaults to 'internal'. */
+  sensitivity?: SensitivityLevel;
 }
 
 export interface BaseConnector {
   kind: ConnectorKind;
   capabilities: ConnectorCapabilities;
+  /** Default sensitivity for data fetched from this connector */
+  defaultSensitivity: SensitivityLevel;
   discover(config: ConnectorConfig): Promise<DiscoverResult[]>;
   fetch(config: ConnectorConfig, id: string): Promise<FetchResult>;
   search?(config: ConnectorConfig, query: string): Promise<FetchResult[]>;

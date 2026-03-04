@@ -1,5 +1,15 @@
 // @jowork/core — global type definitions
 
+// ─── Sensitivity ─────────────────────────────────────────────────────────────
+
+/** Data sensitivity classification.
+ * - public: Readable by all, including guests
+ * - internal: Default. Readable by member+ (colleagues)
+ * - confidential: Readable by admin+ (management)
+ * - secret: Readable by owner only
+ */
+export type SensitivityLevel = 'public' | 'internal' | 'confidential' | 'secret';
+
 // ─── ID aliases ──────────────────────────────────────────────────────────────
 
 export type UserId = string;
@@ -107,6 +117,7 @@ export interface ContextDoc {
   docType: ContextDocType;
   /** When true, always loaded regardless of relevance (compliance rules etc.) */
   isForced: boolean;
+  sensitivity: SensitivityLevel;
   createdBy: string;
   updatedAt: string;
 }
@@ -119,6 +130,7 @@ export interface MemoryEntry {
   content: string;
   tags: string[];
   source: string;
+  sensitivity: SensitivityLevel;
   createdAt: string;
   updatedAt: string;
 }

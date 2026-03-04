@@ -34,6 +34,9 @@ interface NotionBlock {
 }
 
 class NotionConnector implements JoworkConnector {
+  // Notion content is workspace-private by default → confidential
+  readonly defaultSensitivity = 'confidential' as const;
+
   readonly manifest: ConnectorManifest = {
     id: 'notion',
     name: 'Notion',

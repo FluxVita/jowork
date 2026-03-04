@@ -47,6 +47,8 @@ export interface DataObject {
   metadata?: Record<string, unknown>;
 }
 
+export type SensitivityHint = 'public' | 'internal' | 'confidential' | 'secret';
+
 export interface FetchedContent {
   uri: string;
   title: string;
@@ -55,6 +57,8 @@ export interface FetchedContent {
   url?: string;
   updatedAt?: string;
   metadata?: Record<string, unknown>;
+  /** Suggested sensitivity classification for the fetched content */
+  sensitivity?: SensitivityHint;
 }
 
 export interface DiscoverPage {
@@ -92,6 +96,8 @@ export interface HealthResult {
 export interface JoworkConnector {
   // Metadata
   readonly manifest: ConnectorManifest;
+  /** Default sensitivity for data fetched by this connector. Defaults to 'internal'. */
+  readonly defaultSensitivity?: SensitivityHint;
 
   // Lifecycle
   initialize(config: Record<string, unknown>, credentials: ConnectorCredentials): Promise<void>;

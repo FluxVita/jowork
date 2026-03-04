@@ -2,6 +2,7 @@
 
 import { searchMemory } from '../../memory/index.js';
 import { getDb } from '../../datamap/db.js';
+import { ForbiddenError } from '../../types.js';
 
 export interface ToolDefinition {
   name: string;
@@ -19,7 +20,18 @@ export interface ToolContext {
   agentId: string;
 }
 
-/** Basic memory search */
+/**
+ * Guard: if the input contains a userId field that differs from ctx.userId,
+ * throw ForbiddenError — agent must not access another user's data.
+ */
+function assertSameUser(input: Record<string, unknown>, ctx: ToolContext): void {
+  const requested = input['userId'] ?? input['user_id'];
+  if (requested !== undefined && requested !== ctx.userId) {
+    throw new ForbiddenError('access another user\'s data');
+  }
+}
+
+/** Basic memory search — scoped strictly to ctx.userId */
 const searchMemoryTool: ToolDefinition = {
   name: 'search_memory',
   description: "Search the user's memory for relevant information",
@@ -31,6 +43,9 @@ const searchMemoryTool: ToolDefinition = {
     required: ['query'],
   },
   async execute(input, ctx) {
+    // Reject any attempt to query a different user's memory
+    assertSameUser(input, ctx);
+
     const query = input['query'] as string;
     const results = searchMemory({ query, userId: ctx.userId, limit: 10 });
     if (results.length === 0) return 'No relevant memories found.';
@@ -38,12 +53,13 @@ const searchMemoryTool: ToolDefinition = {
   },
 };
 
-/** List configured connectors */
+/** List configured connectors — scoped strictly to ctx.userId */
 const listConnectorsTool: ToolDefinition = {
   name: 'list_connectors',
   description: 'List configured data source connectors',
   inputSchema: { type: 'object', properties: {} },
   async execute(_input, ctx) {
+    // Only list connectors owned by the authenticated user
     const db = getDb();
     const rows = db.prepare(
       `SELECT id, kind, name FROM connectors WHERE owner_id = ?`,

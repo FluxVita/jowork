@@ -46,13 +46,14 @@ CREATE TABLE IF NOT EXISTS messages (
 
 -- Memory
 CREATE TABLE IF NOT EXISTS memories (
-  id         TEXT PRIMARY KEY,
-  user_id    TEXT NOT NULL REFERENCES users(id),
-  content    TEXT NOT NULL,
-  tags       TEXT NOT NULL DEFAULT '[]',
-  source     TEXT NOT NULL DEFAULT 'user',
-  created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL
+  id          TEXT PRIMARY KEY,
+  user_id     TEXT NOT NULL REFERENCES users(id),
+  content     TEXT NOT NULL,
+  tags        TEXT NOT NULL DEFAULT '[]',
+  source      TEXT NOT NULL DEFAULT 'user',
+  sensitivity TEXT NOT NULL DEFAULT 'internal',
+  created_at  TEXT NOT NULL,
+  updated_at  TEXT NOT NULL
 );
 
 -- Memory FTS
@@ -89,15 +90,16 @@ CREATE TABLE IF NOT EXISTS scheduler_tasks (
 
 -- Context docs (three-layer context system)
 CREATE TABLE IF NOT EXISTS context_docs (
-  id         TEXT PRIMARY KEY,
-  layer      TEXT NOT NULL,
-  scope_id   TEXT NOT NULL,
-  title      TEXT NOT NULL,
-  content    TEXT NOT NULL,
-  doc_type   TEXT NOT NULL DEFAULT 'workstyle',
-  is_forced  INTEGER NOT NULL DEFAULT 0,
-  created_by TEXT NOT NULL,
-  updated_at TEXT NOT NULL
+  id          TEXT PRIMARY KEY,
+  layer       TEXT NOT NULL,
+  scope_id    TEXT NOT NULL,
+  title       TEXT NOT NULL,
+  content     TEXT NOT NULL,
+  doc_type    TEXT NOT NULL DEFAULT 'workstyle',
+  is_forced   INTEGER NOT NULL DEFAULT 0,
+  sensitivity TEXT NOT NULL DEFAULT 'internal',
+  created_by  TEXT NOT NULL,
+  updated_at  TEXT NOT NULL
 );
 
 CREATE VIRTUAL TABLE IF NOT EXISTS context_docs_fts USING fts5(

@@ -160,6 +160,8 @@
 | Phase 7：开源清理 + 安全审计 | ✅ 完成 | 2026-03-04 | 扫描无硬编码凭证；.env.example + .gitignore 完善；ci.yml 增加 TruffleHog secret scan job |
 | Phase 8：扩展性重构 | ✅ 完成 | 2026-03-05 | JCP 协议接口 + ModelProvider 注册器（Anthropic/OpenAI/Ollama 内置）+ JoworkChannel 接口 + GitHub/Notion connector + Telegram channel；pnpm lint+test全绿 |
 | Phase 9：平台兼容 + 国际化 + Docker | ✅ 完成 | 2026-03-05 | Windows兼容审计通过 + i18n框架（en/zh + registerLocale）+ Docker（cycle 4）+ README文档更新；pnpm lint+test全绿 |
+| Phase 10：首次公开发布 | 🔄 进行中 | 2026-03-05 | CODE_OF_CONDUCT.md ✅；CONTRIBUTING.md ✅；GitHub org创建/同步/Discussions/Release需人工执行 |
+| Phase 11：安全加固 | ✅ 完成 | 2026-03-05 | SensitivityLevel类型+字段（MemoryEntry/ContextDoc/DB schema）+ Connector defaultSensitivity + Context PEP（assembleContext按role过滤）+ 聚合stats API + Agent跨用户防护 + session所有权校验；pnpm lint+test全绿（18/18） |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*
@@ -2780,11 +2782,11 @@ GET /health → {
 
 ### Phase 11: 安全加固（2 天）
 
-- [ ] 数据对象 sensitivity 字段改为必填 + 默认值
-- [ ] Connector 自动标记 sensitivity 逻辑
-- [ ] 会话摘要生成前重新过 Context PEP
-- [ ] 工具统计 API 去除个人明细，仅保留聚合数据
-- [ ] Agent 拒绝跨用户查询指令
+- [x] 数据对象 sensitivity 字段改为必填 + 默认值（SensitivityLevel: public/internal/confidential/secret；MemoryEntry+ContextDoc+DB schema）
+- [x] Connector 自动标记 sensitivity 逻辑（BaseConnector.defaultSensitivity + FetchResult.sensitivity + JCP protocol SensitivityHint；GitHub=internal / Notion=confidential）
+- [x] 会话摘要生成前重新过 Context PEP（assembleContext 接受 userRole，addDoc 用 canReadSensitivity 过滤；policy/index.ts 新增 maxSensitivityFor / canReadSensitivity / filterBySensitivity）
+- [x] 工具统计 API 去除个人明细，仅保留聚合数据（/api/stats 只返回 sessions/messages/memories/connectors/agents 聚合计数，两 app 均已注册）
+- [x] Agent 拒绝跨用户查询指令（assertSameUser 防止 tool input 带 userId 越权；GET /api/sessions/:id 加 user_id 所有权校验；pnpm lint+test 18/18全绿）
 
 ### Phase 12: 性能优化（1-2 天）
 

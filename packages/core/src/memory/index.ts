@@ -1,7 +1,7 @@
 // @jowork/core/memory — basic memory store (keyword search, no vectors)
 // Premium embedding search is in @jowork/premium/memory/embedding.ts
 
-import type { MemoryEntry, MemoryId, UserId } from '../types.js';
+import type { MemoryEntry, MemoryId, SensitivityLevel, UserId } from '../types.js';
 import { getDb } from '../datamap/db.js';
 import { generateId, nowISO } from '../utils/index.js';
 
@@ -14,7 +14,7 @@ export interface MemorySearchOptions {
 export function saveMemory(
   userId: UserId,
   content: string,
-  opts: { tags?: string[]; source?: string } = {},
+  opts: { tags?: string[]; source?: string; sensitivity?: SensitivityLevel } = {},
 ): MemoryEntry {
   const db = getDb();
   const entry: MemoryEntry = {
@@ -23,14 +23,15 @@ export function saveMemory(
     content,
     tags: opts.tags ?? [],
     source: opts.source ?? 'user',
+    sensitivity: opts.sensitivity ?? 'internal',
     createdAt: nowISO(),
     updatedAt: nowISO(),
   };
 
   db.prepare(`
-    INSERT INTO memories (id, user_id, content, tags, source, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-  `).run(entry.id, entry.userId, entry.content, JSON.stringify(entry.tags), entry.source, entry.createdAt, entry.updatedAt);
+    INSERT INTO memories (id, user_id, content, tags, source, sensitivity, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(entry.id, entry.userId, entry.content, JSON.stringify(entry.tags), entry.source, entry.sensitivity, entry.createdAt, entry.updatedAt);
 
   // Update FTS index
   db.prepare(`INSERT INTO memories_fts(rowid, content) SELECT rowid, content FROM memories WHERE id = ?`).run(entry.id);
@@ -79,6 +80,7 @@ interface RawMemoryRow {
   content: string;
   tags: string;
   source: string;
+  sensitivity: string;
   created_at: string;
   updated_at: string;
 }
@@ -90,6 +92,7 @@ function fromRow(row: RawMemoryRow): MemoryEntry {
     content: row.content,
     tags: JSON.parse(row.tags) as string[],
     source: row.source,
+    sensitivity: (row.sensitivity as SensitivityLevel) ?? 'internal',
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
