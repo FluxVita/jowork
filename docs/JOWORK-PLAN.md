@@ -170,6 +170,7 @@
 | Phase 17：法律文档 | ✅ 完成 | 2026-03-05 | ToS+PrivacyPolicy+退款政策(docs/legal/)；AGPL FAQ加入README；.claassistant.yml；部署jowork.work需人工执行 |
 | Phase 18：付费系统集成 | ✅ 完成 | 2026-03-05 | subscription/index.ts(daily拉取+7天grace period状态机+本地缓存)；activatePremium改为async+opts；/api/premium/subscription端点+upgradeUrl；Stripe/jowork.work后端需人工配置；pnpm lint+test全绿（62/62） |
 | Phase 19：LLM成本管理 | ✅ 完成 | 2026-03-05 | llm_usage+budget_config表；recordUsage+estimateCost；/api/usage/summary|daily|budget|recommend|team路由；17个新测试；pnpm lint+test全绿（79/79） |
+| Phase 20：GTM准备 | ✅ 完成 | 2026-03-05 | quick-start.md(3种安装方式)；product-hunt.md(tagline+文案)；reddit-hn.md(4平台帖子)；官网/视频/Discord需人工执行 |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*
@@ -2882,12 +2883,12 @@ GET /health → {
 
 ### Phase 20: GTM 准备（3-5 天）
 
-- [ ] `jowork.work` 官网 + Pricing 页面 + 文档站
-- [ ] README（英文为主）+ 完整安装/使用文档
-- [ ] Demo GIF / 视频录制
-- [ ] Product Hunt 准备（asset + 文案）
-- [ ] Reddit / HN 帖子草稿
-- [ ] Discord 社区创建
+- [ ] `jowork.work` 官网 + Pricing 页面 + 文档站（需人工：网站开发/部署）
+- [x] README（英文为主）+ 完整安装/使用文档（docs/quick-start.md：3种安装方式+连接器配置+升级+FAQ）
+- [ ] Demo GIF / 视频录制（需人工：屏幕录制）
+- [x] Product Hunt 准备（asset + 文案）（docs/gtm/product-hunt.md：tagline+长文案+gallery建议+发布Tips）
+- [x] Reddit / HN 帖子草稿（docs/gtm/reddit-hn.md：Show HN+r/selfhosted+r/LocalLLaMA+r/programming 各一份）
+- [ ] Discord 社区创建（需人工：Discord服务器设置）
 
 ### Phase 21: 首次公开发布（1 天）
 
