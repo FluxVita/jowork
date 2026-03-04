@@ -292,6 +292,19 @@
     .ob-dot { width: 8px; height: 8px; border-radius: 50%; background: #2d3148; transition: background 0.2s; }
     .ob-dot.active { background: #4c4fff; }
     .ob-dot.done { background: #22c55e; }
+    /* Confirm dialog */
+    .confirm-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 200; display: flex; align-items: center; justify-content: center; animation: fadeIn 0.15s; }
+    .confirm-box { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 24px; width: 400px; max-width: 90vw; box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
+    .confirm-title { font-size: 16px; font-weight: 600; color: var(--text-primary); margin-bottom: 8px; }
+    .confirm-msg { font-size: 14px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 20px; }
+    .confirm-actions { display: flex; gap: 10px; justify-content: flex-end; }
+    .confirm-btn { padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; transition: background 0.15s; }
+    .confirm-btn-cancel { background: var(--bg-tertiary, #232639); color: var(--text-secondary); }
+    .confirm-btn-cancel:hover { background: var(--border); }
+    .confirm-btn-ok { background: #4c4fff; color: #fff; }
+    .confirm-btn-ok:hover { background: #3b3ecc; }
+    .confirm-btn-danger { background: #ef4444; color: #fff; }
+    .confirm-btn-danger:hover { background: #dc2626; }
   </style>
 </head>
 <body>
@@ -375,6 +388,22 @@
         window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
           if (currentTheme.value === 'auto') applyTheme('auto');
         });
+
+        // ─── Confirm dialog ──────────────────────────────────────────
+        const confirmVisible = ref(false);
+        const confirmTitle = ref('');
+        const confirmMsg = ref('');
+        const confirmDanger = ref(true);
+        let confirmResolve = null;
+        function showConfirm(title, message, danger = true) {
+          confirmTitle.value = title;
+          confirmMsg.value = message;
+          confirmDanger.value = danger;
+          confirmVisible.value = true;
+          return new Promise(resolve => { confirmResolve = resolve; });
+        }
+        function confirmOk() { confirmVisible.value = false; if (confirmResolve) confirmResolve(true); confirmResolve = null; }
+        function confirmCancel() { confirmVisible.value = false; if (confirmResolve) confirmResolve(false); confirmResolve = null; }
 
         // ─── Settings state ───────────────────────────────────────────
         const showSettings  = ref(false);
@@ -668,7 +697,7 @@
         }
 
         async function deleteSession(id) {
-          if (!confirm('Delete this session and all its messages?')) return;
+          if (!await showConfirm('Delete Session', 'Delete this session and all its messages? This cannot be undone.')) return;
           try {
             await api('DELETE', `/api/sessions/${id}`);
             sessions.value = sessions.value.filter(s => s.id !== id);
@@ -812,6 +841,7 @@
         }
         async function deleteMessage(msgId) {
           if (!activeSessionId.value) return;
+          if (!await showConfirm('Delete Message', 'Delete this message? This cannot be undone.')) return;
           try {
             await api('DELETE', `/api/sessions/${activeSessionId.value}/messages/${msgId}`);
             messages.value = messages.value.filter(m => m.id !== msgId);
@@ -992,7 +1022,7 @@
         }
 
         async function deleteMemoryItem(id) {
-          if (!confirm('Delete this memory?')) return;
+          if (!await showConfirm('Delete Memory', 'Delete this memory item?')) return;
           try {
             await api('DELETE', `/api/memories/${id}`);
             await loadMemories();
