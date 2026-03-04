@@ -95,7 +95,8 @@ export type ConnectorKind =
   // JCP connectors (built-in, auto-registered in connectors/index.ts)
   | 'github'
   | 'notion'
-  | 'slack';
+  | 'slack'
+  | 'jira';
 
 export interface ConnectorConfig {
   id: ConnectorId;

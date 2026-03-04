@@ -15,6 +15,7 @@ import {
   linearConnector,
   gitlabConnector,
   figmaConnector,
+  jiraConnector,
 } from '../index.js';
 
 describe('JCP connector auto-registration', () => {
@@ -62,7 +63,7 @@ describe('JCP connector auto-registration', () => {
     assert.equal(connector?.manifest.name, 'Figma');
   });
 
-  test('listJCPConnectors returns all 6 built-in connectors', () => {
+  test('listJCPConnectors returns all 7 built-in connectors', () => {
     const manifests = listJCPConnectors();
     const ids = manifests.map(m => m.id);
     assert.ok(ids.includes('github'), 'Should include github');
@@ -71,7 +72,8 @@ describe('JCP connector auto-registration', () => {
     assert.ok(ids.includes('linear'), 'Should include linear');
     assert.ok(ids.includes('gitlab'), 'Should include gitlab');
     assert.ok(ids.includes('figma'),  'Should include figma');
-    assert.ok(manifests.length >= 6, 'Should have at least 6 JCP connectors');
+    assert.ok(ids.includes('jira'),   'Should include jira');
+    assert.ok(manifests.length >= 7, 'Should have at least 7 JCP connectors');
   });
 });
 
@@ -241,5 +243,53 @@ describe('getConnectorTypeManifest', () => {
     const manifest = getConnectorTypeManifest('figma');
     const props = (manifest?.configSchema as { properties?: Record<string, unknown> })?.properties;
     assert.ok(props?.['teamId'], 'figma manifest should have teamId in configSchema.properties');
+  });
+});
+
+// ─── Phase 57: Jira connector ─────────────────────────────────────────────────
+
+describe('Jira connector — Phase 57', () => {
+  test('Jira connector is auto-registered', () => {
+    const connector = getJCPConnector('jira');
+    assert.ok(connector, 'Jira connector should be registered');
+    assert.equal(connector?.manifest.id, 'jira');
+    assert.equal(connector?.manifest.name, 'Jira');
+  });
+
+  test('manifest has api_token auth type', () => {
+    assert.equal(jiraConnector.manifest.authType, 'api_token');
+  });
+
+  test('defaultSensitivity is internal', () => {
+    assert.equal(jiraConnector.defaultSensitivity, 'internal');
+  });
+
+  test('manifest includes discover, fetch, search capabilities', () => {
+    assert.ok(jiraConnector.manifest.capabilities.includes('discover'));
+    assert.ok(jiraConnector.manifest.capabilities.includes('fetch'));
+    assert.ok(jiraConnector.manifest.capabilities.includes('search'));
+  });
+
+  test('configSchema has baseUrl, projectKey, email properties', () => {
+    const props = (jiraConnector.manifest.configSchema as {
+      properties?: { baseUrl?: unknown; projectKey?: unknown; email?: unknown };
+    })?.properties;
+    assert.ok(props?.baseUrl,     'Should have baseUrl in configSchema');
+    assert.ok(props?.projectKey,  'Should have projectKey in configSchema');
+    assert.ok(props?.email,       'Should have email in configSchema');
+  });
+
+  test('health returns error without credentials (no crash)', async () => {
+    await jiraConnector.initialize({}, {});
+    const result = await jiraConnector.health();
+    assert.equal(typeof result.ok, 'boolean');
+    assert.equal(typeof result.latencyMs, 'number');
+  });
+
+  test('getConnectorTypeManifest returns jira manifest', () => {
+    const manifest = getConnectorTypeManifest('jira');
+    assert.ok(manifest, 'Should return manifest for jira');
+    assert.equal(manifest?.id, 'jira');
+    assert.equal(manifest?.authType, 'api_token');
   });
 });
