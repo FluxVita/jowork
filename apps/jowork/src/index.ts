@@ -1,10 +1,84 @@
 // apps/jowork — open-source edition entry point
-// Phase 0 skeleton: gateway and routes to be implemented in Phase 3
+// Personal mode: no login required, data stored in OS standard paths
 
-import { getEdition } from '@jowork/core';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+import { existsSync } from 'node:fs';
+import { createServer } from 'node:http';
 
-const edition = getEdition();
-console.log('Jowork starting (free edition)');
-console.log(`maxDataSources=${edition.maxDataSources}, agentEngines=${edition.agentEngines.join(',')}`);
+import {
+  config, logger,
+  openDb, initSchema,
+  createApp,
+  getEdition,
+  getOnboardingState,
+} from '@jowork/core';
 
-// TODO Phase 3: start Express gateway, serve public/, mount routes
+import { sessionsRouter } from './routes/sessions.js';
+import { chatRouter } from './routes/chat.js';
+import { memoryRouter } from './routes/memory.js';
+import { connectorsRouter } from './routes/connectors.js';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const PUBLIC_DIR = join(__dirname, '..', 'public');
+
+async function main(): Promise<void> {
+  // 1. Init DB
+  const db = openDb(config.dataDir);
+  initSchema(db);
+  logger.info('Jowork starting', {
+    mode: config.personalMode ? 'personal' : 'team',
+    dataDir: config.dataDir,
+    port: config.port,
+  });
+
+  // 2. Ensure default user + agent exist in personal mode
+  if (config.personalMode) {
+    const existing = db.prepare(`SELECT id FROM users WHERE id = 'personal'`).get();
+    if (!existing) {
+      const now = new Date().toISOString();
+      db.prepare(`INSERT INTO users (id, name, email, role, created_at) VALUES ('personal', 'You', 'you@local', 'owner', ?)`).run(now);
+      db.prepare(`INSERT OR IGNORE INTO agents (id, name, owner_id, system_prompt, model, created_at) VALUES ('default', 'Jowork Agent', 'personal', 'You are Jowork, a helpful AI coworker that knows your business.', 'claude-3-5-sonnet-latest', ?)`).run(now);
+    }
+    const onboarding = getOnboardingState('personal');
+    if (onboarding.currentStep !== 'complete') {
+      logger.info('Onboarding step', { step: onboarding.currentStep });
+    }
+  }
+
+  // 3. Create Express app with routes
+  const app = createApp({
+    port: config.port,
+    setup(expressApp) {
+      expressApp.use(sessionsRouter());
+      expressApp.use(chatRouter());
+      expressApp.use(memoryRouter());
+      expressApp.use(connectorsRouter());
+
+      // Serve Vue 3 CDN SPA from public/
+      if (existsSync(join(PUBLIC_DIR, 'index.html'))) {
+        expressApp.use((_req, res) => {
+          res.sendFile(join(PUBLIC_DIR, 'index.html'));
+        });
+      }
+    },
+  });
+
+  // 4. Start
+  const server = createServer(app);
+  server.listen(config.port, () => {
+    const edition = getEdition();
+    logger.info('Jowork ready', {
+      url: `http://localhost:${config.port}`,
+      edition: edition.agentEngines.includes('claude-agent') ? 'premium' : 'free',
+    });
+  });
+
+  process.on('SIGTERM', () => { server.close(() => process.exit(0)); });
+  process.on('SIGINT', () => { server.close(() => process.exit(0)); });
+}
+
+main().catch(err => {
+  console.error('Fatal error:', err);
+  process.exit(1);
+});
