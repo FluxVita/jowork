@@ -15,3 +15,15 @@ export {
   isValidTableName,
 } from './export.js';
 export type { ExportTableName, RestoreResult } from './export.js';
+export {
+  USAGE_SCHEMA,
+  recordUsage,
+  queryUsageSummary,
+  queryDailySpend,
+  upsertBudgetConfig,
+  getBudgetConfig,
+  checkBudgetStatus,
+  estimateCost,
+  recommendModel,
+} from './usage.js';
+export type { UsageRecord, UsageSummary, BudgetConfig, BudgetStatus, BudgetAlertLevel, TaskComplexity } from './usage.js';

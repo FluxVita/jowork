@@ -1,6 +1,7 @@
 // @jowork/core/datamap — schema initialization (CREATE TABLE IF NOT EXISTS)
 
 import type Database from 'better-sqlite3';
+import { USAGE_SCHEMA } from './usage.js';
 
 const SCHEMA = `
 -- Users
@@ -112,4 +113,5 @@ CREATE VIRTUAL TABLE IF NOT EXISTS context_docs_fts USING fts5(
 
 export function initSchema(db: Database.Database): void {
   db.exec(SCHEMA);
+  db.exec(USAGE_SCHEMA);
 }

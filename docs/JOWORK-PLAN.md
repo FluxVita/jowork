@@ -169,6 +169,7 @@
 | Phase 16：备份恢复 | ✅ 完成 | 2026-03-05 | buildExportZip+buildExportJson+buildExportCsv+buildExportMarkdown+restoreFromZip(admin.ts路由)+startBackupScheduler(每日03:00自动备份)；pnpm lint+test全绿（62/62） |
 | Phase 17：法律文档 | ✅ 完成 | 2026-03-05 | ToS+PrivacyPolicy+退款政策(docs/legal/)；AGPL FAQ加入README；.claassistant.yml；部署jowork.work需人工执行 |
 | Phase 18：付费系统集成 | ✅ 完成 | 2026-03-05 | subscription/index.ts(daily拉取+7天grace period状态机+本地缓存)；activatePremium改为async+opts；/api/premium/subscription端点+upgradeUrl；Stripe/jowork.work后端需人工配置；pnpm lint+test全绿（62/62） |
+| Phase 19：LLM成本管理 | ✅ 完成 | 2026-03-05 | llm_usage+budget_config表；recordUsage+estimateCost；/api/usage/summary|daily|budget|recommend|team路由；17个新测试；pnpm lint+test全绿（79/79） |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*
@@ -2874,10 +2875,10 @@ GET /health → {
 
 ### Phase 19: LLM 成本管理（1-2 天）
 
-- [ ] 用户级成本仪表板（按模型/用途/日期）
-- [ ] 预算配置 + 告警（80%/100%/120% 三级）
-- [ ] 智能模型推荐（按任务复杂度自动选择）
-- [ ] Team 模式按部门聚合成本展示
+- [x] 用户级成本仪表板（按模型/用途/日期）（llm_usage表+recordUsage+queryUsageSummary+queryDailySpend；GET /api/usage/summary|daily）
+- [x] 预算配置 + 告警（80%/100%/120% 三级）（budget_config表+upsertBudgetConfig+checkBudgetStatus；BudgetAlertLevel: ok/warn/alert/blocked；PUT /api/usage/budget）
+- [x] 智能模型推荐（按任务复杂度自动选择）（recommendModel：<500字符→simple/haiku，<2000→moderate/sonnet，≥2000→complex/opus；GET /api/usage/recommend）
+- [x] Team 模式按部门聚合成本展示（GET /api/usage/team 按userId聚合，admin/owner权限）
 
 ### Phase 20: GTM 准备（3-5 天）
 
