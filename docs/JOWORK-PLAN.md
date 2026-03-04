@@ -216,6 +216,7 @@
 | Phase 64：Agent工具增强（search_cached_content） | ✅ 完成 | 2026-03-05 | agent/tools/index.ts新增第7个工具search_cached_content（搜索本地缓存的connector内容，支持指定connector_id或跨所有connector搜索）；assertSameUser跨用户保护；测试断言更新6→7；pnpm lint+test全绿（358/358） |
 | Phase 65：消息重新生成（Regenerate） | ✅ 完成 | 2026-03-05 | POST /api/sessions/:id/messages/:msgId/regenerate SSE端点（删除目标assistant消息及后续消息+重新dispatch）；前端↻Regenerate按钮（最后一条assistant消息）；migrator测试修复004_connector_sync_schedule；7新测试；apps/jowork+apps/fluxvita均更新；pnpm lint+test全绿（365/365） |
 | Phase 66：代码块复制按钮（Copy Code Block） | ✅ 完成 | 2026-03-05 | marked.Renderer自定义code块（code-block-wrapper容器+Copy按钮+语言标签）；hover显示/clipboard API/Copied!反馈；apps/jowork+apps/fluxvita均更新；pnpm lint全绿（纯前端） |
+| Phase 67：消息反馈（Message Feedback） | ✅ 完成 | 2026-03-05 | migration 005_message_feedback（message_feedback表+UNIQUE+CHECK约束+CASCADE DELETE）；feedbackRouter 4端点（GET batch/POST upsert/GET single/DELETE）；前端👍👎按钮（所有assistant消息）+session加载时批量获取feedback；9新测试；apps/jowork+apps/fluxvita均更新；pnpm lint+test全绿（374/374） |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*
@@ -3343,6 +3344,18 @@ GET /health → {
 - [x] `.code-block-wrapper` / `.code-copy-btn` / `.code-lang` 暗色主题样式
 - [x] apps/jowork + apps/fluxvita 均更新
 - [x] pnpm lint 全绿（纯前端改动，无新测试）
+
+### Phase 67: 消息反馈（Message Feedback）（0.2 天）
+
+- [x] migration `005_message_feedback`：`message_feedback` 表（id, message_id, user_id, rating, comment, created_at）+ UNIQUE(message_id, user_id) + CHECK(rating IN ('positive','negative')) + ON DELETE CASCADE
+- [x] `initSchema` 同步添加 `message_feedback` 建表语句
+- [x] `feedbackRouter` 4 个端点：GET batch（session 全量）/ POST upsert / GET single / DELETE
+- [x] 前端 `toggleFeedback()` 函数：👍👎 按钮切换，active 高亮，toggle 逻辑（再次点击移除）
+- [x] session 加载时批量 GET `/api/sessions/:id/feedback` 并设置 `msg.feedback`
+- [x] `packages/core/src/gateway/index.ts` 导出 + 两个 app 注册路由
+- [x] apps/jowork + apps/fluxvita 均更新
+- [x] 9 新测试（feedback.test.ts）+ migrator.test.ts 更新
+- [x] pnpm lint+test 全绿（374/374）
 
 **AI 辅助开发预计总工期：6-10 个工作日**（全程 AI 写代码，人工只做决策/审查/测试）
 

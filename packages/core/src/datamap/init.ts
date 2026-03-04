@@ -139,6 +139,17 @@ CREATE VIRTUAL TABLE IF NOT EXISTS context_docs_fts USING fts5(
   content='context_docs',
   content_rowid='rowid'
 );
+
+-- Message feedback (thumbs up/down)
+CREATE TABLE IF NOT EXISTS message_feedback (
+  id         TEXT PRIMARY KEY,
+  message_id TEXT NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+  user_id    TEXT NOT NULL REFERENCES users(id),
+  rating     TEXT NOT NULL CHECK(rating IN ('positive','negative')),
+  comment    TEXT,
+  created_at TEXT NOT NULL,
+  UNIQUE(message_id, user_id)
+);
 `;
 
 export function initSchema(db: Database.Database): void {

@@ -179,6 +179,22 @@ const MIGRATIONS: Migration[] = [
       }
     },
   },
+  {
+    name: '005_message_feedback',
+    up(db) {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS message_feedback (
+          id         TEXT PRIMARY KEY,
+          message_id TEXT NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+          user_id    TEXT NOT NULL REFERENCES users(id),
+          rating     TEXT NOT NULL CHECK(rating IN ('positive','negative')),
+          comment    TEXT,
+          created_at TEXT NOT NULL,
+          UNIQUE(message_id, user_id)
+        );
+      `);
+    },
+  },
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

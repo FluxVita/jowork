@@ -46,6 +46,7 @@
     .msg-actions { margin-top: 6px; display: flex; gap: 6px; }
     .msg-action-btn { background: none; border: 1px solid #3a3f55; color: #8892b0; font-size: 11px; padding: 2px 8px; border-radius: 4px; cursor: pointer; transition: all 0.15s; }
     .msg-action-btn:hover { background: #2d3148; color: #c8d0e8; border-color: #5a6180; }
+    .msg-action-btn.active { background: #2d3148; border-color: #4c4fff; color: #a8b4ff; }
     .msg.system { align-self: center; color: #6b7a99; font-size: 12px; font-style: italic; }
     .cursor { display: inline-block; width: 2px; height: 1em; background: #a8b4ff; margin-left: 2px; vertical-align: text-bottom; animation: blink 0.8s step-end infinite; }
     @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
@@ -539,8 +540,13 @@
           hasMore.value = false;
           nextCursor.value = null;
           try {
-            const s = await api('GET', `/api/sessions/${id}`);
-            messages.value = s.messages ?? [];
+            const [s, fbMap] = await Promise.all([
+              api('GET', `/api/sessions/${id}`),
+              api('GET', `/api/sessions/${id}/feedback`).catch(() => ({})),
+            ]);
+            const msgs = s.messages ?? [];
+            for (const m of msgs) { m.feedback = fbMap[m.id] || null; }
+            messages.value = msgs;
             hasMore.value = s.hasMore ?? false;
             nextCursor.value = s.nextCursor ?? null;
           } catch { messages.value = []; }
@@ -704,6 +710,22 @@
             abortController.value = null;
             await nextTick(); scrollToBottom();
           }
+        }
+
+        async function toggleFeedback(msg, rating) {
+          if (!activeSessionId.value) return;
+          const sid = activeSessionId.value;
+          try {
+            if (msg.feedback === rating) {
+              // Remove feedback
+              await api('DELETE', `/api/sessions/${sid}/messages/${msg.id}/feedback`);
+              msg.feedback = null;
+            } else {
+              // Set feedback
+              await api('POST', `/api/sessions/${sid}/messages/${msg.id}/feedback`, { rating });
+              msg.feedback = rating;
+            }
+          } catch { /* silent fail */ }
         }
 
         async function regenerateMessage(msgId) {
@@ -1230,7 +1252,7 @@
 
         return {
           sessions, activeSessionId, messages, inputText, streaming, streamingText, healthy, activeSession,
-          selectSession, newSession, sendMessage, regenerateMessage, onKeydown,
+          selectSession, newSession, sendMessage, regenerateMessage, toggleFeedback, onKeydown,
           renamingSessionId, renameText, startRename, confirmRename, cancelRename, deleteSession, exportSession,
           sessionFilter, filteredSessions, hasMore, nextCursor, loadingMore, loadMoreMessages,
           showSettings, settingsTab, modelInfo, providers, modelPickProvider, modelPickModel, modelSaving,
@@ -1312,8 +1334,10 @@
             <template v-for="(m, mi) in messages" :key="m.id">
               <div v-if="m.role === 'assistant'" class="msg assistant">
                 <div class="md-body" v-html="renderMd(m.content)"></div>
-                <div v-if="mi === messages.length - 1 && !streaming" class="msg-actions">
-                  <button class="msg-action-btn" title="Regenerate" @click="regenerateMessage(m.id)">↻ Regenerate</button>
+                <div v-if="!streaming" class="msg-actions">
+                  <button class="msg-action-btn" :class="{ active: m.feedback === 'positive' }" title="Good response" @click="toggleFeedback(m, 'positive')">👍</button>
+                  <button class="msg-action-btn" :class="{ active: m.feedback === 'negative' }" title="Bad response" @click="toggleFeedback(m, 'negative')">👎</button>
+                  <button v-if="mi === messages.length - 1" class="msg-action-btn" title="Regenerate" @click="regenerateMessage(m.id)">↻ Regenerate</button>
                 </div>
               </div>
               <div v-else class="msg" :class="m.role">{{ m.content }}</div>
