@@ -240,4 +240,80 @@ describe('/api/models endpoints', () => {
       await new Promise<void>(resolve => server.close(() => resolve()));
     }
   });
+
+  test('PUT /api/models/active switches provider and model', async () => {
+    const savedProvider = process.env['MODEL_PROVIDER'];
+    const savedModel    = process.env['MODEL_NAME'];
+    const { createServer } = await import('node:http');
+    const { createApp, modelsRouter } = await import('../index.js');
+
+    const app = createApp({ port: 0, setup(e) { e.use(modelsRouter()); } });
+    const server = createServer(app);
+
+    await new Promise<void>(resolve => server.listen(0, resolve));
+    const port = (server.address() as { port: number }).port;
+
+    try {
+      const res = await fetch(`http://localhost:${port}/api/models/active`, {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json', 'x-user-id': 'test' },
+        body: JSON.stringify({ provider: 'openai', model: 'gpt-4o' }),
+      });
+      assert.equal(res.status, 200);
+      const body = await res.json() as { provider: string; model: string; apiFormat: string };
+      assert.equal(body.provider, 'openai');
+      assert.equal(body.model, 'gpt-4o');
+      assert.equal(body.apiFormat, 'openai');
+      assert.equal(process.env['MODEL_PROVIDER'], 'openai');
+      assert.equal(process.env['MODEL_NAME'], 'gpt-4o');
+    } finally {
+      process.env['MODEL_PROVIDER'] = savedProvider;
+      process.env['MODEL_NAME']     = savedModel;
+      await new Promise<void>(resolve => server.close(() => resolve()));
+    }
+  });
+
+  test('PUT /api/models/active rejects unknown provider', async () => {
+    const { createServer } = await import('node:http');
+    const { createApp, modelsRouter } = await import('../index.js');
+
+    const app = createApp({ port: 0, setup(e) { e.use(modelsRouter()); } });
+    const server = createServer(app);
+
+    await new Promise<void>(resolve => server.listen(0, resolve));
+    const port = (server.address() as { port: number }).port;
+
+    try {
+      const res = await fetch(`http://localhost:${port}/api/models/active`, {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json', 'x-user-id': 'test' },
+        body: JSON.stringify({ provider: 'unknown-xyz', model: 'some-model' }),
+      });
+      assert.equal(res.status, 400);
+    } finally {
+      await new Promise<void>(resolve => server.close(() => resolve()));
+    }
+  });
+
+  test('PUT /api/models/active rejects missing fields', async () => {
+    const { createServer } = await import('node:http');
+    const { createApp, modelsRouter } = await import('../index.js');
+
+    const app = createApp({ port: 0, setup(e) { e.use(modelsRouter()); } });
+    const server = createServer(app);
+
+    await new Promise<void>(resolve => server.listen(0, resolve));
+    const port = (server.address() as { port: number }).port;
+
+    try {
+      const res = await fetch(`http://localhost:${port}/api/models/active`, {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json', 'x-user-id': 'test' },
+        body: JSON.stringify({ provider: 'anthropic' }),
+      });
+      assert.equal(res.status, 400);
+    } finally {
+      await new Promise<void>(resolve => server.close(() => resolve()));
+    }
+  });
 });

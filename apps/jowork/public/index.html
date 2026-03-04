@@ -236,6 +236,10 @@
         const settingsTab   = ref('agent');
         const modelInfo     = ref(null);
         const providers     = ref([]);
+        const modelPickProvider = ref('');
+        const modelPickModel    = ref('');
+        const modelSaving       = ref(false);
+        const modelMsg          = ref('');
         const connectors    = ref([]);
         const connectorTypes = ref([]);
         const stats         = ref(null);
@@ -496,6 +500,25 @@
           }
         }
 
+        async function applyModel() {
+          if (!modelPickProvider.value || !modelPickModel.value) return;
+          modelSaving.value = true;
+          modelMsg.value = '';
+          try {
+            const m = await api('PUT', '/api/models/active', {
+              provider: modelPickProvider.value,
+              model: modelPickModel.value,
+            });
+            modelInfo.value = m;
+            modelMsg.value = 'Applied!';
+            setTimeout(() => { modelMsg.value = ''; }, 2500);
+          } catch (e) {
+            modelMsg.value = 'Error: ' + (e instanceof Error ? e.message : 'failed');
+          } finally {
+            modelSaving.value = false;
+          }
+        }
+
         async function loadMemories() {
           try {
             const q = memoryQuery.value.trim();
@@ -690,6 +713,7 @@
             ]);
             modelInfo.value = m;
             providers.value = (p?.providers ?? []);
+            if (m) { modelPickProvider.value = m.provider; modelPickModel.value = m.model; }
           } catch { /* ignore */ }
 
           await Promise.all([loadConnectors(), loadAgent(), loadMemories(), loadTasks(), loadWorkstyle(), loadUsage()]);
@@ -776,7 +800,8 @@
           sessions, activeSessionId, messages, inputText, streaming, streamingText, healthy, activeSession,
           selectSession, newSession, sendMessage, onKeydown,
           renamingSessionId, renameText, startRename, confirmRename, cancelRename, deleteSession,
-          showSettings, settingsTab, modelInfo, providers, connectors, connectorTypes, stats, healthFull,
+          showSettings, settingsTab, modelInfo, providers, modelPickProvider, modelPickModel, modelSaving, modelMsg,
+          connectors, connectorTypes, stats, healthFull,
           newConn, connError, connSuccess, connSaving,
           agentData, agentSaving, agentMsg,
           memories, memoryQuery,
@@ -784,7 +809,7 @@
           workstyleContent, workstyleSaving, workstyleMsg,
           usageSummary, usageDaily, budgetStatus, budgetLimit, budgetSaving, budgetMsg, dailyMax, budgetPct,
           adminMsg, adminWorking, updateInfo,
-          openSettings, addConnector, removeConnector, extraFields, connIcon, renderMd,
+          openSettings, applyModel, addConnector, removeConnector, extraFields, connIcon, renderMd,
           saveAgent, loadMemories, deleteMemoryItem,
           submitTask, toggleTaskEnabled, deleteTaskItem,
           saveWorkstyle, saveBudget, exportData, triggerBackup, checkUpdates, handleImport,
@@ -939,21 +964,39 @@
                   <div v-else class="empty-msg">Loading model info…</div>
                 </div>
                 <div class="setting-section" v-if="providers.length > 0">
-                  <h3>Available Providers</h3>
-                  <div v-for="p in providers" :key="p.id" class="info-row">
-                    <span class="info-label">{{ p.name }}</span>
-                    <span class="info-value" style="font-size:12px;color:#6b7a99">{{ (p.models ?? []).slice(0,2).join(', ') }}</span>
+                  <h3>Switch Model</h3>
+                  <div style="display:flex;flex-direction:column;gap:8px">
+                    <div style="display:flex;gap:8px;align-items:center">
+                      <label style="font-size:12px;color:#94a3b8;min-width:60px">Provider</label>
+                      <select v-model="modelPickProvider" style="flex:1;background:#0f1117;border:1px solid #2d3148;border-radius:6px;color:#e2e8f0;padding:6px 8px;font-size:13px">
+                        <option v-for="p in providers" :key="p.id" :value="p.id">{{ p.name }}</option>
+                      </select>
+                    </div>
+                    <div style="display:flex;gap:8px;align-items:center">
+                      <label style="font-size:12px;color:#94a3b8;min-width:60px">Model</label>
+                      <select v-if="providers.find(p => p.id === modelPickProvider)?.models?.length" v-model="modelPickModel" style="flex:1;background:#0f1117;border:1px solid #2d3148;border-radius:6px;color:#e2e8f0;padding:6px 8px;font-size:13px">
+                        <option v-for="m in (providers.find(p => p.id === modelPickProvider)?.models ?? [])" :key="m.id" :value="m.id">{{ m.name }}</option>
+                      </select>
+                      <input v-else v-model="modelPickModel" placeholder="model-id" style="flex:1;background:#0f1117;border:1px solid #2d3148;border-radius:6px;color:#e2e8f0;padding:6px 8px;font-size:13px" />
+                    </div>
+                    <div style="display:flex;align-items:center;gap:8px">
+                      <button @click="applyModel" :disabled="modelSaving" style="background:#4c4fff;color:white;border:none;border-radius:6px;padding:7px 16px;cursor:pointer;font-size:13px">
+                        {{ modelSaving ? 'Applying…' : 'Apply' }}
+                      </button>
+                      <span v-if="modelMsg" style="font-size:12px;color:#22c55e">{{ modelMsg }}</span>
+                    </div>
+                    <p style="font-size:11px;color:#6b7a99;margin-top:2px">Changes apply immediately but reset on restart. Set MODEL_PROVIDER / MODEL_NAME env vars for permanent config.</p>
                   </div>
                 </div>
                 <div class="setting-section">
-                  <h3>Configuration</h3>
+                  <h3>API Keys</h3>
                   <div class="info-row">
-                    <span class="info-label">API Key</span>
-                    <span class="info-value" style="color:#6b7a99;font-size:12px">Set via ANTHROPIC_API_KEY environment variable</span>
+                    <span class="info-label">Anthropic</span>
+                    <span class="info-value" style="color:#6b7a99;font-size:12px">ANTHROPIC_API_KEY env var</span>
                   </div>
                   <div class="info-row" style="margin-top:4px">
-                    <span class="info-label">Model</span>
-                    <span class="info-value" style="color:#6b7a99;font-size:12px">Set via MODEL_NAME environment variable</span>
+                    <span class="info-label">OpenAI</span>
+                    <span class="info-value" style="color:#6b7a99;font-size:12px">OPENAI_API_KEY env var</span>
                   </div>
                 </div>
               </div>

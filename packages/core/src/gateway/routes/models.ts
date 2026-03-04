@@ -4,10 +4,11 @@
 //   GET  /api/models/providers           — list all registered providers
 //   GET  /api/models/ollama/discover     — auto-discover running Ollama models
 //   GET  /api/models/active              — active provider + model from env
+//   PUT  /api/models/active              — switch active provider + model (runtime)
 
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
-import { listModelProviders, discoverOllamaModels } from '../../models/index.js';
+import { listModelProviders, discoverOllamaModels, getModelProvider } from '../../models/index.js';
 
 export function modelsRouter(): Router {
   const router = Router();
@@ -43,6 +44,28 @@ export function modelsRouter(): Router {
       model: modelId,
       providerName: provider?.name ?? providerId,
       apiFormat: provider?.apiFormat ?? 'unknown',
+    });
+  });
+
+  /** Switch active provider + model at runtime (persists until restart) */
+  router.put('/api/models/active', authenticate, (req, res) => {
+    const { provider: providerId, model: modelId } = req.body as { provider?: string; model?: string };
+    if (!providerId || !modelId) {
+      res.status(400).json({ message: 'provider and model are required' });
+      return;
+    }
+    const provider = getModelProvider(providerId);
+    if (!provider) {
+      res.status(400).json({ message: `Unknown provider: ${providerId}` });
+      return;
+    }
+    process.env['MODEL_PROVIDER'] = providerId;
+    process.env['MODEL_NAME']     = modelId;
+    res.json({
+      provider: providerId,
+      model: modelId,
+      providerName: provider.name,
+      apiFormat: provider.apiFormat,
     });
   });
 
