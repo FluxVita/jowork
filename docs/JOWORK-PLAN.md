@@ -179,6 +179,7 @@
 | Phase 27：Scheduler REST API + Webhook Channel | ✅ 完成 | 2026-03-05 | schedulerRouter(/api/tasks CRUD)+ webhookChannel(inbound Bearer auth+outgoing POST)+两个app均挂载；pnpm lint+test全绿（156/156） |
 | Phase 28：Agent 管理 + Onboarding REST API | ✅ 完成 | 2026-03-05 | agentsRouter(/api/agents CRUD，owner隔离)+onboardingRouter(/api/onboarding GET+POST /advance)；两app均挂载；pnpm lint+test全绿（168/168） |
 | Phase 29：User 管理 REST API | ✅ 完成 | 2026-03-05 | usersRouter(/api/users/me+列表+创建+PATCH+DELETE；owner/admin权限分级；新用户自动签发token；防自删)；两app均挂载；pnpm lint+test全绿（182/182） |
+| Phase 30：Sessions REST API（移入 core + 补全端点） | 🔄 进行中 | 2026-03-05 | sessionsRouter移入core；补PATCH title+DELETE session（级联删消息）+DELETE message；两app用core router；测试15+条 |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*
