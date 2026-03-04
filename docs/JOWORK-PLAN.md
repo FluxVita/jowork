@@ -155,6 +155,7 @@
 | Phase 2：抽取 premium 包 | ✅ 完成 | 2026-03-04 | activatePremium + dispatcher + claude-agent + embedding + geek-mode + alerts + skills + klaude-manager + context；pnpm lint+test全绿 |
 | Phase 3：apps/jowork | ✅ 完成 | 2026-03-04 | Express gateway + sessions/chat/memory/connectors 路由 + Vue 3 CDN SPA（暗色主题聊天界面）；pnpm lint全绿 |
 | Phase 4：apps/fluxvita | ✅ 完成 | 2026-03-04 | activatePremium + 完整 Express gateway（sessions/chat/memory/connectors/premium 路由）+ FluxVita 品牌 SPA + Klaude 状态 API + 飞书 OAuth 占位；pnpm lint+test全绿 |
+| Phase 5：CI/CD + GitHub 同步 | ✅ 完成 | 2026-03-04 | ci.yml + .gitlab-ci.yml（双 app lint+test+build）+ sync-to-github.sh；首次 push 需 GitHub repo 存在 |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*
@@ -833,11 +834,12 @@ CREATE VIRTUAL TABLE context_docs_fts USING fts5(
 
 ### Phase 5: CI/CD + GitHub 同步（1 天）
 
-- [ ] 创建 GitHub 组织 `fluxvita`
-- [ ] 创建 `fluxvita/jowork` 仓库
-- [ ] 编写 `scripts/sync-to-github.sh`
-- [ ] 更新 `.gitlab-ci.yml`（双 app 构建 + tag 同步）
-- [ ] 首次同步测试
+- [x] 创建 GitHub 组织 `fluxvita`（remote 已配置为 github.com/FluxVita/jowork.git）
+- [x] 创建 `fluxvita/jowork` 仓库（origin remote 已存在）
+- [x] 编写 `scripts/sync-to-github.sh`（含 dry-run、secrets 扫描、tag 推送）
+- [x] 更新 `.gitlab-ci.yml`（双 app 构建 + tag 同步到 GitHub）
+- [x] 创建 `.github/workflows/ci.yml`（lint+test+build，main + PR 触发）
+- [ ] 首次同步测试（需要 GitHub org/repo 实际存在并有 push 权限）
 
 ### Phase 6: 三层上下文系统（2-3 天）
 

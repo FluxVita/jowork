@@ -1,0 +1,102 @@
+# Jowork GitLab CI/CD
+#
+# Runs lint → test → build for the full monorepo.
+# On tags (v*), also syncs to the public GitHub mirror.
+#
+# Required CI/CD variables (set in GitLab project settings):
+#   GITHUB_SYNC_TOKEN  — GitHub PAT with "repo" scope for push to FluxVita/jowork
+
+stages:
+  - validate
+  - build
+  - sync
+
+# ── Shared template ──────────────────────────────────────────────────────────
+.node_base:
+  image: node:22-slim
+  before_script:
+    - npm install -g pnpm@10 --silent
+    - pnpm install --frozen-lockfile
+  cache:
+    key: pnpm-$CI_COMMIT_REF_SLUG
+    paths:
+      - .pnpm-store/
+    policy: pull-push
+
+# ── Lint ─────────────────────────────────────────────────────────────────────
+lint:
+  extends: .node_base
+  stage: validate
+  script:
+    - pnpm lint
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_TAG =~ /^v/
+
+# ── Test ─────────────────────────────────────────────────────────────────────
+test:
+  extends: .node_base
+  stage: validate
+  script:
+    - pnpm test
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_TAG =~ /^v/
+
+# ── Build ────────────────────────────────────────────────────────────────────
+build:jowork:
+  extends: .node_base
+  stage: build
+  script:
+    - pnpm --filter @jowork/core build
+    - pnpm --filter @jowork/app build
+  artifacts:
+    paths:
+      - packages/core/dist/
+      - apps/jowork/dist/
+    expire_in: 1 week
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_TAG =~ /^v/
+
+build:fluxvita:
+  extends: .node_base
+  stage: build
+  script:
+    - pnpm --filter @jowork/core build
+    - pnpm --filter @jowork/premium build
+    - pnpm --filter @jowork/app-fluxvita build
+  artifacts:
+    paths:
+      - packages/core/dist/
+      - packages/premium/dist/
+      - apps/fluxvita/dist/
+    expire_in: 1 week
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_TAG =~ /^v/
+
+# ── Sync to GitHub (tag releases only) ───────────────────────────────────────
+sync:github:
+  image: alpine/git:latest
+  stage: sync
+  needs: [lint, test, build:jowork]
+  variables:
+    GIT_STRATEGY: clone
+  script:
+    - |
+      if [ -z "${GITHUB_SYNC_TOKEN:-}" ]; then
+        echo "GITHUB_SYNC_TOKEN not set — skipping GitHub sync"
+        exit 0
+      fi
+    - git remote add github "https://x-token:${GITHUB_SYNC_TOKEN}@github.com/FluxVita/jowork.git"
+    - git push github HEAD:main --force-with-lease
+    - git push github "$CI_COMMIT_TAG"
+    - echo "Synced $CI_COMMIT_TAG to github.com/FluxVita/jowork"
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^v/
+  environment:
+    name: github-mirror
+    url: https://github.com/FluxVita/jowork
