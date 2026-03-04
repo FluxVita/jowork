@@ -14,6 +14,7 @@ import {
   slackConnector,
   linearConnector,
   gitlabConnector,
+  figmaConnector,
 } from '../index.js';
 
 describe('JCP connector auto-registration', () => {
@@ -54,7 +55,14 @@ describe('JCP connector auto-registration', () => {
     assert.equal(connector?.manifest.name, 'GitLab');
   });
 
-  test('listJCPConnectors returns all 5 built-in connectors', () => {
+  test('Figma connector is auto-registered', () => {
+    const connector = getJCPConnector('figma');
+    assert.ok(connector, 'Figma connector should be registered');
+    assert.equal(connector?.manifest.id, 'figma');
+    assert.equal(connector?.manifest.name, 'Figma');
+  });
+
+  test('listJCPConnectors returns all 6 built-in connectors', () => {
     const manifests = listJCPConnectors();
     const ids = manifests.map(m => m.id);
     assert.ok(ids.includes('github'), 'Should include github');
@@ -62,7 +70,8 @@ describe('JCP connector auto-registration', () => {
     assert.ok(ids.includes('slack'),  'Should include slack');
     assert.ok(ids.includes('linear'), 'Should include linear');
     assert.ok(ids.includes('gitlab'), 'Should include gitlab');
-    assert.ok(manifests.length >= 5, 'Should have at least 5 JCP connectors');
+    assert.ok(ids.includes('figma'),  'Should include figma');
+    assert.ok(manifests.length >= 6, 'Should have at least 6 JCP connectors');
   });
 });
 
@@ -163,5 +172,32 @@ describe('GitLab connector', () => {
   test('configSchema allows custom base URL', () => {
     const schema = gitlabConnector.manifest.configSchema as { properties: { baseUrl: unknown } };
     assert.ok(schema.properties.baseUrl, 'Should have baseUrl in config schema');
+  });
+});
+
+describe('Figma connector', () => {
+  test('manifest has correct auth type', () => {
+    assert.equal(figmaConnector.manifest.authType, 'api_token');
+  });
+
+  test('defaultSensitivity is internal', () => {
+    assert.equal(figmaConnector.defaultSensitivity, 'internal');
+  });
+
+  test('configSchema has teamId and fileKeys fields', () => {
+    const schema = figmaConnector.manifest.configSchema as { properties: { teamId: unknown; fileKeys: unknown } };
+    assert.ok(schema.properties.teamId,   'Should have teamId in config schema');
+    assert.ok(schema.properties.fileKeys, 'Should have fileKeys in config schema');
+  });
+
+  test('manifest includes search capability', () => {
+    assert.ok(figmaConnector.manifest.capabilities.includes('search'));
+  });
+
+  test('discover with no config returns empty results (no crash)', async () => {
+    await figmaConnector.initialize({}, {});
+    const page = await figmaConnector.discover();
+    assert.ok(Array.isArray(page.objects));
+    assert.equal(page.objects.length, 0);
   });
 });

@@ -1,6 +1,6 @@
 // @jowork/core/connectors — connector registry and base interface
 // Connectors: feishu, gitlab, linear, posthog, figma, email, oss
-//             + JCP connectors: github, notion, slack, linear, gitlab (auto-registered below)
+//             + JCP connectors: github, notion, slack, linear, gitlab, figma (auto-registered below)
 
 import type { ConnectorConfig, ConnectorId, ConnectorKind, SensitivityLevel } from '../types.js';
 import { getDb } from '../datamap/db.js';
@@ -14,6 +14,7 @@ import { notionConnector } from './notion.js';
 import { slackConnector } from './slack.js';
 import { linearConnector } from './linear.js';
 import { gitlabConnector } from './gitlab.js';
+import { figmaConnector } from './figma.js';
 
 // ─── Auto-register built-in JCP connectors ───────────────────────────────────
 // These run at module load time so all imports of @jowork/core get them.
@@ -23,6 +24,7 @@ registerJCPConnector(notionConnector);
 registerJCPConnector(slackConnector);
 registerJCPConnector(linearConnector);
 registerJCPConnector(gitlabConnector);
+registerJCPConnector(figmaConnector);
 
 // ─── Base interface ───────────────────────────────────────────────────────────
 
