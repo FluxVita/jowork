@@ -34,33 +34,7 @@ jobs:
             --output-format stream-json \
             --verbose \
             -p "$(cat .github/prompts/jowork-autonomous.md)" \
-          | python3 -u -c "
-import sys, json
-for line in sys.stdin:
-    line = line.strip()
-    if not line:
-        continue
-    try:
-        d = json.loads(line)
-        t = d.get('type', '')
-        if t == 'assistant':
-            for block in d.get('message', {}).get('content', []):
-                if block.get('type') == 'text' and block.get('text'):
-                    print(block['text'][:300], flush=True)
-                elif block.get('type') == 'tool_use':
-                    name = block.get('name', '?')
-                    inp = str(block.get('input', ''))[:100]
-                    print(f'[工具] {name}: {inp}', flush=True)
-        elif t == 'tool_result':
-            content = d.get('content', '')
-            if isinstance(content, list):
-                content = ' '.join(c.get('text','') for c in content if c.get('type')=='text')
-            print(f'[结果] {str(content)[:200]}', flush=True)
-        elif t == 'result':
-            print(f'[完成] turns={d.get(\"num_turns\",\"?\")}', flush=True)
-    except Exception:
-        print(line[:200], flush=True)
-"
+          | python3 -u .github/scripts/stream-parser.py
 
       - name: 提交并推送
         if: steps.check.outputs.pending != '0'
@@ -72,11 +46,11 @@ for line in sys.stdin:
             DONE=$(python3 -c "print(open('docs/JOWORK-PLAN.md').read().count('- [x]'))")
             git commit -m "feat(jowork): 自主开发 — 已完成 ${DONE} 项 [skip ci]"
             git push
-            echo "✅ 推送成功"
+            echo "推送成功"
           else
             echo "本轮无新改动"
           fi
 
       - name: 全部完成
         if: steps.check.outputs.pending == '0'
-        run: echo "🎉 所有任务已完成！"
+        run: echo "所有任务已完成！"
