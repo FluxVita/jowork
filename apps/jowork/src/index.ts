@@ -21,13 +21,12 @@ import {
   onboardingRouter,
   usersRouter,
   sessionsRouter,
+  chatRouter,
+  connectorsRouter,
+  memoryRouter,
+  contextRouter,
+  statsRouter,
 } from '@jowork/core';
-
-import { chatRouter } from './routes/chat.js';
-import { memoryRouter } from './routes/memory.js';
-import { connectorsRouter } from './routes/connectors.js';
-import { contextRouter } from './routes/context.js';
-import { statsRouter } from './routes/stats.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = join(__dirname, '..', 'public');

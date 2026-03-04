@@ -180,6 +180,7 @@
 | Phase 28：Agent 管理 + Onboarding REST API | ✅ 完成 | 2026-03-05 | agentsRouter(/api/agents CRUD，owner隔离)+onboardingRouter(/api/onboarding GET+POST /advance)；两app均挂载；pnpm lint+test全绿（168/168） |
 | Phase 29：User 管理 REST API | ✅ 完成 | 2026-03-05 | usersRouter(/api/users/me+列表+创建+PATCH+DELETE；owner/admin权限分级；新用户自动签发token；防自删)；两app均挂载；pnpm lint+test全绿（182/182） |
 | Phase 30：Sessions REST API（移入 core + 补全端点） | ✅ 完成 | 2026-03-05 | sessionsRouter移入core（PATCH title+DELETE session级联+DELETE message）；两app删除重复路由改用core router；pnpm lint+test全绿（197/197） |
+| Phase 31：Chat/Connectors/Memory/Context/Stats 路由移入 core | ✅ 完成 | 2026-03-05 | chatRouter(dispatchFn?)+connectorsRouter+memoryRouter+contextRouter+statsRouter移入core；两app删除重复路由；fluxvita通过chatRouter(dispatch)注入premium引擎；pnpm lint+test全绿（210/210） |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*
@@ -2970,6 +2971,18 @@ GET /health → {
 - [x] DELETE /api/sessions/:id/messages/:msgId — 删除单条消息
 - [x] 导出 `sessionsRouter` 并在两个 app 均改用 core router（删除重复的 app-specific sessions.ts）
 - [x] 添加测试（15 个用例，197/197 通过）
+
+### Phase 31: Chat/Connectors/Memory/Context/Stats 路由移入 core（0.5 天）
+
+- [x] 实现 `gateway/routes/chat.ts`（POST /api/sessions/:id/messages；接受可选 `DispatchFn` 参数，默认用 `runBuiltin`）
+- [x] 实现 `gateway/routes/connectors.ts`（GET/POST/DELETE /api/connectors + GET /api/connector-types + POST /api/connectors/:id/discover）
+- [x] 实现 `gateway/routes/memory.ts`（GET/POST/DELETE /api/memories）
+- [x] 实现 `gateway/routes/context.ts`（全量 CRUD + workstyle shortcut + assemble 端点）
+- [x] 实现 `gateway/routes/stats.ts`（GET /api/stats 聚合统计）
+- [x] 从 `gateway/index.ts` 导出 5 个新路由 + `DispatchFn` 类型
+- [x] 两个 app 删除重复的 app-specific 路由文件，改用 core router
+- [x] apps/fluxvita 通过 `chatRouter(dispatch)` 注入 premium 引擎（DI 模式）
+- [x] 添加测试（13 个用例，210/210 通过）
 
 **AI 辅助开发预计总工期：6-10 个工作日**（全程 AI 写代码，人工只做决策/审查/测试）
 

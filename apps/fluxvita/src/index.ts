@@ -21,15 +21,15 @@ import {
   onboardingRouter,
   usersRouter,
   sessionsRouter,
+  chatRouter,
+  connectorsRouter,
+  memoryRouter,
+  contextRouter,
+  statsRouter,
 } from '@jowork/core';
 
-import { activatePremium } from '@jowork/premium';
-import { chatRouter } from './routes/chat.js';
-import { memoryRouter } from './routes/memory.js';
-import { connectorsRouter } from './routes/connectors.js';
-import { contextRouter } from './routes/context.js';
+import { activatePremium, dispatch } from '@jowork/premium';
 import { premiumRouter } from './routes/premium.js';
-import { statsRouter } from './routes/stats.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = join(__dirname, '..', 'public');
@@ -83,7 +83,7 @@ async function main(): Promise<void> {
       expressApp.use(agentsRouter());
       expressApp.use(onboardingRouter());
       expressApp.use(sessionsRouter());
-      expressApp.use(chatRouter());
+      expressApp.use(chatRouter(dispatch));
       expressApp.use(memoryRouter());
       expressApp.use(connectorsRouter());
       expressApp.use(contextRouter());

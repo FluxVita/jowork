@@ -1,17 +1,17 @@
-// apps/jowork — aggregate stats route
+// @jowork/core/gateway/routes/stats — Aggregate stats REST API
+//
 // Returns only aggregate counts, never per-user details, to protect privacy.
+//
+// Routes:
+//   GET /api/stats — aggregate counts for authenticated user's data
 
 import { Router } from 'express';
-import { getDb, authenticate } from '@jowork/core';
+import { authenticate } from '../middleware/auth.js';
+import { getDb } from '../../datamap/index.js';
 
 export function statsRouter(): Router {
   const router = Router();
 
-  /**
-   * GET /api/stats
-   * Returns aggregate counts for the authenticated user's data.
-   * No individual message content, no other users' data.
-   */
   router.get('/api/stats', authenticate, (req, res, next) => {
     try {
       const db = getDb();
@@ -35,7 +35,6 @@ export function statsRouter(): Router {
         `SELECT COUNT(*) as n FROM connectors WHERE owner_id = ?`,
       ).get(userId) as { n: number }).n;
 
-      // Aggregate tool usage by session count per agent — no user-identifiable detail
       const agentStats = (db.prepare(
         `SELECT a.name as agentName, COUNT(s.id) as sessionCount
          FROM agents a

@@ -1,13 +1,19 @@
-// apps/jowork — chat route (send message, get reply)
+// @jowork/core/gateway/routes/chat — send message, get reply
+// Accepts an optional `dispatchFn` (premium override); defaults to runBuiltin.
 
 import { Router } from 'express';
-import {
-  getDb, generateId, nowISO, authenticate,
-  runBuiltin, NotFoundError,
-} from '@jowork/core';
+import { authenticate } from '../middleware/auth.js';
+import { getDb } from '../../datamap/index.js';
+import { generateId, nowISO } from '../../utils/index.js';
+import { NotFoundError } from '../../types.js';
+import { runBuiltin } from '../../agent/index.js';
+import type { RunOptions, RunResult } from '../../agent/engines/builtin.js';
 
-export function chatRouter(): Router {
+export type DispatchFn = (opts: RunOptions) => Promise<RunResult>;
+
+export function chatRouter(dispatchFn?: DispatchFn): Router {
   const router = Router();
+  const doDispatch = dispatchFn ?? runBuiltin;
 
   router.post('/api/sessions/:id/messages', authenticate, async (req, res, next) => {
     try {
@@ -37,23 +43,23 @@ export function chatRouter(): Router {
         .reverse()
         .map(m => ({ id: m.id, sessionId: m.session_id, role: m.role as 'user' | 'assistant', content: m.content, createdAt: m.created_at }));
 
-      const result = await runBuiltin({
+      const systemPrompt = agent?.system_prompt ?? 'You are a helpful AI coworker.';
+
+      const result = await doDispatch({
         sessionId,
         agentId: session.agent_id,
         userId,
-        systemPrompt: agent?.system_prompt ?? 'You are Jowork, a helpful AI coworker.',
+        systemPrompt,
         history,
         userMessage: content,
       });
 
-      // Persist messages
+      const now = nowISO();
       const insert = db.prepare(`INSERT INTO messages (id, session_id, role, content, created_at) VALUES (?,?,?,?,?)`);
       for (const msg of result.messages) {
-        insert.run(msg.id, msg.sessionId, msg.role, msg.content, msg.createdAt);
+        insert.run(msg.id ?? generateId(), msg.sessionId, msg.role, msg.content, msg.createdAt ?? now);
       }
-
-      // Update session updated_at
-      db.prepare(`UPDATE sessions SET updated_at = ? WHERE id = ?`).run(nowISO(), sessionId);
+      db.prepare(`UPDATE sessions SET updated_at = ? WHERE id = ?`).run(now, sessionId);
 
       res.json({ messages: result.messages, turns: result.turnCount });
     } catch (err) { next(err); }

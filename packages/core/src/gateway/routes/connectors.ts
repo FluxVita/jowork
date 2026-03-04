@@ -1,12 +1,19 @@
-// apps/fluxvita — connector management routes (same as jowork, uses @jowork/core)
+// @jowork/core/gateway/routes/connectors — Connector management REST API
+//
+// Routes:
+//   GET    /api/connector-types          — list all available connector types
+//   GET    /api/connectors               — list user's connector instances
+//   POST   /api/connectors               — create a new connector instance (admin+)
+//   POST   /api/connectors/:id/discover  — discover objects via connector
+//   DELETE /api/connectors/:id           — delete connector instance (admin+)
 
 import { Router } from 'express';
+import { authenticate, requireRole } from '../middleware/auth.js';
 import {
-  authenticate, requireRole,
   createConnectorConfig, listConnectorConfigs, getConnectorConfig, deleteConnectorConfig,
   listAllConnectorTypes, discoverViaConnector,
-} from '@jowork/core';
-import type { ConnectorKind } from '@jowork/core';
+} from '../../connectors/index.js';
+import type { ConnectorKind } from '../../types.js';
 
 export function connectorsRouter(): Router {
   const router = Router();

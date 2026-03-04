@@ -1,7 +1,13 @@
-// apps/fluxvita — memory management routes (same as jowork, uses @jowork/core)
+// @jowork/core/gateway/routes/memory — Memory management REST API
+//
+// Routes:
+//   GET    /api/memories       — list/search memories for authenticated user
+//   POST   /api/memories       — save a new memory
+//   DELETE /api/memories/:id   — delete a memory
 
 import { Router } from 'express';
-import { authenticate, saveMemory, searchMemory, deleteMemory } from '@jowork/core';
+import { authenticate } from '../middleware/auth.js';
+import { saveMemory, searchMemory, deleteMemory } from '../../memory/index.js';
 
 export function memoryRouter(): Router {
   const router = Router();
