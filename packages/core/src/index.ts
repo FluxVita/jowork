@@ -25,6 +25,7 @@ export * from './connectors/figma.js';
 export * from './channels/index.js';
 export * from './channels/protocol.js';
 export * from './channels/telegram.js';
+export * from './channels/discord.js';
 export * from './services/index.js';
 export * from './onboarding/index.js';
 export * from './context/index.js';
