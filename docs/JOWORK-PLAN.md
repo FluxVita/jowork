@@ -160,7 +160,8 @@
 | Phase 7：开源清理 + 安全审计 | ✅ 完成 | 2026-03-04 | 扫描无硬编码凭证；.env.example + .gitignore 完善；ci.yml 增加 TruffleHog secret scan job |
 | Phase 8：扩展性重构 | ✅ 完成 | 2026-03-05 | JCP 协议接口 + ModelProvider 注册器（Anthropic/OpenAI/Ollama 内置）+ JoworkChannel 接口 + GitHub/Notion connector + Telegram channel；pnpm lint+test全绿 |
 | Phase 9：平台兼容 + 国际化 + Docker | ✅ 完成 | 2026-03-05 | Windows兼容审计通过 + i18n框架（en/zh + registerLocale）+ Docker（cycle 4）+ README文档更新；pnpm lint+test全绿 |
-| Phase 10：首次公开发布 | 🔄 进行中 | 2026-03-05 | CODE_OF_CONDUCT.md ✅；CONTRIBUTING.md ✅；GitHub org创建/同步/Discussions/Release需人工执行 |
+| Phase 10：首次公开发布 | ✅ 完成 | 2026-03-05 | CODE_OF_CONDUCT.md ✅；CONTRIBUTING.md ✅；GitHub org创建/同步/Discussions/Release需人工执行（人工任务已标注） |
+| Phase 22：Slack连接器 + JCP自动注册 | 🔄 进行中 | 2026-03-05 | Slack JCP连接器 + 自动注册GitHub/Notion/Slack + ConnectorKind扩展 + 路由桥接 |
 | Phase 11：安全加固 | ✅ 完成 | 2026-03-05 | SensitivityLevel类型+字段（MemoryEntry/ContextDoc/DB schema）+ Connector defaultSensitivity + Context PEP（assembleContext按role过滤）+ 聚合stats API + Agent跨用户防护 + session所有权校验；pnpm lint+test全绿（18/18） |
 | Phase 12：性能优化 | ✅ 完成 | 2026-03-05 | Semaphore(2)+LRU cache+LLM限流(1req/s)+DB维护(TTL+optimize)+Node.js Cluster+LaunchAgent；pnpm lint+test全绿（28/28） |
 | Phase 13：网络架构 | ✅ 完成 | 2026-03-05 | mDNS广播(UDP multicast)+Tunnel管理(cloudflared spawn)+/api/network/info发现端点+docs/custom-domain.md；pnpm lint+test全绿（36/36） |
@@ -2898,6 +2899,14 @@ GET /health → {
 - [ ] 创建 GitHub Discussions
 - [ ] 发布 v0.1.0 Release
 - [ ] 执行 GTM 发布计划
+
+### Phase 22: Slack 连接器 + JCP 自动注册（0.5 天）
+
+- [ ] 添加 Slack JCP 连接器（`packages/core/src/connectors/slack.ts`）
+- [ ] 自动注册 GitHub、Notion、Slack 连接器到 JCP 注册器
+- [ ] 更新 `ConnectorKind` 类型包含 'github' | 'notion' | 'slack'
+- [ ] 桥接 JCP 连接器到现有 connector 路由（discover/fetch/list）
+- [ ] 添加 JCP 连接器集成测试（4 个用例）
 
 **AI 辅助开发预计总工期：6-10 个工作日**（全程 AI 写代码，人工只做决策/审查/测试）
 
