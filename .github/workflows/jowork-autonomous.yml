@@ -1,56 +1,65 @@
 name: Jowork Autonomous Dev
 
 on:
-  workflow_dispatch:        # 手动触发（GitHub 页面点按钮）
+  workflow_dispatch:
   schedule:
-    - cron: '0 */3 * * *'  # 每3小时自动触发一次
+    - cron: '0 */3 * * *'
 
 jobs:
   develop:
-    runs-on: [self-hosted, macOS, jowork]  # 跑在你的 MacBook 上
+    runs-on: [self-hosted, macOS, jowork]
     timeout-minutes: 150
 
     steps:
-      - name: 拉取最新代码
+      - name: checkout
         uses: actions/checkout@v4
         with:
           ref: main
           fetch-depth: 0
 
-      - name: 检查待完成任务
+      - name: check-pending
         id: check
         run: |
-          PENDING=$(python3 -c "print(open('docs/JOWORK-PLAN.md').read().count('- [ ]'))")
+          PENDING=$(python3 -c "
+          import re
+          text = open('docs/JOWORK-PLAN.md').read()
+          print(text.count('- [ ]'))
+          ")
           echo "pending=$PENDING" >> "$GITHUB_OUTPUT"
-          echo "待完成任务: $PENDING"
+          echo "Pending tasks: $PENDING"
 
-      - name: 运行 Claude Code 自主开发
-        if: steps.check.outputs.pending != '0'
+      - name: run-claude
+        if: ${{ steps.check.outputs.pending != '0' }}
         run: |
           unset CLAUDECODE
+          PROMPT=$(cat .github/prompts/jowork-autonomous.md)
           claude \
             --dangerously-skip-permissions \
             --max-turns 80 \
             --output-format stream-json \
             --verbose \
-            -p "$(cat .github/prompts/jowork-autonomous.md)" \
+            -p "$PROMPT" \
           | python3 -u .github/scripts/stream-parser.py
 
-      - name: 提交并推送
-        if: steps.check.outputs.pending != '0'
+      - name: commit-and-push
+        if: ${{ steps.check.outputs.pending != '0' }}
         run: |
           git config user.name "Jowork AI Dev"
           git config user.email "ai@fluxvita.com"
           git add -A
           if ! git diff --cached --quiet; then
-            DONE=$(python3 -c "print(open('docs/JOWORK-PLAN.md').read().count('- [x]'))")
-            git commit -m "feat(jowork): 自主开发 — 已完成 ${DONE} 项 [skip ci]"
+            DONE=$(python3 -c "
+            import re
+            text = open('docs/JOWORK-PLAN.md').read()
+            print(text.count('- [x]'))
+            ")
+            git commit -m "feat(jowork): auto-dev done=${DONE} [skip ci]"
             git push
-            echo "推送成功"
+            echo "Pushed successfully"
           else
-            echo "本轮无新改动"
+            echo "No changes this round"
           fi
 
-      - name: 全部完成
-        if: steps.check.outputs.pending == '0'
-        run: echo "所有任务已完成！"
+      - name: all-done
+        if: ${{ steps.check.outputs.pending == '0' }}
+        run: echo "All tasks completed!"
