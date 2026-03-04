@@ -20,7 +20,7 @@ jobs:
       - name: 检查待完成任务
         id: check
         run: |
-          PENDING=$(grep -c '- \[ \]' docs/JOWORK-PLAN.md 2>/dev/null || echo 0)
+          PENDING=$(python3 -c "print(open('docs/JOWORK-PLAN.md').read().count('- [ ]'))")
           echo "pending=$PENDING" >> "$GITHUB_OUTPUT"
           echo "待完成任务: $PENDING"
 
@@ -40,7 +40,7 @@ jobs:
           git config user.email "ai@fluxvita.com"
           git add -A
           if ! git diff --cached --quiet; then
-            DONE=$(grep -c '- \[x\]' docs/JOWORK-PLAN.md 2>/dev/null || echo 0)
+            DONE=$(python3 -c "print(open('docs/JOWORK-PLAN.md').read().count('- [x]'))")
             git commit -m "feat(jowork): 自主开发 — 已完成 ${DONE} 项 [skip ci]"
             git push
             echo "✅ 推送成功"
