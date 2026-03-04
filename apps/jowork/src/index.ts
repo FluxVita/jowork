@@ -15,6 +15,7 @@ import {
   advertiseMdns,
   networkRouter,
   adminRouter,
+  channelsRouter,
 } from '@jowork/core';
 
 import { sessionsRouter } from './routes/sessions.js';
@@ -68,6 +69,7 @@ async function main(): Promise<void> {
       expressApp.use(statsRouter());
       expressApp.use(networkRouter());
       expressApp.use(adminRouter());
+      expressApp.use(channelsRouter());
 
       // Serve Vue 3 CDN SPA from public/
       if (existsSync(join(PUBLIC_DIR, 'index.html'))) {

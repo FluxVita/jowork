@@ -70,6 +70,7 @@ export interface JoworkChannel {
 // ─── Registry ─────────────────────────────────────────────────────────────────
 
 const channelPluginRegistry = new Map<string, JoworkChannel>();
+const channelInitializedSet = new Set<string>();
 
 export function registerChannelPlugin(channel: JoworkChannel): void {
   channelPluginRegistry.set(channel.id, channel);
@@ -79,10 +80,23 @@ export function getChannelPlugin(id: string): JoworkChannel | undefined {
   return channelPluginRegistry.get(id);
 }
 
-export function listChannelPlugins(): Array<{ id: string; name: string; capabilities: ChannelCapabilities }> {
+export function listChannelPlugins(): Array<{ id: string; name: string; capabilities: ChannelCapabilities; initialized: boolean }> {
   return Array.from(channelPluginRegistry.values()).map(c => ({
-    id: c.id,
-    name: c.name,
+    id:           c.id,
+    name:         c.name,
     capabilities: c.capabilities,
+    initialized:  channelInitializedSet.has(c.id),
   }));
+}
+
+export function markChannelInitialized(id: string): void {
+  channelInitializedSet.add(id);
+}
+
+export function markChannelShutdown(id: string): void {
+  channelInitializedSet.delete(id);
+}
+
+export function isChannelInitialized(id: string): boolean {
+  return channelInitializedSet.has(id);
 }

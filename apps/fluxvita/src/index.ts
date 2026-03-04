@@ -15,6 +15,7 @@ import {
   advertiseMdns,
   networkRouter,
   adminRouter,
+  channelsRouter,
 } from '@jowork/core';
 
 import { activatePremium } from '@jowork/premium';
@@ -84,6 +85,7 @@ async function main(): Promise<void> {
       expressApp.use(statsRouter());
       expressApp.use(networkRouter());
       expressApp.use(adminRouter());
+      expressApp.use(channelsRouter());
 
       // Serve FluxVita SPA from public/
       if (existsSync(join(PUBLIC_DIR, 'index.html'))) {
