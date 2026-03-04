@@ -163,6 +163,7 @@
 | Phase 10：首次公开发布 | ✅ 完成 | 2026-03-05 | CODE_OF_CONDUCT.md ✅；CONTRIBUTING.md ✅；GitHub org创建/同步/Discussions/Release需人工执行（人工任务已标注） |
 | Phase 22：Slack连接器 + JCP自动注册 | ✅ 完成 | 2026-03-05 | slackConnector + 自动注册GitHub/Notion/Slack + ConnectorKind扩展('github'\|'notion'\|'slack') + discoverViaConnector桥接 + listAllConnectorTypes；pnpm lint+test全绿（92/92） |
 | Phase 23：Linear + GitLab JCP连接器 | ✅ 完成 | 2026-03-05 | linearConnector(GraphQL issues/search) + gitlabConnector(REST projects/MRs/issues，支持自托管baseUrl)；pnpm lint+test全绿（102/102） |
+| Phase 24：Figma JCP连接器 | 🔄 进行中 | 2026-03-05 | Figma文件/组件/帧发现+获取+搜索 |
 | Phase 11：安全加固 | ✅ 完成 | 2026-03-05 | SensitivityLevel类型+字段（MemoryEntry/ContextDoc/DB schema）+ Connector defaultSensitivity + Context PEP（assembleContext按role过滤）+ 聚合stats API + Agent跨用户防护 + session所有权校验；pnpm lint+test全绿（18/18） |
 | Phase 12：性能优化 | ✅ 完成 | 2026-03-05 | Semaphore(2)+LRU cache+LLM限流(1req/s)+DB维护(TTL+optimize)+Node.js Cluster+LaunchAgent；pnpm lint+test全绿（28/28） |
 | Phase 13：网络架构 | ✅ 完成 | 2026-03-05 | mDNS广播(UDP multicast)+Tunnel管理(cloudflared spawn)+/api/network/info发现端点+docs/custom-domain.md；pnpm lint+test全绿（36/36） |
