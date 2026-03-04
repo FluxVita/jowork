@@ -215,6 +215,7 @@
 | Phase 63：全局搜索增强（connector_items） | ✅ 完成 | 2026-03-05 | search.ts新增connectorItems域（FTS5+LIKE降级）；SearchResultConnectorItem类型+SearchResponse扩展；前端Cmd+K搜索结果新增Connector Content分组（可点击跳转URL）；3新测试（空/FTS命中/跨用户隔离）；pnpm lint+test全绿（358/358） |
 | Phase 64：Agent工具增强（search_cached_content） | ✅ 完成 | 2026-03-05 | agent/tools/index.ts新增第7个工具search_cached_content（搜索本地缓存的connector内容，支持指定connector_id或跨所有connector搜索）；assertSameUser跨用户保护；测试断言更新6→7；pnpm lint+test全绿（358/358） |
 | Phase 65：消息重新生成（Regenerate） | ✅ 完成 | 2026-03-05 | POST /api/sessions/:id/messages/:msgId/regenerate SSE端点（删除目标assistant消息及后续消息+重新dispatch）；前端↻Regenerate按钮（最后一条assistant消息）；migrator测试修复004_connector_sync_schedule；7新测试；apps/jowork+apps/fluxvita均更新；pnpm lint+test全绿（365/365） |
+| Phase 66：代码块复制按钮（Copy Code Block） | ✅ 完成 | 2026-03-05 | marked.Renderer自定义code块（code-block-wrapper容器+Copy按钮+语言标签）；hover显示/clipboard API/Copied!反馈；apps/jowork+apps/fluxvita均更新；pnpm lint全绿（纯前端） |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*
@@ -3334,6 +3335,14 @@ GET /health → {
 - [x] 修复 `migrator.test.ts` 遗留问题（004_connector_sync_schedule 未更新断言）
 - [x] apps/jowork + apps/fluxvita 均更新
 - [x] pnpm lint+test 全绿（365/365）
+
+### Phase 66: 代码块复制按钮（Copy Code Block）（0.1 天）
+
+- [x] `marked.Renderer` 自定义 `code` 方法：包裹 `<div class="code-block-wrapper">` + Copy 按钮 + 语言标签
+- [x] Copy 按钮：hover 显示，点击用 `navigator.clipboard.writeText` 复制，反馈「Copied!」1.5s 后恢复
+- [x] `.code-block-wrapper` / `.code-copy-btn` / `.code-lang` 暗色主题样式
+- [x] apps/jowork + apps/fluxvita 均更新
+- [x] pnpm lint 全绿（纯前端改动，无新测试）
 
 **AI 辅助开发预计总工期：6-10 个工作日**（全程 AI 写代码，人工只做决策/审查/测试）
 

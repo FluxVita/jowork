@@ -64,6 +64,11 @@
     .md-body code { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px; background: #0a0f1a; border: 1px solid #1f2a3c; border-radius: 3px; padding: 1px 5px; color: #93c5fd; }
     .md-body pre { background: #0a0f1a; border: 1px solid #1f2a3c; border-radius: 8px; padding: 12px 14px; overflow-x: auto; margin: 8px 0; }
     .md-body pre code { background: none; border: none; padding: 0; color: #e2e8f0; font-size: 12px; }
+    .code-block-wrapper { position: relative; }
+    .code-copy-btn { position: absolute; top: 6px; right: 6px; background: #111827; border: 1px solid #2d3748; color: #8892b0; font-size: 11px; padding: 2px 8px; border-radius: 4px; cursor: pointer; opacity: 0; transition: opacity 0.15s; z-index: 1; }
+    .code-block-wrapper:hover .code-copy-btn { opacity: 1; }
+    .code-copy-btn:hover { background: #1f2937; color: #c8d0e8; }
+    .code-lang { position: absolute; top: 6px; left: 12px; font-size: 10px; color: #4a5568; text-transform: uppercase; letter-spacing: 0.5px; }
     .md-body blockquote { border-left: 3px solid #2563eb; padding-left: 12px; margin: 8px 0; color: #94a3b8; }
     .md-body a { color: #60a5fa; text-decoration: underline; }
     .md-body strong { color: #f1f5f9; }
@@ -283,6 +288,14 @@
       if (r.status === 204) return null;
       return r.json();
     }
+
+    const renderer = new marked.Renderer();
+    renderer.code = function({ text, lang }) {
+      const escaped = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      const langLabel = lang ? `<span class="code-lang">${lang}</span>` : '';
+      return `<div class="code-block-wrapper">${langLabel}<button class="code-copy-btn" onclick="(function(b){var c=b.parentElement.querySelector('code');navigator.clipboard.writeText(c.textContent);b.textContent='Copied!';setTimeout(function(){b.textContent='Copy'},1500)})(this)">Copy</button><pre><code>${escaped}</code></pre></div>`;
+    };
+    marked.setOptions({ renderer });
 
     function renderMd(text) {
       if (!text) return '';
