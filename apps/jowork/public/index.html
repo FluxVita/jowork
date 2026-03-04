@@ -305,6 +305,8 @@
         // Memories
         const memories     = ref([]);
         const memoryQuery  = ref('');
+        const newMemoryContent = ref('');
+        const memoryAdding     = ref(false);
 
         // Scheduler
         const tasks       = ref([]);
@@ -685,6 +687,19 @@
           } catch (e) { toast('Delete failed: ' + e.message, 'error'); }
         }
 
+        async function addMemory() {
+          const content = newMemoryContent.value.trim();
+          if (!content) return;
+          memoryAdding.value = true;
+          try {
+            await api('POST', '/api/memories', { content, source: 'user' });
+            newMemoryContent.value = '';
+            await loadMemories();
+            toast('Memory saved', 'success');
+          } catch (e) { toast('Failed to save memory: ' + e.message, 'error'); }
+          finally { memoryAdding.value = false; }
+        }
+
         // ─── Scheduler helpers ────────────────────────────────────────
         async function loadTasks() {
           try {
@@ -1006,13 +1021,13 @@
           connectors, connectorTypes, stats, healthFull,
           newConn, connError, connSaving,
           agentData, agentSaving,
-          memories, memoryQuery,
+          memories, memoryQuery, newMemoryContent, memoryAdding,
           tasks, newTask, taskSaving,
           workstyleContent, workstyleSaving,
           usageSummary, usageDaily, budgetStatus, budgetLimit, budgetSaving, dailyMax, budgetPct,
           adminWorking, updateInfo,
           openSettings, applyModel, addConnector, removeConnector, extraFields, connIcon, renderMd,
-          saveAgent, loadMemories, deleteMemoryItem,
+          saveAgent, loadMemories, deleteMemoryItem, addMemory,
           submitTask, toggleTaskEnabled, deleteTaskItem,
           saveWorkstyle, saveBudget, exportData, triggerBackup, checkUpdates, handleImport,
           onboarding, showOnboarding, onboardingStep, onboardingWorking,
@@ -1344,6 +1359,16 @@
                     </div>
                     <button class="memory-delete" @click="deleteMemoryItem(m.id)">✕</button>
                   </div>
+                </div>
+                <div class="add-connector-form">
+                  <h4>Add Memory</h4>
+                  <div class="form-row">
+                    <label>Content</label>
+                    <textarea v-model="newMemoryContent" rows="3" placeholder="e.g. I prefer bullet-point summaries" style="resize:vertical"></textarea>
+                  </div>
+                  <button class="save-btn" :disabled="memoryAdding || !newMemoryContent.trim()" @click="addMemory">
+                    {{ memoryAdding ? 'Saving…' : 'Save Memory' }}
+                  </button>
                 </div>
               </div>
 
