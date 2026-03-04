@@ -195,7 +195,7 @@
 | Phase 43：Session 管理 UI — 重命名/删除会话 | ✅ 完成 | 2026-03-05 | hover菜单(✏rename+×delete)；inline input编辑(Enter保存/Esc取消/blur取消)；级联删除自动切换session；apps/jowork+apps/fluxvita均更新；pnpm lint+test全绿（260/260） |
 | Phase 44：Model Switcher UI | ✅ 完成 | 2026-03-05 | PUT /api/models/active(process.env mutation+validate)；Models标签新增provider下拉+model下拉/输入+Apply按钮+即时提示；3新测试；apps/jowork+apps/fluxvita均更新；pnpm lint+test全绿（263/263） |
 | Phase 45：键盘快捷键 | ✅ 完成 | 2026-03-05 | globalKeydown(Cmd+N新建会话/Cmd+/开关设置/Esc关闭)；onMounted注册+onUnmounted移除；apps/jowork+apps/fluxvita均更新；pnpm lint+test全绿（263/263） |
-| Phase 46：Onboarding Flow UI | 🔄 进行中 | 2026-03-05 | 首次使用向导：4步引导（welcome/setup_agent/add_connector/workstyle_doc）+ onboarding API集成 |
+| Phase 46：Onboarding Flow UI | ✅ 完成 | 2026-03-05 | 4步向导覆盖层(welcome/setup_agent/add_connector/workstyle_doc)；checkOnboarding启动检测；步骤指示器；skip支持；apps/jowork+apps/fluxvita均更新；pnpm lint+test全绿（263/263） |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*
@@ -3095,17 +3095,17 @@ GET /health → {
 
 ### Phase 46: Onboarding Flow UI（0.5 天）
 
-- [ ] App 启动时调用 `GET /api/onboarding`，若 `currentStep !== 'complete'` 则显示 Onboarding 向导
-- [ ] 向导覆盖层（全屏遮罩 + 居中卡片，z-index 最高）
-- [ ] Step 1 — Welcome：欢迎标题 + 产品简介 + "开始设置" 按钮
-- [ ] Step 2 — Setup Agent：加载 `GET /api/agents`，显示 agent name/systemPrompt 可编辑表单 + "保存" 按钮（`PATCH /api/agents/:id`），保存后前进
-- [ ] Step 3 — Add Connector：显示 connector 类型选择 + 必填字段（name/apiKey）+ "添加" 按钮（`POST /api/connectors`）+ "跳过" 链接
-- [ ] Step 4 — Workstyle Doc：大文本框编辑工作方式文档（`GET /api/context?layer=personal&docType=workstyle` 加载，`PUT /api/context/workstyle` 保存）+ "完成" 按钮
-- [ ] 每步底部显示步骤进度指示器（● ○ ○ ○）
-- [ ] 每步 "下一步" / "完成" 后调用 `POST /api/onboarding/advance`
-- [ ] `apps/jowork/public/index.html` 实现上述所有功能
-- [ ] `apps/fluxvita/public/index.html`：同步上述功能
-- [ ] pnpm lint+test 全绿（263/263）
+- [x] App 启动时调用 `GET /api/onboarding`，若 `currentStep !== 'complete'` 则显示 Onboarding 向导
+- [x] 向导覆盖层（全屏遮罩 + 居中卡片，z-index 最高）
+- [x] Step 1 — Welcome：欢迎标题 + 产品简介 + "开始设置" 按钮
+- [x] Step 2 — Setup Agent：加载 `GET /api/agents`，显示 agent name/systemPrompt 可编辑表单 + "保存" 按钮（`PATCH /api/agents/:id`），保存后前进
+- [x] Step 3 — Add Connector：显示 connector 类型选择 + 必填字段（name/apiKey）+ "添加" 按钮（`POST /api/connectors`）+ "跳过" 链接
+- [x] Step 4 — Workstyle Doc：大文本框编辑工作方式文档（`GET /api/context?layer=personal&docType=workstyle` 加载，`PUT /api/context/workstyle` 保存）+ "完成" 按钮
+- [x] 每步底部显示步骤进度指示器（● ○ ○ ○）
+- [x] 每步 "下一步" / "完成" 后调用 `POST /api/onboarding/advance`
+- [x] `apps/jowork/public/index.html` 实现上述所有功能
+- [x] `apps/fluxvita/public/index.html`：同步上述功能
+- [x] pnpm lint+test 全绿（263/263）
 
 **AI 辅助开发预计总工期：6-10 个工作日**（全程 AI 写代码，人工只做决策/审查/测试）
 
