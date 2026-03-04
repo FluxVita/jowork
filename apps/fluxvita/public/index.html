@@ -648,11 +648,15 @@
                   <template v-if="healthFull">
                     <div v-if="healthFull.db" class="info-row">
                       <span class="info-label">Database</span>
-                      <span :class="['badge', healthFull.db === 'ok' ? 'green' : 'red']">{{ healthFull.db }}</span>
+                      <span :class="['badge', healthFull.db.status === 'ok' ? 'green' : 'red']">{{ healthFull.db.status }}</span>
                     </div>
-                    <div v-if="healthFull.disk" class="info-row">
+                    <div v-if="healthFull.disk && healthFull.disk.freeGb != null" class="info-row">
                       <span class="info-label">Disk free</span>
-                      <span class="info-value">{{ healthFull.disk }}</span>
+                      <span class="info-value">{{ healthFull.disk.freeGb }} GB</span>
+                    </div>
+                    <div v-if="healthFull.uptime != null" class="info-row">
+                      <span class="info-label">Uptime</span>
+                      <span class="info-value">{{ Math.floor(healthFull.uptime / 60) }}m {{ healthFull.uptime % 60 }}s</span>
                     </div>
                     <div v-if="healthFull.version" class="info-row">
                       <span class="info-label">Version</span>
