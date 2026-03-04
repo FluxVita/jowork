@@ -2,8 +2,8 @@
 
 ## 当前进度
 
-最后完成：Phase 42（2026-03-05）
-最新 commit：（待提交）
+最后完成：Phase 45（2026-03-05）
+测试：263/263 全绿
 
 ## 已完成 Phases（关键说明）
 
@@ -14,6 +14,9 @@
 - **Phase 40**: 设置面板扩展（Agent 配置编辑 + Memories 管理）
 - **Phase 41**: Scheduler 标签（任务 CRUD + toggle）+ Agent 标签 WorkStyle 编辑区
 - **Phase 42**: Usage 标签（用量摘要+预算进度条+7日柱状图）+ Admin 标签（备份/更新/导出/恢复）
+- **Phase 43**: Session 管理（重命名/删除，hover 菜单 + inline 编辑）
+- **Phase 44**: Model Switcher UI（provider下拉+model下拉/输入+Apply+PUT /api/models/active）
+- **Phase 45**: 键盘快捷键（globalKeydown：Cmd+N 新建会话 / Cmd+/ 开关设置 / Esc 关闭设置）
 
 ## 关键文件路径
 
@@ -22,6 +25,7 @@
 - core 路由: `packages/core/src/gateway/routes/`
 - core 入口: `packages/core/src/index.ts`
 - jowork 服务入口: `apps/jowork/src/index.ts`
+- 进度文档: `docs/JOWORK-PLAN.md` Section 0.7 + Appendix A
 
 ## 前端架构
 
@@ -35,12 +39,12 @@
 ## 下一步建议
 
 - Tauri sidecar：将 Gateway 打包为 Bun --compile 二进制（apps/jowork Tauri 集成）
-- 多会话侧边栏改进：session 重命名/删除 UI
 - Onboarding 流程 UI（引导用户完成首次配置）
+- Phase 46: 消息搜索（全文搜索历史消息，FTS5 已有）
 
 ## pnpm 命令
 
 ```bash
 pnpm lint    # tsc --noEmit 全部包
-pnpm test    # packages/core 单测（260/260）
+pnpm test    # packages/core 单测（263/263）
 ```
