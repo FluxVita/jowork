@@ -15,7 +15,7 @@ import { authenticate, requireRole } from '../middleware/auth.js';
 import {
   createConnectorConfig, listConnectorConfigs, getConnectorConfig, deleteConnectorConfig,
   listAllConnectorTypes, getConnectorTypeManifest, discoverViaConnector, connectorFetch, connectorSearch,
-  getConnectorHealth,
+  getConnectorHealth, checkConnectorHealth,
 } from '../../connectors/index.js';
 import type { ConnectorKind } from '../../types.js';
 
@@ -49,6 +49,15 @@ export function connectorsRouter(): Router {
       const { kind, name, settings } = req.body as { kind: ConnectorKind; name: string; settings: Record<string, unknown> };
       const cfg = createConnectorConfig({ kind, name, settings, ownerId: req.auth!.userId });
       res.status(201).json(cfg);
+    } catch (err) { next(err); }
+  });
+
+  // POST /api/connectors/:id/health-check — live connectivity test for JCP connectors
+  router.post('/api/connectors/:id/health-check', authenticate, async (req, res, next) => {
+    try {
+      const cfg    = getConnectorConfig(String(req.params['id']));
+      const result = await checkConnectorHealth(cfg);
+      res.json(result);
     } catch (err) { next(err); }
   });
 

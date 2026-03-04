@@ -117,6 +117,9 @@
     .connector-info { flex: 1; min-width: 0; }
     .connector-name { font-size: 13px; font-weight: 500; color: #e2e8f0; }
     .connector-kind { font-size: 11px; color: #6b7a99; margin-top: 1px; }
+    .btn-sm { background: transparent; border: 1px solid #1e3a5f; color: #94a3b8; border-radius: 4px; padding: 3px 8px; cursor: pointer; font-size: 12px; }
+    .btn-sm:hover { background: #152a45; }
+    .btn-sm:disabled { opacity: 0.5; cursor: default; }
     .connector-delete { background: transparent; border: 1px solid #450a0a; color: #f87171; border-radius: 4px; padding: 3px 8px; cursor: pointer; font-size: 12px; }
     .connector-delete:hover { background: #450a0a; }
     .health-badge { font-size: 10px; padding: 2px 6px; border-radius: 10px; font-weight: 600; letter-spacing: 0.03em; flex-shrink: 0; }
@@ -937,6 +940,24 @@
           }
         }
 
+        const connectorTesting = ref({});
+        async function testConnector(id) {
+          connectorTesting.value = { ...connectorTesting.value, [id]: true };
+          try {
+            const result = await api('POST', `/api/connectors/${id}/health-check`);
+            if (result.ok) {
+              toast(`Connection OK (${result.latencyMs}ms)`, 'success');
+            } else {
+              toast(`Connection failed: ${result.error ?? 'unknown error'}`, 'error');
+            }
+            await loadConnectors();
+          } catch (e) {
+            toast('Test failed: ' + (e.message ?? String(e)), 'error');
+          } finally {
+            connectorTesting.value = { ...connectorTesting.value, [id]: false };
+          }
+        }
+
         function extraFields(kind) {
           const typeInfo = connectorTypes.value.find(t => t.id === kind);
           const props = typeInfo?.configSchema?.properties;
@@ -1032,7 +1053,7 @@
           workstyleContent, workstyleSaving,
           usageSummary, usageDaily, budgetStatus, budgetLimit, budgetSaving, dailyMax, budgetPct,
           adminWorking, updateInfo,
-          openSettings, applyModel, addConnector, removeConnector, extraFields, connIcon, renderMd,
+          openSettings, applyModel, addConnector, removeConnector, testConnector, connectorTesting, extraFields, connIcon, renderMd,
           saveAgent, loadMemories, deleteMemoryItem, addMemory,
           submitTask, toggleTaskEnabled, deleteTaskItem,
           saveWorkstyle, saveBudget, exportData, triggerBackup, checkUpdates, handleImport,
@@ -1328,6 +1349,9 @@
                       <div class="connector-kind">{{ c.kind }}</div>
                     </div>
                     <span :class="['health-badge', c.health?.status ?? 'unknown']">{{ c.health?.status ?? 'unknown' }}</span>
+                    <button class="btn-sm" @click="testConnector(c.id)" :disabled="connectorTesting[c.id]">
+                      {{ connectorTesting[c.id] ? '…' : 'Test' }}
+                    </button>
                     <button class="connector-delete" @click="removeConnector(c.id)">Remove</button>
                   </div>
                 </div>

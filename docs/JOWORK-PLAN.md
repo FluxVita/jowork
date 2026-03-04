@@ -208,6 +208,7 @@
 | Phase 56：Docker CI/CD publish | ✅ 完成 | 2026-03-05 | ci.yml tags v*.*.* trigger + docker-publish job(needs:lint-test-build；ghcr.io/fluxvita/jowork；linux/amd64+arm64；GHA缓存；semver+sha tags)；pnpm lint全绿 |
 | Phase 57：Jira JCP 连接器 | ✅ 完成 | 2026-03-05 | jira.ts(Cloud+Server；Basic/Bearer auth；JQL discover/fetch/search；baseUrl+projectKey+email configSchema)；ConnectorKind+='jira'；index.ts导出+注册；7新测试；pnpm lint+test全绿（311/311） |
 | Phase 58：Confluence JCP 连接器 | ✅ 完成 | 2026-03-05 | confluence.ts(Cloud+Server；CQL搜索；htmlToText；confidential sensitivity；spaceKey过滤)；ConnectorKind+='confluence'；注册+导出；7新测试；pnpm lint+test全绿（318/318） |
+| Phase 59：连接器健康测试端点 | ✅ 完成 | 2026-03-05 | checkConnectorHealth()函数 + POST /api/connectors/:id/health-check路由 + 前端"Test"按钮(.btn-sm)+testConnector()；两app均更新；3新测试；pnpm lint+test全绿（321/321） |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*

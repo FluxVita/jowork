@@ -166,6 +166,27 @@ export function getConnectorTypeManifest(id: string): import('./protocol.js').Co
 export { getJCPConnector };
 
 /**
+ * Run a live health check against a JCP connector using its stored config.
+ * Initializes the connector with cfg.settings and calls health().
+ * Returns { ok, latencyMs, error? } — never throws.
+ */
+export async function checkConnectorHealth(
+  cfg: ConnectorConfig,
+): Promise<{ ok: boolean; latencyMs: number; error?: string }> {
+  const jcp = getJCPConnector(cfg.kind);
+  if (!jcp) {
+    return { ok: false, latencyMs: 0, error: 'NOT_A_JCP_CONNECTOR' };
+  }
+  try {
+    const apiKey = cfg.settings['apiKey'] as string | undefined;
+    await jcp.initialize(cfg.settings, apiKey ? { apiKey } : {});
+    return await jcp.health();
+  } catch (err) {
+    return { ok: false, latencyMs: 0, error: String(err) };
+  }
+}
+
+/**
  * Discover objects using either legacy or JCP connector.
  * JCP connectors are identified by their manifest ID matching the config kind.
  */

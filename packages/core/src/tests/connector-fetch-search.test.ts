@@ -14,6 +14,7 @@ import {
   connectorSearch,
   registerConnector,
   getConnectorHealth,
+  checkConnectorHealth,
 } from '../connectors/index.js';
 import type { ConnectorConfig } from '../types.js';
 import type { BaseConnector, DiscoverResult, FetchResult } from '../connectors/index.js';
@@ -197,5 +198,45 @@ describe('Phase 55 — connector health status', () => {
     assert.equal(typeof health.failureCount, 'number');
 
     closeDb();
+  });
+});
+
+// ─── Phase 59: checkConnectorHealth + health-check endpoint ──────────────────
+
+describe('Phase 59 — checkConnectorHealth', () => {
+  test('checkConnectorHealth returns NOT_A_JCP_CONNECTOR for legacy connector kind', async () => {
+    // 'feishu' is a legacy connector kind not in JCP registry
+    const fakeCfg = {
+      id: 'fake-id', kind: 'feishu' as const, name: 'Feishu', settings: {}, ownerId: 'u1',
+      createdAt: new Date().toISOString(),
+    };
+    const result = await checkConnectorHealth(fakeCfg);
+    assert.equal(result.ok, false);
+    assert.equal(result.error, 'NOT_A_JCP_CONNECTOR');
+  });
+
+  test('checkConnectorHealth returns { ok: boolean, latencyMs: number } for JCP connector without credentials', async () => {
+    // 'jira' is a JCP connector — health() will fail (no real server) but should not throw
+    const fakeCfg = {
+      id: 'fake-jira', kind: 'jira' as const, name: 'My Jira', settings: { baseUrl: '' }, ownerId: 'u1',
+      createdAt: new Date().toISOString(),
+    };
+    const result = await checkConnectorHealth(fakeCfg);
+    assert.equal(typeof result.ok, 'boolean');
+    assert.equal(typeof result.latencyMs, 'number');
+  });
+
+  test('POST /api/connectors/:id/health-check route exists in connectorsRouter', () => {
+    const router = connectorsRouter();
+    const stack = (router as unknown as {
+      stack: Array<{ route?: { path: string; methods: Record<string, boolean> } }>
+    }).stack;
+    const routes = stack
+      .filter(l => l.route)
+      .map(l => ({ path: l.route!.path, methods: Object.keys(l.route!.methods) }));
+
+    const hcRoute = routes.find(r => r.path === '/api/connectors/:id/health-check');
+    assert.ok(hcRoute, 'POST /api/connectors/:id/health-check should exist');
+    assert.ok(hcRoute!.methods.includes('post'), 'health-check should be POST');
   });
 });
