@@ -8,3 +8,7 @@ export * from './datamap/index.js';
 export * from './auth/index.js';
 export * from './policy/index.js';
 export * from './gateway/index.js';
+export * from './memory/index.js';
+export * from './models/index.js';
+export * from './agent/index.js';
+export * from './scheduler/index.js';
