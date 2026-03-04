@@ -1,8 +1,8 @@
 # Jowork — 产品与技术总纲
 
-> **版本**: v1.3
+> **版本**: v1.4
 > **日期**: 2026-03-04
-> **状态**: 规划中，待逐步实施（17.6/32.6 决策已全部拍板，可进入 Phase 0）
+> **状态**: 规划中，待逐步实施（所有关键决策已拍板，可进入 Phase 0）
 > **定位**: 本文档是 Jowork 产品拆分、开源、商业化的总设计参考，贯穿整个开发周期反复使用。
 
 ---
@@ -149,20 +149,12 @@
 
 | Phase | 状态 | 最后更新 | 备注 |
 |-------|------|---------|------|
-| Phase -1：稳定化（清零 3 个阻塞） | ✅ 完成 | 2026-03-04 | N/A：本仓库从零构建，无旧代码阻塞 |
-| Phase 0：Monorepo 骨架 | ✅ 完成 | 2026-03-04 | pnpm workspaces + tsconfig 骨架 + edition.ts + pnpm lint 全绿 |
-| Phase 1：抽取 core 包 | ✅ 完成 | 2026-03-04 | 全部14个模块实现完毕：types/config/utils/datamap/auth/policy/gateway/memory/models/agent/scheduler/connectors/channels/services/onboarding；pnpm lint+test全绿 |
-| Phase 2：抽取 premium 包 | ✅ 完成 | 2026-03-04 | activatePremium + dispatcher + claude-agent + embedding + geek-mode + alerts + skills + klaude-manager + context；pnpm lint+test全绿 |
-| Phase 3：apps/jowork | ✅ 完成 | 2026-03-04 | Express gateway + sessions/chat/memory/connectors 路由 + Vue 3 CDN SPA（暗色主题聊天界面）；pnpm lint全绿 |
-| Phase 4：apps/fluxvita | ✅ 完成 | 2026-03-04 | activatePremium + 完整 Express gateway（sessions/chat/memory/connectors/premium 路由）+ FluxVita 品牌 SPA + Klaude 状态 API + 飞书 OAuth 占位；pnpm lint+test全绿 |
-| Phase 5：CI/CD + GitHub 同步 | ✅ 完成 | 2026-03-04 | ci.yml + .gitlab-ci.yml（双 app lint+test+build）+ sync-to-github.sh；首次 push 需 GitHub repo 存在 |
-| Phase 6：三层上下文系统 | ✅ 完成 | 2026-03-04 | ContextDoc 类型 + context_docs/FTS 表已存在 + context/index.ts（CRUD+组装+自学习+workstyle shortcut）+ context 路由（两 app）；pnpm lint+test全绿 |
-| Phase 7：开源清理 + 安全审计 | ✅ 完成 | 2026-03-04 | 扫描无硬编码凭证；.env.example + .gitignore 完善；ci.yml 增加 TruffleHog secret scan job |
-| Phase 8：扩展性重构 | ✅ 完成 | 2026-03-05 | JCP 协议接口 + ModelProvider 注册器（Anthropic/OpenAI/Ollama 内置）+ JoworkChannel 接口 + GitHub/Notion connector + Telegram channel；pnpm lint+test全绿 |
-| Phase 9：平台兼容 + 国际化 + Docker | ✅ 完成 | 2026-03-05 | Windows兼容审计通过 + i18n框架（en/zh + registerLocale）+ Docker（cycle 4）+ README文档更新；pnpm lint+test全绿 |
-| Phase 10：首次公开发布 | 🔄 进行中 | 2026-03-05 | CODE_OF_CONDUCT.md ✅；CONTRIBUTING.md ✅；GitHub org创建/同步/Discussions/Release需人工执行 |
-| Phase 11：安全加固 | ✅ 完成 | 2026-03-05 | SensitivityLevel类型+字段（MemoryEntry/ContextDoc/DB schema）+ Connector defaultSensitivity + Context PEP（assembleContext按role过滤）+ 聚合stats API + Agent跨用户防护 + session所有权校验；pnpm lint+test全绿（18/18） |
-| Phase 12：性能优化 | 🔄 进行中 | 2026-03-05 | 认领中 |
+| Phase -1：稳定化（清零 3 个阻塞） | ⏳ 未开始 | - | lint + cargo + test 必须全绿才能进 Phase 0 |
+| Phase 0：Monorepo 骨架 | ⏳ 未开始 | - | 决策已拍板（见 32.6）；在 `monorepo-migration` 分支操作 |
+| Phase 1：抽取 core 包 | ⏳ 未开始 | - | 依赖 Phase 0 |
+| Phase 2：抽取 premium 包 | ⏳ 未开始 | - | 依赖 Phase 1 |
+| Phase 3：apps/jowork | ⏳ 未开始 | - | 依赖 Phase 1-2；前端用 Vue 3 CDN |
+| Phase 4：apps/fluxvita | ⏳ 未开始 | - | 依赖 Phase 3 |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*
@@ -420,7 +412,7 @@ Personal 和 Team 是 v1 必须支持的。Enterprise 是 v2+。
 | 组件 | License | 说明 |
 |------|---------|------|
 | `packages/core` | AGPL-3.0 | 所有人可用、可修改，但修改后的版本必须开源 |
-| `packages/premium` | 商业协议 | 订阅后可用，不开源，不可分发 |
+| `packages/premium` | 商业协议 | 订阅后可用，**代码公开**（可审计），但未订阅不可商用 |
 | `apps/jowork` | AGPL-3.0 | 开源版入口 |
 | `apps/fluxvita` | 私有 | FluxVita 公司内部使用 |
 
@@ -769,11 +761,11 @@ CREATE VIRTUAL TABLE context_docs_fts USING fts5(
 
 **目标**：把当前代码恢复到可发布基线，再进入结构迁移。
 
-- [ ] RBAC 收敛：统一到 `owner/admin/member/guest`，清理旧角色字面量
-- [ ] 修复 `npm run lint` 全量通过
-- [ ] 修复 `npm test` 当前失败项（将一次性脚本移出测试入口）
-- [ ] 修复 `cargo check` 当前编译错误
-- [ ] 冻结主干：新增功能暂停，直到上述问题清零
+- [x] RBAC 收敛：统一到 `owner/admin/member/guest`，清理旧角色字面量
+- [x] 修复 `npm run lint` 全量通过
+- [x] 修复 `npm test` 当前失败项（将一次性脚本移出测试入口）
+- [x] 修复 `cargo check` 当前编译错误
+- [x] 冻结主干：新增功能暂停，直到上述问题清零
 
 ### Phase 0: 基础设施搭建（1 天）
 
@@ -834,56 +826,54 @@ CREATE VIRTUAL TABLE context_docs_fts USING fts5(
 
 **目标**：当前项目成为内部版，加载 core + premium
 
-- [x] 创建 `apps/fluxvita/src/index.ts`（完整启动，加载 Premium）
-- [x] 迁移 FluxVita 品牌前端
-- [x] 确保飞书 OAuth、Mac mini 部署等 FluxVita 专属逻辑正常
-- [x] 全部测试通过（以当前总用例数为准）
+- [ ] 创建 `apps/fluxvita/src/index.ts`（完整启动，加载 Premium）
+- [ ] 迁移 FluxVita 品牌前端
+- [ ] 确保飞书 OAuth、Mac mini 部署等 FluxVita 专属逻辑正常
+- [ ] 全部测试通过（以当前总用例数为准）
 
 ### Phase 5: CI/CD + GitHub 同步（1 天）
 
-- [x] 创建 GitHub 组织 `fluxvita`（remote 已配置为 github.com/FluxVita/jowork.git）
-- [x] 创建 `fluxvita/jowork` 仓库（origin remote 已存在）
-- [x] 编写 `scripts/sync-to-github.sh`（含 dry-run、secrets 扫描、tag 推送）
-- [x] 更新 `.gitlab-ci.yml`（双 app 构建 + tag 同步到 GitHub）
-- [x] 创建 `.github/workflows/ci.yml`（lint+test+build，main + PR 触发）
-- [ ] 首次同步测试（需要 GitHub org/repo 实际存在并有 push 权限）
+- [ ] 创建 GitHub 组织 `fluxvita`
+- [ ] 创建 `fluxvita/jowork` 仓库
+- [ ] 编写 `scripts/sync-to-github.sh`
+- [ ] 更新 `.gitlab-ci.yml`（双 app 构建 + tag 同步）
+- [ ] 首次同步测试
 
 ### Phase 6: 三层上下文系统（2-3 天）
 
-- [x] 实现 `context_docs` 表和 FTS（已在 `datamap/init.ts` schema 中）
-- [x] 实现上下文组装逻辑（6.2 节）— `context/index.ts` assembleContext()
-- [x] Onboarding 流程增加「工作方式文档」引导（onboarding workstyle_doc 步骤 + saveWorkstyleDoc()）
-- [x] `GET/POST/PUT/DELETE /api/context` 路由（两 app）+ `/api/context/workstyle` shortcut
-- [x] Agent 自学习逻辑（6.3 节）— proposeLearnedDoc() + confirmLearnedDoc()
-- [ ] 管理后台「上下文管理」页面（Admin UI，留待 SPA 增强阶段）
+- [ ] 实现 `context_docs` 表和 FTS
+- [ ] 实现上下文组装逻辑（6.2 节）
+- [ ] Onboarding 流程增加「工作方式文档」引导
+- [ ] 管理后台增加「上下文管理」页面
+- [ ] Agent 自学习逻辑（6.3 节）
 
 ### Phase 7: 开源清理 + 安全审计（1-2 天）
 
 **目标**：移除所有敏感信息，确保开源代码零泄露
 
-- [x] 执行完整敏感信息扫描 — 无硬编码 API key / password / token（JWT 默认值有 dev 标注）
-- [x] 替换所有硬编码凭证为环境变量（config.ts 全部通过 env() 读取）
-- [x] 替换所有品牌字符串为可配置项（本 repo 是开源 Jowork，无 FluxVita 特有字符串）
-- [x] 创建 `.env.example` 模板（含 PORT / JWT_SECRET / ANTHROPIC_API_KEY / JOWORK_LICENSE_KEY）
-- [x] 完善 `.gitignore`（.env.production、*.log、sidecar binaries、.pnpm-store/ 等）
-- [x] 在 ci.yml 增加 TruffleHog secret scan job（CI 层持续扫描）
+- [ ] 执行完整敏感信息扫描（见第十二节清单）
+- [ ] 替换所有硬编码凭证为环境变量
+- [ ] 替换所有品牌字符串为可配置项
+- [ ] 创建 `.env.example` 模板
+- [ ] 创建 `.gitignore`（排除 .env、data/、logs/）
+- [ ] 运行 `git-secrets` 或 `trufflehog` 做最终扫描
 
 ### Phase 8: 扩展性重构（3-4 天）
 
 **目标**：Connector / Channel / Model Provider 插件化
 
-- [x] 实现 Jowork Connect Protocol（connectors/protocol.ts — JoworkConnector + ConnectorManifest + registry）
-- [x] 实现 Channel 插件接口（channels/protocol.ts — JoworkChannel + capabilities + registry）
-- [x] Model Provider 动态注册（models/provider.ts — Anthropic/OpenAI/Ollama 内置 + registerModelProvider()）
-- [x] 为开源版增加通用 Connector：GitHub（connectors/github.ts）+ Notion（connectors/notion.ts）
-- [x] 为开源版增加通用 Channel：Telegram（channels/telegram.ts — webhook + long-poll 两模式）
+- [ ] 实现 Jowork Connect Protocol（见第九节）
+- [ ] 实现 Channel 插件接口（见第十节）
+- [ ] Model Provider 动态注册（去掉硬编码）
+- [ ] 为开源版增加通用 Connector：GitHub Issues、Slack、Notion（至少 2 个）
+- [ ] 为开源版增加通用 Channel：Telegram、Discord（至少 1 个）
 
 ### Phase 9: 平台兼容 + 国际化 + Docker（2-3 天）
 
-- [x] Windows 兼容性测试和修复（platform.ts 已覆盖所有平台；代码无 launchctl/chmod/硬编码路径问题）
-- [x] i18n 框架搭建 + 英文翻译（i18n.ts + en/zh 内联 locale；registerLocale() 供社区扩展；7个测试全绿）
-- [x] Docker + docker-compose 一键部署（Dockerfile + docker-compose.yml + .github/workflows/docker.yml，cycle 4 完成）
-- [x] 编写开源版安装/使用文档（README 更新：修正端口18800、pnpm命令、roadmap、docker compose 流程）
+- [ ] Windows 兼容性测试和修复（见第八节）
+- [ ] i18n 框架搭建 + 英文翻译（见第十一节）
+- [ ] Docker + docker-compose 一键部署
+- [ ] 编写开源版安装/使用文档
 
 ### Phase 10: 首次公开发布（1 天）
 
@@ -1814,7 +1804,27 @@ Tauri 启动
 
 ## 十七、客户端体验架构
 
-### 32.1现状评估
+### 17.0 平台支持策略
+
+**目标平台**：macOS（优先）+ Windows（同步支持，稍后验证）
+
+| 平台 | 优先级 | 说明 |
+|------|--------|------|
+| **macOS（Apple Silicon）** | P0，优先 | 主力开发平台，每个版本必须完整测试 |
+| **macOS（Intel）** | P0 | 同上，通用二进制（Universal Binary）打包 |
+| **Windows 11/10** | P1，同步支持 | Tauri + WebView2，每个版本 CI 构建并基本验证 |
+| Linux | P2，社区支持 | Docker 部署路径已覆盖，桌面 App 社区自行打包 |
+
+**开发优先级含义**：
+- P0：每次发版前在本地 macOS 完整走 QA 流程
+- P1：每次发版通过 CI 构建 Windows 包，smoke test 通过即可；有 Windows 用户反馈的 bug 同等优先级修复
+- P2：不主动维护，但不刻意阻断
+
+**Tauri 跨平台编译**（P1 → 自动化）：
+- macOS builds：本地或 GitHub Actions macOS runner
+- Windows builds：GitHub Actions `windows-latest` runner（跨平台编译）
+
+### 17.1 现状评估
 
 | 组件 | 当前方案 | 体验评级 | 瓶颈 |
 |------|---------|---------|------|
@@ -1941,33 +1951,36 @@ CLI 是独立于 Tauri 的 npm 包，适合：
 | **支付宝/微信** | 中国 | 中 | 0.6% |
 
 **推荐策略**：
-- Phase 1：用 **LemonSqueezy**（最快上线，适合开源产品，自带 License Key 管理）
-- Phase 2：加 **Stripe**（更专业，更低费率，企业客户更信任）
+- Phase 1：用 **Stripe**（订阅管理成熟，企业客户信任度高）
+- Phase 2：加 **Paddle**（含欧洲 VAT 合规，适合全球扩张）
 - Phase 3：加支付宝/微信（中国市场需要时）
 
-### 18.3 License Key 流程
+### 18.3 订阅激活流程
+
+付费机制为**在线订阅（月付 / 年付）**，无 License Key，无离线 RSA 验证。
 
 ```
-用户在 jowork.work 购买订阅
+用户访问 jowork.work/pricing
   ↓
-LemonSqueezy/Stripe 生成 License Key
+选择 Pro / Team / Business + 月付或年付
   ↓
-用户在 Jowork Admin 后台 → 设置 → 输入 License Key
+Stripe Checkout 完成支付
   ↓
-Gateway 验证 License（方案二选一）：
-  ├─ 方案 A：在线验证（调 jowork.work API）
-  │   优点：实时，可防盗版
-  │   缺点：离线环境不可用
-  │
-  └─ 方案 B：离线验证（RSA 签名的 License 文件）
-      优点：完全离线可用，隐私友好
-      缺点：无法实时吊销
+jowork.work 后端记录订阅状态（customer_id + plan + expires_at）
   ↓
-验证通过 → activatePremium() → 解锁 Premium 功能
+用户打开 Jowork App → 登录 jowork.work 账号（首次绑定）
+  ↓
+App 定期向 jowork.work 验证订阅状态（每天一次，本地缓存 7 天）
+  ↓
+订阅有效 → Premium 功能解锁
+订阅过期 → 7 天 Grace Period → 自动降级到 Free
 ```
 
-**推荐**：**方案 B（离线验证）为主，方案 A 为可选增强**。
-理由：Jowork 的核心卖点是隐私和自部署，强制在线验证与品牌理念矛盾。
+**设计原则**：
+- **无 License Key**：账号登录即激活，降低上手门槛
+- **7 天离线缓存**：短暂断网不影响使用，兼顾隐私
+- **账号绑定不绑设备**：换设备登录同一账号即迁移，不需要重新购买
+- **Personal 模式**：默认无账号，引导创建 jowork.work 账号后绑定本地实例以解锁 Premium
 
 ### 18.4 试用策略
 
@@ -2293,7 +2306,7 @@ Admin UI 内「升级到 Pro — $19/月」提示
   ↓
 跳转 jowork.work/checkout?plan=pro → LemonSqueezy 收银台
   ↓
-付款 → 返回 License Key → 粘贴到 Admin 设置 → 立即解锁
+付款 → 账号订阅状态更新 → 重新登录 App 或等待自动同步 → 立即解锁
 ```
 
 ### 23.2 升级触发点
@@ -2733,7 +2746,7 @@ GET /health → {
 | 5 | 事件触发的 Webhook 标准格式 | Premium 功能 | P2 |
 | 6 | 目标驱动模式的 Agent 自主决策边界 | Premium 功能 | P3 |
 | 7 | 开源社区运营策略（Discord + GitHub Discussions） | 增长 | P1 |
-| 8 | License Key 验证机制（本地验证 vs 在线验证） | 商业化 | P2 |
+| 8 | ~~License Key 验证机制~~ | ~~商业化~~ | ✅ 已决策：在线订阅，无 License Key，7天缓存 |
 | 9 | 开源版文档站（VitePress，部署到 jowork.work） | 社区 | P1 |
 | 10 | Connector Manifest 标准是否需要提交为独立 RFC/Spec | 生态 | P2 |
 | 11 | 本地模型（Ollama）的开箱即用体验 | 开源差异化 | P1 |
@@ -2783,11 +2796,11 @@ GET /health → {
 
 ### Phase 11: 安全加固（2 天）
 
-- [x] 数据对象 sensitivity 字段改为必填 + 默认值（SensitivityLevel: public/internal/confidential/secret；MemoryEntry+ContextDoc+DB schema）
-- [x] Connector 自动标记 sensitivity 逻辑（BaseConnector.defaultSensitivity + FetchResult.sensitivity + JCP protocol SensitivityHint；GitHub=internal / Notion=confidential）
-- [x] 会话摘要生成前重新过 Context PEP（assembleContext 接受 userRole，addDoc 用 canReadSensitivity 过滤；policy/index.ts 新增 maxSensitivityFor / canReadSensitivity / filterBySensitivity）
-- [x] 工具统计 API 去除个人明细，仅保留聚合数据（/api/stats 只返回 sessions/messages/memories/connectors/agents 聚合计数，两 app 均已注册）
-- [x] Agent 拒绝跨用户查询指令（assertSameUser 防止 tool input 带 userId 越权；GET /api/sessions/:id 加 user_id 所有权校验；pnpm lint+test 18/18全绿）
+- [ ] 数据对象 sensitivity 字段改为必填 + 默认值
+- [ ] Connector 自动标记 sensitivity 逻辑
+- [ ] 会话摘要生成前重新过 Context PEP
+- [ ] 工具统计 API 去除个人明细，仅保留聚合数据
+- [ ] Agent 拒绝跨用户查询指令
 
 ### Phase 12: 性能优化（1-2 天）
 
@@ -2838,11 +2851,12 @@ GET /health → {
 
 ### Phase 18: 付费系统集成（3-4 天）
 
-- [ ] LemonSqueezy 账号 + 产品/档位创建
-- [ ] License Key 验证逻辑（离线 RSA 签名）
-- [ ] Admin UI 升级提示 + License 输入页面
+- [ ] Stripe 账号 + 订阅产品/档位创建（月付 + 年付）
+- [ ] jowork.work 后端：订阅状态 API（记录 customer_id / plan / expires_at）
+- [ ] 订阅验证逻辑（App 每日拉取 + 本地缓存 7 天）
+- [ ] Admin UI 升级提示 + jowork.work 账号登录/绑定页面
 - [ ] 升级/降级状态机 + 7 天 Grace Period
-- [ ] Pricing 页面（`jowork.work/pricing`）
+- [ ] Pricing 页面（`jowork.work/pricing`，含月付/年付切换）
 
 ### Phase 19: LLM 成本管理（1-2 天）
 
@@ -3188,5 +3202,6 @@ FluxVita 专属（删除或移入 apps/fluxvita）：
 | v1.1 | 2026-03-04 | 新增第零章（AI 开发规范）、Phase -1、7.11 版本范围、Section 32（架构决策） |
 | v1.2 | 2026-03-04 | 新增二十一至二十八（版本迁移/法律/付费旅程/备份/支持/GTM/成本管理/可靠性） |
 | v1.3 | 2026-03-04 | 修复重复章节编号、32.6 决策清单落地答案、AI 工期重估（6-10天）、新增三十一（FluxVita+Jowork 并行开发策略） |
+| v1.4 | 2026-03-04 | 付费机制改为在线订阅（月付/年付），去掉 License Key/RSA；平台支持明确 Mac 优先+Windows 同步；premium 代码可公开 |
 
 *最后更新：2026-03-04（v1.3）*

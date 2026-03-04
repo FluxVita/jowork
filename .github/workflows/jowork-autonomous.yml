@@ -1,0 +1,55 @@
+name: Jowork 自主开发
+
+on:
+  workflow_dispatch:        # 手动触发（GitHub 页面点按钮）
+  schedule:
+    - cron: '0 */3 * * *'  # 每3小时自动触发一次
+
+jobs:
+  develop:
+    runs-on: [self-hosted, macOS, jowork]  # 跑在你的 MacBook 上
+    timeout-minutes: 150
+
+    steps:
+      - name: 拉取最新代码
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: 检查待完成任务
+        id: check
+        run: |
+          PENDING=$(grep -c '- \[ \]' docs/JOWORK-PLAN.md 2>/dev/null || echo 0)
+          echo "pending=$PENDING" >> "$GITHUB_OUTPUT"
+          echo "待完成任务: $PENDING"
+
+      - name: 运行 Claude Code 自主开发
+        if: steps.check.outputs.pending != '0'
+        run: |
+          unset CLAUDECODE
+          claude \
+            --dangerously-skip-permissions \
+            --max-turns 80 \
+            -p "$(cat .github/prompts/jowork-autonomous.md)"
+
+      - name: 提交并推送
+        if: steps.check.outputs.pending != '0'
+        run: |
+          git config user.name "Jowork AI Dev"
+          git config user.email "ai@fluxvita.com"
+          git add -A
+          if ! git diff --cached --quiet; then
+            DONE=$(grep -c '- \[x\]' docs/JOWORK-PLAN.md 2>/dev/null || echo 0)
+            git commit -m "feat(jowork): 自主开发 — 已完成 ${DONE} 项 [skip ci]
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
+            git push
+            echo "✅ 推送成功"
+          else
+            echo "本轮无新改动"
+          fi
+
+      - name: 全部完成
+        if: steps.check.outputs.pending == '0'
+        run: echo "🎉 所有任务已完成！"
