@@ -81,14 +81,22 @@ For developers who want full control.
 ### Docker (Recommended)
 
 ```bash
+# One-liner
 docker run -d \
   --name jowork \
-  -p 9800:9800 \
+  -p 18800:18800 \
   -v ./jowork-data:/app/data \
+  -e ANTHROPIC_API_KEY=your_key_here \
   ghcr.io/fluxvita/jowork:latest
+
+# Or with docker compose (recommended for production)
+curl -O https://raw.githubusercontent.com/fluxvita/jowork/main/docker-compose.yml
+curl -O https://raw.githubusercontent.com/fluxvita/jowork/main/.env.example
+cp .env.example .env && nano .env   # set ANTHROPIC_API_KEY
+docker compose up -d
 ```
 
-Open [http://localhost:9800](http://localhost:9800) and follow the setup wizard. That's it.
+Open [http://localhost:18800](http://localhost:18800) and follow the setup wizard. That's it.
 
 ### Desktop App (macOS / Windows)
 
@@ -107,13 +115,14 @@ The desktop app bundles a local Gateway — no server setup required. Opens like
 ```bash
 git clone https://github.com/fluxvita/jowork
 cd jowork
-npm install
-npm run db:init
-npm start
-# → http://localhost:9800
+pnpm install
+pnpm --filter @jowork/core build
+pnpm --filter @jowork/app build
+node apps/jowork/dist/index.js
+# → http://localhost:18800
 ```
 
-Requirements: Node.js 20+, macOS/Linux/Windows
+Requirements: Node.js 22+, pnpm 10+, macOS/Linux/Windows
 
 ---
 
@@ -139,8 +148,10 @@ npm install @jowork/connector-linear   # Linear connector
 - [x] Desktop app (macOS + Windows) with local gateway
 - [x] MCP protocol support
 - [x] Real-time streaming (SSE)
-- [ ] Docker one-command deployment
-- [ ] GitHub, Slack, Notion connectors
+- [x] Docker one-command deployment (`docker compose up -d`)
+- [x] GitHub + Notion connectors
+- [x] Telegram channel (webhook + long-poll)
+- [x] i18n support (English + Chinese, extensible)
 - [ ] Sub-agent orchestration (Premium)
 - [ ] Event-driven triggers (Premium)
 - [ ] Goal-driven autonomous mode (Premium)

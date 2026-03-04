@@ -1,0 +1,49 @@
+{
+  "error.unauthorized": "Unauthorized",
+  "error.forbidden": "Forbidden",
+  "error.not_found": "Not found",
+  "error.bad_request": "Bad request",
+  "error.internal": "Internal server error",
+  "error.connector_not_found": "Connector not found",
+  "error.session_not_found": "Session not found",
+  "error.agent_not_found": "Agent not found",
+  "error.invalid_model": "Invalid model",
+  "error.rate_limited": "Rate limit exceeded, please try again later",
+
+  "session.default_title": "New chat",
+  "session.created": "Session created",
+  "session.deleted": "Session deleted",
+
+  "agent.greeting": "Hello! I'm your AI coworker. How can I help you today?",
+  "agent.thinking": "Thinking...",
+  "agent.error": "Sorry, I encountered an error. Please try again.",
+
+  "connector.connected": "Connected",
+  "connector.disconnected": "Disconnected",
+  "connector.syncing": "Syncing...",
+  "connector.sync_complete": "Sync complete",
+  "connector.auth_required": "Authentication required",
+
+  "context.saved": "Context saved",
+  "context.not_found": "Context document not found",
+
+  "memory.saved": "Memory saved",
+  "memory.not_found": "Memory not found",
+
+  "onboarding.welcome": "Welcome to Jowork!",
+  "onboarding.setup_agent": "Set up your AI agent",
+  "onboarding.connect_tools": "Connect your tools",
+  "onboarding.complete": "You're all set!",
+
+  "health.ok": "OK",
+  "health.degraded": "Degraded",
+  "health.error": "Error",
+
+  "ui.new_chat": "New chat",
+  "ui.send": "Send",
+  "ui.connected": "Connected",
+  "ui.offline": "Offline",
+  "ui.start_conversation": "Start a conversation with your AI coworker.",
+  "ui.input_placeholder": "Ask your AI coworker anything... (Enter to send, Shift+Enter for newline)",
+  "ui.your_ai_coworker": "Your AI coworker"
+}

@@ -159,6 +159,7 @@
 | Phase 6：三层上下文系统 | ✅ 完成 | 2026-03-04 | ContextDoc 类型 + context_docs/FTS 表已存在 + context/index.ts（CRUD+组装+自学习+workstyle shortcut）+ context 路由（两 app）；pnpm lint+test全绿 |
 | Phase 7：开源清理 + 安全审计 | ✅ 完成 | 2026-03-04 | 扫描无硬编码凭证；.env.example + .gitignore 完善；ci.yml 增加 TruffleHog secret scan job |
 | Phase 8：扩展性重构 | ✅ 完成 | 2026-03-05 | JCP 协议接口 + ModelProvider 注册器（Anthropic/OpenAI/Ollama 内置）+ JoworkChannel 接口 + GitHub/Notion connector + Telegram channel；pnpm lint+test全绿 |
+| Phase 9：平台兼容 + 国际化 + Docker | ✅ 完成 | 2026-03-05 | Windows兼容审计通过 + i18n框架（en/zh + registerLocale）+ Docker（cycle 4）+ README文档更新；pnpm lint+test全绿 |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*
@@ -876,10 +877,10 @@ CREATE VIRTUAL TABLE context_docs_fts USING fts5(
 
 ### Phase 9: 平台兼容 + 国际化 + Docker（2-3 天）
 
-- [ ] Windows 兼容性测试和修复（见第八节）
-- [ ] i18n 框架搭建 + 英文翻译（见第十一节）
-- [ ] Docker + docker-compose 一键部署
-- [ ] 编写开源版安装/使用文档
+- [x] Windows 兼容性测试和修复（platform.ts 已覆盖所有平台；代码无 launchctl/chmod/硬编码路径问题）
+- [x] i18n 框架搭建 + 英文翻译（i18n.ts + en/zh 内联 locale；registerLocale() 供社区扩展；7个测试全绿）
+- [x] Docker + docker-compose 一键部署（Dockerfile + docker-compose.yml + .github/workflows/docker.yml，cycle 4 完成）
+- [x] 编写开源版安装/使用文档（README 更新：修正端口18800、pnpm命令、roadmap、docker compose 流程）
 
 ### Phase 10: 首次公开发布（1 天）
 

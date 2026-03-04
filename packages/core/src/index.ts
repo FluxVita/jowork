@@ -1,6 +1,7 @@
 // @jowork/core — public API surface
 
 export * from './edition.js';
+export * from './i18n.js';
 export * from './types.js';
 export * from './config.js';
 export * from './platform.js';
