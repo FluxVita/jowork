@@ -18,6 +18,7 @@ import { sessionsRouter } from './routes/sessions.js';
 import { chatRouter } from './routes/chat.js';
 import { memoryRouter } from './routes/memory.js';
 import { connectorsRouter } from './routes/connectors.js';
+import { contextRouter } from './routes/context.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = join(__dirname, '..', 'public');
@@ -54,6 +55,7 @@ async function main(): Promise<void> {
       expressApp.use(chatRouter());
       expressApp.use(memoryRouter());
       expressApp.use(connectorsRouter());
+      expressApp.use(contextRouter());
 
       // Serve Vue 3 CDN SPA from public/
       if (existsSync(join(PUBLIC_DIR, 'index.html'))) {

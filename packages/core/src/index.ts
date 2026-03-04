@@ -16,3 +16,4 @@ export * from './connectors/index.js';
 export * from './channels/index.js';
 export * from './services/index.js';
 export * from './onboarding/index.js';
+export * from './context/index.js';

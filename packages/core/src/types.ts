@@ -91,6 +91,26 @@ export interface ConnectorConfig {
   createdAt: string;
 }
 
+// ─── Context docs (three-layer context system) ───────────────────────────────
+
+export type ContextDocId = string;
+export type ContextLayer = 'company' | 'team' | 'personal';
+export type ContextDocType = 'manual' | 'rule' | 'workstyle' | 'learned' | 'onboarding_state';
+
+export interface ContextDoc {
+  id: ContextDocId;
+  layer: ContextLayer;
+  /** company_id | team_id | user_id — scopes the document to an entity */
+  scopeId: string;
+  title: string;
+  content: string;
+  docType: ContextDocType;
+  /** When true, always loaded regardless of relevance (compliance rules etc.) */
+  isForced: boolean;
+  createdBy: string;
+  updatedAt: string;
+}
+
 // ─── Memory ──────────────────────────────────────────────────────────────────
 
 export interface MemoryEntry {

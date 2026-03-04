@@ -20,6 +20,7 @@ import { sessionsRouter } from './routes/sessions.js';
 import { chatRouter } from './routes/chat.js';
 import { memoryRouter } from './routes/memory.js';
 import { connectorsRouter } from './routes/connectors.js';
+import { contextRouter } from './routes/context.js';
 import { premiumRouter } from './routes/premium.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -65,6 +66,7 @@ async function main(): Promise<void> {
       expressApp.use(chatRouter());
       expressApp.use(memoryRouter());
       expressApp.use(connectorsRouter());
+      expressApp.use(contextRouter());
       expressApp.use(premiumRouter());
 
       // Serve FluxVita SPA from public/

@@ -156,6 +156,7 @@
 | Phase 3：apps/jowork | ✅ 完成 | 2026-03-04 | Express gateway + sessions/chat/memory/connectors 路由 + Vue 3 CDN SPA（暗色主题聊天界面）；pnpm lint全绿 |
 | Phase 4：apps/fluxvita | ✅ 完成 | 2026-03-04 | activatePremium + 完整 Express gateway（sessions/chat/memory/connectors/premium 路由）+ FluxVita 品牌 SPA + Klaude 状态 API + 飞书 OAuth 占位；pnpm lint+test全绿 |
 | Phase 5：CI/CD + GitHub 同步 | ✅ 完成 | 2026-03-04 | ci.yml + .gitlab-ci.yml（双 app lint+test+build）+ sync-to-github.sh；首次 push 需 GitHub repo 存在 |
+| Phase 6：三层上下文系统 | ✅ 完成 | 2026-03-04 | ContextDoc 类型 + context_docs/FTS 表已存在 + context/index.ts（CRUD+组装+自学习+workstyle shortcut）+ context 路由（两 app）；pnpm lint+test全绿 |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*
@@ -843,11 +844,12 @@ CREATE VIRTUAL TABLE context_docs_fts USING fts5(
 
 ### Phase 6: 三层上下文系统（2-3 天）
 
-- [ ] 实现 `context_docs` 表和 FTS
-- [ ] 实现上下文组装逻辑（6.2 节）
-- [ ] Onboarding 流程增加「工作方式文档」引导
-- [ ] 管理后台增加「上下文管理」页面
-- [ ] Agent 自学习逻辑（6.3 节）
+- [x] 实现 `context_docs` 表和 FTS（已在 `datamap/init.ts` schema 中）
+- [x] 实现上下文组装逻辑（6.2 节）— `context/index.ts` assembleContext()
+- [x] Onboarding 流程增加「工作方式文档」引导（onboarding workstyle_doc 步骤 + saveWorkstyleDoc()）
+- [x] `GET/POST/PUT/DELETE /api/context` 路由（两 app）+ `/api/context/workstyle` shortcut
+- [x] Agent 自学习逻辑（6.3 节）— proposeLearnedDoc() + confirmLearnedDoc()
+- [ ] 管理后台「上下文管理」页面（Admin UI，留待 SPA 增强阶段）
 
 ### Phase 7: 开源清理 + 安全审计（1-2 天）
 
