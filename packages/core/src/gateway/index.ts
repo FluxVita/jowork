@@ -12,3 +12,4 @@ export { schedulerRouter } from './routes/scheduler.js';
 export { agentsRouter } from './routes/agents.js';
 export { onboardingRouter } from './routes/onboarding.js';
 export { usersRouter } from './routes/users.js';
+export { sessionsRouter } from './routes/sessions.js';

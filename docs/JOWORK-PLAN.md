@@ -179,7 +179,7 @@
 | Phase 27：Scheduler REST API + Webhook Channel | ✅ 完成 | 2026-03-05 | schedulerRouter(/api/tasks CRUD)+ webhookChannel(inbound Bearer auth+outgoing POST)+两个app均挂载；pnpm lint+test全绿（156/156） |
 | Phase 28：Agent 管理 + Onboarding REST API | ✅ 完成 | 2026-03-05 | agentsRouter(/api/agents CRUD，owner隔离)+onboardingRouter(/api/onboarding GET+POST /advance)；两app均挂载；pnpm lint+test全绿（168/168） |
 | Phase 29：User 管理 REST API | ✅ 完成 | 2026-03-05 | usersRouter(/api/users/me+列表+创建+PATCH+DELETE；owner/admin权限分级；新用户自动签发token；防自删)；两app均挂载；pnpm lint+test全绿（182/182） |
-| Phase 30：Sessions REST API（移入 core + 补全端点） | 🔄 进行中 | 2026-03-05 | sessionsRouter移入core；补PATCH title+DELETE session（级联删消息）+DELETE message；两app用core router；测试15+条 |
+| Phase 30：Sessions REST API（移入 core + 补全端点） | ✅ 完成 | 2026-03-05 | sessionsRouter移入core（PATCH title+DELETE session级联+DELETE message）；两app删除重复路由改用core router；pnpm lint+test全绿（197/197） |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*
@@ -2947,6 +2947,29 @@ GET /health → {
 - [x] channels/router.ts 自动注册 webhook channel + env 自动初始化（WEBHOOK_SECRET / WEBHOOK_OUTBOUND_URL）
 - [x] 入站接收路由 `POST /api/channels/webhook/receive`
 - [x] 添加测试（19 个用例，156/156 通过）
+
+### Phase 28: Agent 管理 + Onboarding REST API（0.5 天）
+
+- [x] 实现 `gateway/routes/agents.ts`（GET/POST/PATCH/DELETE /api/agents；owner 隔离）
+- [x] 实现 `gateway/routes/onboarding.ts`（GET /api/onboarding + POST /api/onboarding/advance）
+- [x] 导出并在两个 app 均挂载
+- [x] 添加测试（12 个用例，168/168 通过）
+
+### Phase 29: User 管理 REST API（0.5 天）
+
+- [x] 实现 `gateway/routes/users.ts`（GET /api/users/me + 列表 + 创建 + PATCH + DELETE）
+- [x] owner/admin 权限分级；新用户自动签发 token；防自删
+- [x] 导出并在两个 app 均挂载
+- [x] 添加测试（14 个用例，182/182 通过）
+
+### Phase 30: Sessions REST API（移入 core + 补全端点）（0.5 天）
+
+- [x] 实现 `gateway/routes/sessions.ts`（GET/POST/PATCH/DELETE /api/sessions + DELETE /api/sessions/:id/messages/:msgId）
+- [x] PATCH /api/sessions/:id — 重命名 title
+- [x] DELETE /api/sessions/:id — 级联删除所有消息
+- [x] DELETE /api/sessions/:id/messages/:msgId — 删除单条消息
+- [x] 导出 `sessionsRouter` 并在两个 app 均改用 core router（删除重复的 app-specific sessions.ts）
+- [x] 添加测试（15 个用例，197/197 通过）
 
 **AI 辅助开发预计总工期：6-10 个工作日**（全程 AI 写代码，人工只做决策/审查/测试）
 

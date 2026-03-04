@@ -20,11 +20,10 @@ import {
   agentsRouter,
   onboardingRouter,
   usersRouter,
+  sessionsRouter,
 } from '@jowork/core';
 
 import { activatePremium } from '@jowork/premium';
-
-import { sessionsRouter } from './routes/sessions.js';
 import { chatRouter } from './routes/chat.js';
 import { memoryRouter } from './routes/memory.js';
 import { connectorsRouter } from './routes/connectors.js';
