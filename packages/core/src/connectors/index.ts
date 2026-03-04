@@ -224,6 +224,27 @@ export async function connectorFetch(
   }, RETRY_OPTS);
 }
 
+export async function connectorSearch(
+  kind: ConnectorKind,
+  config: ConnectorConfig,
+  query: string,
+): Promise<FetchResult[]> {
+  const c = getConnector(kind);
+  if (!c.capabilities.canSearch || !c.search) {
+    throw new JoworkError('NOT_SUPPORTED', `Connector '${kind}' does not support search`, 400);
+  }
+  return withRetry(async () => {
+    try {
+      const results = await c.search!(config, query);
+      recordSuccess(kind);
+      return results;
+    } catch (err) {
+      recordFailure(kind, err);
+      throw err;
+    }
+  }, RETRY_OPTS);
+}
+
 // ─── CRUD (persisted configs) ─────────────────────────────────────────────────
 
 export function createConnectorConfig(

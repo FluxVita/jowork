@@ -5,13 +5,15 @@
 //   GET    /api/connectors               — list user's connector instances
 //   POST   /api/connectors               — create a new connector instance (admin+)
 //   POST   /api/connectors/:id/discover  — discover objects via connector
+//   POST   /api/connectors/:id/fetch     — fetch specific object content by ID
+//   POST   /api/connectors/:id/search    — full-text search within connector
 //   DELETE /api/connectors/:id           — delete connector instance (admin+)
 
 import { Router } from 'express';
 import { authenticate, requireRole } from '../middleware/auth.js';
 import {
   createConnectorConfig, listConnectorConfigs, getConnectorConfig, deleteConnectorConfig,
-  listAllConnectorTypes, discoverViaConnector,
+  listAllConnectorTypes, discoverViaConnector, connectorFetch, connectorSearch,
 } from '../../connectors/index.js';
 import type { ConnectorKind } from '../../types.js';
 
@@ -42,6 +44,32 @@ export function connectorsRouter(): Router {
       const cursor = req.query['cursor'] as string | undefined;
       const result = await discoverViaConnector(cfg, cursor);
       res.json(result);
+    } catch (err) { next(err); }
+  });
+
+  router.post('/api/connectors/:id/fetch', authenticate, async (req, res, next) => {
+    try {
+      const cfg = getConnectorConfig(String(req.params['id']));
+      const { objectId } = req.body as { objectId: string };
+      if (!objectId?.trim()) {
+        res.status(400).json({ error: 'INVALID_INPUT', message: 'objectId is required' });
+        return;
+      }
+      const result = await connectorFetch(cfg.kind, cfg, objectId);
+      res.json(result);
+    } catch (err) { next(err); }
+  });
+
+  router.post('/api/connectors/:id/search', authenticate, async (req, res, next) => {
+    try {
+      const cfg = getConnectorConfig(String(req.params['id']));
+      const { query } = req.body as { query: string };
+      if (!query?.trim()) {
+        res.status(400).json({ error: 'INVALID_INPUT', message: 'query is required' });
+        return;
+      }
+      const results = await connectorSearch(cfg.kind, cfg, query);
+      res.json({ results });
     } catch (err) { next(err); }
   });
 
