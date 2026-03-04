@@ -1,4 +1,6 @@
 // @jowork/core — utility functions
+export { Semaphore } from './semaphore.js';
+export { LRUCache } from './lru.js';
 
 import { randomUUID } from 'node:crypto';
 import { config } from '../config.js';

@@ -149,12 +149,20 @@
 
 | Phase | 状态 | 最后更新 | 备注 |
 |-------|------|---------|------|
-| Phase -1：稳定化（清零 3 个阻塞） | ⏳ 未开始 | - | lint + cargo + test 必须全绿才能进 Phase 0 |
-| Phase 0：Monorepo 骨架 | ⏳ 未开始 | - | 决策已拍板（见 32.6）；在 `monorepo-migration` 分支操作 |
-| Phase 1：抽取 core 包 | ⏳ 未开始 | - | 依赖 Phase 0 |
-| Phase 2：抽取 premium 包 | ⏳ 未开始 | - | 依赖 Phase 1 |
-| Phase 3：apps/jowork | ⏳ 未开始 | - | 依赖 Phase 1-2；前端用 Vue 3 CDN |
-| Phase 4：apps/fluxvita | ⏳ 未开始 | - | 依赖 Phase 3 |
+| Phase -1：稳定化（清零 3 个阻塞） | ✅ 完成 | 2026-03-04 | N/A：本仓库从零构建，无旧代码阻塞 |
+| Phase 0：Monorepo 骨架 | ✅ 完成 | 2026-03-04 | pnpm workspaces + tsconfig 骨架 + edition.ts + pnpm lint 全绿 |
+| Phase 1：抽取 core 包 | ✅ 完成 | 2026-03-04 | 全部14个模块实现完毕：types/config/utils/datamap/auth/policy/gateway/memory/models/agent/scheduler/connectors/channels/services/onboarding；pnpm lint+test全绿 |
+| Phase 2：抽取 premium 包 | ✅ 完成 | 2026-03-04 | activatePremium + dispatcher + claude-agent + embedding + geek-mode + alerts + skills + klaude-manager + context；pnpm lint+test全绿 |
+| Phase 3：apps/jowork | ✅ 完成 | 2026-03-04 | Express gateway + sessions/chat/memory/connectors 路由 + Vue 3 CDN SPA（暗色主题聊天界面）；pnpm lint全绿 |
+| Phase 4：apps/fluxvita | ✅ 完成 | 2026-03-04 | activatePremium + 完整 Express gateway（sessions/chat/memory/connectors/premium 路由）+ FluxVita 品牌 SPA + Klaude 状态 API + 飞书 OAuth 占位；pnpm lint+test全绿 |
+| Phase 5：CI/CD + GitHub 同步 | ✅ 完成 | 2026-03-04 | ci.yml + .gitlab-ci.yml（双 app lint+test+build）+ sync-to-github.sh；首次 push 需 GitHub repo 存在 |
+| Phase 6：三层上下文系统 | ✅ 完成 | 2026-03-04 | ContextDoc 类型 + context_docs/FTS 表已存在 + context/index.ts（CRUD+组装+自学习+workstyle shortcut）+ context 路由（两 app）；pnpm lint+test全绿 |
+| Phase 7：开源清理 + 安全审计 | ✅ 完成 | 2026-03-04 | 扫描无硬编码凭证；.env.example + .gitignore 完善；ci.yml 增加 TruffleHog secret scan job |
+| Phase 8：扩展性重构 | ✅ 完成 | 2026-03-05 | JCP 协议接口 + ModelProvider 注册器（Anthropic/OpenAI/Ollama 内置）+ JoworkChannel 接口 + GitHub/Notion connector + Telegram channel；pnpm lint+test全绿 |
+| Phase 9：平台兼容 + 国际化 + Docker | ✅ 完成 | 2026-03-05 | Windows兼容审计通过 + i18n框架（en/zh + registerLocale）+ Docker（cycle 4）+ README文档更新；pnpm lint+test全绿 |
+| Phase 10：首次公开发布 | 🔄 进行中 | 2026-03-05 | CODE_OF_CONDUCT.md ✅；CONTRIBUTING.md ✅；GitHub org创建/同步/Discussions/Release需人工执行 |
+| Phase 11：安全加固 | ✅ 完成 | 2026-03-05 | SensitivityLevel类型+字段（MemoryEntry/ContextDoc/DB schema）+ Connector defaultSensitivity + Context PEP（assembleContext按role过滤）+ 聚合stats API + Agent跨用户防护 + session所有权校验；pnpm lint+test全绿（18/18） |
+| Phase 12：性能优化 | ✅ 完成 | 2026-03-05 | Semaphore(2)+LRU cache+LLM限流(1req/s)+DB维护(TTL+optimize)+Node.js Cluster+LaunchAgent；pnpm lint+test全绿（28/28） |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*
@@ -2796,20 +2804,20 @@ GET /health → {
 
 ### Phase 11: 安全加固（2 天）
 
-- [ ] 数据对象 sensitivity 字段改为必填 + 默认值
-- [ ] Connector 自动标记 sensitivity 逻辑
-- [ ] 会话摘要生成前重新过 Context PEP
-- [ ] 工具统计 API 去除个人明细，仅保留聚合数据
-- [ ] Agent 拒绝跨用户查询指令
+- [x] 数据对象 sensitivity 字段改为必填 + 默认值（SensitivityLevel: public/internal/confidential/secret；MemoryEntry+ContextDoc+DB schema）
+- [x] Connector 自动标记 sensitivity 逻辑（BaseConnector.defaultSensitivity + FetchResult.sensitivity + JCP protocol SensitivityHint；GitHub=internal / Notion=confidential）
+- [x] 会话摘要生成前重新过 Context PEP（assembleContext 接受 userRole，addDoc 用 canReadSensitivity 过滤；policy/index.ts 新增 maxSensitivityFor / canReadSensitivity / filterBySensitivity）
+- [x] 工具统计 API 去除个人明细，仅保留聚合数据（/api/stats 只返回 sessions/messages/memories/connectors/agents 聚合计数，两 app 均已注册）
+- [x] Agent 拒绝跨用户查询指令（assertSameUser 防止 tool input 带 userId 越权；GET /api/sessions/:id 加 user_id 所有权校验；pnpm lint+test 18/18全绿）
 
 ### Phase 12: 性能优化（1-2 天）
 
-- [ ] Node.js Cluster 多进程（主进程跑 Scheduler，worker 跑 Gateway）
-- [ ] ulimit 提升 + LaunchAgent 配置
-- [ ] Connector 同步错峰 + Semaphore(2)
-- [ ] 用户级 LLM API 限流（1 req/s）
-- [ ] 会话内存 LRU 缓存
-- [ ] 数据存储 TTL 清理 + PRAGMA optimize 定时任务
+- [x] Node.js Cluster 多进程（主进程跑 Scheduler，worker 跑 Gateway；apps/jowork/src/cluster.ts + apps/fluxvita/src/cluster.ts；start:cluster 脚本）
+- [x] ulimit 提升 + LaunchAgent 配置（scripts/launchagent/work.jowork.plist.template + install.sh + uninstall.sh；SoftResourceLimits NumberOfFiles=8192）
+- [x] Connector 同步错峰 + Semaphore(2)（packages/core/src/utils/semaphore.ts；Semaphore 类，acquire/release/run；3个测试全绿）
+- [x] 用户级 LLM API 限流（1 req/s）（packages/core/src/gateway/middleware/rate-limit.ts；Token bucket，burst=5；llmRateLimit + purgeStaleBuckets 导出）
+- [x] 会话内存 LRU 缓存（packages/core/src/utils/lru.ts；LRUCache<K,V> 带 TTL；7个测试全绿）
+- [x] 数据存储 TTL 清理 + PRAGMA optimize 定时任务（packages/core/src/datamap/maintenance.ts；runMaintenance，消息90天+记忆365天保留，FTS rebuild，PRAGMA optimize）
 
 ### Phase 13: 网络架构（2-3 天）
 
