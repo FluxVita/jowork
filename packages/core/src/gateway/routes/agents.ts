@@ -6,12 +6,14 @@
 //   GET    /api/agents/:id      — get agent by id (owner only)
 //   PATCH  /api/agents/:id      — update name/systemPrompt/model
 //   DELETE /api/agents/:id      — delete agent (owner only)
+//   GET    /api/agent/tools     — list available built-in tools + schemas
 
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
 import { getDb } from '../../datamap/index.js';
 import { generateId, nowISO } from '../../utils/index.js';
 import type { AgentConfig } from '../../types.js';
+import { getToolSchemas } from '../../agent/tools/index.js';
 
 interface AgentRow {
   id: string;
@@ -118,6 +120,11 @@ export function agentsRouter(): Router {
 
       res.json({ id, name: newName, systemPrompt: newPrompt, model: newModel });
     } catch (err) { next(err); }
+  });
+
+  // List built-in tool schemas — useful for UI and LLM system prompt construction
+  router.get('/api/agent/tools', authenticate, (_req, res) => {
+    res.json({ tools: getToolSchemas() });
   });
 
   // Delete agent — owner only
