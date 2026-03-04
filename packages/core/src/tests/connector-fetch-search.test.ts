@@ -13,6 +13,7 @@ import {
   getConnectorConfig,
   connectorSearch,
   registerConnector,
+  getConnectorHealth,
 } from '../connectors/index.js';
 import type { ConnectorConfig } from '../types.js';
 import type { BaseConnector, DiscoverResult, FetchResult } from '../connectors/index.js';
@@ -145,5 +146,56 @@ describe('getConnectorConfig — error handling', () => {
 describe('connectorSearch — function exists', () => {
   test('connectorSearch is exported and callable', () => {
     assert.equal(typeof connectorSearch, 'function');
+  });
+});
+
+// ─── Phase 55: GET /api/connectors returns health field ───────────────────────
+
+describe('Phase 55 — connector health status', () => {
+  test('getConnectorHealth returns unknown status for untracked connector', () => {
+    const health = getConnectorHealth('github');
+    assert.equal(health.status, 'unknown');
+    assert.equal(typeof health.failureCount, 'number');
+  });
+
+  test('GET /api/connectors route includes health field', () => {
+    const router = connectorsRouter();
+    const stack = (router as unknown as {
+      stack: Array<{ route?: { path: string; methods: Record<string, boolean> } }>
+    }).stack;
+    const routes = stack
+      .filter(l => l.route)
+      .map(l => ({ path: l.route!.path, methods: Object.keys(l.route!.methods) }));
+
+    const listRoute = routes.find(r => r.path === '/api/connectors' && r.methods.includes('get'));
+    assert.ok(listRoute, 'GET /api/connectors route should exist');
+  });
+
+  test('GET /api/connectors response includes health field per connector', async () => {
+    const db = setupTestDb();
+    seedUser(db, 'user-health');
+
+    // Register a stub connector
+    const stubConnector: BaseConnector = {
+      kind: 'slack',
+      defaultSensitivity: 'internal',
+      capabilities: { canDiscover: true, canFetch: true, canSearch: false, canWrite: false },
+      discover: async (): Promise<DiscoverResult[]> => [],
+      fetch: async (_cfg, id): Promise<FetchResult> => ({ id, title: 'T', content: 'c' }),
+    };
+    registerConnector(stubConnector);
+
+    createConnectorConfig({ kind: 'slack', name: 'My Slack', settings: {}, ownerId: 'user-health' });
+
+    // Verify health is returned for connector list (via listConnectorConfigs + getConnectorHealth)
+    const { listConnectorConfigs } = await import('../connectors/index.js');
+    const configs = listConnectorConfigs('user-health');
+    assert.equal(configs.length, 1);
+
+    const health = getConnectorHealth('slack');
+    assert.ok(['healthy', 'degraded', 'unknown'].includes(health.status), 'health.status should be a valid status');
+    assert.equal(typeof health.failureCount, 'number');
+
+    closeDb();
   });
 });

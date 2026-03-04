@@ -3,6 +3,7 @@ name: CI
 on:
   push:
     branches: [main]
+    tags: ['v*.*.*']   # semver tags trigger Docker publish
   pull_request:
     branches: [main]
 
@@ -88,3 +89,60 @@ jobs:
           head: HEAD
           extra_args: --only-verified
         continue-on-error: true  # non-blocking until false positives are tuned
+
+  # ── Docker publish (Phase 56) ─────────────────────────────────────────────
+  # Builds multi-arch image and pushes to ghcr.io on:
+  #   - push to main  → ghcr.io/fluxvita/jowork:latest
+  #   - semver tag    → ghcr.io/fluxvita/jowork:{version} + :latest
+  docker-publish:
+    name: Docker · Build & Publish
+    runs-on: ubuntu-latest
+    needs: lint-test-build
+    # Only publish on push to main or semver tag; skip on PRs
+    if: github.event_name == 'push'
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU (multi-arch)
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Docker metadata (tags & labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/fluxvita/jowork
+          tags: |
+            # branch main → :latest
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+            # semver tags → :1.2.3 + :1.2 + :1
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            # short SHA for traceability
+            type=sha,prefix=sha-,format=short
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

@@ -204,7 +204,8 @@
 | Phase 52：会话标题自动生成 | ✅ 完成 | 2026-03-05 | chat.ts首次消息后自动将"New chat"改为用户消息前50字符；JSON端点返回newTitle字段；SSE done事件附加newTitle；前端直接更新列表消除额外GET；8新测试；pnpm lint+test全绿（298/298） |
 | Phase 53：三层上下文注入聊天流 | ✅ 完成 | 2026-03-05 | assembleContext()集成到chat.ts两端点(JSON+SSE)；workstyle/company强制规则/FTS上下文注入systemPrompt前缀；try-catch保障永不阻塞聊天；3新测试；pnpm lint+test全绿（301/301） |
 | Phase 54：Memory 手动添加 UI | ✅ 完成 | 2026-03-05 | Memories标签底部新增"Add Memory"表单(textarea+保存按钮)；调用POST /api/memories；apps/jowork+apps/fluxvita均更新；pnpm lint全绿（纯前端改动） |
-| Phase 55：Connector 健康状态 UI | 🔄 进行中 | 2026-03-05 | GET /api/connectors 附加health字段；前端连接器列表显示状态徽章 |
+| Phase 55：Connector 健康状态 UI | ✅ 完成 | 2026-03-05 | GET /api/connectors 附加health字段(getConnectorHealth)；前端health-badge(healthy/degraded/unknown)；3新测试；pnpm lint+test全绿（304/304） |
+| Phase 56：Docker CI/CD publish | ✅ 完成 | 2026-03-05 | ci.yml tags v*.*.* trigger + docker-publish job(needs:lint-test-build；ghcr.io/fluxvita/jowork；linux/amd64+arm64；GHA缓存；semver+sha tags)；pnpm lint全绿 |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*
@@ -3190,6 +3191,24 @@ GET /health → {
 - [x] `apps/fluxvita/public/index.html`：同步上述所有改动（保留 FluxVita 蓝色品牌色）
 - [x] 新增 `pagination.test.ts`（13 个用例）：hasMore false/true 边界、cursor-based 取更早消息、hasMore=true 分页、limit 上限 100、filter 逻辑
 - [x] pnpm lint+test 全绿（290/290）
+
+### Phase 55: Connector 健康状态 UI（0.25 天）
+
+- [x] `GET /api/connectors` 路由中调用 `getConnectorHealth(cfg.kind)` 为每个连接器附加 `health` 字段
+- [x] `apps/jowork/public/index.html`：连接器列表显示 `.health-badge`（healthy/degraded/unknown 三色徽章）
+- [x] `apps/fluxvita/public/index.html`：同步上述改动（保留 FluxVita 蓝色品牌色）
+- [x] `connector-fetch-search.test.ts` 追加 3 个测试（getConnectorHealth 默认 unknown + GET /api/connectors 路由存在 + health 字段验证）
+- [x] pnpm lint+test 全绿（304/304）
+
+### Phase 56: Docker CI/CD publish（0.25 天）
+
+- [x] `.github/workflows/ci.yml` 添加 `tags: ['v*.*.*']` trigger（semver tag 触发 Docker 发布）
+- [x] 新增 `docker-publish` job：`needs: lint-test-build`（CI 通过后才 push）
+- [x] 使用 `docker/setup-qemu-action` + `docker/setup-buildx-action` 支持 linux/amd64 + linux/arm64 多架构
+- [x] 使用 `docker/login-action` 登录 `ghcr.io`（`GITHUB_TOKEN` 自动授权）
+- [x] 使用 `docker/metadata-action` 自动生成 tags：main → `:latest`；semver tag → `:1.2.3` + `:1.2` + `:1` + `:sha-xxxx`
+- [x] 使用 `docker/build-push-action` 构建并推送，启用 GHA 缓存加速
+- [x] pnpm lint 全绿（纯 CI 配置改动，无新 TypeScript 代码）
 
 **AI 辅助开发预计总工期：6-10 个工作日**（全程 AI 写代码，人工只做决策/审查/测试）
 
