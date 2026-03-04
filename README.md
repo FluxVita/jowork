@@ -245,6 +245,50 @@ Before contributing, please:
 
 AGPL-3.0 means: you can use, modify, and distribute Jowork for free — including commercially — as long as you open-source your modifications under the same license. If you need a proprietary license, [contact us](mailto:hello@jowork.work).
 
+### AGPL-3.0 Compliance FAQ
+
+<details>
+<summary><strong>Can I use Jowork internally at my company without open-sourcing anything?</strong></summary>
+
+Yes. Running Jowork internally (only your employees use it) does **not** require you to
+publish your source code. AGPL's network-use clause only applies when you make the
+software available to external users over a network.
+</details>
+
+<details>
+<summary><strong>I modified Jowork Core and offer it as a SaaS to customers. What do I need to do?</strong></summary>
+
+Under AGPL-3.0, you must make your modified source code available to those customers
+(e.g., a link to a public repository). You do not need to publish your proprietary
+data or configurations — only the modified Jowork source code.
+</details>
+
+<details>
+<summary><strong>Can I build a proprietary product on top of Jowork?</strong></summary>
+
+If you only call Jowork's HTTP API (without modifying or distributing its source code),
+your application is **not** subject to AGPL. If you modify or bundle Jowork Core,
+the AGPL applies to the Core. Contact us for a [commercial license](mailto:hello@jowork.work)
+if you need to keep your modifications proprietary.
+</details>
+
+<details>
+<summary><strong>Does the premium package (packages/premium) have different terms?</strong></summary>
+
+Yes. `packages/premium` is under a commercial license. You need a valid Jowork Premium
+subscription to use it. See [jowork.work/pricing](https://jowork.work/pricing).
+</details>
+
+<details>
+<summary><strong>I'm a contributor — do I need to sign a CLA?</strong></summary>
+
+Yes. We use a [Contributor License Agreement](https://cla-assistant.io/fluxvita/jowork)
+to allow us to dual-license contributions (AGPL + commercial). The CLA is signed once
+via GitHub and does not restrict your own use of your contributions.
+</details>
+
+Full legal documents: [Terms of Service](./docs/legal/terms-of-service.md) · [Privacy Policy](./docs/legal/privacy-policy.md) · [Refund Policy](./docs/legal/refund-policy.md)
+
 ---
 
 <div align="center">

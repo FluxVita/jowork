@@ -167,6 +167,7 @@
 | Phase 14：版本更新基础设施 | ✅ 完成 | 2026-03-05 | schema_migrations表+migrator.ts(含bootstrap+热备份)+001_initial内联迁移+backupDb+adminRouter(更新检查/手动备份/迁移列表)；pnpm lint+test全绿（44/44） |
 | Phase 15：生产可靠性 | ✅ 完成 | 2026-03-05 | gracefulShutdown(WAL checkpoint+drain)+integrity_check+磁盘空间告警+Connector自愈(withRetry指数退避+健康跟踪)+敏感数据脱敏(logger maskMeta)+/health/full全链路检查；pnpm lint+test全绿（49/49） |
 | Phase 16：备份恢复 | ✅ 完成 | 2026-03-05 | buildExportZip+buildExportJson+buildExportCsv+buildExportMarkdown+restoreFromZip(admin.ts路由)+startBackupScheduler(每日03:00自动备份)；pnpm lint+test全绿（62/62） |
+| Phase 17：法律文档 | ✅ 完成 | 2026-03-05 | ToS+PrivacyPolicy+退款政策(docs/legal/)；AGPL FAQ加入README；.claassistant.yml；部署jowork.work需人工执行 |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*
@@ -2855,11 +2856,11 @@ GET /health → {
 
 ### Phase 17: 法律文档（2-3 天）
 
-- [ ] 起草 Terms of Service + Privacy Policy
-- [ ] 配置 CLA Assistant（GitHub App）
-- [ ] 编写 AGPL 合规 FAQ（README 内）
-- [ ] 部署法律页面到 `jowork.work`
-- [ ] 编写退款政策
+- [x] 起草 Terms of Service + Privacy Policy（docs/legal/terms-of-service.md + privacy-policy.md）
+- [x] 配置 CLA Assistant（.claassistant.yml；需人工在 cla-assistant.io 安装 GitHub App）
+- [x] 编写 AGPL 合规 FAQ（README.md License 章节下方 5 条 Q&A + 文档链接）
+- [ ] 部署法律页面到 `jowork.work`（需人工操作：将 docs/legal/*.md 发布到官网）
+- [x] 编写退款政策（docs/legal/refund-policy.md；14天退款保证+月付/年付规则）
 
 ### Phase 18: 付费系统集成（3-4 天）
 
