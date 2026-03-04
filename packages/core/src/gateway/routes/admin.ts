@@ -1,14 +1,27 @@
 // @jowork/core/gateway/routes — admin endpoints
 //
-// GET  /api/admin/updates/check   — check GitHub Releases for newer version
-// GET  /api/admin/migrations      — list applied / pending migrations
-// POST /api/admin/backup          — trigger manual DB backup
+// GET  /api/admin/updates/check      — check GitHub Releases for newer version
+// GET  /api/admin/migrations         — list applied / pending migrations
+// POST /api/admin/backup             — trigger manual DB backup
+// GET  /api/admin/export             — stream full ZIP backup download
+// GET  /api/admin/export/json        — full JSON export
+// GET  /api/admin/export/csv/:table  — single-table CSV export
+// GET  /api/admin/export/markdown    — human-readable Markdown export
+// POST /api/admin/import             — restore from uploaded ZIP buffer
 
-import { Router } from 'express';
+import express, { Router } from 'express';
 import { get as httpsGet } from 'node:https';
 import type { IncomingMessage } from 'node:http';
 import { getDb } from '../../datamap/db.js';
 import { listMigrations, backupDb } from '../../datamap/migrator.js';
+import {
+  buildExportZip,
+  buildExportJson,
+  buildExportCsv,
+  buildExportMarkdown,
+  restoreFromZip,
+  isValidTableName,
+} from '../../datamap/export.js';
 import { config } from '../../config.js';
 import { logger } from '../../utils/index.js';
 
@@ -127,6 +140,72 @@ export function adminRouter(): Router {
   router.post('/api/admin/backup', (_req, res, next) => {
     backupDb(getDb(), config.dataDir)
       .then(path => res.json({ ok: true, path }))
+      .catch(next);
+  });
+
+  // GET /api/admin/export
+  // Streams a full ZIP archive containing all table data.
+  router.get('/api/admin/export', (_req, res, next) => {
+    try {
+      const zip = buildExportZip(getDb());
+      const filename = `jowork-export-${new Date().toISOString().slice(0, 10)}.zip`;
+      res.setHeader('Content-Type', 'application/zip');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('Content-Length', String(zip.length));
+      res.end(zip);
+    } catch (err) { next(err); }
+  });
+
+  // GET /api/admin/export/json
+  // Returns all table data as a single JSON object.
+  router.get('/api/admin/export/json', (_req, res, next) => {
+    try {
+      const json = buildExportJson(getDb());
+      const filename = `jowork-export-${new Date().toISOString().slice(0, 10)}.json`;
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.end(json);
+    } catch (err) { next(err); }
+  });
+
+  // GET /api/admin/export/csv/:table
+  // Returns a single table as CSV.
+  router.get('/api/admin/export/csv/:table', (req, res, next) => {
+    try {
+      const { table } = req.params as { table: string };
+      if (!isValidTableName(table)) {
+        res.status(400).json({ error: `Unknown table: ${table}` });
+        return;
+      }
+      const csv = buildExportCsv(getDb(), table);
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename="${table}.csv"`);
+      res.end(csv);
+    } catch (err) { next(err); }
+  });
+
+  // GET /api/admin/export/markdown
+  // Returns all tables as a human-readable Markdown document.
+  router.get('/api/admin/export/markdown', (_req, res, next) => {
+    try {
+      const md = buildExportMarkdown(getDb());
+      const filename = `jowork-export-${new Date().toISOString().slice(0, 10)}.md`;
+      res.setHeader('Content-Type', 'text/markdown');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.end(md);
+    } catch (err) { next(err); }
+  });
+
+  // POST /api/admin/import
+  // Restore from a ZIP export. Body must be raw ZIP bytes (Content-Type: application/zip).
+  // Also accepts multipart uploads via ?source=body (raw buffer in req.body after express.raw).
+  router.post('/api/admin/import', express.raw({ type: 'application/zip', limit: '100mb' }), (req, res, next) => {
+    if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
+      res.status(400).json({ error: 'Request body must be a non-empty ZIP buffer (Content-Type: application/zip)' });
+      return;
+    }
+    restoreFromZip(getDb(), req.body as Buffer, config.dataDir)
+      .then(result => res.json({ ok: true, ...result }))
       .catch(next);
   });
 

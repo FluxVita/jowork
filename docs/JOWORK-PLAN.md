@@ -166,7 +166,7 @@
 | Phase 13：网络架构 | ✅ 完成 | 2026-03-05 | mDNS广播(UDP multicast)+Tunnel管理(cloudflared spawn)+/api/network/info发现端点+docs/custom-domain.md；pnpm lint+test全绿（36/36） |
 | Phase 14：版本更新基础设施 | ✅ 完成 | 2026-03-05 | schema_migrations表+migrator.ts(含bootstrap+热备份)+001_initial内联迁移+backupDb+adminRouter(更新检查/手动备份/迁移列表)；pnpm lint+test全绿（44/44） |
 | Phase 15：生产可靠性 | ✅ 完成 | 2026-03-05 | gracefulShutdown(WAL checkpoint+drain)+integrity_check+磁盘空间告警+Connector自愈(withRetry指数退避+健康跟踪)+敏感数据脱敏(logger maskMeta)+/health/full全链路检查；pnpm lint+test全绿（49/49） |
-| Phase 16：备份恢复 | 🔄 进行中 | 2026-03-05 | 一键导出ZIP+导入恢复+定时自动备份+通用格式导出 |
+| Phase 16：备份恢复 | ✅ 完成 | 2026-03-05 | buildExportZip+buildExportJson+buildExportCsv+buildExportMarkdown+restoreFromZip(admin.ts路由)+startBackupScheduler(每日03:00自动备份)；pnpm lint+test全绿（62/62） |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*
@@ -2848,10 +2848,10 @@ GET /health → {
 
 ### Phase 16: 备份恢复（1-2 天）
 
-- [ ] 一键导出 `GET /api/admin/export`（ZIP 流式下载）
-- [ ] 导入恢复（上传 ZIP + 版本校验 + 自动 migration）
-- [ ] 定时自动备份调度器（默认每天凌晨 3 点）
-- [ ] 数据导出为通用格式（Markdown / JSON / CSV）
+- [x] 一键导出 `GET /api/admin/export`（ZIP 流式下载）（packages/core/src/datamap/export.ts buildExportZip；admin.ts GET /api/admin/export）
+- [x] 导入恢复（上传 ZIP + 版本校验 + 自动 migration）（restoreFromZip：parseZip+manifest校验+事务还原+migrate；admin.ts POST /api/admin/import；express.raw）
+- [x] 定时自动备份调度器（默认每天凌晨 3 点）（packages/core/src/services/backup-scheduler.ts；startBackupScheduler/stopBackupScheduler；exported via services/index.ts）
+- [x] 数据导出为通用格式（Markdown / JSON / CSV）（buildExportJson/buildExportCsv/buildExportMarkdown；admin.ts GET /api/admin/export/json|csv/:table|markdown）
 
 ### Phase 17: 法律文档（2-3 天）
 

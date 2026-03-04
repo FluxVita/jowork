@@ -1,5 +1,6 @@
 // @jowork/core/services — service registry
 export { gracefulShutdown } from './shutdown.js';
+export { startBackupScheduler, stopBackupScheduler } from './backup-scheduler.js';
 // Allows apps/jowork and apps/fluxvita to register services that the core can reference.
 
 export interface ServiceHandle {
