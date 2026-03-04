@@ -135,6 +135,17 @@
     .memory-meta { font-size: 11px; color: #6b7a99; margin-top: 2px; }
     .memory-delete { background: transparent; border: 1px solid #450a0a; color: #f87171; border-radius: 4px; padding: 3px 7px; cursor: pointer; font-size: 12px; flex-shrink: 0; }
     .memory-delete:hover { background: #450a0a; }
+
+    /* Task list (Scheduler tab) */
+    .task-item { display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: #0f1117; border-radius: 6px; margin-bottom: 6px; }
+    .task-info { flex: 1; min-width: 0; }
+    .task-name { font-size: 13px; font-weight: 500; color: #e2e8f0; }
+    .task-meta { font-size: 11px; color: #6b7a99; margin-top: 2px; font-family: 'SF Mono', 'Fira Code', monospace; }
+    .task-toggle { background: transparent; border: 1px solid #2d3148; color: #6b7a99; border-radius: 4px; padding: 3px 8px; cursor: pointer; font-size: 12px; flex-shrink: 0; }
+    .task-toggle:hover { background: #2d3148; color: #e2e8f0; }
+    .task-toggle.on { border-color: #14532d; color: #22c55e; }
+    .task-delete { background: transparent; border: 1px solid #450a0a; color: #f87171; border-radius: 4px; padding: 3px 7px; cursor: pointer; font-size: 12px; flex-shrink: 0; }
+    .task-delete:hover { background: #450a0a; }
   </style>
 </head>
 <body>
@@ -218,6 +229,18 @@
         // Memories
         const memories     = ref([]);
         const memoryQuery  = ref('');
+
+        // Scheduler
+        const tasks       = ref([]);
+        const newTask     = ref({ name: '', cronExpr: '0 9 * * 1-5', action: 'agent_run' });
+        const taskError   = ref('');
+        const taskSuccess = ref('');
+        const taskSaving  = ref(false);
+
+        // Workstyle
+        const workstyleContent = ref('');
+        const workstyleSaving  = ref(false);
+        const workstyleMsg     = ref('');
 
         // ─── Chat helpers ─────────────────────────────────────────────
         async function checkHealth() {
@@ -404,6 +427,79 @@
           } catch (e) { alert('Error: ' + e.message); }
         }
 
+        // ─── Scheduler helpers ────────────────────────────────────────
+        async function loadTasks() {
+          try {
+            const list = await api('GET', '/api/tasks').catch(() => []);
+            tasks.value = Array.isArray(list) ? list : [];
+          } catch { /* ignore */ }
+        }
+
+        async function submitTask() {
+          taskError.value = '';
+          taskSuccess.value = '';
+          if (!newTask.value.name.trim() || !newTask.value.cronExpr.trim() || !newTask.value.action.trim()) {
+            taskError.value = 'Name, cron expression, and action are required.';
+            return;
+          }
+          taskSaving.value = true;
+          try {
+            await api('POST', '/api/tasks', {
+              name: newTask.value.name.trim(),
+              cronExpr: newTask.value.cronExpr.trim(),
+              action: newTask.value.action.trim(),
+            });
+            taskSuccess.value = 'Task created!';
+            newTask.value = { name: '', cronExpr: '0 9 * * 1-5', action: 'agent_run' };
+            await loadTasks();
+            setTimeout(() => { taskSuccess.value = ''; }, 3000);
+          } catch (e) {
+            taskError.value = e.message ?? 'Failed to create task.';
+          } finally {
+            taskSaving.value = false;
+          }
+        }
+
+        async function toggleTaskEnabled(task) {
+          try {
+            await api('PATCH', `/api/tasks/${task.id}`, { enabled: !task.enabled });
+            await loadTasks();
+          } catch (e) { alert('Error: ' + e.message); }
+        }
+
+        async function deleteTaskItem(id) {
+          if (!confirm('Delete this task?')) return;
+          try {
+            await api('DELETE', `/api/tasks/${id}`);
+            await loadTasks();
+          } catch (e) { alert('Error: ' + e.message); }
+        }
+
+        // ─── Workstyle helpers ────────────────────────────────────────
+        async function loadWorkstyle() {
+          try {
+            const list = await api('GET', '/api/context?layer=personal&docType=workstyle').catch(() => []);
+            if (Array.isArray(list) && list.length > 0) {
+              workstyleContent.value = list[0].content ?? '';
+            }
+          } catch { /* ignore */ }
+        }
+
+        async function saveWorkstyle() {
+          if (!workstyleContent.value.trim()) return;
+          workstyleSaving.value = true;
+          workstyleMsg.value = '';
+          try {
+            await api('PUT', '/api/context/workstyle', { content: workstyleContent.value });
+            workstyleMsg.value = 'Saved!';
+            setTimeout(() => { workstyleMsg.value = ''; }, 2500);
+          } catch (e) {
+            workstyleMsg.value = 'Error: ' + (e.message ?? 'failed');
+          } finally {
+            workstyleSaving.value = false;
+          }
+        }
+
         async function loadSettingsData() {
           try {
             const [m, p] = await Promise.all([
@@ -414,7 +510,7 @@
             providers.value = (p?.providers ?? []);
           } catch { /* ignore */ }
 
-          await Promise.all([loadConnectors(), loadAgent(), loadMemories()]);
+          await Promise.all([loadConnectors(), loadAgent(), loadMemories(), loadTasks(), loadWorkstyle()]);
 
           try {
             const h = await api('GET', '/health/full').catch(() => fetch('/health').then(r => r.json()).catch(() => null));
@@ -501,8 +597,12 @@
           newConn, connError, connSuccess, connSaving,
           agentData, agentSaving, agentMsg,
           memories, memoryQuery,
+          tasks, newTask, taskError, taskSuccess, taskSaving,
+          workstyleContent, workstyleSaving, workstyleMsg,
           openSettings, addConnector, removeConnector, extraFields, connIcon, renderMd,
           saveAgent, loadMemories, deleteMemoryItem,
+          submitTask, toggleTaskEnabled, deleteTaskItem,
+          saveWorkstyle,
         };
       },
 
@@ -574,6 +674,7 @@
               <div class="modal-tab" :class="{ active: settingsTab === 'models' }" @click="settingsTab = 'models'">Models</div>
               <div class="modal-tab" :class="{ active: settingsTab === 'connectors' }" @click="settingsTab = 'connectors'">Connectors</div>
               <div class="modal-tab" :class="{ active: settingsTab === 'memories' }" @click="settingsTab = 'memories'">Memories</div>
+              <div class="modal-tab" :class="{ active: settingsTab === 'scheduler' }" @click="settingsTab = 'scheduler'">Scheduler</div>
               <div class="modal-tab" :class="{ active: settingsTab === 'system' }" @click="settingsTab = 'system'">System</div>
             </div>
             <div class="modal-body">
@@ -600,6 +701,19 @@
                   <span v-if="agentMsg" :style="{ color: agentMsg.startsWith('Error') ? '#f87171' : '#22c55e', marginLeft: '10px', fontSize: '12px' }">{{ agentMsg }}</span>
                 </div>
                 <div v-else class="empty-msg">Loading agent…</div>
+
+                <!-- Workstyle section -->
+                <div class="setting-section" style="margin-top:16px">
+                  <h3>Work Style Document</h3>
+                  <div class="form-row">
+                    <label>Describe how you work, your preferences, and communication style. The agent uses this to personalize responses.</label>
+                    <textarea v-model="workstyleContent" rows="8" placeholder="e.g. I prefer concise answers. I usually check in at 10:30am and work until 10pm. I make decisions based on data first..."></textarea>
+                  </div>
+                  <button class="btn-primary" :disabled="workstyleSaving || !workstyleContent.trim()" @click="saveWorkstyle">
+                    {{ workstyleSaving ? 'Saving…' : 'Save Work Style' }}
+                  </button>
+                  <span v-if="workstyleMsg" :style="{ color: workstyleMsg.startsWith('Error') ? '#f87171' : '#22c55e', marginLeft: '10px', fontSize: '12px' }">{{ workstyleMsg }}</span>
+                </div>
               </div>
 
               <!-- Models tab -->
@@ -705,6 +819,44 @@
                     </div>
                     <button class="memory-delete" @click="deleteMemoryItem(m.id)">✕</button>
                   </div>
+                </div>
+              </div>
+
+              <!-- Scheduler tab -->
+              <div v-if="settingsTab === 'scheduler'">
+                <div class="setting-section">
+                  <h3>Scheduled Tasks ({{ tasks.length }})</h3>
+                  <div v-if="tasks.length === 0" class="empty-msg">No scheduled tasks yet.</div>
+                  <div v-for="t in tasks" :key="t.id" class="task-item">
+                    <div class="task-info">
+                      <div class="task-name">{{ t.name }}</div>
+                      <div class="task-meta">{{ t.cronExpr }} · {{ t.action }}</div>
+                    </div>
+                    <button :class="['task-toggle', t.enabled ? 'on' : '']" @click="toggleTaskEnabled(t)">
+                      {{ t.enabled ? 'On' : 'Off' }}
+                    </button>
+                    <button class="task-delete" @click="deleteTaskItem(t.id)">✕</button>
+                  </div>
+                </div>
+                <div class="add-connector-form">
+                  <h4>New Scheduled Task</h4>
+                  <div class="form-row">
+                    <label>Task Name</label>
+                    <input v-model="newTask.name" type="text" placeholder="Daily standup summary" />
+                  </div>
+                  <div class="form-row">
+                    <label>Cron Expression</label>
+                    <input v-model="newTask.cronExpr" type="text" placeholder="0 9 * * 1-5" />
+                  </div>
+                  <div class="form-row">
+                    <label>Action</label>
+                    <input v-model="newTask.action" type="text" placeholder="agent_run" />
+                  </div>
+                  <button class="btn-primary" :disabled="taskSaving" @click="submitTask">
+                    {{ taskSaving ? 'Creating…' : 'Create Task' }}
+                  </button>
+                  <div v-if="taskError" class="form-error">{{ taskError }}</div>
+                  <div v-if="taskSuccess" class="form-success">{{ taskSuccess }}</div>
                 </div>
               </div>
 
