@@ -2,8 +2,8 @@
 
 ## 当前进度
 
-最后完成：Phase 40（2026-03-05）
-最新 commit：575c057
+最后完成：Phase 41（2026-03-05）
+最新 commit：51db55f
 
 ## 已完成 Phases（关键说明）
 
@@ -12,6 +12,7 @@
 - Phase 22-38: 连接器扩展 + 全套 REST API + SSE 流式 + 工具调用
 - **Phase 39**: Markdown 渲染 + ⚙ 设置面板（Models/Connectors/System）
 - **Phase 40**: 设置面板扩展（Agent 配置编辑 + Memories 管理）
+- **Phase 41**: Scheduler 标签（任务 CRUD + toggle）+ Agent 标签 WorkStyle 编辑区
 
 ## 关键文件路径
 
@@ -25,14 +26,15 @@
 
 - Vue 3 CDN（esm-browser.js）+ marked.js（esm.run）
 - 无构建步骤，单文件 HTML
-- 设置面板：5 标签 — Agent | Models | Connectors | Memories | System
+- 设置面板：6 标签 — Agent | Models | Connectors | Memories | Scheduler | System
 - 默认打开 Agent 标签
+- Agent 标签底部有 WorkStyle Document 编辑区
 - 所有 API 都走 `/api/*`，personal mode 自动鉴权（role=owner）
 
 ## 下一步建议
 
-- Phase 41: 定时任务管理 UI（Scheduler tab in settings）
-- Phase 41: 工作方式文档 UI（PUT /api/context/workstyle）
+- Phase 42: LLM 用量仪表板 UI（GET /api/usage/summary|daily|budget）
+- Phase 42: 管理员备份/恢复 UI（GET/POST /api/admin/export|import）
 - Tauri sidecar（Phase 32.1）：将 Gateway 打包为 Bun --compile 二进制
 
 ## pnpm 命令
