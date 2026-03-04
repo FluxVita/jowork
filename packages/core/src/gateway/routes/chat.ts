@@ -15,6 +15,9 @@ import type { RunOptions, RunResult } from '../../agent/engines/builtin.js';
 
 export type DispatchFn = (opts: RunOptions) => Promise<RunResult>;
 
+const AUTO_TITLE_PLACEHOLDER = 'New chat';
+const AUTO_TITLE_MAX_LEN = 50;
+
 /** Helper: load session + agent for the authenticated user */
 function loadSession(sessionId: string, userId: string) {
   const db = getDb();
@@ -36,6 +39,32 @@ function loadSession(sessionId: string, userId: string) {
   return { session, agent, history };
 }
 
+/** Auto-generate title from first user message text (max AUTO_TITLE_MAX_LEN chars). */
+function buildAutoTitle(userMessage: string): string {
+  const trimmed = userMessage.trim().replace(/\s+/g, ' ');
+  return trimmed.length > AUTO_TITLE_MAX_LEN
+    ? trimmed.slice(0, AUTO_TITLE_MAX_LEN).trimEnd() + '…'
+    : trimmed;
+}
+
+/**
+ * If session title is still the placeholder AND there were no messages before this exchange,
+ * updates the title and returns the new title; otherwise returns null.
+ */
+function maybeAutoTitle(
+  sessionId: string,
+  currentTitle: string,
+  historyLengthBefore: number,
+  userMessage: string,
+  now: string,
+): string | null {
+  if (currentTitle !== AUTO_TITLE_PLACEHOLDER) return null;
+  if (historyLengthBefore > 0) return null;
+  const newTitle = buildAutoTitle(userMessage);
+  getDb().prepare(`UPDATE sessions SET title = ?, updated_at = ? WHERE id = ?`).run(newTitle, now, sessionId);
+  return newTitle;
+}
+
 export function chatRouter(dispatchFn?: DispatchFn): Router {
   const router = Router();
   const doDispatch = dispatchFn ?? runBuiltin;
@@ -54,6 +83,7 @@ export function chatRouter(dispatchFn?: DispatchFn): Router {
 
       const { session, agent, history } = loadSession(sessionId, userId);
       const systemPrompt = agent?.system_prompt ?? 'You are a helpful AI coworker.';
+      const historyLengthBefore = history.length;
 
       const result = await doDispatch({
         sessionId,
@@ -75,7 +105,8 @@ export function chatRouter(dispatchFn?: DispatchFn): Router {
       }
       db.prepare(`UPDATE sessions SET updated_at = ? WHERE id = ?`).run(now, sessionId);
 
-      res.json({ messages: result.messages, turns: result.turnCount });
+      const newTitle = maybeAutoTitle(sessionId, session.title, historyLengthBefore, content, now);
+      res.json({ messages: result.messages, turns: result.turnCount, ...(newTitle ? { newTitle } : {}) });
     } catch (err) { next(err); }
   });
 
@@ -101,6 +132,7 @@ export function chatRouter(dispatchFn?: DispatchFn): Router {
 
       const { session, agent, history } = loadSession(sessionId, userId);
       const systemPrompt = agent?.system_prompt ?? 'You are a helpful AI coworker.';
+      const historyLengthBefore = history.length;
 
       // Set up SSE headers before running the agent loop
       res.setHeader('Content-Type', 'text/event-stream');
@@ -141,9 +173,10 @@ export function chatRouter(dispatchFn?: DispatchFn): Router {
       }
       db.prepare(`UPDATE sessions SET updated_at = ? WHERE id = ?`).run(now, sessionId);
 
+      const newTitle = maybeAutoTitle(sessionId, session.title, historyLengthBefore, content, now);
       const assistantMsgs = result.messages.filter(m => m.role === 'assistant');
       const assistantMsg = assistantMsgs[assistantMsgs.length - 1];
-      res.write(`data: ${JSON.stringify({ type: 'done', messageId: assistantMsg?.id ?? generateId() })}\n\n`);
+      res.write(`data: ${JSON.stringify({ type: 'done', messageId: assistantMsg?.id ?? generateId(), ...(newTitle ? { newTitle } : {}) })}\n\n`);
       res.end();
     } catch (err) { next(err); }
   });

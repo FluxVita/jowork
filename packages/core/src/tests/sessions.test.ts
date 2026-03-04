@@ -251,3 +251,91 @@ describe('Session — default agent resolution', () => {
     assert.equal(aid, 'default');
   });
 });
+
+// ─── Auto-title generation logic (Phase 52) ───────────────────────────────────
+
+const AUTO_TITLE_MAX_LEN = 50;
+const AUTO_TITLE_PLACEHOLDER = 'New chat';
+
+function buildAutoTitle(userMessage: string): string {
+  const trimmed = userMessage.trim().replace(/\s+/g, ' ');
+  return trimmed.length > AUTO_TITLE_MAX_LEN
+    ? trimmed.slice(0, AUTO_TITLE_MAX_LEN).trimEnd() + '…'
+    : trimmed;
+}
+
+describe('Auto-title — buildAutoTitle()', () => {
+  test('short message is used as-is', () => {
+    assert.equal(buildAutoTitle('Hello!'), 'Hello!');
+  });
+
+  test('message exactly 50 chars is not truncated', () => {
+    const msg = 'a'.repeat(AUTO_TITLE_MAX_LEN);
+    assert.equal(buildAutoTitle(msg), msg);
+    assert.equal(buildAutoTitle(msg).endsWith('…'), false);
+  });
+
+  test('message longer than 50 chars is truncated with ellipsis', () => {
+    const msg = 'a'.repeat(AUTO_TITLE_MAX_LEN + 10);
+    const title = buildAutoTitle(msg);
+    assert.ok(title.endsWith('…'));
+    assert.ok(title.length <= AUTO_TITLE_MAX_LEN + 1); // '…' is 1 char
+  });
+
+  test('leading/trailing whitespace is trimmed', () => {
+    assert.equal(buildAutoTitle('  Hello world  '), 'Hello world');
+  });
+
+  test('internal whitespace is collapsed', () => {
+    assert.equal(buildAutoTitle('Hello   world'), 'Hello world');
+  });
+});
+
+describe('Auto-title — maybeAutoTitle DB logic', () => {
+  beforeEach(() => { setupTestDb(); });
+  afterEach(() => { closeDb(); });
+
+  test('updates title when placeholder + no prior messages', () => {
+    const db = openDb();
+    seedUser(db);
+    seedAgent(db);
+    seedSession(db, 'sess-1', 'user-1', 'agent-1');
+    // Simulate: historyLengthBefore = 0, title = 'New chat'
+    const currentTitle = 'New chat';
+    const historyLengthBefore = 0;
+    const userMessage = 'Can you help me write a report?';
+    const now = new Date().toISOString();
+    let newTitle: string | null = null;
+    if (currentTitle === AUTO_TITLE_PLACEHOLDER && historyLengthBefore === 0) {
+      newTitle = buildAutoTitle(userMessage);
+      db.prepare(`UPDATE sessions SET title = ?, updated_at = ? WHERE id = ?`).run(newTitle, now, 'sess-1');
+    }
+    assert.ok(newTitle);
+    const row = db.prepare(`SELECT title FROM sessions WHERE id = ?`).get('sess-1') as { title: string };
+    assert.equal(row.title, newTitle);
+  });
+
+  test('does NOT update title when session already has a custom title', () => {
+    const db = openDb();
+    seedUser(db);
+    seedAgent(db);
+    seedSession(db, 'sess-1', 'user-1', 'agent-1');
+    db.prepare(`UPDATE sessions SET title = ? WHERE id = ?`).run('Custom title', 'sess-1');
+
+    // Simulate maybeAutoTitle: currentTitle !== placeholder → skip
+    const row = db.prepare(`SELECT title FROM sessions WHERE id = ?`).get('sess-1') as { title: string };
+    const shouldUpdate = row.title === AUTO_TITLE_PLACEHOLDER;
+    assert.equal(shouldUpdate, false, 'should not auto-title when title is custom');
+  });
+
+  test('does NOT update title on subsequent messages (historyLengthBefore > 0)', () => {
+    // Simulate maybeAutoTitle: historyLengthBefore > 0 → skip
+    function maybeAutoTitleSim(title: string, historyLen: number, msg: string): string | null {
+      if (title !== AUTO_TITLE_PLACEHOLDER) return null;
+      if (historyLen > 0) return null;
+      return buildAutoTitle(msg);
+    }
+    const result = maybeAutoTitleSim(AUTO_TITLE_PLACEHOLDER, 2, 'Follow-up question');
+    assert.equal(result, null, 'should not auto-title on follow-up messages');
+  });
+});

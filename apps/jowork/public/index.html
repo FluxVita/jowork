@@ -571,12 +571,9 @@
                       createdAt: new Date().toISOString(),
                     });
                     streamingText.value = '';
-                    const s = sessions.value.find(s => s.id === activeSessionId.value);
-                    if (s && s.title === 'New chat') {
-                      try {
-                        const fresh = await api('GET', `/api/sessions/${activeSessionId.value}`);
-                        s.title = fresh.title;
-                      } catch { /* non-critical */ }
+                    if (evt.newTitle) {
+                      const s = sessions.value.find(s => s.id === activeSessionId.value);
+                      if (s) s.title = evt.newTitle;
                     }
                   } else if (evt.type === 'error') {
                     throw new Error(evt.message ?? 'Stream error');

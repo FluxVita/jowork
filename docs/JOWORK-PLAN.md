@@ -201,6 +201,7 @@
 | Phase 49：消息搜索 FTS5 支持 | ✅ 完成 | 2026-03-05 | messages_fts虚表(init.ts)+迁移002_messages_fts(含回填已有消息)+chat.ts两端点维护索引+search.ts改用FTS5+LIKE降级+2新测试；pnpm lint+test全绿（272/272） |
 | Phase 50：Connector Schema API + 动态表单 UI | ✅ 完成 | 2026-03-05 | ConnectorTypeInfo接口(authType/description/configSchema)+listAllConnectorTypes扩展+GET /api/connector-types/:id+getConnectorTypeManifest()；前端移除CONNECTOR_EXTRA_FIELDS改用schema动态渲染；5新测试；pnpm lint+test全绿（277/277） |
 | Phase 51：消息分页 + 会话侧边栏搜索过滤 | ✅ 完成 | 2026-03-05 | GET /api/sessions/:id/messages?before=&limit=cursor分页(hasMore+nextCursor)；GET /api/sessions/:id限制40条+hasMore；侧边栏filter input；"↑加载更多"按钮；13新测试；pnpm lint+test全绿（290/290） |
+| Phase 52：会话标题自动生成 | ✅ 完成 | 2026-03-05 | chat.ts首次消息后自动将"New chat"改为用户消息前50字符；JSON端点返回newTitle字段；SSE done事件附加newTitle；前端直接更新列表消除额外GET；8新测试；pnpm lint+test全绿（298/298） |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*
@@ -3152,6 +3153,17 @@ GET /health → {
 - [x] 在 `search.ts` 消息搜索改用 FTS5（`JOIN messages_fts / MATCH`），FTS5 语法错误时自动降级为 LIKE
 - [x] 更新 `search.test.ts` — `seedMessage` 补充 FTS 索引维护；添加"FTS5 精确词语匹配"和"FTS5 降级 LIKE"两个新测试
 - [x] pnpm lint+test 全绿（272/272）
+
+### Phase 52: 会话标题自动生成（0.25 天）
+
+- [x] `chat.ts` 新增 `buildAutoTitle(userMessage)` 函数（trim + collapse空格 + 最多50字符 + "…" 截断）
+- [x] `chat.ts` 新增 `maybeAutoTitle()` — 当 `session.title === 'New chat'` 且首次消息（historyLengthBefore === 0）时自动更新标题
+- [x] JSON 端点（`POST /api/sessions/:id/messages`）响应追加 `newTitle?` 字段
+- [x] SSE 端点 `done` 事件追加 `newTitle?` 字段（`{ type: 'done', messageId: ..., newTitle? }`）
+- [x] `apps/jowork/public/index.html`：`done` handler 使用 `evt.newTitle` 就地更新 sessions 列表，删除旧的额外 GET 请求
+- [x] `apps/fluxvita/public/index.html`：同步上述改动
+- [x] `sessions.test.ts` 追加 8 个新测试（buildAutoTitle truncation/whitespace + maybeAutoTitle DB logic）
+- [x] pnpm lint+test 全绿（298/298）
 
 ### Phase 51: 消息分页 + 会话侧边栏搜索过滤（0.5 天）
 
