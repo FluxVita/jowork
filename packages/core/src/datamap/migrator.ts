@@ -138,6 +138,32 @@ const MIGRATIONS: Migration[] = [
       `);
     },
   },
+  {
+    name: '003_connector_items',
+    up(db) {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS connector_items (
+          id            TEXT PRIMARY KEY,
+          connector_id  TEXT NOT NULL REFERENCES connectors(id) ON DELETE CASCADE,
+          uri           TEXT NOT NULL,
+          title         TEXT NOT NULL,
+          content       TEXT NOT NULL,
+          content_type  TEXT NOT NULL DEFAULT 'text/plain',
+          url           TEXT,
+          sensitivity   TEXT NOT NULL DEFAULT 'internal',
+          fetched_at    TEXT NOT NULL,
+          UNIQUE(connector_id, uri)
+        );
+
+        CREATE VIRTUAL TABLE IF NOT EXISTS connector_items_fts USING fts5(
+          title,
+          content,
+          content='connector_items',
+          content_rowid='rowid'
+        );
+      `);
+    },
+  },
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

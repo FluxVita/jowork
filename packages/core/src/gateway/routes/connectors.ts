@@ -8,6 +8,9 @@
 //   POST   /api/connectors/:id/discover  — discover objects via connector
 //   POST   /api/connectors/:id/fetch     — fetch specific object content by ID
 //   POST   /api/connectors/:id/search    — full-text search within connector
+//   POST   /api/connectors/:id/sync      — sync connector content into local cache
+//   GET    /api/connectors/:id/items     — list cached items for a connector
+//   DELETE /api/connectors/:id/items     — delete all cached items for a connector
 //   DELETE /api/connectors/:id           — delete connector instance (admin+)
 
 import { Router } from 'express';
@@ -16,6 +19,7 @@ import {
   createConnectorConfig, listConnectorConfigs, getConnectorConfig, deleteConnectorConfig,
   listAllConnectorTypes, getConnectorTypeManifest, discoverViaConnector, connectorFetch, connectorSearch,
   getConnectorHealth, checkConnectorHealth,
+  syncConnectorItems, listConnectorItems, countConnectorItems, deleteConnectorItems,
 } from '../../connectors/index.js';
 import type { ConnectorKind } from '../../types.js';
 
@@ -39,6 +43,7 @@ export function connectorsRouter(): Router {
       const withHealth = configs.map(cfg => ({
         ...cfg,
         health: getConnectorHealth(cfg.kind as ConnectorKind),
+        cachedItems: countConnectorItems(cfg.id),
       }));
       res.json(withHealth);
     } catch (err) { next(err); }
@@ -93,6 +98,40 @@ export function connectorsRouter(): Router {
       }
       const results = await connectorSearch(cfg.kind, cfg, query);
       res.json({ results });
+    } catch (err) { next(err); }
+  });
+
+  // POST /api/connectors/:id/sync — sync connector content into local cache
+  router.post('/api/connectors/:id/sync', authenticate, async (req, res, next) => {
+    try {
+      const id = String(req.params['id']);
+      getConnectorConfig(id); // Validate exists (throws 404 if not)
+      const result = await syncConnectorItems(id);
+      res.json(result);
+    } catch (err) { next(err); }
+  });
+
+  // GET /api/connectors/:id/items — list cached items for a connector
+  router.get('/api/connectors/:id/items', authenticate, (req, res, next) => {
+    try {
+      const id = String(req.params['id']);
+      getConnectorConfig(id); // Validate exists
+      const opts: { query?: string; limit?: number; offset?: number } = {};
+      if (req.query['q']) opts.query = String(req.query['q']);
+      if (req.query['limit']) opts.limit = Number(req.query['limit']);
+      if (req.query['offset']) opts.offset = Number(req.query['offset']);
+      const result = listConnectorItems(id, opts);
+      res.json(result);
+    } catch (err) { next(err); }
+  });
+
+  // DELETE /api/connectors/:id/items — delete all cached items for a connector
+  router.delete('/api/connectors/:id/items', authenticate, requireRole('admin'), (req, res, next) => {
+    try {
+      const id = String(req.params['id']);
+      getConnectorConfig(id); // Validate exists
+      const deleted = deleteConnectorItems(id);
+      res.json({ deleted });
     } catch (err) { next(err); }
   });
 

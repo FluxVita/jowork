@@ -1020,6 +1020,20 @@
           }
         }
 
+        const connectorSyncing = ref({});
+        async function syncConnector(id) {
+          connectorSyncing.value = { ...connectorSyncing.value, [id]: true };
+          try {
+            const result = await api('POST', `/api/connectors/${id}/sync`);
+            toast(`Synced ${result.synced} items (${result.errors} errors)`, result.errors > 0 ? 'error' : 'success');
+            await loadConnectors();
+          } catch (e) {
+            toast('Sync failed: ' + (e.message ?? String(e)), 'error');
+          } finally {
+            connectorSyncing.value = { ...connectorSyncing.value, [id]: false };
+          }
+        }
+
         const connectorTesting = ref({});
         async function testConnector(id) {
           connectorTesting.value = { ...connectorTesting.value, [id]: true };
@@ -1135,7 +1149,7 @@
           adminWorking, updateInfo,
           terminalInput, terminalOutput, terminalCwd, terminalBusy, terminalHistory, terminalHistoryIdx, terminalOutputEl,
           runTerminalCommand, terminalReset, terminalHistoryUp, terminalHistoryDown,
-          openSettings, applyModel, addConnector, removeConnector, testConnector, connectorTesting, extraFields, connIcon, renderMd,
+          openSettings, applyModel, addConnector, removeConnector, testConnector, connectorTesting, syncConnector, connectorSyncing, extraFields, connIcon, renderMd,
           saveAgent, loadMemories, deleteMemoryItem, addMemory,
           submitTask, toggleTaskEnabled, deleteTaskItem,
           saveWorkstyle, saveBudget, exportData, triggerBackup, checkUpdates, handleImport,
@@ -1430,9 +1444,12 @@
                     <div class="connector-icon" style="background:#1f2a3c">{{ connIcon(c.kind) }}</div>
                     <div class="connector-info">
                       <div class="connector-name">{{ c.name }}</div>
-                      <div class="connector-kind">{{ c.kind }}</div>
+                      <div class="connector-kind">{{ c.kind }} · {{ c.cachedItems ?? 0 }} items</div>
                     </div>
                     <span :class="['health-badge', c.health?.status ?? 'unknown']">{{ c.health?.status ?? 'unknown' }}</span>
+                    <button class="btn-sm" @click="syncConnector(c.id)" :disabled="connectorSyncing[c.id]">
+                      {{ connectorSyncing[c.id] ? 'Syncing…' : 'Sync' }}
+                    </button>
                     <button class="btn-sm" @click="testConnector(c.id)" :disabled="connectorTesting[c.id]">
                       {{ connectorTesting[c.id] ? '…' : 'Test' }}
                     </button>

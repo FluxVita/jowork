@@ -30,6 +30,15 @@ registerJCPConnector(figmaConnector);
 registerJCPConnector(jiraConnector);
 registerJCPConnector(confluenceConnector);
 
+// Re-export cache module
+export {
+  syncConnectorItems,
+  listConnectorItems,
+  countConnectorItems,
+  deleteConnectorItems,
+} from './cache.js';
+export type { ConnectorItem, SyncResult } from './cache.js';
+
 // ─── Base interface ───────────────────────────────────────────────────────────
 
 export interface ConnectorCapabilities {

@@ -211,7 +211,7 @@
 | Phase 59：连接器健康测试端点 | ✅ 完成 | 2026-03-05 | checkConnectorHealth()函数 + POST /api/connectors/:id/health-check路由 + 前端"Test"按钮(.btn-sm)+testConnector()；两app均更新；3新测试；pnpm lint+test全绿（321/321） |
 | Phase 60：会话导出（Session Export） | ✅ 完成 | 2026-03-05 | GET /api/sessions/:id/export?format=md|json|txt；sessionRouter新增export路由(全量消息+格式化)；前端⬇按钮+exportSession()；9新测试；pnpm lint+test全绿（330/330） |
 | Phase 61：Geek Mode 基础终端 | ✅ 完成 | 2026-03-05 | terminal/index.ts(execInSession+CWD持久化+输出截断+超时)；terminalRouter(POST exec+GET info+DELETE reset)；前端Terminal标签+CSS(历史↑↓+cwd显示+Reset)；两app均更新；13新测试；pnpm lint+test全绿（343/343） |
-| Phase 62：连接器内容缓存 | 🔄 进行中 | 2026-03-05 | connector_items表+FTS；POST sync+GET items+DELETE；前端Sync按钮+条目数 |
+| Phase 62：连接器内容缓存 | ✅ 完成 | 2026-03-05 | connector_items表+FTS5虚表+003迁移；cache.ts(syncConnectorItems/listConnectorItems/countConnectorItems/deleteConnectorItems)；POST sync+GET items+DELETE items路由；GET /api/connectors附加cachedItems计数；前端Sync按钮+条目数显示；12新测试；pnpm lint+test全绿（355/355） |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*
@@ -3279,6 +3279,26 @@ GET /health → {
 - [x] CSS 样式（terminal-cwd / terminal-output / terminal-input 等）
 - [x] `terminal.test.ts`：13 个测试（execInSession/session管理/REST router）
 - [x] pnpm lint+test 全绿（343/343）
+
+### Phase 62: 连接器内容缓存（0.5 天）
+
+- [x] `datamap/init.ts` 新增 `connector_items` 表（id/connector_id/uri/title/content/content_type/url/sensitivity/fetched_at，UNIQUE(connector_id, uri)）
+- [x] `datamap/init.ts` 新增 `connector_items_fts` FTS5 虚表（title + content）
+- [x] `datamap/migrator.ts` 新增 `003_connector_items` 迁移（建表 + FTS5 虚表）
+- [x] 新建 `connectors/cache.ts`：`syncConnectorItems()` — discover + fetch 全量 → upsert connector_items + FTS 索引
+- [x] `connectors/cache.ts`：`listConnectorItems(connectorId, { query?, limit?, offset? })` — FTS 搜索 + LIKE 降级 + 分页
+- [x] `connectors/cache.ts`：`countConnectorItems(connectorId)` — 返回缓存条目数
+- [x] `connectors/cache.ts`：`deleteConnectorItems(connectorId)` — 清除 FTS + 数据行
+- [x] `connectors/index.ts` re-export cache 模块
+- [x] `gateway/routes/connectors.ts`：`POST /api/connectors/:id/sync` — 触发 sync
+- [x] `gateway/routes/connectors.ts`：`GET /api/connectors/:id/items?q=&limit=&offset=` — 查询缓存
+- [x] `gateway/routes/connectors.ts`：`DELETE /api/connectors/:id/items` — 清除缓存（admin）
+- [x] `GET /api/connectors` 响应新增 `cachedItems` 计数字段
+- [x] `apps/jowork/public/index.html`：Sync 按钮 + 条目数 + connectorSyncing 状态
+- [x] `apps/fluxvita/public/index.html`：同步上述前端改动
+- [x] 更新 `migrator.test.ts`：调整 migration 期望（003_connector_items）
+- [x] `connector-cache.test.ts`：12 个新测试（schema/migration/CRUD/FTS/pagination/route）
+- [x] pnpm lint+test 全绿（355/355）
 
 **AI 辅助开发预计总工期：6-10 个工作日**（全程 AI 写代码，人工只做决策/审查/测试）
 
