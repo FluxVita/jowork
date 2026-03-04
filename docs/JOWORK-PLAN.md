@@ -196,6 +196,7 @@
 | Phase 44：Model Switcher UI | ✅ 完成 | 2026-03-05 | PUT /api/models/active(process.env mutation+validate)；Models标签新增provider下拉+model下拉/输入+Apply按钮+即时提示；3新测试；apps/jowork+apps/fluxvita均更新；pnpm lint+test全绿（263/263） |
 | Phase 45：键盘快捷键 | ✅ 完成 | 2026-03-05 | globalKeydown(Cmd+N新建会话/Cmd+/开关设置/Esc关闭)；onMounted注册+onUnmounted移除；apps/jowork+apps/fluxvita均更新；pnpm lint+test全绿（263/263） |
 | Phase 46：Onboarding Flow UI | ✅ 完成 | 2026-03-05 | 4步向导覆盖层(welcome/setup_agent/add_connector/workstyle_doc)；checkOnboarding启动检测；步骤指示器；skip支持；apps/jowork+apps/fluxvita均更新；pnpm lint+test全绿（263/263） |
+| Phase 47：Toast 通知系统 | 🔄 进行中 | 2026-03-05 | 全局 toast 替换 inline message + alert() |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*
@@ -3106,6 +3107,17 @@ GET /health → {
 - [x] `apps/jowork/public/index.html` 实现上述所有功能
 - [x] `apps/fluxvita/public/index.html`：同步上述功能
 - [x] pnpm lint+test 全绿（263/263）
+
+### Phase 47: Toast 通知系统（0.5 天）
+
+- [ ] 实现全局 `toast(message, type)` 函数（type: 'success' | 'error' | 'info'）
+- [ ] Toast 容器：固定在页面右下角，支持多条堆叠，2.5 秒后自动消失
+- [ ] 替换所有 `alert()` 调用为 `toast(msg, 'error')`
+- [ ] 替换所有 inline success/error message（`agentMsg` / `connSuccess` / `connError` / `taskSuccess` / `taskError` / `workstyleMsg` / `budgetMsg` / `adminMsg` / `modelMsg`）为 toast 调用
+- [ ] 保留所有已有功能，只改通知呈现方式
+- [ ] `apps/jowork/public/index.html` 实现上述所有功能
+- [ ] `apps/fluxvita/public/index.html`：同步上述功能（保留 FluxVita 蓝色品牌色）
+- [ ] pnpm lint+test 全绿（263/263）
 
 **AI 辅助开发预计总工期：6-10 个工作日**（全程 AI 写代码，人工只做决策/审查/测试）
 
