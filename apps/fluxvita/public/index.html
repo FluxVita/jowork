@@ -119,6 +119,10 @@
     .connector-kind { font-size: 11px; color: #6b7a99; margin-top: 1px; }
     .connector-delete { background: transparent; border: 1px solid #450a0a; color: #f87171; border-radius: 4px; padding: 3px 8px; cursor: pointer; font-size: 12px; }
     .connector-delete:hover { background: #450a0a; }
+    .health-badge { font-size: 10px; padding: 2px 6px; border-radius: 10px; font-weight: 600; letter-spacing: 0.03em; flex-shrink: 0; }
+    .health-badge.healthy { background: #052e16; color: #4ade80; }
+    .health-badge.degraded { background: #431407; color: #fb923c; }
+    .health-badge.unknown { background: #0a1628; color: #6b7a99; }
     .empty-msg { color: #6b7a99; font-size: 13px; font-style: italic; text-align: center; padding: 16px; }
 
     /* Add connector form */
@@ -1323,6 +1327,7 @@
                       <div class="connector-name">{{ c.name }}</div>
                       <div class="connector-kind">{{ c.kind }}</div>
                     </div>
+                    <span :class="['health-badge', c.health?.status ?? 'unknown']">{{ c.health?.status ?? 'unknown' }}</span>
                     <button class="connector-delete" @click="removeConnector(c.id)">Remove</button>
                   </div>
                 </div>

@@ -15,6 +15,7 @@ import { authenticate, requireRole } from '../middleware/auth.js';
 import {
   createConnectorConfig, listConnectorConfigs, getConnectorConfig, deleteConnectorConfig,
   listAllConnectorTypes, getConnectorTypeManifest, discoverViaConnector, connectorFetch, connectorSearch,
+  getConnectorHealth,
 } from '../../connectors/index.js';
 import type { ConnectorKind } from '../../types.js';
 
@@ -33,7 +34,13 @@ export function connectorsRouter(): Router {
 
   router.get('/api/connectors', authenticate, (req, res, next) => {
     try {
-      res.json(listConnectorConfigs(req.auth!.userId));
+      const configs = listConnectorConfigs(req.auth!.userId);
+      // Attach runtime health status to each connector
+      const withHealth = configs.map(cfg => ({
+        ...cfg,
+        health: getConnectorHealth(cfg.kind as ConnectorKind),
+      }));
+      res.json(withHealth);
     } catch (err) { next(err); }
   });
 

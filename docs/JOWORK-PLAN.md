@@ -204,6 +204,7 @@
 | Phase 52：会话标题自动生成 | ✅ 完成 | 2026-03-05 | chat.ts首次消息后自动将"New chat"改为用户消息前50字符；JSON端点返回newTitle字段；SSE done事件附加newTitle；前端直接更新列表消除额外GET；8新测试；pnpm lint+test全绿（298/298） |
 | Phase 53：三层上下文注入聊天流 | ✅ 完成 | 2026-03-05 | assembleContext()集成到chat.ts两端点(JSON+SSE)；workstyle/company强制规则/FTS上下文注入systemPrompt前缀；try-catch保障永不阻塞聊天；3新测试；pnpm lint+test全绿（301/301） |
 | Phase 54：Memory 手动添加 UI | ✅ 完成 | 2026-03-05 | Memories标签底部新增"Add Memory"表单(textarea+保存按钮)；调用POST /api/memories；apps/jowork+apps/fluxvita均更新；pnpm lint全绿（纯前端改动） |
+| Phase 55：Connector 健康状态 UI | 🔄 进行中 | 2026-03-05 | GET /api/connectors 附加health字段；前端连接器列表显示状态徽章 |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*
