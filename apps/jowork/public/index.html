@@ -189,7 +189,7 @@
   </script>
 
   <script type="module">
-    import { createApp, ref, computed, onMounted, nextTick } from 'vue';
+    import { createApp, ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
     import { marked } from 'marked';
 
     marked.use({ gfm: true, breaks: true });
@@ -463,6 +463,14 @@
 
         function onKeydown(e) {
           if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+        }
+
+        // ─── Global keyboard shortcuts ────────────────────────────────
+        function globalKeydown(e) {
+          const mod = e.metaKey || e.ctrlKey;
+          if (mod && e.key === 'n') { e.preventDefault(); newSession(); return; }
+          if (mod && e.key === '/') { e.preventDefault(); showSettings.value ? (showSettings.value = false) : openSettings(); return; }
+          if (e.key === 'Escape' && showSettings.value) { showSettings.value = false; }
         }
 
         // ─── Settings helpers ─────────────────────────────────────────
@@ -789,11 +797,16 @@
 
         // ─── Lifecycle ────────────────────────────────────────────────
         onMounted(async () => {
+          document.addEventListener('keydown', globalKeydown);
           await checkHealth();
           await loadSessions();
           if (sessions.value.length === 0) await newSession();
           else await selectSession(sessions.value[0].id);
           setInterval(checkHealth, 15_000);
+        });
+
+        onUnmounted(() => {
+          document.removeEventListener('keydown', globalKeydown);
         });
 
         return {

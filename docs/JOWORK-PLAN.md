@@ -194,6 +194,7 @@
 | Phase 42：LLM 用量仪表板 UI + 管理员备份/恢复 UI | ✅ 完成 | 2026-03-05 | Usage标签(Summary+Budget进度条+7日日报+预算设置)+Admin标签(手动备份+更新检查+导出ZIP/JSON/MD+从ZIP恢复)；apps/jowork+apps/fluxvita均更新；pnpm lint+test全绿（260/260） |
 | Phase 43：Session 管理 UI — 重命名/删除会话 | ✅ 完成 | 2026-03-05 | hover菜单(✏rename+×delete)；inline input编辑(Enter保存/Esc取消/blur取消)；级联删除自动切换session；apps/jowork+apps/fluxvita均更新；pnpm lint+test全绿（260/260） |
 | Phase 44：Model Switcher UI | ✅ 完成 | 2026-03-05 | PUT /api/models/active(process.env mutation+validate)；Models标签新增provider下拉+model下拉/输入+Apply按钮+即时提示；3新测试；apps/jowork+apps/fluxvita均更新；pnpm lint+test全绿（263/263） |
+| Phase 45：键盘快捷键 | ✅ 完成 | 2026-03-05 | globalKeydown(Cmd+N新建会话/Cmd+/开关设置/Esc关闭)；onMounted注册+onUnmounted移除；apps/jowork+apps/fluxvita均更新；pnpm lint+test全绿（263/263） |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*
@@ -3079,6 +3080,16 @@ GET /health → {
 - [x] 3 个新测试：switch 成功 + unknown provider 400 + missing fields 400
 - [x] Models 标签新增 "Switch Model" 区域：provider 下拉 + model 下拉（列表中有则展示下拉，否则文本输入）+ Apply 按钮 + 成功提示
 - [x] `apps/fluxvita/public/index.html`：同步上述功能（保留 FluxVita 蓝色品牌色）
+- [x] pnpm lint+test 全绿（263/263）
+
+### Phase 45: 键盘快捷键（0.5 天）
+
+- [x] `document.addEventListener('keydown', globalKeydown)` 在 `onMounted` 注册，`onUnmounted` 移除
+- [x] `Cmd+N`（Mac）/ `Ctrl+N`（Windows）：新建会话（调用 `newSession()`，不触发浏览器默认行为）
+- [x] `Cmd+/`（Mac）/ `Ctrl+/`（Windows）：切换设置面板（若未打开则打开并加载数据，若已打开则关闭）
+- [x] `Esc`：关闭设置面板（当 `showSettings === true` 时）
+- [x] `apps/jowork/public/index.html` 实现上述所有快捷键
+- [x] `apps/fluxvita/public/index.html`：同步上述功能
 - [x] pnpm lint+test 全绿（263/263）
 
 **AI 辅助开发预计总工期：6-10 个工作日**（全程 AI 写代码，人工只做决策/审查/测试）
