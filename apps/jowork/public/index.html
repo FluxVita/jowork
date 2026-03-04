@@ -173,6 +173,14 @@
     .btn-danger-outline:hover { background: #450a0a; }
     .admin-btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
 
+    /* ─── Toast notifications ────────────────────────────────────── */
+    #toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 300; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+    .toast { padding: 10px 16px; border-radius: 8px; font-size: 13px; font-weight: 500; max-width: 320px; pointer-events: auto; animation: toast-in 0.2s ease; box-shadow: 0 4px 12px rgba(0,0,0,0.4); }
+    .toast.success { background: #14532d; color: #4ade80; border: 1px solid #166534; }
+    .toast.error   { background: #450a0a; color: #fca5a5; border: 1px solid #7f1d1d; }
+    .toast.info    { background: #1e3a5f; color: #93c5fd; border: 1px solid #1d4ed8; }
+    @keyframes toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
     /* ─── Onboarding wizard ──────────────────────────────────────── */
     .onboarding-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.88); z-index: 200; display: flex; align-items: center; justify-content: center; }
     .onboarding-card { background: #1a1d26; border: 1px solid #2d3148; border-radius: 16px; width: 520px; max-width: 95vw; max-height: 90vh; overflow-y: auto; padding: 40px; }
@@ -319,6 +327,15 @@
         const onboardingStep    = ref('welcome');
         const onboardingWorking = ref(false);
 
+        // Toast notifications
+        const toasts = ref([]);
+        let toastId  = 0;
+        function toast(message, type = 'info') {
+          const id = ++toastId;
+          toasts.value.push({ id, message, type });
+          setTimeout(() => { toasts.value = toasts.value.filter(t => t.id !== id); }, 2500);
+        }
+
         // ─── Chat helpers ─────────────────────────────────────────────
         async function checkHealth() {
           try { await fetch('/health'); healthy.value = true; }
@@ -346,7 +363,7 @@
             const s = await api('POST', '/api/sessions', { title: 'New chat' });
             sessions.value.unshift(s);
             await selectSession(s.id);
-          } catch (e) { alert('Error: ' + e.message); }
+          } catch (e) { toast('Failed to create session: ' + e.message, 'error'); }
         }
 
         function stopStream() {
@@ -371,7 +388,7 @@
             await api('PATCH', `/api/sessions/${id}`, { title: text });
             const idx = sessions.value.findIndex(s => s.id === id);
             if (idx !== -1) sessions.value[idx] = { ...sessions.value[idx], title: text };
-          } catch (e) { alert('Error: ' + e.message); }
+          } catch (e) { toast('Rename failed: ' + e.message, 'error'); }
         }
 
         function cancelRename() {
@@ -388,7 +405,8 @@
               if (sessions.value.length > 0) await selectSession(sessions.value[0].id);
               else await newSession();
             }
-          } catch (e) { alert('Error: ' + e.message); }
+            toast('Session deleted', 'success');
+          } catch (e) { toast('Delete failed: ' + e.message, 'error'); }
         }
 
         async function sendMessage() {
@@ -514,17 +532,15 @@
         async function saveAgent() {
           if (!agentData.value) return;
           agentSaving.value = true;
-          agentMsg.value = '';
           try {
             await api('PATCH', `/api/agents/${agentData.value.id}`, {
               name: agentData.value.name,
               systemPrompt: agentData.value.systemPrompt,
               model: agentData.value.model,
             });
-            agentMsg.value = 'Saved!';
-            setTimeout(() => { agentMsg.value = ''; }, 2500);
+            toast('Agent saved!', 'success');
           } catch (e) {
-            agentMsg.value = 'Error: ' + (e.message ?? 'failed');
+            toast('Save failed: ' + (e.message ?? 'error'), 'error');
           } finally {
             agentSaving.value = false;
           }
@@ -533,17 +549,15 @@
         async function applyModel() {
           if (!modelPickProvider.value || !modelPickModel.value) return;
           modelSaving.value = true;
-          modelMsg.value = '';
           try {
             const m = await api('PUT', '/api/models/active', {
               provider: modelPickProvider.value,
               model: modelPickModel.value,
             });
             modelInfo.value = m;
-            modelMsg.value = 'Applied!';
-            setTimeout(() => { modelMsg.value = ''; }, 2500);
+            toast('Model applied!', 'success');
           } catch (e) {
-            modelMsg.value = 'Error: ' + (e instanceof Error ? e.message : 'failed');
+            toast('Apply failed: ' + (e instanceof Error ? e.message : 'error'), 'error');
           } finally {
             modelSaving.value = false;
           }
@@ -563,7 +577,8 @@
           try {
             await api('DELETE', `/api/memories/${id}`);
             await loadMemories();
-          } catch (e) { alert('Error: ' + e.message); }
+            toast('Memory deleted', 'success');
+          } catch (e) { toast('Delete failed: ' + e.message, 'error'); }
         }
 
         // ─── Scheduler helpers ────────────────────────────────────────
@@ -575,10 +590,8 @@
         }
 
         async function submitTask() {
-          taskError.value = '';
-          taskSuccess.value = '';
           if (!newTask.value.name.trim() || !newTask.value.cronExpr.trim() || !newTask.value.action.trim()) {
-            taskError.value = 'Name, cron expression, and action are required.';
+            toast('Name, cron expression, and action are required.', 'error');
             return;
           }
           taskSaving.value = true;
@@ -588,12 +601,11 @@
               cronExpr: newTask.value.cronExpr.trim(),
               action: newTask.value.action.trim(),
             });
-            taskSuccess.value = 'Task created!';
+            toast('Task created!', 'success');
             newTask.value = { name: '', cronExpr: '0 9 * * 1-5', action: 'agent_run' };
             await loadTasks();
-            setTimeout(() => { taskSuccess.value = ''; }, 3000);
           } catch (e) {
-            taskError.value = e.message ?? 'Failed to create task.';
+            toast(e.message ?? 'Failed to create task.', 'error');
           } finally {
             taskSaving.value = false;
           }
@@ -603,7 +615,7 @@
           try {
             await api('PATCH', `/api/tasks/${task.id}`, { enabled: !task.enabled });
             await loadTasks();
-          } catch (e) { alert('Error: ' + e.message); }
+          } catch (e) { toast('Update failed: ' + e.message, 'error'); }
         }
 
         async function deleteTaskItem(id) {
@@ -611,7 +623,8 @@
           try {
             await api('DELETE', `/api/tasks/${id}`);
             await loadTasks();
-          } catch (e) { alert('Error: ' + e.message); }
+            toast('Task deleted', 'success');
+          } catch (e) { toast('Delete failed: ' + e.message, 'error'); }
         }
 
         // ─── Workstyle helpers ────────────────────────────────────────
@@ -627,13 +640,11 @@
         async function saveWorkstyle() {
           if (!workstyleContent.value.trim()) return;
           workstyleSaving.value = true;
-          workstyleMsg.value = '';
           try {
             await api('PUT', '/api/context/workstyle', { content: workstyleContent.value });
-            workstyleMsg.value = 'Saved!';
-            setTimeout(() => { workstyleMsg.value = ''; }, 2500);
+            toast('Work style saved!', 'success');
           } catch (e) {
-            workstyleMsg.value = 'Error: ' + (e.message ?? 'failed');
+            toast('Save failed: ' + (e.message ?? 'error'), 'error');
           } finally {
             workstyleSaving.value = false;
           }
@@ -656,14 +667,12 @@
 
         async function saveBudget() {
           budgetSaving.value = true;
-          budgetMsg.value = '';
           try {
             await api('PUT', '/api/usage/budget', { limit: parseFloat(budgetLimit.value) });
-            budgetMsg.value = 'Saved!';
+            toast('Budget saved!', 'success');
             await loadUsage();
-            setTimeout(() => { budgetMsg.value = ''; }, 2500);
           } catch (e) {
-            budgetMsg.value = 'Error: ' + (e.message ?? 'failed');
+            toast('Save failed: ' + (e.message ?? 'error'), 'error');
           } finally {
             budgetSaving.value = false;
           }
@@ -680,14 +689,12 @@
         }
 
         async function triggerBackup() {
-          adminMsg.value = '';
           adminWorking.value = true;
           try {
             await api('POST', '/api/admin/backup');
-            adminMsg.value = 'Backup created successfully!';
-            setTimeout(() => { adminMsg.value = ''; }, 3000);
+            toast('Backup created successfully!', 'success');
           } catch (e) {
-            adminMsg.value = 'Error: ' + (e.message ?? 'failed');
+            toast('Backup failed: ' + (e.message ?? 'error'), 'error');
           } finally {
             adminWorking.value = false;
           }
@@ -695,15 +702,13 @@
 
         async function checkUpdates() {
           adminWorking.value = true;
-          adminMsg.value = 'Checking…';
+          toast('Checking for updates…', 'info');
           try {
             const info = await api('GET', '/api/admin/updates/check');
             updateInfo.value = info;
-            adminMsg.value = info.updateAvailable ? `Update available: v${info.latest}` : 'Already up to date.';
-            setTimeout(() => { adminMsg.value = ''; }, 5000);
+            toast(info.updateAvailable ? `Update available: v${info.latest}` : 'Already up to date.', info.updateAvailable ? 'info' : 'success');
           } catch {
-            adminMsg.value = 'Could not check for updates.';
-            setTimeout(() => { adminMsg.value = ''; }, 3000);
+            toast('Could not check for updates.', 'error');
           } finally {
             adminWorking.value = false;
           }
@@ -716,7 +721,6 @@
             e.target.value = '';
             return;
           }
-          adminMsg.value = 'Restoring…';
           adminWorking.value = true;
           try {
             const buf = await file.arrayBuffer();
@@ -726,9 +730,9 @@
               body: buf,
             });
             if (!r.ok) throw new Error(`HTTP ${r.status}`);
-            adminMsg.value = 'Restore complete! Refresh the page to see changes.';
+            toast('Restore complete! Refresh the page to see changes.', 'success');
           } catch (e) {
-            adminMsg.value = 'Error: ' + (e.message ?? 'failed');
+            toast('Restore failed: ' + (e.message ?? 'error'), 'error');
           } finally {
             adminWorking.value = false;
             e.target.value = '';
@@ -775,7 +779,6 @@
 
         async function addConnector() {
           connError.value = '';
-          connSuccess.value = '';
           if (!newConn.value.kind || !newConn.value.name.trim() || !newConn.value.apiKey.trim()) {
             connError.value = 'Kind, name, and API key are required.';
             return;
@@ -788,10 +791,9 @@
               name: newConn.value.name.trim(),
               settings,
             });
-            connSuccess.value = 'Connector added!';
+            toast('Connector added!', 'success');
             newConn.value = { kind: newConn.value.kind, name: '', apiKey: '', extra: {} };
             await loadConnectors();
-            setTimeout(() => { connSuccess.value = ''; }, 3000);
           } catch (e) {
             connError.value = e.message ?? 'Failed to add connector.';
           } finally {
@@ -804,8 +806,9 @@
           try {
             await api('DELETE', `/api/connectors/${id}`);
             await loadConnectors();
+            toast('Connector removed', 'success');
           } catch (e) {
-            alert('Error: ' + e.message);
+            toast('Remove failed: ' + e.message, 'error');
           }
         }
 
@@ -889,21 +892,22 @@
           sessions, activeSessionId, messages, inputText, streaming, streamingText, healthy, activeSession,
           selectSession, newSession, sendMessage, onKeydown,
           renamingSessionId, renameText, startRename, confirmRename, cancelRename, deleteSession,
-          showSettings, settingsTab, modelInfo, providers, modelPickProvider, modelPickModel, modelSaving, modelMsg,
+          showSettings, settingsTab, modelInfo, providers, modelPickProvider, modelPickModel, modelSaving,
           connectors, connectorTypes, stats, healthFull,
-          newConn, connError, connSuccess, connSaving,
-          agentData, agentSaving, agentMsg,
+          newConn, connError, connSaving,
+          agentData, agentSaving,
           memories, memoryQuery,
-          tasks, newTask, taskError, taskSuccess, taskSaving,
-          workstyleContent, workstyleSaving, workstyleMsg,
-          usageSummary, usageDaily, budgetStatus, budgetLimit, budgetSaving, budgetMsg, dailyMax, budgetPct,
-          adminMsg, adminWorking, updateInfo,
+          tasks, newTask, taskSaving,
+          workstyleContent, workstyleSaving,
+          usageSummary, usageDaily, budgetStatus, budgetLimit, budgetSaving, dailyMax, budgetPct,
+          adminWorking, updateInfo,
           openSettings, applyModel, addConnector, removeConnector, extraFields, connIcon, renderMd,
           saveAgent, loadMemories, deleteMemoryItem,
           submitTask, toggleTaskEnabled, deleteTaskItem,
           saveWorkstyle, saveBudget, exportData, triggerBackup, checkUpdates, handleImport,
           onboarding, showOnboarding, onboardingStep, onboardingWorking,
           onboardingNextStep, onboardingAddConnectorAndAdvance, skipOnboardingStep,
+          toasts,
         };
       },
 
@@ -978,6 +982,11 @@
           </div>
         </div>
 
+        <!-- ─── Toast container ───────────────────────────────────── -->
+        <div id="toast-container">
+          <div v-for="t in toasts" :key="t.id" :class="['toast', t.type]">{{ t.message }}</div>
+        </div>
+
         <!-- ─── Settings modal ─────────────────────────────────────── -->
         <div v-if="showSettings" class="modal-overlay" @click.self="showSettings = false">
           <div class="modal-box">
@@ -1016,7 +1025,6 @@
                   <button class="btn-primary" :disabled="agentSaving" @click="saveAgent">
                     {{ agentSaving ? 'Saving…' : 'Save Agent' }}
                   </button>
-                  <span v-if="agentMsg" :style="{ color: agentMsg.startsWith('Error') ? '#f87171' : '#22c55e', marginLeft: '10px', fontSize: '12px' }">{{ agentMsg }}</span>
                 </div>
                 <div v-else class="empty-msg">Loading agent…</div>
 
@@ -1030,7 +1038,6 @@
                   <button class="btn-primary" :disabled="workstyleSaving || !workstyleContent.trim()" @click="saveWorkstyle">
                     {{ workstyleSaving ? 'Saving…' : 'Save Work Style' }}
                   </button>
-                  <span v-if="workstyleMsg" :style="{ color: workstyleMsg.startsWith('Error') ? '#f87171' : '#22c55e', marginLeft: '10px', fontSize: '12px' }">{{ workstyleMsg }}</span>
                 </div>
               </div>
 
@@ -1070,11 +1077,10 @@
                       </select>
                       <input v-else v-model="modelPickModel" placeholder="model-id" style="flex:1;background:#0f1117;border:1px solid #2d3148;border-radius:6px;color:#e2e8f0;padding:6px 8px;font-size:13px" />
                     </div>
-                    <div style="display:flex;align-items:center;gap:8px">
+                    <div>
                       <button @click="applyModel" :disabled="modelSaving" style="background:#4c4fff;color:white;border:none;border-radius:6px;padding:7px 16px;cursor:pointer;font-size:13px">
                         {{ modelSaving ? 'Applying…' : 'Apply' }}
                       </button>
-                      <span v-if="modelMsg" style="font-size:12px;color:#22c55e">{{ modelMsg }}</span>
                     </div>
                     <p style="font-size:11px;color:#6b7a99;margin-top:2px">Changes apply immediately but reset on restart. Set MODEL_PROVIDER / MODEL_NAME env vars for permanent config.</p>
                   </div>
@@ -1132,7 +1138,6 @@
                     {{ connSaving ? 'Adding…' : 'Add Connector' }}
                   </button>
                   <div v-if="connError" class="form-error">{{ connError }}</div>
-                  <div v-if="connSuccess" class="form-success">{{ connSuccess }}</div>
                 </div>
               </div>
 
@@ -1191,8 +1196,6 @@
                   <button class="btn-primary" :disabled="taskSaving" @click="submitTask">
                     {{ taskSaving ? 'Creating…' : 'Create Task' }}
                   </button>
-                  <div v-if="taskError" class="form-error">{{ taskError }}</div>
-                  <div v-if="taskSuccess" class="form-success">{{ taskSuccess }}</div>
                 </div>
               </div>
 
@@ -1248,7 +1251,6 @@
                   <button class="btn-primary" :disabled="budgetSaving || !budgetLimit" @click="saveBudget">
                     {{ budgetSaving ? 'Saving…' : 'Save Budget' }}
                   </button>
-                  <span v-if="budgetMsg" :style="{ color: budgetMsg.startsWith('Error') ? '#f87171' : '#22c55e', marginLeft: '10px', fontSize: '12px' }">{{ budgetMsg }}</span>
                 </div>
                 <div class="setting-section" v-if="usageDaily.length > 0">
                   <h3>Last 7 Days</h3>
@@ -1277,7 +1279,6 @@
                       {{ updateInfo.latest ?? 'unknown' }}{{ updateInfo.updateAvailable ? ' (available)' : ' (current)' }}
                     </span>
                   </div>
-                  <div v-if="adminMsg" :style="{ color: adminMsg.startsWith('Error') ? '#f87171' : '#22c55e', fontSize: '12px', marginTop: '8px' }">{{ adminMsg }}</div>
                 </div>
                 <div class="setting-section">
                   <h3>Export Data</h3>
@@ -1423,7 +1424,6 @@
                 </div>
               </template>
               <div v-if="connError" class="form-error">{{ connError }}</div>
-              <div v-if="connSuccess" class="form-success">{{ connSuccess }}</div>
               <div class="ob-actions">
                 <button class="btn-primary" :disabled="connSaving || onboardingWorking" @click="onboardingAddConnectorAndAdvance">
                   {{ connSaving || onboardingWorking ? 'Working…' : 'Add & Continue →' }}
