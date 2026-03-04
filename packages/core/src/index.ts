@@ -12,3 +12,7 @@ export * from './memory/index.js';
 export * from './models/index.js';
 export * from './agent/index.js';
 export * from './scheduler/index.js';
+export * from './connectors/index.js';
+export * from './channels/index.js';
+export * from './services/index.js';
+export * from './onboarding/index.js';

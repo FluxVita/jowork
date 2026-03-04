@@ -151,8 +151,8 @@
 |-------|------|---------|------|
 | Phase -1：稳定化（清零 3 个阻塞） | ✅ 完成 | 2026-03-04 | N/A：本仓库从零构建，无旧代码阻塞 |
 | Phase 0：Monorepo 骨架 | ✅ 完成 | 2026-03-04 | pnpm workspaces + tsconfig 骨架 + edition.ts + pnpm lint 全绿 |
-| Phase 1：抽取 core 包 | 🔄 进行中 | 2026-03-04 | 所有核心模块已实现：types/config/utils/datamap/auth/policy/gateway/memory/models/agent/scheduler；connectors/channels/services/onboarding 待续 |
-| Phase 2：抽取 premium 包 | ⏳ 未开始 | - | 依赖 Phase 1 |
+| Phase 1：抽取 core 包 | ✅ 完成 | 2026-03-04 | 全部14个模块实现完毕：types/config/utils/datamap/auth/policy/gateway/memory/models/agent/scheduler/connectors/channels/services/onboarding；pnpm lint+test全绿 |
+| Phase 2：抽取 premium 包 | 🔄 进行中 | 2026-03-04 | 依赖 Phase 1 ✅ |
 | Phase 3：apps/jowork | ⏳ 未开始 | - | 依赖 Phase 1-2；前端用 Vue 3 CDN |
 | Phase 4：apps/fluxvita | ⏳ 未开始 | - | 依赖 Phase 3 |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
