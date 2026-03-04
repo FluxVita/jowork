@@ -52,6 +52,17 @@
     .cursor { display: inline-block; width: 2px; height: 1em; background: #60a5fa; margin-left: 2px; vertical-align: text-bottom; animation: blink 0.8s step-end infinite; }
     @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
 
+    /* ─── Typing indicator ────────────────────────────────────────── */
+    .typing-indicator { display: flex; align-items: center; gap: 4px; padding: 4px 0; }
+    .typing-indicator span { width: 6px; height: 6px; border-radius: 50%; background: #6b7a99; animation: typing-bounce 1.4s ease-in-out infinite; }
+    .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes typing-bounce { 0%,60%,100% { transform: translateY(0); opacity: 0.4; } 30% { transform: translateY(-6px); opacity: 1; } }
+
+    /* ─── Message timestamp ───────────────────────────────────────── */
+    .msg-meta { display: flex; align-items: center; gap: 8px; margin-top: 4px; font-size: 10px; color: #4a5568; }
+    .msg.user .msg-meta { justify-content: flex-end; }
+
     /* ─── Markdown rendered content ──────────────────────────────────── */
     .md-body { word-break: break-word; }
     .md-body p { margin: 0 0 8px; }
@@ -713,6 +724,25 @@
           }
         }
 
+        function formatTime(isoStr) {
+          if (!isoStr) return '';
+          const d = new Date(isoStr);
+          const now = Date.now();
+          const diff = Math.floor((now - d.getTime()) / 1000);
+          if (diff < 60) return 'just now';
+          if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+          if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+          return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+        }
+        function formatTimeFull(isoStr) {
+          if (!isoStr) return '';
+          return new Date(isoStr).toLocaleString();
+        }
+        async function copyMessage(content) {
+          try { await navigator.clipboard.writeText(content); toast('Copied to clipboard', 'success'); }
+          catch { toast('Copy failed', 'error'); }
+        }
+
         async function toggleFeedback(msg, rating) {
           if (!activeSessionId.value) return;
           const sid = activeSessionId.value;
@@ -1270,7 +1300,7 @@
           onboardingNextStep, onboardingAddConnectorAndAdvance, skipOnboardingStep,
           showSearch, searchQuery, searchResults, searchLoading, hasSearchResults,
           openSearch, closeSearch, onSearchInput, searchGoToSession,
-          toasts,
+          toasts, formatTime, formatTimeFull, copyMessage,
         };
       },
 
@@ -1332,18 +1362,25 @@
             <template v-for="(m, mi) in messages" :key="m.id">
               <div v-if="m.role === 'assistant'" class="msg assistant">
                 <div class="md-body" v-html="renderMd(m.content)"></div>
-                <div v-if="!streaming" class="msg-actions">
+                <div v-if="!streaming || mi !== messages.length - 1" class="msg-actions">
                   <button class="msg-action-btn" :class="{ active: m.feedback === 'positive' }" title="Good response" @click="toggleFeedback(m, 'positive')">👍</button>
                   <button class="msg-action-btn" :class="{ active: m.feedback === 'negative' }" title="Bad response" @click="toggleFeedback(m, 'negative')">👎</button>
+                  <button class="msg-action-btn" title="Copy message" @click="copyMessage(m.content)">📋 Copy</button>
                   <button v-if="mi === messages.length - 1" class="msg-action-btn" title="Regenerate" @click="regenerateMessage(m.id)">↻ Regenerate</button>
                 </div>
+                <div class="msg-meta" :title="formatTimeFull(m.createdAt)">{{ formatTime(m.createdAt) }}</div>
               </div>
-              <div v-else class="msg" :class="m.role">{{ m.content }}</div>
+              <div v-else class="msg" :class="m.role">
+                {{ m.content }}
+                <div class="msg-meta" :title="formatTimeFull(m.createdAt)">{{ formatTime(m.createdAt) }}</div>
+              </div>
             </template>
             <div v-if="streaming && streamingText" class="msg assistant">
               <div class="md-body" v-html="renderMd(streamingText)"></div><span class="cursor"></span>
             </div>
-            <div v-else-if="streaming && !streamingText" class="msg assistant" style="color:#6b7a99;font-style:italic">Thinking<span class="cursor"></span></div>
+            <div v-else-if="streaming && !streamingText" class="msg assistant">
+              <div class="typing-indicator"><span></span><span></span><span></span></div>
+            </div>
           </div>
           <div id="input-area">
             <textarea

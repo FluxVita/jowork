@@ -217,6 +217,7 @@
 | Phase 65：消息重新生成（Regenerate） | ✅ 完成 | 2026-03-05 | POST /api/sessions/:id/messages/:msgId/regenerate SSE端点（删除目标assistant消息及后续消息+重新dispatch）；前端↻Regenerate按钮（最后一条assistant消息）；migrator测试修复004_connector_sync_schedule；7新测试；apps/jowork+apps/fluxvita均更新；pnpm lint+test全绿（365/365） |
 | Phase 66：代码块复制按钮（Copy Code Block） | ✅ 完成 | 2026-03-05 | marked.Renderer自定义code块（code-block-wrapper容器+Copy按钮+语言标签）；hover显示/clipboard API/Copied!反馈；apps/jowork+apps/fluxvita均更新；pnpm lint全绿（纯前端） |
 | Phase 67：消息反馈（Message Feedback） | ✅ 完成 | 2026-03-05 | migration 005_message_feedback（message_feedback表+UNIQUE+CHECK约束+CASCADE DELETE）；feedbackRouter 4端点（GET batch/POST upsert/GET single/DELETE）；前端👍👎按钮（所有assistant消息）+session加载时批量获取feedback；9新测试；apps/jowork+apps/fluxvita均更新；pnpm lint+test全绿（374/374） |
+| Phase 68：UX 打磨 — Typing Indicator + 消息复制 + 时间戳 | ✅ 完成 | 2026-03-05 | typing-indicator三点弹跳动画（替换静态Thinking）+消息📋Copy按钮（clipboard API+toast反馈）+消息时间戳（相对时间+hover绝对时间）；apps/jowork+apps/fluxvita均更新；pnpm lint全绿（纯前端） |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*
@@ -3356,6 +3357,16 @@ GET /health → {
 - [x] apps/jowork + apps/fluxvita 均更新
 - [x] 9 新测试（feedback.test.ts）+ migrator.test.ts 更新
 - [x] pnpm lint+test 全绿（374/374）
+
+### Phase 68: UX 打磨 — Typing Indicator + 消息复制 + 时间戳（0.25 天）
+
+- [x] CSS：`.typing-indicator` 三点弹跳动画（替换静态"Thinking"文字）
+- [x] 前端：streaming 等待状态改用 typing indicator 组件
+- [x] 消息操作栏新增「📋 Copy」按钮（`navigator.clipboard.writeText()`），复制纯文本内容
+- [x] 消息气泡底部显示时间戳（相对时间 "2m ago" / 绝对时间 hover tooltip）
+- [x] `formatTime()` 相对时间（just now / Xm ago / Xh ago / 日期）+ `formatTimeFull()` 绝对时间 tooltip
+- [x] apps/jowork + apps/fluxvita 均更新
+- [x] pnpm lint 全绿（纯前端改动）
 
 **AI 辅助开发预计总工期：6-10 个工作日**（全程 AI 写代码，人工只做决策/审查/测试）
 
