@@ -189,7 +189,7 @@
 | Phase 37：Anthropic 原生 tool_use API | ✅ 完成 | 2026-03-05 | chatWithTools()+ApiMessage/ToolSchema/ToolUseBlock/ApiContent类型；builtin engine改用原生tool_use多轮协议（替换XML hack）；11新测试；pnpm lint+test全绿（255/255） |
 | Phase 38：流式端点工具执行支持 | ✅ 完成 | 2026-03-05 | streamWithTools()真正流式Anthropic SSE+tool_use解析；runBuiltin()改用streamWithTools()实现字符级流+工具执行；/stream端点改用runBuiltin+onChunk透明工具执行；5新测试；pnpm lint+test全绿（255→260） |
 | Phase 39：前端完善 — Markdown 渲染 + 设置面板 + 连接器管理 UI | ✅ 完成 | 2026-03-05 | marked.js Markdown渲染(v-html)+⚙设置面板(Models/Connectors/System三标签)+连接器CRUD UI+健康/stats展示；apps/jowork+apps/fluxvita均更新；pnpm lint+test全绿（260/260） |
-| Phase 40：设置面板扩展 — Agent 配置 + 记忆管理 UI | 🔄 进行中 | 2026-03-05 | - |
+| Phase 40：设置面板扩展 — Agent 配置 + 记忆管理 UI | ✅ 完成 | 2026-03-05 | Agent标签(name/systemPrompt/model可编辑+PATCH保存)+Memories标签(列表+搜索+单条删除)+默认打开Agent标签；apps/jowork+apps/fluxvita均更新；pnpm lint+test全绿（260/260） |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*
@@ -3041,10 +3041,10 @@ GET /health → {
 
 ### Phase 40: 设置面板扩展 — Agent 配置 + 记忆管理 UI（0.5 天）
 
-- [ ] 设置面板新增 Agent 标签：加载第一个 agent（`GET /api/agents`），展示并可编辑 name/systemPrompt/model（`PATCH /api/agents/:id`）
-- [ ] 设置面板新增 Memories 标签：分页列表（`GET /api/memories`）+ 搜索 + 删除单条（`DELETE /api/memories/:id`）
-- [ ] `apps/fluxvita/public/index.html`：同步上述两标签
-- [ ] pnpm lint+test 全绿（260/260）
+- [x] 设置面板新增 Agent 标签：加载第一个 agent（`GET /api/agents`），展示并可编辑 name/systemPrompt/model（`PATCH /api/agents/:id`）
+- [x] 设置面板新增 Memories 标签：分页列表（`GET /api/memories`）+ 搜索 + 删除单条（`DELETE /api/memories/:id`）
+- [x] `apps/fluxvita/public/index.html`：同步上述两标签
+- [x] pnpm lint+test 全绿（260/260）
 
 **AI 辅助开发预计总工期：6-10 个工作日**（全程 AI 写代码，人工只做决策/审查/测试）
 

@@ -122,6 +122,19 @@
     .stat-card { background: #0f1117; border-radius: 6px; padding: 12px; text-align: center; }
     .stat-value { font-size: 22px; font-weight: 700; color: #a8b4ff; }
     .stat-label { font-size: 11px; color: #6b7a99; margin-top: 2px; }
+
+    /* Agent editor */
+    .form-row textarea { width: 100%; background: #0f1117; border: 1px solid #2d3148; border-radius: 6px; padding: 8px 10px; color: #e2e8f0; font-size: 13px; outline: none; resize: vertical; font-family: inherit; }
+    .form-row textarea:focus { border-color: #4c4fff; }
+
+    /* Memory list */
+    .memory-search { width: 100%; background: #0f1117; border: 1px solid #2d3148; border-radius: 6px; padding: 7px 10px; color: #e2e8f0; font-size: 13px; outline: none; margin-bottom: 10px; }
+    .memory-search:focus { border-color: #4c4fff; }
+    .memory-item { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; background: #0f1117; border-radius: 6px; margin-bottom: 6px; }
+    .memory-content { flex: 1; font-size: 13px; color: #e2e8f0; line-height: 1.5; word-break: break-word; }
+    .memory-meta { font-size: 11px; color: #6b7a99; margin-top: 2px; }
+    .memory-delete { background: transparent; border: 1px solid #450a0a; color: #f87171; border-radius: 4px; padding: 3px 7px; cursor: pointer; font-size: 12px; flex-shrink: 0; }
+    .memory-delete:hover { background: #450a0a; }
   </style>
 </head>
 <body>
@@ -183,7 +196,7 @@
 
         // ─── Settings state ───────────────────────────────────────────
         const showSettings  = ref(false);
-        const settingsTab   = ref('models');
+        const settingsTab   = ref('agent');
         const modelInfo     = ref(null);
         const providers     = ref([]);
         const connectors    = ref([]);
@@ -196,6 +209,15 @@
         const connError = ref('');
         const connSuccess = ref('');
         const connSaving  = ref(false);
+
+        // Agent editor
+        const agentData   = ref(null);
+        const agentSaving = ref(false);
+        const agentMsg    = ref('');
+
+        // Memories
+        const memories     = ref([]);
+        const memoryQuery  = ref('');
 
         // ─── Chat helpers ─────────────────────────────────────────────
         async function checkHealth() {
@@ -336,6 +358,52 @@
           await loadSettingsData();
         }
 
+        async function loadAgent() {
+          try {
+            const list = await api('GET', '/api/agents').catch(() => []);
+            if (Array.isArray(list) && list.length > 0) {
+              const a = list[0];
+              agentData.value = { id: a.id, name: a.name, systemPrompt: a.systemPrompt, model: a.model };
+            }
+          } catch { /* ignore */ }
+        }
+
+        async function saveAgent() {
+          if (!agentData.value) return;
+          agentSaving.value = true;
+          agentMsg.value = '';
+          try {
+            await api('PATCH', `/api/agents/${agentData.value.id}`, {
+              name: agentData.value.name,
+              systemPrompt: agentData.value.systemPrompt,
+              model: agentData.value.model,
+            });
+            agentMsg.value = 'Saved!';
+            setTimeout(() => { agentMsg.value = ''; }, 2500);
+          } catch (e) {
+            agentMsg.value = 'Error: ' + (e.message ?? 'failed');
+          } finally {
+            agentSaving.value = false;
+          }
+        }
+
+        async function loadMemories() {
+          try {
+            const q = memoryQuery.value.trim();
+            const path = q ? `/api/memories?q=${encodeURIComponent(q)}` : '/api/memories';
+            const list = await api('GET', path).catch(() => []);
+            memories.value = Array.isArray(list) ? list : [];
+          } catch { /* ignore */ }
+        }
+
+        async function deleteMemoryItem(id) {
+          if (!confirm('Delete this memory?')) return;
+          try {
+            await api('DELETE', `/api/memories/${id}`);
+            await loadMemories();
+          } catch (e) { alert('Error: ' + e.message); }
+        }
+
         async function loadSettingsData() {
           try {
             const [m, p] = await Promise.all([
@@ -346,7 +414,7 @@
             providers.value = (p?.providers ?? []);
           } catch { /* ignore */ }
 
-          await loadConnectors();
+          await Promise.all([loadConnectors(), loadAgent(), loadMemories()]);
 
           try {
             const h = await api('GET', '/health/full').catch(() => fetch('/health').then(r => r.json()).catch(() => null));
@@ -431,7 +499,10 @@
           selectSession, newSession, sendMessage, onKeydown,
           showSettings, settingsTab, modelInfo, providers, connectors, connectorTypes, stats, healthFull,
           newConn, connError, connSuccess, connSaving,
+          agentData, agentSaving, agentMsg,
+          memories, memoryQuery,
           openSettings, addConnector, removeConnector, extraFields, connIcon, renderMd,
+          saveAgent, loadMemories, deleteMemoryItem,
         };
       },
 
@@ -499,11 +570,37 @@
               <button class="modal-close" @click="showSettings = false">✕</button>
             </div>
             <div class="modal-tabs">
+              <div class="modal-tab" :class="{ active: settingsTab === 'agent' }" @click="settingsTab = 'agent'">Agent</div>
               <div class="modal-tab" :class="{ active: settingsTab === 'models' }" @click="settingsTab = 'models'">Models</div>
               <div class="modal-tab" :class="{ active: settingsTab === 'connectors' }" @click="settingsTab = 'connectors'">Connectors</div>
+              <div class="modal-tab" :class="{ active: settingsTab === 'memories' }" @click="settingsTab = 'memories'">Memories</div>
               <div class="modal-tab" :class="{ active: settingsTab === 'system' }" @click="settingsTab = 'system'">System</div>
             </div>
             <div class="modal-body">
+
+              <!-- Agent tab -->
+              <div v-if="settingsTab === 'agent'">
+                <div class="setting-section" v-if="agentData">
+                  <h3>Agent Configuration</h3>
+                  <div class="form-row">
+                    <label>Agent Name</label>
+                    <input v-model="agentData.name" type="text" placeholder="My AI Coworker" />
+                  </div>
+                  <div class="form-row">
+                    <label>Model</label>
+                    <input v-model="agentData.model" type="text" placeholder="claude-3-5-sonnet-latest" />
+                  </div>
+                  <div class="form-row">
+                    <label>System Prompt</label>
+                    <textarea v-model="agentData.systemPrompt" rows="8" placeholder="Describe who your AI coworker is and what it knows about your business..."></textarea>
+                  </div>
+                  <button class="btn-primary" :disabled="agentSaving" @click="saveAgent">
+                    {{ agentSaving ? 'Saving…' : 'Save Agent' }}
+                  </button>
+                  <span v-if="agentMsg" :style="{ color: agentMsg.startsWith('Error') ? '#f87171' : '#22c55e', marginLeft: '10px', fontSize: '12px' }">{{ agentMsg }}</span>
+                </div>
+                <div v-else class="empty-msg">Loading agent…</div>
+              </div>
 
               <!-- Models tab -->
               <div v-if="settingsTab === 'models'">
@@ -586,6 +683,28 @@
                   </button>
                   <div v-if="connError" class="form-error">{{ connError }}</div>
                   <div v-if="connSuccess" class="form-success">{{ connSuccess }}</div>
+                </div>
+              </div>
+
+              <!-- Memories tab -->
+              <div v-if="settingsTab === 'memories'">
+                <div class="setting-section">
+                  <h3>Memories ({{ memories.length }})</h3>
+                  <input
+                    class="memory-search"
+                    v-model="memoryQuery"
+                    placeholder="Search memories…"
+                    @input="loadMemories"
+                    type="text"
+                  />
+                  <div v-if="memories.length === 0" class="empty-msg">No memories yet. The agent saves memories during conversations.</div>
+                  <div v-for="m in memories" :key="m.id" class="memory-item">
+                    <div style="flex:1">
+                      <div class="memory-content">{{ m.content }}</div>
+                      <div class="memory-meta">{{ m.source ?? 'agent' }} · {{ m.createdAt ? new Date(m.createdAt).toLocaleDateString() : '' }}</div>
+                    </div>
+                    <button class="memory-delete" @click="deleteMemoryItem(m.id)">✕</button>
+                  </div>
                 </div>
               </div>
 
