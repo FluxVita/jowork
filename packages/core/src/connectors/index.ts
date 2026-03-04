@@ -3,7 +3,8 @@
 
 import type { ConnectorConfig, ConnectorId, ConnectorKind, SensitivityLevel } from '../types.js';
 import { getDb } from '../datamap/db.js';
-import { generateId, nowISO } from '../utils/index.js';
+import { generateId, nowISO, logger } from '../utils/index.js';
+import { withRetry } from '../utils/retry.js';
 import { getEdition } from '../edition.js';
 import { JoworkError } from '../types.js';
 
@@ -44,6 +45,49 @@ export interface BaseConnector {
   search?(config: ConnectorConfig, query: string): Promise<FetchResult[]>;
 }
 
+// ─── Connector health tracking ────────────────────────────────────────────────
+
+export type ConnectorHealthStatus = 'healthy' | 'degraded' | 'unknown';
+
+interface HealthEntry {
+  status: ConnectorHealthStatus;
+  failureCount: number;
+  lastFailureAt?: string;
+  lastSuccessAt?: string;
+}
+
+const healthMap = new Map<ConnectorKind, HealthEntry>();
+
+function getHealth(kind: ConnectorKind): HealthEntry {
+  return healthMap.get(kind) ?? { status: 'unknown', failureCount: 0 };
+}
+
+function recordSuccess(kind: ConnectorKind): void {
+  const prev = getHealth(kind);
+  if (prev.status !== 'healthy') {
+    logger.info('Connector recovered', { kind });
+  }
+  healthMap.set(kind, { status: 'healthy', failureCount: 0, lastSuccessAt: nowISO() });
+}
+
+function recordFailure(kind: ConnectorKind, err: unknown): void {
+  const prev = getHealth(kind);
+  const failureCount = prev.failureCount + 1;
+  const status: ConnectorHealthStatus = failureCount >= 3 ? 'degraded' : 'healthy';
+  if (status === 'degraded' && prev.status !== 'degraded') {
+    logger.warn('Connector degraded', { kind, failureCount, err: String(err) });
+  }
+  healthMap.set(kind, { status, failureCount, lastFailureAt: nowISO() });
+}
+
+export function getConnectorHealth(kind: ConnectorKind): HealthEntry {
+  return getHealth(kind);
+}
+
+export function getAllConnectorHealth(): Record<string, HealthEntry> {
+  return Object.fromEntries(healthMap.entries());
+}
+
 // ─── Registry ─────────────────────────────────────────────────────────────────
 
 const registry = new Map<ConnectorKind, BaseConnector>();
@@ -60,6 +104,46 @@ export function getConnector(kind: ConnectorKind): BaseConnector {
 
 export function listRegisteredConnectors(): ConnectorKind[] {
   return Array.from(registry.keys());
+}
+
+// ─── Self-healing wrapper ─────────────────────────────────────────────────────
+// All connector calls go through withRetry + health tracking.
+
+const RETRY_OPTS = { maxAttempts: 3, baseDelayMs: 500, maxDelayMs: 10_000, jitterMs: 200 };
+
+export async function connectorDiscover(
+  kind: ConnectorKind,
+  config: ConnectorConfig,
+): Promise<DiscoverResult[]> {
+  const c = getConnector(kind);
+  return withRetry(async () => {
+    try {
+      const result = await c.discover(config);
+      recordSuccess(kind);
+      return result;
+    } catch (err) {
+      recordFailure(kind, err);
+      throw err;
+    }
+  }, RETRY_OPTS);
+}
+
+export async function connectorFetch(
+  kind: ConnectorKind,
+  config: ConnectorConfig,
+  id: string,
+): Promise<FetchResult> {
+  const c = getConnector(kind);
+  return withRetry(async () => {
+    try {
+      const result = await c.fetch(config, id);
+      recordSuccess(kind);
+      return result;
+    } catch (err) {
+      recordFailure(kind, err);
+      throw err;
+    }
+  }, RETRY_OPTS);
 }
 
 // ─── CRUD (persisted configs) ─────────────────────────────────────────────────

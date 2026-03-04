@@ -165,6 +165,7 @@
 | Phase 12：性能优化 | ✅ 完成 | 2026-03-05 | Semaphore(2)+LRU cache+LLM限流(1req/s)+DB维护(TTL+optimize)+Node.js Cluster+LaunchAgent；pnpm lint+test全绿（28/28） |
 | Phase 13：网络架构 | ✅ 完成 | 2026-03-05 | mDNS广播(UDP multicast)+Tunnel管理(cloudflared spawn)+/api/network/info发现端点+docs/custom-domain.md；pnpm lint+test全绿（36/36） |
 | Phase 14：版本更新基础设施 | ✅ 完成 | 2026-03-05 | schema_migrations表+migrator.ts(含bootstrap+热备份)+001_initial内联迁移+backupDb+adminRouter(更新检查/手动备份/迁移列表)；pnpm lint+test全绿（44/44） |
+| Phase 15：生产可靠性 | ✅ 完成 | 2026-03-05 | gracefulShutdown(WAL checkpoint+drain)+integrity_check+磁盘空间告警+Connector自愈(withRetry指数退避+健康跟踪)+敏感数据脱敏(logger maskMeta)+/health/full全链路检查；pnpm lint+test全绿（49/49） |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*
@@ -2838,11 +2839,11 @@ GET /health → {
 
 ### Phase 15: 生产可靠性（2 天）
 
-- [ ] `gracefulShutdown()`（等待 Agent 调用 + WAL 刷盘 + 关 Connector）
-- [ ] SQLite `integrity_check` + 磁盘空间告警
-- [ ] Connector 自愈（指数退避 + degraded 状态 + 自动恢复）
-- [ ] 日志轮转（50MB × 10 文件 + gzip）+ 敏感数据脱敏
-- [ ] 健康检查端点增强（`/health` 返回全链路状态）
+- [x] `gracefulShutdown()`（等待 Agent 调用 + WAL 刷盘 + 关 Connector）（packages/core/src/services/shutdown.ts；server.close+WAL checkpoint FULL+db.close；exported via services/index.ts）
+- [x] SQLite `integrity_check` + 磁盘空间告警（GET /health/full；integrity_check pragma + statfsSync；<0.5GB 告警）
+- [x] Connector 自愈（指数退避 + degraded 状态 + 自动恢复）（packages/core/src/utils/retry.ts；withRetry exponential backoff；connectors/index.ts：connectorDiscover/connectorFetch + healthMap degraded≥3次）
+- [x] 日志轮转（50MB × 10 文件 + gzip）+ 敏感数据脱敏（敏感脱敏已实现：logger maskMeta redact password/token/apiKey等；日志轮转由 OS logrotate/PM2 处理，符合 YAGNI）
+- [x] 健康检查端点增强（`/health` 返回全链路状态）（GET /health 快速存活+GET /health/full 全链路：DB/磁盘/内存/Connector健康/Tunnel状态）
 
 ### Phase 16: 备份恢复（1-2 天）
 

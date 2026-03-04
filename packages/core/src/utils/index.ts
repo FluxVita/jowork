@@ -1,6 +1,8 @@
 // @jowork/core — utility functions
 export { Semaphore } from './semaphore.js';
 export { LRUCache } from './lru.js';
+export { withRetry } from './retry.js';
+export type { RetryOptions } from './retry.js';
 
 import { randomUUID } from 'node:crypto';
 import { config } from '../config.js';
@@ -33,10 +35,35 @@ function shouldLog(level: LogLevel): boolean {
   return LOG_LEVELS[level] >= LOG_LEVELS[configured];
 }
 
+// ─── Sensitive data masking ───────────────────────────────────────────────────
+
+// Keys whose values should be redacted in logs
+const SENSITIVE_KEYS = new Set([
+  'password', 'apikey', 'api_key', 'secret', 'token', 'accesstoken',
+  'access_token', 'refreshtoken', 'refresh_token', 'authorization',
+  'x-api-key', 'credential', 'privatekey', 'private_key',
+]);
+
+function maskMeta(meta: Record<string, unknown>): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(meta)) {
+    if (SENSITIVE_KEYS.has(k.toLowerCase())) {
+      result[k] = '[REDACTED]';
+    } else if (v !== null && typeof v === 'object' && !Array.isArray(v)) {
+      result[k] = maskMeta(v as Record<string, unknown>);
+    } else {
+      result[k] = v;
+    }
+  }
+  return result;
+}
+
 function fmt(level: LogLevel, message: string, meta?: Record<string, unknown>): string {
   const ts = new Date().toISOString();
   const base = `[${ts}] ${level.toUpperCase()} ${message}`;
-  return meta ? `${base} ${JSON.stringify(meta)}` : base;
+  if (!meta) return base;
+  const safe = maskMeta(meta);
+  return `${base} ${JSON.stringify(safe)}`;
 }
 
 export const logger = {

@@ -1,4 +1,5 @@
 // @jowork/core/services — service registry
+export { gracefulShutdown } from './shutdown.js';
 // Allows apps/jowork and apps/fluxvita to register services that the core can reference.
 
 export interface ServiceHandle {
