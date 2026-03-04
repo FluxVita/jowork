@@ -175,6 +175,7 @@
 | Phase 19：LLM成本管理 | ✅ 完成 | 2026-03-05 | llm_usage+budget_config表；recordUsage+estimateCost；/api/usage/summary|daily|budget|recommend|team路由；17个新测试；pnpm lint+test全绿（79/79） |
 | Phase 20：GTM准备 | ✅ 完成 | 2026-03-05 | quick-start.md(3种安装方式)；product-hunt.md(tagline+文案)；reddit-hn.md(4平台帖子)；官网/视频/Discord需人工执行 |
 | Phase 25：Discord Channel | ✅ 完成 | 2026-03-05 | discordChannel（webhook发送+rich embeds+bot轮询接收）；pnpm lint+test全绿（124/124） |
+| Phase 26：Channels REST API | 🔄 进行中 | 2026-03-05 | GET/POST /api/channels — 列出/配置/使用频道插件 |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*
