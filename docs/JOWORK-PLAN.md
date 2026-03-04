@@ -188,7 +188,7 @@
 | Phase 36：Agent 内置工具集扩展 | ✅ 完成 | 2026-03-05 | create_memory+fetch_connector+search_connector+list_context 4新工具+getToolSchemas()+/api/agent/tools；2→6工具；pnpm lint+test全绿（244/244） |
 | Phase 37：Anthropic 原生 tool_use API | ✅ 完成 | 2026-03-05 | chatWithTools()+ApiMessage/ToolSchema/ToolUseBlock/ApiContent类型；builtin engine改用原生tool_use多轮协议（替换XML hack）；11新测试；pnpm lint+test全绿（255/255） |
 | Phase 38：流式端点工具执行支持 | ✅ 完成 | 2026-03-05 | streamWithTools()真正流式Anthropic SSE+tool_use解析；runBuiltin()改用streamWithTools()实现字符级流+工具执行；/stream端点改用runBuiltin+onChunk透明工具执行；5新测试；pnpm lint+test全绿（255→260） |
-| Phase 39：前端完善 — Markdown 渲染 + 设置面板 + 连接器管理 UI | 🔄 进行中 | 2026-03-05 | - |
+| Phase 39：前端完善 — Markdown 渲染 + 设置面板 + 连接器管理 UI | ✅ 完成 | 2026-03-05 | marked.js Markdown渲染(v-html)+⚙设置面板(Models/Connectors/System三标签)+连接器CRUD UI+健康/stats展示；apps/jowork+apps/fluxvita均更新；pnpm lint+test全绿（260/260） |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*
@@ -3030,13 +3030,13 @@ GET /health → {
 
 ### Phase 39: 前端完善 — Markdown 渲染 + 设置面板 + 连接器管理 UI（0.5 天）
 
-- [ ] `apps/jowork/public/index.html`：assistant 消息支持 Markdown 渲染（`marked.js` CDN，`v-html`）
-- [ ] `apps/jowork/public/index.html`：侧边栏底部 ⚙ 图标 → 设置面板（弹出覆盖层）
-- [ ] 设置面板 Models 标签：展示当前 provider/model + 所有已注册 providers
-- [ ] 设置面板 Connectors 标签：连接器列表 + 添加表单（type/name/apiKey 字段）+ 删除
-- [ ] 设置面板 System 标签：`/health` 状态 + `/api/stats` 聚合数据
-- [ ] `apps/fluxvita/public/index.html`：同步上述功能（保留 FluxVita 品牌色）
-- [ ] pnpm lint+test 全绿（260/260，纯前端改动无新后端测试）
+- [x] `apps/jowork/public/index.html`：assistant 消息支持 Markdown 渲染（`marked.js` CDN，`v-html`）
+- [x] `apps/jowork/public/index.html`：侧边栏底部 ⚙ 图标 → 设置面板（弹出覆盖层）
+- [x] 设置面板 Models 标签：展示当前 provider/model + 所有已注册 providers
+- [x] 设置面板 Connectors 标签：连接器列表 + 添加表单（type/name/apiKey 字段）+ 删除
+- [x] 设置面板 System 标签：`/health` 状态 + `/api/stats` 聚合数据
+- [x] `apps/fluxvita/public/index.html`：同步上述功能（保留 FluxVita 品牌色）
+- [x] pnpm lint+test 全绿（260/260，纯前端改动无新后端测试）
 
 **AI 辅助开发预计总工期：6-10 个工作日**（全程 AI 写代码，人工只做决策/审查/测试）
 

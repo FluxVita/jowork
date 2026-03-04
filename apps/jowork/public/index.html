@@ -8,7 +8,7 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f1117; color: #e2e8f0; min-height: 100vh; display: flex; }
 
-    /* Sidebar */
+    /* ─── Sidebar ─────────────────────────────────────────────────────── */
     #sidebar { width: 240px; background: #1a1d26; border-right: 1px solid #2d3148; display: flex; flex-direction: column; flex-shrink: 0; }
     #sidebar-header { padding: 16px; border-bottom: 1px solid #2d3148; }
     #sidebar-header h1 { font-size: 18px; font-weight: 700; color: #a8b4ff; }
@@ -16,20 +16,44 @@
     #sessions-list { flex: 1; overflow-y: auto; padding: 8px; }
     .session-item { padding: 8px 10px; border-radius: 6px; cursor: pointer; font-size: 13px; color: #94a3b8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 2px; }
     .session-item:hover, .session-item.active { background: #2d3148; color: #e2e8f0; }
-    #new-session-btn { margin: 8px; padding: 8px 12px; background: #4c4fff; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; }
+    #sidebar-footer { padding: 8px; border-top: 1px solid #2d3148; display: flex; gap: 6px; }
+    #new-session-btn { flex: 1; padding: 8px 12px; background: #4c4fff; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; }
     #new-session-btn:hover { background: #6366ff; }
+    #settings-btn { padding: 8px 10px; background: transparent; color: #6b7a99; border: 1px solid #2d3148; border-radius: 6px; cursor: pointer; font-size: 15px; }
+    #settings-btn:hover { background: #2d3148; color: #e2e8f0; }
 
-    /* Main */
+    /* ─── Main ────────────────────────────────────────────────────────── */
     #main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
     #messages { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 16px; }
-    .msg { max-width: 680px; line-height: 1.6; font-size: 14px; white-space: pre-wrap; word-break: break-word; }
-    .msg.user { align-self: flex-end; background: #4c4fff; color: white; padding: 10px 16px; border-radius: 16px 16px 4px 16px; }
-    .msg.assistant { align-self: flex-start; background: #1a1d26; border: 1px solid #2d3148; padding: 10px 16px; border-radius: 4px 16px 16px 16px; }
+    .msg { max-width: 720px; line-height: 1.6; font-size: 14px; }
+    .msg.user { align-self: flex-end; background: #4c4fff; color: white; padding: 10px 16px; border-radius: 16px 16px 4px 16px; white-space: pre-wrap; word-break: break-word; }
+    .msg.assistant { align-self: flex-start; background: #1a1d26; border: 1px solid #2d3148; padding: 12px 16px; border-radius: 4px 16px 16px 16px; }
     .msg.system { align-self: center; color: #6b7a99; font-size: 12px; font-style: italic; }
     .cursor { display: inline-block; width: 2px; height: 1em; background: #a8b4ff; margin-left: 2px; vertical-align: text-bottom; animation: blink 0.8s step-end infinite; }
     @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
 
-    /* Input */
+    /* ─── Markdown rendered content ──────────────────────────────────── */
+    .md-body { word-break: break-word; }
+    .md-body p { margin: 0 0 8px; }
+    .md-body p:last-child { margin-bottom: 0; }
+    .md-body h1,.md-body h2,.md-body h3 { font-weight: 600; margin: 12px 0 6px; color: #c7d2fe; }
+    .md-body h1 { font-size: 18px; }
+    .md-body h2 { font-size: 16px; }
+    .md-body h3 { font-size: 14px; }
+    .md-body ul,.md-body ol { padding-left: 20px; margin: 6px 0; }
+    .md-body li { margin-bottom: 3px; }
+    .md-body code { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px; background: #0f1117; border: 1px solid #2d3148; border-radius: 3px; padding: 1px 5px; color: #93c5fd; }
+    .md-body pre { background: #0f1117; border: 1px solid #2d3148; border-radius: 8px; padding: 12px 14px; overflow-x: auto; margin: 8px 0; }
+    .md-body pre code { background: none; border: none; padding: 0; color: #e2e8f0; font-size: 12px; }
+    .md-body blockquote { border-left: 3px solid #4c4fff; padding-left: 12px; margin: 8px 0; color: #94a3b8; }
+    .md-body a { color: #a8b4ff; text-decoration: underline; }
+    .md-body strong { color: #f1f5f9; }
+    .md-body hr { border: none; border-top: 1px solid #2d3148; margin: 10px 0; }
+    .md-body table { border-collapse: collapse; width: 100%; margin: 8px 0; font-size: 13px; }
+    .md-body th,.md-body td { border: 1px solid #2d3148; padding: 6px 10px; text-align: left; }
+    .md-body th { background: #2d3148; color: #c7d2fe; }
+
+    /* ─── Input ───────────────────────────────────────────────────────── */
     #input-area { padding: 16px; border-top: 1px solid #2d3148; display: flex; gap: 8px; }
     #msg-input { flex: 1; background: #1a1d26; border: 1px solid #2d3148; border-radius: 8px; padding: 10px 14px; color: #e2e8f0; font-size: 14px; outline: none; resize: none; max-height: 120px; font-family: inherit; }
     #msg-input:focus { border-color: #4c4fff; }
@@ -39,10 +63,65 @@
     #send-btn.stop { background: #ef4444; }
     #send-btn.stop:hover { background: #f87171; }
 
-    /* Health */
+    /* ─── Status bar ─────────────────────────────────────────────────── */
     #status-bar { padding: 6px 16px; background: #0f1117; border-bottom: 1px solid #1a1d26; font-size: 11px; color: #6b7a99; display: flex; align-items: center; gap: 6px; }
     .dot { width: 6px; height: 6px; border-radius: 50%; background: #22c55e; }
     .dot.error { background: #ef4444; }
+
+    /* ─── Settings modal ─────────────────────────────────────────────── */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 100; display: flex; align-items: center; justify-content: center; }
+    .modal-box { background: #1a1d26; border: 1px solid #2d3148; border-radius: 12px; width: 600px; max-width: 95vw; max-height: 80vh; display: flex; flex-direction: column; overflow: hidden; }
+    .modal-header { padding: 16px 20px; border-bottom: 1px solid #2d3148; display: flex; align-items: center; justify-content: space-between; }
+    .modal-header h2 { font-size: 16px; font-weight: 600; color: #e2e8f0; }
+    .modal-close { background: transparent; border: none; color: #6b7a99; cursor: pointer; font-size: 18px; padding: 2px 6px; border-radius: 4px; }
+    .modal-close:hover { background: #2d3148; color: #e2e8f0; }
+    .modal-tabs { display: flex; padding: 0 20px; border-bottom: 1px solid #2d3148; gap: 0; }
+    .modal-tab { padding: 10px 16px; font-size: 13px; color: #6b7a99; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+    .modal-tab:hover { color: #e2e8f0; }
+    .modal-tab.active { color: #a8b4ff; border-bottom-color: #4c4fff; }
+    .modal-body { flex: 1; overflow-y: auto; padding: 20px; }
+
+    /* ─── Settings content ───────────────────────────────────────────── */
+    .setting-section { margin-bottom: 20px; }
+    .setting-section h3 { font-size: 12px; font-weight: 600; color: #6b7a99; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; }
+    .info-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #0f1117; border-radius: 6px; margin-bottom: 4px; font-size: 13px; }
+    .info-label { color: #6b7a99; }
+    .info-value { color: #e2e8f0; font-weight: 500; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 500; }
+    .badge.green { background: #14532d; color: #22c55e; }
+    .badge.blue { background: #1e3a5f; color: #60a5fa; }
+    .badge.gray { background: #1e2030; color: #6b7a99; }
+    .badge.red { background: #450a0a; color: #f87171; }
+
+    /* Connector list */
+    .connector-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: #0f1117; border-radius: 6px; margin-bottom: 6px; }
+    .connector-icon { width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+    .connector-info { flex: 1; min-width: 0; }
+    .connector-name { font-size: 13px; font-weight: 500; color: #e2e8f0; }
+    .connector-kind { font-size: 11px; color: #6b7a99; margin-top: 1px; }
+    .connector-delete { background: transparent; border: 1px solid #450a0a; color: #f87171; border-radius: 4px; padding: 3px 8px; cursor: pointer; font-size: 12px; }
+    .connector-delete:hover { background: #450a0a; }
+    .empty-msg { color: #6b7a99; font-size: 13px; font-style: italic; text-align: center; padding: 16px; }
+
+    /* Add connector form */
+    .add-connector-form { border: 1px solid #2d3148; border-radius: 8px; padding: 14px; margin-top: 12px; }
+    .add-connector-form h4 { font-size: 13px; font-weight: 600; color: #a8b4ff; margin-bottom: 12px; }
+    .form-row { margin-bottom: 10px; }
+    .form-row label { display: block; font-size: 11px; color: #6b7a99; margin-bottom: 4px; }
+    .form-row input,.form-row select { width: 100%; background: #0f1117; border: 1px solid #2d3148; border-radius: 6px; padding: 7px 10px; color: #e2e8f0; font-size: 13px; outline: none; }
+    .form-row input:focus,.form-row select:focus { border-color: #4c4fff; }
+    .form-row select option { background: #1a1d26; }
+    .btn-primary { background: #4c4fff; color: white; border: none; border-radius: 6px; padding: 8px 16px; cursor: pointer; font-size: 13px; font-weight: 500; }
+    .btn-primary:hover:not(:disabled) { background: #6366ff; }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    .form-error { color: #f87171; font-size: 12px; margin-top: 8px; }
+    .form-success { color: #22c55e; font-size: 12px; margin-top: 8px; }
+
+    /* Stats grid */
+    .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .stat-card { background: #0f1117; border-radius: 6px; padding: 12px; text-align: center; }
+    .stat-value { font-size: 22px; font-weight: 700; color: #a8b4ff; }
+    .stat-label { font-size: 11px; color: #6b7a99; margin-top: 2px; }
   </style>
 </head>
 <body>
@@ -53,15 +132,24 @@
   <script type="importmap">
     {
       "imports": {
-        "vue": "https://unpkg.com/vue@3/dist/vue.esm-browser.js"
+        "vue": "https://unpkg.com/vue@3/dist/vue.esm-browser.js",
+        "marked": "https://esm.run/marked"
       }
     }
   </script>
 
   <script type="module">
     import { createApp, ref, computed, onMounted, nextTick } from 'vue';
+    import { marked } from 'marked';
+
+    marked.use({ gfm: true, breaks: true });
 
     const API = '';
+    const CONNECTOR_ICONS = { github: '🐙', notion: '📝', slack: '💬', linear: '📐', gitlab: '🦊', figma: '🎨' };
+    const CONNECTOR_EXTRA_FIELDS = {
+      gitlab: [{ key: 'baseUrl', label: 'GitLab URL (optional)', placeholder: 'https://gitlab.example.com' }],
+      figma:  [{ key: 'teamId',  label: 'Team ID (optional)',   placeholder: 'your-team-id' }],
+    };
 
     async function api(method, path, body) {
       const r = await fetch(API + path, {
@@ -74,19 +162,42 @@
       return r.json();
     }
 
+    function renderMd(text) {
+      if (!text) return '';
+      return marked.parse(text);
+    }
+
     const App = {
       setup() {
-        const sessions = ref([]);
+        // ─── Chat state ───────────────────────────────────────────────
+        const sessions      = ref([]);
         const activeSessionId = ref(null);
-        const messages = ref([]);
-        const inputText = ref('');
-        const streaming = ref(false);        // true while SSE stream is active
-        const streamingText = ref('');       // accumulates streaming assistant text
-        const abortController = ref(null);  // to cancel the stream
-        const healthy = ref(true);
+        const messages      = ref([]);
+        const inputText     = ref('');
+        const streaming     = ref(false);
+        const streamingText = ref('');
+        const abortController = ref(null);
+        const healthy       = ref(true);
 
         const activeSession = computed(() => sessions.value.find(s => s.id === activeSessionId.value));
 
+        // ─── Settings state ───────────────────────────────────────────
+        const showSettings  = ref(false);
+        const settingsTab   = ref('models');
+        const modelInfo     = ref(null);
+        const providers     = ref([]);
+        const connectors    = ref([]);
+        const connectorTypes = ref([]);
+        const stats         = ref(null);
+        const healthFull    = ref(null);
+
+        // Add connector form
+        const newConn = ref({ kind: '', name: '', apiKey: '', extra: {} });
+        const connError = ref('');
+        const connSuccess = ref('');
+        const connSaving  = ref(false);
+
+        // ─── Chat helpers ─────────────────────────────────────────────
         async function checkHealth() {
           try { await fetch('/health'); healthy.value = true; }
           catch { healthy.value = false; }
@@ -124,9 +235,7 @@
         }
 
         async function sendMessage() {
-          // If streaming, stop it
           if (streaming.value) { stopStream(); return; }
-
           const content = inputText.value.trim();
           if (!content) return;
           if (!activeSessionId.value) await newSession();
@@ -135,7 +244,6 @@
           streamingText.value = '';
           inputText.value = '';
 
-          // Push user message locally
           messages.value.push({ id: Date.now(), role: 'user', content, createdAt: new Date().toISOString() });
           await nextTick(); scrollToBottom();
 
@@ -163,10 +271,8 @@
               const { done, value } = await reader.read();
               if (done) break;
               buf += decoder.decode(value, { stream: true });
-
-              // Parse SSE lines
               const lines = buf.split('\n');
-              buf = lines.pop(); // keep incomplete line
+              buf = lines.pop();
 
               for (const line of lines) {
                 if (!line.startsWith('data: ')) continue;
@@ -178,7 +284,6 @@
                     streamingText.value += evt.text;
                     await nextTick(); scrollToBottom();
                   } else if (evt.type === 'done') {
-                    // Finalize: push persisted assistant message
                     messages.value.push({
                       id: evt.messageId ?? Date.now() + 1,
                       role: 'assistant',
@@ -186,7 +291,6 @@
                       createdAt: new Date().toISOString(),
                     });
                     streamingText.value = '';
-                    // Refresh session title if it changed
                     const s = sessions.value.find(s => s.id === activeSessionId.value);
                     if (s && s.title === 'New chat') {
                       try {
@@ -197,12 +301,11 @@
                   } else if (evt.type === 'error') {
                     throw new Error(evt.message ?? 'Stream error');
                   }
-                } catch (parseErr) { /* skip malformed SSE event */ }
+                } catch { /* skip malformed SSE */ }
               }
             }
           } catch (e) {
             if (e.name === 'AbortError') {
-              // User cancelled — commit whatever was streamed
               if (streamingText.value) {
                 messages.value.push({ id: Date.now() + 1, role: 'assistant', content: streamingText.value, createdAt: new Date().toISOString() });
               }
@@ -227,6 +330,94 @@
           if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
         }
 
+        // ─── Settings helpers ─────────────────────────────────────────
+        async function openSettings() {
+          showSettings.value = true;
+          await loadSettingsData();
+        }
+
+        async function loadSettingsData() {
+          try {
+            const [m, p] = await Promise.all([
+              api('GET', '/api/models/active').catch(() => null),
+              api('GET', '/api/models/providers').catch(() => ({ providers: [] })),
+            ]);
+            modelInfo.value = m;
+            providers.value = (p?.providers ?? []);
+          } catch { /* ignore */ }
+
+          await loadConnectors();
+
+          try {
+            const h = await api('GET', '/health/full').catch(() => fetch('/health').then(r => r.json()).catch(() => null));
+            healthFull.value = h;
+          } catch { /* ignore */ }
+
+          try {
+            const s = await api('GET', '/api/stats').catch(() => null);
+            stats.value = s;
+          } catch { /* ignore */ }
+        }
+
+        async function loadConnectors() {
+          try {
+            const [list, types] = await Promise.all([
+              api('GET', '/api/connectors').catch(() => []),
+              api('GET', '/api/connector-types').catch(() => []),
+            ]);
+            connectors.value = Array.isArray(list) ? list : [];
+            connectorTypes.value = Array.isArray(types) ? types : [];
+            if (connectorTypes.value.length > 0 && !newConn.value.kind) {
+              newConn.value.kind = connectorTypes.value[0].id;
+            }
+          } catch { /* ignore */ }
+        }
+
+        async function addConnector() {
+          connError.value = '';
+          connSuccess.value = '';
+          if (!newConn.value.kind || !newConn.value.name.trim() || !newConn.value.apiKey.trim()) {
+            connError.value = 'Kind, name, and API key are required.';
+            return;
+          }
+          connSaving.value = true;
+          try {
+            const settings = { apiKey: newConn.value.apiKey.trim(), ...newConn.value.extra };
+            await api('POST', '/api/connectors', {
+              kind: newConn.value.kind,
+              name: newConn.value.name.trim(),
+              settings,
+            });
+            connSuccess.value = 'Connector added!';
+            newConn.value = { kind: newConn.value.kind, name: '', apiKey: '', extra: {} };
+            await loadConnectors();
+            setTimeout(() => { connSuccess.value = ''; }, 3000);
+          } catch (e) {
+            connError.value = e.message ?? 'Failed to add connector.';
+          } finally {
+            connSaving.value = false;
+          }
+        }
+
+        async function removeConnector(id) {
+          if (!confirm('Remove this connector?')) return;
+          try {
+            await api('DELETE', `/api/connectors/${id}`);
+            await loadConnectors();
+          } catch (e) {
+            alert('Error: ' + e.message);
+          }
+        }
+
+        function extraFields(kind) {
+          return CONNECTOR_EXTRA_FIELDS[kind] ?? [];
+        }
+
+        function connIcon(kind) {
+          return CONNECTOR_ICONS[kind] ?? '🔌';
+        }
+
+        // ─── Lifecycle ────────────────────────────────────────────────
         onMounted(async () => {
           await checkHealth();
           await loadSessions();
@@ -235,10 +426,17 @@
           setInterval(checkHealth, 15_000);
         });
 
-        return { sessions, activeSessionId, messages, inputText, streaming, streamingText, healthy, activeSession, selectSession, newSession, sendMessage, onKeydown };
+        return {
+          sessions, activeSessionId, messages, inputText, streaming, streamingText, healthy, activeSession,
+          selectSession, newSession, sendMessage, onKeydown,
+          showSettings, settingsTab, modelInfo, providers, connectors, connectorTypes, stats, healthFull,
+          newConn, connError, connSuccess, connSaving,
+          openSettings, addConnector, removeConnector, extraFields, connIcon, renderMd,
+        };
       },
 
       template: `
+        <!-- ─── Main layout ────────────────────────────────────────── -->
         <div id="sidebar">
           <div id="sidebar-header">
             <h1>Jowork</h1>
@@ -251,8 +449,12 @@
               @click="selectSession(s.id)"
             >{{ s.title }}</div>
           </div>
-          <button id="new-session-btn" @click="newSession">+ New chat</button>
+          <div id="sidebar-footer">
+            <button id="new-session-btn" @click="newSession">+ New chat</button>
+            <button id="settings-btn" @click="openSettings" title="Settings">⚙</button>
+          </div>
         </div>
+
         <div id="main">
           <div id="status-bar">
             <div class="dot" :class="{ error: !healthy }"></div>
@@ -261,8 +463,15 @@
           </div>
           <div id="messages">
             <div v-if="messages.length === 0 && !streaming" class="msg system">Start a conversation with your AI coworker.</div>
-            <div v-for="m in messages" :key="m.id" class="msg" :class="m.role">{{ m.content }}</div>
-            <div v-if="streaming && streamingText" class="msg assistant">{{ streamingText }}<span class="cursor"></span></div>
+            <template v-for="m in messages" :key="m.id">
+              <div v-if="m.role === 'assistant'" class="msg assistant">
+                <div class="md-body" v-html="renderMd(m.content)"></div>
+              </div>
+              <div v-else class="msg" :class="m.role">{{ m.content }}</div>
+            </template>
+            <div v-if="streaming && streamingText" class="msg assistant">
+              <div class="md-body" v-html="renderMd(streamingText)"></div><span class="cursor"></span>
+            </div>
             <div v-else-if="streaming && !streamingText" class="msg assistant" style="color:#6b7a99;font-style:italic">Thinking<span class="cursor"></span></div>
           </div>
           <div id="input-area">
@@ -279,6 +488,158 @@
               :disabled="!streaming && !inputText.trim()"
               @click="sendMessage"
             >{{ streaming ? 'Stop' : 'Send' }}</button>
+          </div>
+        </div>
+
+        <!-- ─── Settings modal ─────────────────────────────────────── -->
+        <div v-if="showSettings" class="modal-overlay" @click.self="showSettings = false">
+          <div class="modal-box">
+            <div class="modal-header">
+              <h2>Settings</h2>
+              <button class="modal-close" @click="showSettings = false">✕</button>
+            </div>
+            <div class="modal-tabs">
+              <div class="modal-tab" :class="{ active: settingsTab === 'models' }" @click="settingsTab = 'models'">Models</div>
+              <div class="modal-tab" :class="{ active: settingsTab === 'connectors' }" @click="settingsTab = 'connectors'">Connectors</div>
+              <div class="modal-tab" :class="{ active: settingsTab === 'system' }" @click="settingsTab = 'system'">System</div>
+            </div>
+            <div class="modal-body">
+
+              <!-- Models tab -->
+              <div v-if="settingsTab === 'models'">
+                <div class="setting-section">
+                  <h3>Active Configuration</h3>
+                  <template v-if="modelInfo">
+                    <div class="info-row">
+                      <span class="info-label">Provider</span>
+                      <span class="info-value">{{ modelInfo.providerName }}</span>
+                    </div>
+                    <div class="info-row">
+                      <span class="info-label">Model</span>
+                      <span class="info-value">{{ modelInfo.model }}</span>
+                    </div>
+                    <div class="info-row">
+                      <span class="info-label">API Format</span>
+                      <span class="badge blue">{{ modelInfo.apiFormat }}</span>
+                    </div>
+                  </template>
+                  <div v-else class="empty-msg">Loading model info…</div>
+                </div>
+                <div class="setting-section" v-if="providers.length > 0">
+                  <h3>Available Providers</h3>
+                  <div v-for="p in providers" :key="p.id" class="info-row">
+                    <span class="info-label">{{ p.name }}</span>
+                    <span class="info-value" style="font-size:12px;color:#6b7a99">{{ (p.models ?? []).slice(0,2).join(', ') }}</span>
+                  </div>
+                </div>
+                <div class="setting-section">
+                  <h3>Configuration</h3>
+                  <div class="info-row">
+                    <span class="info-label">API Key</span>
+                    <span class="info-value" style="color:#6b7a99;font-size:12px">Set via ANTHROPIC_API_KEY environment variable</span>
+                  </div>
+                  <div class="info-row" style="margin-top:4px">
+                    <span class="info-label">Model</span>
+                    <span class="info-value" style="color:#6b7a99;font-size:12px">Set via MODEL_NAME environment variable</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Connectors tab -->
+              <div v-if="settingsTab === 'connectors'">
+                <div class="setting-section">
+                  <h3>Connected ({{ connectors.length }})</h3>
+                  <div v-if="connectors.length === 0" class="empty-msg">No connectors configured yet.</div>
+                  <div v-for="c in connectors" :key="c.id" class="connector-item">
+                    <div class="connector-icon" style="background:#2d3148">{{ connIcon(c.kind) }}</div>
+                    <div class="connector-info">
+                      <div class="connector-name">{{ c.name }}</div>
+                      <div class="connector-kind">{{ c.kind }}</div>
+                    </div>
+                    <button class="connector-delete" @click="removeConnector(c.id)">Remove</button>
+                  </div>
+                </div>
+                <div class="add-connector-form">
+                  <h4>Add Connector</h4>
+                  <div class="form-row">
+                    <label>Type</label>
+                    <select v-model="newConn.kind">
+                      <option v-for="t in connectorTypes" :key="t.id" :value="t.id">{{ t.name || t.id }}</option>
+                    </select>
+                  </div>
+                  <div class="form-row">
+                    <label>Name</label>
+                    <input v-model="newConn.name" placeholder="My GitHub" type="text" />
+                  </div>
+                  <div class="form-row">
+                    <label>API Key / Token</label>
+                    <input v-model="newConn.apiKey" placeholder="Paste your token here" type="password" />
+                  </div>
+                  <template v-for="f in extraFields(newConn.kind)" :key="f.key">
+                    <div class="form-row">
+                      <label>{{ f.label }}</label>
+                      <input v-model="newConn.extra[f.key]" :placeholder="f.placeholder" type="text" />
+                    </div>
+                  </template>
+                  <button class="btn-primary" :disabled="connSaving" @click="addConnector">
+                    {{ connSaving ? 'Adding…' : 'Add Connector' }}
+                  </button>
+                  <div v-if="connError" class="form-error">{{ connError }}</div>
+                  <div v-if="connSuccess" class="form-success">{{ connSuccess }}</div>
+                </div>
+              </div>
+
+              <!-- System tab -->
+              <div v-if="settingsTab === 'system'">
+                <div class="setting-section" v-if="stats">
+                  <h3>Usage Stats</h3>
+                  <div class="stats-grid">
+                    <div class="stat-card">
+                      <div class="stat-value">{{ stats.sessions ?? 0 }}</div>
+                      <div class="stat-label">Sessions</div>
+                    </div>
+                    <div class="stat-card">
+                      <div class="stat-value">{{ stats.messages ?? 0 }}</div>
+                      <div class="stat-label">Messages</div>
+                    </div>
+                    <div class="stat-card">
+                      <div class="stat-value">{{ stats.memories ?? 0 }}</div>
+                      <div class="stat-label">Memories</div>
+                    </div>
+                    <div class="stat-card">
+                      <div class="stat-value">{{ stats.connectors ?? 0 }}</div>
+                      <div class="stat-label">Connectors</div>
+                    </div>
+                    <div class="stat-card">
+                      <div class="stat-value">{{ stats.agents ?? 0 }}</div>
+                      <div class="stat-label">Agents</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="setting-section">
+                  <h3>Health</h3>
+                  <div class="info-row">
+                    <span class="info-label">Status</span>
+                    <span :class="['badge', healthy ? 'green' : 'red']">{{ healthy ? 'Online' : 'Offline' }}</span>
+                  </div>
+                  <template v-if="healthFull">
+                    <div v-if="healthFull.db" class="info-row">
+                      <span class="info-label">Database</span>
+                      <span :class="['badge', healthFull.db === 'ok' ? 'green' : 'red']">{{ healthFull.db }}</span>
+                    </div>
+                    <div v-if="healthFull.disk" class="info-row">
+                      <span class="info-label">Disk free</span>
+                      <span class="info-value">{{ healthFull.disk }}</span>
+                    </div>
+                    <div v-if="healthFull.version" class="info-row">
+                      <span class="info-label">Version</span>
+                      <span class="info-value">{{ healthFull.version }}</span>
+                    </div>
+                  </template>
+                </div>
+              </div>
+
+            </div>
           </div>
         </div>
       `,
