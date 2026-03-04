@@ -26,18 +26,18 @@
     .msg.user { align-self: flex-end; background: #4c4fff; color: white; padding: 10px 16px; border-radius: 16px 16px 4px 16px; }
     .msg.assistant { align-self: flex-start; background: #1a1d26; border: 1px solid #2d3148; padding: 10px 16px; border-radius: 4px 16px 16px 16px; }
     .msg.system { align-self: center; color: #6b7a99; font-size: 12px; font-style: italic; }
+    .cursor { display: inline-block; width: 2px; height: 1em; background: #a8b4ff; margin-left: 2px; vertical-align: text-bottom; animation: blink 0.8s step-end infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
 
     /* Input */
     #input-area { padding: 16px; border-top: 1px solid #2d3148; display: flex; gap: 8px; }
     #msg-input { flex: 1; background: #1a1d26; border: 1px solid #2d3148; border-radius: 8px; padding: 10px 14px; color: #e2e8f0; font-size: 14px; outline: none; resize: none; max-height: 120px; font-family: inherit; }
     #msg-input:focus { border-color: #4c4fff; }
-    #send-btn { background: #4c4fff; color: white; border: none; border-radius: 8px; padding: 10px 20px; cursor: pointer; font-weight: 500; font-size: 14px; align-self: flex-end; }
-    #send-btn:hover { background: #6366ff; }
+    #send-btn { background: #4c4fff; color: white; border: none; border-radius: 8px; padding: 10px 20px; cursor: pointer; font-weight: 500; font-size: 14px; align-self: flex-end; min-width: 72px; }
+    #send-btn:hover:not(:disabled) { background: #6366ff; }
     #send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-    /* Loading */
-    .loading { display: inline-block; width: 20px; height: 20px; border: 2px solid #4c4fff; border-radius: 50%; border-top-color: transparent; animation: spin 0.8s linear infinite; }
-    @keyframes spin { to { transform: rotate(360deg); } }
+    #send-btn.stop { background: #ef4444; }
+    #send-btn.stop:hover { background: #f87171; }
 
     /* Health */
     #status-bar { padding: 6px 16px; background: #0f1117; border-bottom: 1px solid #1a1d26; font-size: 11px; color: #6b7a99; display: flex; align-items: center; gap: 6px; }
@@ -47,7 +47,6 @@
 </head>
 <body>
   <div id="app">
-    <!-- App rendered by Vue 3 CDN -->
     <div style="display:flex;align-items:center;justify-content:center;height:100vh;color:#6b7a99">Loading...</div>
   </div>
 
@@ -81,27 +80,25 @@
         const activeSessionId = ref(null);
         const messages = ref([]);
         const inputText = ref('');
-        const sending = ref(false);
+        const streaming = ref(false);        // true while SSE stream is active
+        const streamingText = ref('');       // accumulates streaming assistant text
+        const abortController = ref(null);  // to cancel the stream
         const healthy = ref(true);
 
         const activeSession = computed(() => sessions.value.find(s => s.id === activeSessionId.value));
 
         async function checkHealth() {
-          try {
-            await fetch('/health');
-            healthy.value = true;
-          } catch {
-            healthy.value = false;
-          }
+          try { await fetch('/health'); healthy.value = true; }
+          catch { healthy.value = false; }
         }
 
         async function loadSessions() {
-          try {
-            sessions.value = await api('GET', '/api/sessions');
-          } catch { /* ignore */ }
+          try { sessions.value = await api('GET', '/api/sessions'); }
+          catch { /* ignore */ }
         }
 
         async function selectSession(id) {
+          if (streaming.value) stopStream();
           activeSessionId.value = id;
           try {
             const s = await api('GET', `/api/sessions/${id}`);
@@ -119,23 +116,104 @@
           } catch (e) { alert('Error: ' + e.message); }
         }
 
+        function stopStream() {
+          if (abortController.value) {
+            abortController.value.abort();
+            abortController.value = null;
+          }
+        }
+
         async function sendMessage() {
+          // If streaming, stop it
+          if (streaming.value) { stopStream(); return; }
+
           const content = inputText.value.trim();
-          if (!content || sending.value) return;
+          if (!content) return;
           if (!activeSessionId.value) await newSession();
 
-          sending.value = true;
+          streaming.value = true;
+          streamingText.value = '';
           inputText.value = '';
+
+          // Push user message locally
           messages.value.push({ id: Date.now(), role: 'user', content, createdAt: new Date().toISOString() });
           await nextTick(); scrollToBottom();
 
+          const ctrl = new AbortController();
+          abortController.value = ctrl;
+
           try {
-            const r = await api('POST', `/api/sessions/${activeSessionId.value}/messages`, { content });
-            messages.value.push(...r.messages.filter(m => m.role === 'assistant'));
+            const resp = await fetch(`/api/sessions/${activeSessionId.value}/messages/stream`, {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ content }),
+              signal: ctrl.signal,
+            });
+
+            if (!resp.ok) {
+              const err = await resp.json().catch(() => ({ message: `HTTP ${resp.status}` }));
+              throw new Error(err.message ?? `HTTP ${resp.status}`);
+            }
+
+            const reader = resp.body.getReader();
+            const decoder = new TextDecoder();
+            let buf = '';
+
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              buf += decoder.decode(value, { stream: true });
+
+              // Parse SSE lines
+              const lines = buf.split('\n');
+              buf = lines.pop(); // keep incomplete line
+
+              for (const line of lines) {
+                if (!line.startsWith('data: ')) continue;
+                const raw = line.slice(6).trim();
+                if (!raw || raw === '[DONE]') continue;
+                try {
+                  const evt = JSON.parse(raw);
+                  if (evt.type === 'chunk') {
+                    streamingText.value += evt.text;
+                    await nextTick(); scrollToBottom();
+                  } else if (evt.type === 'done') {
+                    // Finalize: push persisted assistant message
+                    messages.value.push({
+                      id: evt.messageId ?? Date.now() + 1,
+                      role: 'assistant',
+                      content: streamingText.value,
+                      createdAt: new Date().toISOString(),
+                    });
+                    streamingText.value = '';
+                    // Refresh session title if it changed
+                    const s = sessions.value.find(s => s.id === activeSessionId.value);
+                    if (s && s.title === 'New chat') {
+                      try {
+                        const fresh = await api('GET', `/api/sessions/${activeSessionId.value}`);
+                        s.title = fresh.title;
+                      } catch { /* non-critical */ }
+                    }
+                  } else if (evt.type === 'error') {
+                    throw new Error(evt.message ?? 'Stream error');
+                  }
+                } catch (parseErr) { /* skip malformed SSE event */ }
+              }
+            }
           } catch (e) {
-            messages.value.push({ id: Date.now() + 1, role: 'system', content: 'Error: ' + e.message });
+            if (e.name === 'AbortError') {
+              // User cancelled — commit whatever was streamed
+              if (streamingText.value) {
+                messages.value.push({ id: Date.now() + 1, role: 'assistant', content: streamingText.value, createdAt: new Date().toISOString() });
+              }
+              streamingText.value = '';
+            } else {
+              messages.value.push({ id: Date.now() + 1, role: 'system', content: 'Error: ' + e.message });
+              streamingText.value = '';
+            }
           } finally {
-            sending.value = false;
+            streaming.value = false;
+            abortController.value = null;
             await nextTick(); scrollToBottom();
           }
         }
@@ -154,9 +232,10 @@
           await loadSessions();
           if (sessions.value.length === 0) await newSession();
           else await selectSession(sessions.value[0].id);
+          setInterval(checkHealth, 15_000);
         });
 
-        return { sessions, activeSessionId, messages, inputText, sending, healthy, activeSession, selectSession, newSession, sendMessage, onKeydown };
+        return { sessions, activeSessionId, messages, inputText, streaming, streamingText, healthy, activeSession, selectSession, newSession, sendMessage, onKeydown };
       },
 
       template: `
@@ -181,9 +260,10 @@
             <span v-if="activeSession" style="margin-left:auto;color:#94a3b8">{{ activeSession.title }}</span>
           </div>
           <div id="messages">
-            <div v-if="messages.length === 0" class="msg system">Start a conversation with your AI coworker.</div>
+            <div v-if="messages.length === 0 && !streaming" class="msg system">Start a conversation with your AI coworker.</div>
             <div v-for="m in messages" :key="m.id" class="msg" :class="m.role">{{ m.content }}</div>
-            <div v-if="sending" class="msg assistant"><div class="loading"></div></div>
+            <div v-if="streaming && streamingText" class="msg assistant">{{ streamingText }}<span class="cursor"></span></div>
+            <div v-else-if="streaming && !streamingText" class="msg assistant" style="color:#6b7a99;font-style:italic">Thinking<span class="cursor"></span></div>
           </div>
           <div id="input-area">
             <textarea
@@ -193,7 +273,12 @@
               rows="1"
               @keydown="onKeydown"
             ></textarea>
-            <button id="send-btn" :disabled="sending || !inputText.trim()" @click="sendMessage">Send</button>
+            <button
+              id="send-btn"
+              :class="{ stop: streaming }"
+              :disabled="!streaming && !inputText.trim()"
+              @click="sendMessage"
+            >{{ streaming ? 'Stop' : 'Send' }}</button>
           </div>
         </div>
       `,
