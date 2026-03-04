@@ -193,6 +193,7 @@
 | Phase 41：Scheduler UI + Workstyle 文档 UI | ✅ 完成 | 2026-03-05 | Scheduler标签(任务列表+创建+toggle+删除)+ Agent标签新增WorkStyle文档编辑区(GET+PUT /api/context/workstyle)；apps/jowork+apps/fluxvita均更新；pnpm lint+test全绿（260/260） |
 | Phase 42：LLM 用量仪表板 UI + 管理员备份/恢复 UI | ✅ 完成 | 2026-03-05 | Usage标签(Summary+Budget进度条+7日日报+预算设置)+Admin标签(手动备份+更新检查+导出ZIP/JSON/MD+从ZIP恢复)；apps/jowork+apps/fluxvita均更新；pnpm lint+test全绿（260/260） |
 | Phase 43：Session 管理 UI — 重命名/删除会话 | ✅ 完成 | 2026-03-05 | hover菜单(✏rename+×delete)；inline input编辑(Enter保存/Esc取消/blur取消)；级联删除自动切换session；apps/jowork+apps/fluxvita均更新；pnpm lint+test全绿（260/260） |
+| Phase 44：Model Switcher UI | 🔄 进行中 | 2026-03-05 | PUT /api/models/active(process.env mutation+validate)；Models标签新增provider/model选择下拉+Apply按钮；apps/jowork+apps/fluxvita均更新 |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*
