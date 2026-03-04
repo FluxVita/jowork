@@ -220,6 +220,7 @@
 | Phase 68：UX 打磨 — Typing Indicator + 消息复制 + 时间戳 | ✅ 完成 | 2026-03-05 | typing-indicator三点弹跳动画（替换静态Thinking）+消息📋Copy按钮（clipboard API+toast反馈）+消息时间戳（相对时间+hover绝对时间）；apps/jowork+apps/fluxvita均更新；pnpm lint全绿（纯前端） |
 | Phase 69：消息编辑（Message Editing） | ✅ 完成 | 2026-03-05 | PATCH /api/sessions/:id/messages/:msgId（仅user消息可编辑+FTS5外部内容表正确删除旧索引再重建）；前端inline编辑UI（hover ✏️按钮+textarea+Save/Cancel+Enter/Esc快捷键）；5新测试；apps/jowork+apps/fluxvita均更新；pnpm lint+test全绿（379/379） |
 | Phase 70：暗/亮主题切换（Theme Toggle） | ✅ 完成 | 2026-03-05 | CSS变量系统（:root暗色+[data-theme=light]亮色）；jowork核心结构色全部迁移到var()；System标签Dark/Light/Auto三按钮；localStorage持久化+prefers-color-scheme自动检测；apps/jowork+apps/fluxvita均更新；pnpm lint全绿（纯前端） |
+| Phase 71：消息删除 UI（Message Delete） | ✅ 完成 | 2026-03-05 | deleteMessage()函数（DELETE API+列表移除+toast）；assistant消息操作栏🗑按钮；user消息hover🗑按钮；apps/jowork+apps/fluxvita均更新；pnpm lint全绿（纯前端，后端DELETE端点已有） |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*

@@ -811,6 +811,14 @@
           } catch { toast('Failed to update message', 'error'); }
           cancelEditMessage();
         }
+        async function deleteMessage(msgId) {
+          if (!activeSessionId.value) return;
+          try {
+            await api('DELETE', `/api/sessions/${activeSessionId.value}/messages/${msgId}`);
+            messages.value = messages.value.filter(m => m.id !== msgId);
+            toast('Message deleted', 'success');
+          } catch { toast('Failed to delete message', 'error'); }
+        }
 
         async function toggleFeedback(msg, rating) {
           if (!activeSessionId.value) return;
@@ -1370,7 +1378,7 @@
           showSearch, searchQuery, searchResults, searchLoading, hasSearchResults,
           openSearch, closeSearch, onSearchInput, searchGoToSession,
           toasts, formatTime, formatTimeFull, copyMessage,
-          editingMsgId, editingContent, startEditMessage, cancelEditMessage, saveEditMessage,
+          editingMsgId, editingContent, startEditMessage, cancelEditMessage, saveEditMessage, deleteMessage,
           currentTheme, setTheme,
         };
       },
@@ -1438,6 +1446,7 @@
                   <button class="msg-action-btn" :class="{ active: m.feedback === 'negative' }" title="Bad response" @click="toggleFeedback(m, 'negative')">👎</button>
                   <button class="msg-action-btn" title="Copy message" @click="copyMessage(m.content)">📋 Copy</button>
                   <button v-if="mi === messages.length - 1" class="msg-action-btn" title="Regenerate" @click="regenerateMessage(m.id)">↻ Regenerate</button>
+                  <button class="msg-action-btn" title="Delete message" @click="deleteMessage(m.id)">🗑</button>
                 </div>
                 <div class="msg-meta" :title="formatTimeFull(m.createdAt)">{{ formatTime(m.createdAt) }}</div>
               </div>
@@ -1453,6 +1462,7 @@
                   {{ m.content }}
                   <div v-if="m.role === 'user'" class="msg-user-actions">
                     <button class="msg-action-btn" title="Edit message" @click="startEditMessage(m)">✏️</button>
+                    <button class="msg-action-btn" title="Delete message" @click="deleteMessage(m.id)">🗑</button>
                   </div>
                 </template>
                 <div class="msg-meta" :title="formatTimeFull(m.createdAt)">{{ formatTime(m.createdAt) }}</div>
