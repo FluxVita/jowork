@@ -3,6 +3,7 @@
 export * from './edition.js';
 export * from './types.js';
 export * from './config.js';
+export * from './platform.js';
 export * from './utils/index.js';
 export * from './datamap/index.js';
 export * from './auth/index.js';
