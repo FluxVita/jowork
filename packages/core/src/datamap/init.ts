@@ -45,6 +45,13 @@ CREATE TABLE IF NOT EXISTS messages (
   created_at  TEXT NOT NULL
 );
 
+-- Messages FTS
+CREATE VIRTUAL TABLE IF NOT EXISTS messages_fts USING fts5(
+  content,
+  content='messages',
+  content_rowid='rowid'
+);
+
 -- Memory
 CREATE TABLE IF NOT EXISTS memories (
   id          TEXT PRIMARY KEY,

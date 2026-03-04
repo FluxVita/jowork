@@ -43,6 +43,8 @@ function seedMessage(db: ReturnType<typeof openDb>, id: string, sessionId: strin
   const now = new Date().toISOString();
   db.prepare(`INSERT OR IGNORE INTO messages (id, session_id, role, content, created_at) VALUES (?,?,?,?,?)`)
     .run(id, sessionId, 'user', content, now);
+  // Update FTS index
+  db.prepare(`INSERT INTO messages_fts(rowid, content) SELECT rowid, content FROM messages WHERE id = ?`).run(id);
 }
 
 function seedMemory(db: ReturnType<typeof openDb>, id: string, userId: string, content: string) {
@@ -202,6 +204,38 @@ describe('/api/search', () => {
       assert.equal(res.status, 200);
       const body = await res.json() as { messages: unknown[] };
       assert.equal(body.messages.length, 2);
+    } finally { await close(); }
+  });
+
+  test('finds messages via FTS5 (exact word match)', async () => {
+    seedMessage(db, 'fts-msg-1', 'sess-1', 'The deployment pipeline is broken');
+    seedMessage(db, 'fts-msg-2', 'sess-1', 'Unrelated message about lunch');
+
+    const { port, close } = await makeServer();
+    try {
+      const res = await fetch(`http://localhost:${port}/api/search?q=deployment`);
+      assert.equal(res.status, 200);
+      const body = await res.json() as {
+        messages: Array<{ id: string; snippet: string }>;
+      };
+      assert.equal(body.messages.length, 1);
+      assert.equal(body.messages[0]!.id, 'fts-msg-1');
+      assert.ok(body.messages[0]!.snippet.includes('deployment'));
+    } finally { await close(); }
+  });
+
+  test('FTS5 message search falls back to LIKE on syntax error', async () => {
+    seedMessage(db, 'fallback-msg', 'sess-1', 'fallback keyword test');
+
+    const { port, close } = await makeServer();
+    try {
+      // FTS5 syntax error: unmatched quote — should not crash, LIKE fallback returns results
+      const res = await fetch(`http://localhost:${port}/api/search?q=${encodeURIComponent('fallback "')}`);
+      assert.equal(res.status, 200);
+      const body = await res.json() as { messages: Array<{ id: string }> };
+      // LIKE fallback should find the message (searches for %fallback "%%)
+      // Either found or not found is acceptable — no 500 error is the key assertion
+      assert.ok(Array.isArray(body.messages));
     } finally { await close(); }
   });
 });

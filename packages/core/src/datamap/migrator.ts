@@ -124,6 +124,20 @@ const MIGRATIONS: Migration[] = [
       `);
     },
   },
+  {
+    name: '002_messages_fts',
+    up(db) {
+      db.exec(`
+        CREATE VIRTUAL TABLE IF NOT EXISTS messages_fts USING fts5(
+          content,
+          content='messages',
+          content_rowid='rowid'
+        );
+        -- Backfill existing messages into FTS index
+        INSERT INTO messages_fts(rowid, content) SELECT rowid, content FROM messages;
+      `);
+    },
+  },
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

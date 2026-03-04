@@ -1,7 +1,8 @@
 // @jowork/core/gateway/routes/search — Global search REST API
 //
 // Searches across messages, memories, and context docs for the authenticated user.
-// Messages use LIKE (no FTS table); memories and context docs use FTS5.
+// All three domains use FTS5 (messages_fts, memories_fts, context_docs_fts),
+// with automatic LIKE fallback on FTS5 syntax errors.
 //
 // Routes:
 //   GET /api/search?q=<query>&limit=<n>
@@ -65,28 +66,53 @@ export function searchRouter(): Router {
       const db = getDb();
       const likeQ = `%${q}%`;
 
-      // Search messages (LIKE on content) — join sessions for ownership + title
-      const messageRows = db.prepare(`
-        SELECT m.id, m.session_id, s.title as session_title, m.role, m.content, m.created_at
-        FROM messages m
-        JOIN sessions s ON m.session_id = s.id
-        WHERE s.user_id = ? AND m.content LIKE ?
-        ORDER BY m.created_at DESC
-        LIMIT ?
-      `).all(userId, likeQ, limit) as Array<{
-        id: string; session_id: string; session_title: string;
-        role: string; content: string; created_at: string;
-      }>;
-
-      const messages: SearchResultMessage[] = messageRows.map(r => ({
-        kind: 'message',
-        id: r.id,
-        sessionId: r.session_id,
-        sessionTitle: r.session_title,
-        role: r.role,
-        snippet: r.content.length > 200 ? r.content.slice(0, 200) + '…' : r.content,
-        createdAt: r.created_at,
-      }));
+      // Search messages (FTS5, LIKE fallback on syntax error) — join sessions for ownership + title
+      let messages: SearchResultMessage[] = [];
+      try {
+        const messageRows = db.prepare(`
+          SELECT m.id, m.session_id, s.title as session_title, m.role, m.content, m.created_at
+          FROM messages m
+          JOIN messages_fts f ON m.rowid = f.rowid
+          JOIN sessions s ON m.session_id = s.id
+          WHERE s.user_id = ? AND messages_fts MATCH ?
+          ORDER BY rank
+          LIMIT ?
+        `).all(userId, q, limit) as Array<{
+          id: string; session_id: string; session_title: string;
+          role: string; content: string; created_at: string;
+        }>;
+        messages = messageRows.map(r => ({
+          kind: 'message',
+          id: r.id,
+          sessionId: r.session_id,
+          sessionTitle: r.session_title,
+          role: r.role,
+          snippet: r.content.length > 200 ? r.content.slice(0, 200) + '…' : r.content,
+          createdAt: r.created_at,
+        }));
+      } catch {
+        // FTS5 query syntax error — fall back to LIKE
+        const messageRows = db.prepare(`
+          SELECT m.id, m.session_id, s.title as session_title, m.role, m.content, m.created_at
+          FROM messages m
+          JOIN sessions s ON m.session_id = s.id
+          WHERE s.user_id = ? AND m.content LIKE ?
+          ORDER BY m.created_at DESC
+          LIMIT ?
+        `).all(userId, likeQ, limit) as Array<{
+          id: string; session_id: string; session_title: string;
+          role: string; content: string; created_at: string;
+        }>;
+        messages = messageRows.map(r => ({
+          kind: 'message',
+          id: r.id,
+          sessionId: r.session_id,
+          sessionTitle: r.session_title,
+          role: r.role,
+          snippet: r.content.length > 200 ? r.content.slice(0, 200) + '…' : r.content,
+          createdAt: r.created_at,
+        }));
+      }
 
       // Search memories (FTS5)
       let memories: SearchResultMemory[] = [];

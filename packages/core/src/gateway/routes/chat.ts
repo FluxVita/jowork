@@ -67,8 +67,11 @@ export function chatRouter(dispatchFn?: DispatchFn): Router {
       const db = getDb();
       const now = nowISO();
       const insert = db.prepare(`INSERT INTO messages (id, session_id, role, content, created_at) VALUES (?,?,?,?,?)`);
+      const insertFts = db.prepare(`INSERT INTO messages_fts(rowid, content) SELECT rowid, content FROM messages WHERE id = ?`);
       for (const msg of result.messages) {
-        insert.run(msg.id ?? generateId(), msg.sessionId, msg.role, msg.content, msg.createdAt ?? now);
+        const id = msg.id ?? generateId();
+        insert.run(id, msg.sessionId, msg.role, msg.content, msg.createdAt ?? now);
+        insertFts.run(id);
       }
       db.prepare(`UPDATE sessions SET updated_at = ? WHERE id = ?`).run(now, sessionId);
 
@@ -130,8 +133,11 @@ export function chatRouter(dispatchFn?: DispatchFn): Router {
       const db = getDb();
       const now = nowISO();
       const insert = db.prepare(`INSERT INTO messages (id, session_id, role, content, created_at) VALUES (?,?,?,?,?)`);
+      const insertFts = db.prepare(`INSERT INTO messages_fts(rowid, content) SELECT rowid, content FROM messages WHERE id = ?`);
       for (const msg of result.messages) {
-        insert.run(msg.id ?? generateId(), msg.sessionId, msg.role, msg.content, msg.createdAt ?? now);
+        const id = msg.id ?? generateId();
+        insert.run(id, msg.sessionId, msg.role, msg.content, msg.createdAt ?? now);
+        insertFts.run(id);
       }
       db.prepare(`UPDATE sessions SET updated_at = ? WHERE id = ?`).run(now, sessionId);
 
