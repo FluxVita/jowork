@@ -186,6 +186,7 @@
 | Phase 34：前端 SSE 流式渲染 + 停止生成 | ✅ 完成 | 2026-03-05 | apps/jowork + apps/fluxvita 均升级为 SSE stream 端点；流式光标+停止按钮；pnpm lint+test全绿（222/222） |
 | Phase 35：OpenAI-compatible 流式 + Ollama 开箱即用 | ✅ 完成 | 2026-03-05 | streamOpenAI()（OpenAI SSE格式）+ chatStream()路由到openai format + discoverOllamaModels()自动发现 + /api/models路由（providers/active/ollama-discover）；pnpm lint+test全绿（231/231） |
 | Phase 36：Agent 内置工具集扩展 | ✅ 完成 | 2026-03-05 | create_memory+fetch_connector+search_connector+list_context 4新工具+getToolSchemas()+/api/agent/tools；2→6工具；pnpm lint+test全绿（244/244） |
+| Phase 37：Anthropic 原生 tool_use API | 🔄 进行中 | 2026-03-05 | 替换 builtin engine XML hack → chatWithTools()；ApiMessage/ToolSchema类型；原生多轮tool_use协议 |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*
