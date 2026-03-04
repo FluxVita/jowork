@@ -200,6 +200,32 @@ describe('Context Docs — DB CRUD', () => {
     assert.ok(Array.isArray(assembled.includedDocIds));
     assert.equal(typeof assembled.systemFragment, 'string');
   });
+
+  test('context systemFragment is non-empty when workstyle doc exists', () => {
+    const db = openDb();
+    seedUser(db);
+    saveWorkstyleDoc('user-1', 'I like concise answers and bullet points');
+
+    const assembled = assembleContext({ userId: 'user-1', query: 'anything' });
+    assert.ok(assembled.systemFragment.length > 0, 'systemFragment should not be empty when workstyle doc exists');
+    assert.ok(assembled.systemFragment.includes('## Context'), 'systemFragment should start with ## Context header');
+  });
+
+  test('context injection: systemFragment is prepended to agent system prompt', () => {
+    // Simulate the chat.ts injection logic
+    const agentSystemPrompt = 'You are a helpful AI coworker.';
+    const systemFragment = '## Context\n\n### My Work Style: test\n\nI prefer bullet points\n';
+    const combined = systemFragment ? `${systemFragment}\n\n${agentSystemPrompt}` : agentSystemPrompt;
+    assert.ok(combined.startsWith('## Context'), 'combined prompt should start with context');
+    assert.ok(combined.includes(agentSystemPrompt), 'combined prompt should contain agent system prompt');
+  });
+
+  test('context injection: empty systemFragment leaves system prompt unchanged', () => {
+    const agentSystemPrompt = 'You are a helpful AI coworker.';
+    const systemFragment = '';
+    const combined = systemFragment ? `${systemFragment}\n\n${agentSystemPrompt}` : agentSystemPrompt;
+    assert.equal(combined, agentSystemPrompt, 'empty context should not modify system prompt');
+  });
 });
 
 // ─── Stats — DB layer ────────────────────────────────────────────────────────

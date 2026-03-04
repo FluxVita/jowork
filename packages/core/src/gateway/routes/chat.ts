@@ -11,6 +11,7 @@ import { getDb } from '../../datamap/index.js';
 import { generateId, nowISO } from '../../utils/index.js';
 import { NotFoundError } from '../../types.js';
 import { runBuiltin } from '../../agent/index.js';
+import { assembleContext } from '../../context/index.js';
 import type { RunOptions, RunResult } from '../../agent/engines/builtin.js';
 
 export type DispatchFn = (opts: RunOptions) => Promise<RunResult>;
@@ -82,8 +83,14 @@ export function chatRouter(dispatchFn?: DispatchFn): Router {
       }
 
       const { session, agent, history } = loadSession(sessionId, userId);
-      const systemPrompt = agent?.system_prompt ?? 'You are a helpful AI coworker.';
       const historyLengthBefore = history.length;
+
+      // Assemble three-layer context and prepend to system prompt
+      let systemPrompt = agent?.system_prompt ?? 'You are a helpful AI coworker.';
+      try {
+        const ctx = assembleContext({ userId, query: content });
+        if (ctx.systemFragment) systemPrompt = `${ctx.systemFragment}\n\n${systemPrompt}`;
+      } catch { /* context assembly is best-effort — never block the chat */ }
 
       const result = await doDispatch({
         sessionId,
@@ -131,8 +138,14 @@ export function chatRouter(dispatchFn?: DispatchFn): Router {
       }
 
       const { session, agent, history } = loadSession(sessionId, userId);
-      const systemPrompt = agent?.system_prompt ?? 'You are a helpful AI coworker.';
       const historyLengthBefore = history.length;
+
+      // Assemble three-layer context and prepend to system prompt
+      let systemPrompt = agent?.system_prompt ?? 'You are a helpful AI coworker.';
+      try {
+        const ctx = assembleContext({ userId, query: content });
+        if (ctx.systemFragment) systemPrompt = `${ctx.systemFragment}\n\n${systemPrompt}`;
+      } catch { /* context assembly is best-effort — never block the chat */ }
 
       // Set up SSE headers before running the agent loop
       res.setHeader('Content-Type', 'text/event-stream');
