@@ -67,6 +67,97 @@ export async function chat(
   throw new Error(`Unknown API format: ${String(provider.apiFormat)}`);
 }
 
+// ─── chatStream() — yields text chunks via Anthropic streaming API ────────────
+
+/**
+ * Stream a chat response from the configured provider (Anthropic only).
+ * Yields text chunks as they arrive. Falls back to non-streaming for other providers.
+ */
+export async function* chatStream(
+  messages: ChatMessage[],
+  opts: ChatOptions = {},
+): AsyncGenerator<string> {
+  const { provider, model, apiKey } = resolveProviderFromEnv();
+
+  if (provider.apiFormat === 'anthropic') {
+    yield* streamAnthropic(messages, { provider: 'anthropic', model, apiKey }, opts);
+    return;
+  }
+
+  // Fallback: non-streaming providers return the full response as a single chunk
+  const response = await chat(messages, opts);
+  yield response.content;
+}
+
+async function* streamAnthropic(
+  messages: ChatMessage[],
+  model: ModelConfig,
+  opts: ChatOptions,
+): AsyncGenerator<string> {
+  const apiKey = model.apiKey;
+  if (!apiKey) throw new Error('ANTHROPIC_API_KEY is not set');
+
+  const body: Record<string, unknown> = {
+    model: model.model,
+    max_tokens: opts.maxTokens ?? model.maxTokens ?? 8096,
+    messages: messages.filter(m => m.role !== 'system'),
+    stream: true,
+  };
+
+  const systemMsg = opts.systemPrompt ?? messages.find(m => m.role === 'system')?.content;
+  if (systemMsg) body['system'] = systemMsg;
+
+  const endpoint = model.baseUrl ?? 'https://api.anthropic.com';
+  const res = await fetch(`${endpoint}/v1/messages`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Anthropic API error ${res.status}: ${text}`);
+  }
+
+  if (!res.body) throw new Error('No response body from Anthropic streaming');
+
+  const decoder = new TextDecoder();
+  const reader = res.body.getReader();
+  let buf = '';
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buf += decoder.decode(value, { stream: true });
+      const lines = buf.split('\n');
+      buf = lines.pop() ?? '';
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const data = line.slice(6).trim();
+        if (data === '[DONE]') return;
+
+        try {
+          const evt = JSON.parse(data) as { type: string; delta?: { type: string; text?: string } };
+          if (evt.type === 'content_block_delta' && evt.delta?.type === 'text_delta' && evt.delta.text) {
+            yield evt.delta.text;
+          }
+        } catch {
+          // ignore malformed SSE lines
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+}
+
 // ─── Anthropic ────────────────────────────────────────────────────────────────
 
 interface AnthropicResponse {

@@ -181,6 +181,7 @@
 | Phase 29：User 管理 REST API | ✅ 完成 | 2026-03-05 | usersRouter(/api/users/me+列表+创建+PATCH+DELETE；owner/admin权限分级；新用户自动签发token；防自删)；两app均挂载；pnpm lint+test全绿（182/182） |
 | Phase 30：Sessions REST API（移入 core + 补全端点） | ✅ 完成 | 2026-03-05 | sessionsRouter移入core（PATCH title+DELETE session级联+DELETE message）；两app删除重复路由改用core router；pnpm lint+test全绿（197/197） |
 | Phase 31：Chat/Connectors/Memory/Context/Stats 路由移入 core | ✅ 完成 | 2026-03-05 | chatRouter(dispatchFn?)+connectorsRouter+memoryRouter+contextRouter+statsRouter移入core；两app删除重复路由；fluxvita通过chatRouter(dispatch)注入premium引擎；pnpm lint+test全绿（210/210） |
+| Phase 32：SSE 流式聊天端点 | ✅ 完成 | 2026-03-05 | chatStream()异步生成器（Anthropic streaming API）+ POST /api/sessions/:id/messages/stream SSE端点（chunk/done/error事件）；pnpm lint+test全绿（217/217） |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*
