@@ -96,7 +96,8 @@ export type ConnectorKind =
   | 'github'
   | 'notion'
   | 'slack'
-  | 'jira';
+  | 'jira'
+  | 'confluence';
 
 export interface ConnectorConfig {
   id: ConnectorId;

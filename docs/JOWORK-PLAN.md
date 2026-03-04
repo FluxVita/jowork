@@ -207,6 +207,7 @@
 | Phase 55：Connector 健康状态 UI | ✅ 完成 | 2026-03-05 | GET /api/connectors 附加health字段(getConnectorHealth)；前端health-badge(healthy/degraded/unknown)；3新测试；pnpm lint+test全绿（304/304） |
 | Phase 56：Docker CI/CD publish | ✅ 完成 | 2026-03-05 | ci.yml tags v*.*.* trigger + docker-publish job(needs:lint-test-build；ghcr.io/fluxvita/jowork；linux/amd64+arm64；GHA缓存；semver+sha tags)；pnpm lint全绿 |
 | Phase 57：Jira JCP 连接器 | ✅ 完成 | 2026-03-05 | jira.ts(Cloud+Server；Basic/Bearer auth；JQL discover/fetch/search；baseUrl+projectKey+email configSchema)；ConnectorKind+='jira'；index.ts导出+注册；7新测试；pnpm lint+test全绿（311/311） |
+| Phase 58：Confluence JCP 连接器 | ✅ 完成 | 2026-03-05 | confluence.ts(Cloud+Server；CQL搜索；htmlToText；confidential sensitivity；spaceKey过滤)；ConnectorKind+='confluence'；注册+导出；7新测试；pnpm lint+test全绿（318/318） |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*
@@ -3224,6 +3225,21 @@ GET /health → {
 - [x] 在 `index.ts` 追加 `export * from './connectors/jira.js'`
 - [x] `jcp-connectors.test.ts`：更新 listJCPConnectors 数量（6→7），追加 7 个 Jira 测试
 - [x] pnpm lint+test 全绿（311/311）
+
+### Phase 58: Confluence JCP 连接器（0.5 天）
+
+- [x] 新建 `packages/core/src/connectors/confluence.ts`：实现 `JoworkConnector` 接口（discover/fetch/search/health）
+- [x] 支持 Confluence Cloud（Basic auth: email + API token）和 Server（Bearer token）
+- [x] `discover()`：REST API `/rest/api/content` 分页，支持 spaceKey 过滤，返回 pages + blog posts
+- [x] `fetch()`：获取单个页面完整内容（`body.view` HTML → `htmlToText()` 纯文本）
+- [x] `search()`：CQL `text ~` 全文搜索（`/rest/api/search`），支持 spaceKey 限定范围
+- [x] `defaultSensitivity = 'confidential'`（企业文档属于机密级别）
+- [x] `configSchema` 包含 `baseUrl`（必填）、`spaceKey`（可选）、`email`（可选，Cloud 需要）
+- [x] 在 `types.ts` 的 `ConnectorKind` 添加 `'confluence'`
+- [x] 在 `connectors/index.ts` 导入并 `registerJCPConnector(confluenceConnector)`
+- [x] 在 `index.ts` 追加 `export * from './connectors/confluence.js'`
+- [x] `jcp-connectors.test.ts`：更新 listJCPConnectors 数量（7→8），追加 7 个 Confluence 测试
+- [x] pnpm lint+test 全绿（318/318）
 
 **AI 辅助开发预计总工期：6-10 个工作日**（全程 AI 写代码，人工只做决策/审查/测试）
 

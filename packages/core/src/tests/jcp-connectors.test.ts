@@ -16,6 +16,7 @@ import {
   gitlabConnector,
   figmaConnector,
   jiraConnector,
+  confluenceConnector,
 } from '../index.js';
 
 describe('JCP connector auto-registration', () => {
@@ -63,17 +64,18 @@ describe('JCP connector auto-registration', () => {
     assert.equal(connector?.manifest.name, 'Figma');
   });
 
-  test('listJCPConnectors returns all 7 built-in connectors', () => {
+  test('listJCPConnectors returns all 8 built-in connectors', () => {
     const manifests = listJCPConnectors();
     const ids = manifests.map(m => m.id);
-    assert.ok(ids.includes('github'), 'Should include github');
-    assert.ok(ids.includes('notion'), 'Should include notion');
-    assert.ok(ids.includes('slack'),  'Should include slack');
-    assert.ok(ids.includes('linear'), 'Should include linear');
-    assert.ok(ids.includes('gitlab'), 'Should include gitlab');
-    assert.ok(ids.includes('figma'),  'Should include figma');
-    assert.ok(ids.includes('jira'),   'Should include jira');
-    assert.ok(manifests.length >= 7, 'Should have at least 7 JCP connectors');
+    assert.ok(ids.includes('github'),     'Should include github');
+    assert.ok(ids.includes('notion'),     'Should include notion');
+    assert.ok(ids.includes('slack'),      'Should include slack');
+    assert.ok(ids.includes('linear'),     'Should include linear');
+    assert.ok(ids.includes('gitlab'),     'Should include gitlab');
+    assert.ok(ids.includes('figma'),      'Should include figma');
+    assert.ok(ids.includes('jira'),       'Should include jira');
+    assert.ok(ids.includes('confluence'), 'Should include confluence');
+    assert.ok(manifests.length >= 8, 'Should have at least 8 JCP connectors');
   });
 });
 
@@ -290,6 +292,54 @@ describe('Jira connector — Phase 57', () => {
     const manifest = getConnectorTypeManifest('jira');
     assert.ok(manifest, 'Should return manifest for jira');
     assert.equal(manifest?.id, 'jira');
+    assert.equal(manifest?.authType, 'api_token');
+  });
+});
+
+// ─── Phase 58: Confluence connector ──────────────────────────────────────────
+
+describe('Confluence connector — Phase 58', () => {
+  test('Confluence connector is auto-registered', () => {
+    const connector = getJCPConnector('confluence');
+    assert.ok(connector, 'Confluence connector should be registered');
+    assert.equal(connector?.manifest.id, 'confluence');
+    assert.equal(connector?.manifest.name, 'Confluence');
+  });
+
+  test('manifest has api_token auth type', () => {
+    assert.equal(confluenceConnector.manifest.authType, 'api_token');
+  });
+
+  test('defaultSensitivity is confidential', () => {
+    assert.equal(confluenceConnector.defaultSensitivity, 'confidential');
+  });
+
+  test('manifest includes discover, fetch, search capabilities', () => {
+    assert.ok(confluenceConnector.manifest.capabilities.includes('discover'));
+    assert.ok(confluenceConnector.manifest.capabilities.includes('fetch'));
+    assert.ok(confluenceConnector.manifest.capabilities.includes('search'));
+  });
+
+  test('configSchema has baseUrl, spaceKey, email properties', () => {
+    const props = (confluenceConnector.manifest.configSchema as {
+      properties?: { baseUrl?: unknown; spaceKey?: unknown; email?: unknown };
+    })?.properties;
+    assert.ok(props?.baseUrl,   'Should have baseUrl in configSchema');
+    assert.ok(props?.spaceKey,  'Should have spaceKey in configSchema');
+    assert.ok(props?.email,     'Should have email in configSchema');
+  });
+
+  test('health returns error without credentials (no crash)', async () => {
+    await confluenceConnector.initialize({}, {});
+    const result = await confluenceConnector.health();
+    assert.equal(typeof result.ok, 'boolean');
+    assert.equal(typeof result.latencyMs, 'number');
+  });
+
+  test('getConnectorTypeManifest returns confluence manifest', () => {
+    const manifest = getConnectorTypeManifest('confluence');
+    assert.ok(manifest, 'Should return manifest for confluence');
+    assert.equal(manifest?.id, 'confluence');
     assert.equal(manifest?.authType, 'api_token');
   });
 });

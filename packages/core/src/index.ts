@@ -23,6 +23,7 @@ export * from './connectors/linear.js';
 export * from './connectors/gitlab.js';
 export * from './connectors/figma.js';
 export * from './connectors/jira.js';
+export * from './connectors/confluence.js';
 export * from './channels/index.js';
 export * from './channels/protocol.js';
 export * from './channels/telegram.js';
