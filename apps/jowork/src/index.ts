@@ -16,6 +16,7 @@ import {
   networkRouter,
   adminRouter,
   channelsRouter,
+  schedulerRouter,
 } from '@jowork/core';
 
 import { sessionsRouter } from './routes/sessions.js';
@@ -67,6 +68,7 @@ async function main(): Promise<void> {
       expressApp.use(connectorsRouter());
       expressApp.use(contextRouter());
       expressApp.use(statsRouter());
+      expressApp.use(schedulerRouter());
       expressApp.use(networkRouter());
       expressApp.use(adminRouter());
       expressApp.use(channelsRouter());

@@ -8,3 +8,4 @@ export { llmRateLimit, purgeStaleBuckets } from './middleware/rate-limit.js';
 export { networkRouter } from './routes/network.js';
 export { adminRouter } from './routes/admin.js';
 export { usageRouter } from './routes/usage.js';
+export { schedulerRouter } from './routes/scheduler.js';

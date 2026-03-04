@@ -16,6 +16,7 @@ import {
   networkRouter,
   adminRouter,
   channelsRouter,
+  schedulerRouter,
 } from '@jowork/core';
 
 import { activatePremium } from '@jowork/premium';
@@ -83,6 +84,7 @@ async function main(): Promise<void> {
       expressApp.use(contextRouter());
       expressApp.use(premiumRouter());
       expressApp.use(statsRouter());
+      expressApp.use(schedulerRouter());
       expressApp.use(networkRouter());
       expressApp.use(adminRouter());
       expressApp.use(channelsRouter());

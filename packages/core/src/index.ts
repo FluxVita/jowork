@@ -26,6 +26,7 @@ export * from './channels/index.js';
 export * from './channels/protocol.js';
 export * from './channels/telegram.js';
 export * from './channels/discord.js';
+export * from './channels/webhook.js';
 export * from './channels/router.js';
 export * from './services/index.js';
 export * from './onboarding/index.js';

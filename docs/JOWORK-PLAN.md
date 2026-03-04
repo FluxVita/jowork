@@ -176,7 +176,7 @@
 | Phase 20：GTM准备 | ✅ 完成 | 2026-03-05 | quick-start.md(3种安装方式)；product-hunt.md(tagline+文案)；reddit-hn.md(4平台帖子)；官网/视频/Discord需人工执行 |
 | Phase 25：Discord Channel | ✅ 完成 | 2026-03-05 | discordChannel（webhook发送+rich embeds+bot轮询接收）；pnpm lint+test全绿（124/124） |
 | Phase 26：Channels REST API | ✅ 完成 | 2026-03-05 | channels/router.ts（列表/init/message/shutdown端点）+ env自动初始化 + 协议状态追踪；pnpm lint+test全绿（137/137） |
-| Phase 27：Scheduler REST API + Webhook Channel | 🔄 进行中 | 2026-03-05 | Scheduler CRUD路由（/api/tasks）+ Webhook入站渠道（tokenAuth+outgoing webhook） |
+| Phase 27：Scheduler REST API + Webhook Channel | ✅ 完成 | 2026-03-05 | schedulerRouter(/api/tasks CRUD)+ webhookChannel(inbound Bearer auth+outgoing POST)+两个app均挂载；pnpm lint+test全绿（156/156） |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*
@@ -2912,6 +2912,38 @@ GET /health → {
 - [x] 更新 `ConnectorKind` 类型包含 'github' | 'notion' | 'slack'
 - [x] 桥接 JCP 连接器到现有 connector 路由（`discoverViaConnector` + `listAllConnectorTypes`；两个 app 均更新）
 - [x] 添加 JCP 连接器集成测试（13 个用例，92/92 通过）
+
+### Phase 23: Linear + GitLab JCP 连接器（0.5 天）
+
+- [x] 添加 Linear JCP 连接器（GraphQL issues/search；`packages/core/src/connectors/linear.ts`）
+- [x] 添加 GitLab JCP 连接器（REST projects/MRs/issues；支持自托管 baseUrl；`packages/core/src/connectors/gitlab.ts`）
+- [x] 添加集成测试（10 个用例，102/102 通过）
+
+### Phase 24: Figma JCP 连接器（0.5 天）
+
+- [x] 添加 Figma JCP 连接器（files/components/pages；teamId+fileKeys 配置；`packages/core/src/connectors/figma.ts`）
+- [x] 添加集成测试（6 个用例，108/108 通过）
+
+### Phase 25: Discord Channel（0.5 天）
+
+- [x] 添加 Discord channel（webhook 发送 + rich embeds + bot 轮询接收；`packages/core/src/channels/discord.ts`）
+- [x] 添加测试（16 个用例，124/124 通过）
+
+### Phase 26: Channels REST API（0.5 天）
+
+- [x] 实现 `channels/router.ts`（列表/init/message/shutdown 端点）
+- [x] env 自动初始化（TELEGRAM_BOT_TOKEN / DISCORD_WEBHOOK_URL）
+- [x] 协议状态追踪（markChannelInitialized / markChannelShutdown）
+- [x] 添加测试（13 个用例，137/137 通过）
+
+### Phase 27: Scheduler REST API + Webhook Channel（0.5 天）
+
+- [x] 实现 `gateway/routes/scheduler.ts`（GET/POST/PATCH/DELETE /api/tasks；用户隔离）
+- [x] 导出 `schedulerRouter` 并在 apps/jowork 和 apps/fluxvita 均挂载
+- [x] 实现 `channels/webhook.ts`（入站 Bearer token 鉴权 + 出站 HTTP POST；`WebhookIncomingPayload` 类型）
+- [x] channels/router.ts 自动注册 webhook channel + env 自动初始化（WEBHOOK_SECRET / WEBHOOK_OUTBOUND_URL）
+- [x] 入站接收路由 `POST /api/channels/webhook/receive`
+- [x] 添加测试（19 个用例，156/156 通过）
 
 **AI 辅助开发预计总工期：6-10 个工作日**（全程 AI 写代码，人工只做决策/审查/测试）
 

@@ -16,6 +16,8 @@ import { authenticate, requireRole } from '../gateway/index.js';
 import { logger } from '../utils/index.js';
 import { telegramChannel } from './telegram.js';
 import { discordChannel } from './discord.js';
+import { webhookChannel } from './webhook.js';
+import type { WebhookIncomingPayload } from './webhook.js';
 import {
   registerChannelPlugin,
   getChannelPlugin,
@@ -31,6 +33,7 @@ import type { ChannelConfig, ChannelTarget } from './protocol.js';
 
 registerChannelPlugin(telegramChannel);
 registerChannelPlugin(discordChannel);
+registerChannelPlugin(webhookChannel);
 
 // ─── Env-based auto-initialization ───────────────────────────────────────────
 
@@ -64,6 +67,21 @@ async function autoInitFromEnv(): Promise<void> {
       logger.info('Discord channel auto-initialized');
     } catch (err) {
       logger.warn('Discord auto-init failed', { err: String(err) });
+    }
+  }
+
+  const webhookSecret     = process.env['WEBHOOK_SECRET'];
+  const webhookOutboundUrl = process.env['WEBHOOK_OUTBOUND_URL'];
+
+  if (webhookSecret && !isChannelInitialized('webhook')) {
+    try {
+      const cfg: ChannelConfig = { secret: webhookSecret };
+      if (webhookOutboundUrl) cfg['webhookUrl'] = webhookOutboundUrl;
+      await webhookChannel.initialize(cfg);
+      markChannelInitialized('webhook');
+      logger.info('Webhook channel auto-initialized');
+    } catch (err) {
+      logger.warn('Webhook auto-init failed', { err: String(err) });
     }
   }
 }
@@ -146,6 +164,36 @@ export function channelsRouter(): Router {
       markChannelShutdown(id);
 
       res.json({ id, initialized: false });
+    } catch (err) { next(err); }
+  });
+
+  // Inbound webhook receiver — external systems POST here with Bearer token
+  // POST /api/channels/webhook/receive
+  // Header: Authorization: Bearer <WEBHOOK_SECRET>
+  // Body:   { text: string; senderId?: string; senderName?: string }
+  router.post('/api/channels/webhook/receive', async (req, res, next) => {
+    try {
+      if (!isChannelInitialized('webhook')) {
+        res.status(503).json({ error: 'Webhook channel not initialized' });
+        return;
+      }
+
+      const authHeader = (req.headers['authorization'] as string | undefined) ?? '';
+      const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+
+      if (!webhookChannel.validateToken(token)) {
+        res.status(401).json({ error: 'Invalid or missing bearer token' });
+        return;
+      }
+
+      const payload = req.body as WebhookIncomingPayload;
+      if (!payload.text || typeof payload.text !== 'string') {
+        res.status(400).json({ error: 'text is required' });
+        return;
+      }
+
+      await webhookChannel.handleIncoming(payload);
+      res.json({ received: true });
     } catch (err) { next(err); }
   });
 
