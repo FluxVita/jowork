@@ -146,6 +146,25 @@
     .task-toggle.on { border-color: #14532d; color: #22c55e; }
     .task-delete { background: transparent; border: 1px solid #450a0a; color: #f87171; border-radius: 4px; padding: 3px 7px; cursor: pointer; font-size: 12px; flex-shrink: 0; }
     .task-delete:hover { background: #450a0a; }
+
+    /* Usage tab */
+    .usage-bar-wrap { background: #0f1117; border-radius: 6px; height: 8px; margin-top: 6px; overflow: hidden; }
+    .usage-bar { height: 100%; border-radius: 6px; background: #4c4fff; transition: width 0.3s; }
+    .usage-bar.warn { background: #f59e0b; }
+    .usage-bar.alert,.usage-bar.blocked { background: #ef4444; }
+    .daily-row { display: flex; align-items: center; gap: 8px; padding: 5px 0; font-size: 12px; }
+    .daily-date { width: 82px; color: #6b7a99; flex-shrink: 0; }
+    .daily-bar-wrap { flex: 1; background: #0f1117; border-radius: 3px; height: 6px; overflow: hidden; }
+    .daily-bar { height: 100%; border-radius: 3px; background: #4c4fff; }
+    .daily-cost { width: 64px; text-align: right; color: #94a3b8; flex-shrink: 0; }
+
+    /* Admin tab */
+    .btn-secondary { background: transparent; color: #a8b4ff; border: 1px solid #4c4fff; border-radius: 6px; padding: 7px 14px; cursor: pointer; font-size: 13px; }
+    .btn-secondary:hover:not(:disabled) { background: rgba(76,79,255,0.15); }
+    .btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-danger-outline { display: inline-block; background: transparent; color: #f87171; border: 1px solid #450a0a; border-radius: 6px; padding: 7px 14px; cursor: pointer; font-size: 13px; }
+    .btn-danger-outline:hover { background: #450a0a; }
+    .admin-btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
   </style>
 </head>
 <body>
@@ -241,6 +260,27 @@
         const workstyleContent = ref('');
         const workstyleSaving  = ref(false);
         const workstyleMsg     = ref('');
+
+        // Usage
+        const usageSummary = ref(null);
+        const usageDaily   = ref([]);
+        const budgetStatus = ref(null);
+        const budgetLimit  = ref('');
+        const budgetSaving = ref(false);
+        const budgetMsg    = ref('');
+        const dailyMax     = computed(() => {
+          if (!usageDaily.value.length) return 1;
+          return Math.max(...usageDaily.value.map(d => d.totalCost ?? 0)) || 1;
+        });
+        const budgetPct = computed(() => {
+          if (!budgetStatus.value?.limit) return 0;
+          return Math.min(100, Math.round(((budgetStatus.value.currentSpend ?? 0) / budgetStatus.value.limit) * 100));
+        });
+
+        // Admin
+        const adminMsg     = ref('');
+        const adminWorking = ref(false);
+        const updateInfo   = ref(null);
 
         // ─── Chat helpers ─────────────────────────────────────────────
         async function checkHealth() {
@@ -500,6 +540,102 @@
           }
         }
 
+        // ─── Usage helpers ────────────────────────────────────────────
+        async function loadUsage() {
+          try {
+            const [sum, daily, bgt] = await Promise.all([
+              api('GET', '/api/usage/summary').catch(() => null),
+              api('GET', '/api/usage/daily').catch(() => []),
+              api('GET', '/api/usage/budget').catch(() => null),
+            ]);
+            usageSummary.value = sum;
+            usageDaily.value = Array.isArray(daily) ? daily.slice(-7) : [];
+            budgetStatus.value = bgt;
+            if (bgt?.limit != null) budgetLimit.value = String(bgt.limit);
+          } catch { /* ignore */ }
+        }
+
+        async function saveBudget() {
+          budgetSaving.value = true;
+          budgetMsg.value = '';
+          try {
+            await api('PUT', '/api/usage/budget', { limit: parseFloat(budgetLimit.value) });
+            budgetMsg.value = 'Saved!';
+            await loadUsage();
+            setTimeout(() => { budgetMsg.value = ''; }, 2500);
+          } catch (e) {
+            budgetMsg.value = 'Error: ' + (e.message ?? 'failed');
+          } finally {
+            budgetSaving.value = false;
+          }
+        }
+
+        // ─── Admin helpers ────────────────────────────────────────────
+        function exportData(format) {
+          const a = document.createElement('a');
+          a.href = format === 'zip' ? '/api/admin/export' : `/api/admin/export/${format}`;
+          a.download = format === 'zip' ? 'jowork-export.zip' : format === 'json' ? 'jowork-export.json' : 'jowork-export.md';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+        }
+
+        async function triggerBackup() {
+          adminMsg.value = '';
+          adminWorking.value = true;
+          try {
+            await api('POST', '/api/admin/backup');
+            adminMsg.value = 'Backup created successfully!';
+            setTimeout(() => { adminMsg.value = ''; }, 3000);
+          } catch (e) {
+            adminMsg.value = 'Error: ' + (e.message ?? 'failed');
+          } finally {
+            adminWorking.value = false;
+          }
+        }
+
+        async function checkUpdates() {
+          adminWorking.value = true;
+          adminMsg.value = 'Checking…';
+          try {
+            const info = await api('GET', '/api/admin/updates/check');
+            updateInfo.value = info;
+            adminMsg.value = info.updateAvailable ? `Update available: v${info.latest}` : 'Already up to date.';
+            setTimeout(() => { adminMsg.value = ''; }, 5000);
+          } catch {
+            adminMsg.value = 'Could not check for updates.';
+            setTimeout(() => { adminMsg.value = ''; }, 3000);
+          } finally {
+            adminWorking.value = false;
+          }
+        }
+
+        async function handleImport(e) {
+          const file = e.target.files?.[0];
+          if (!file) return;
+          if (!confirm('Restore from this backup? Existing data will be overwritten.')) {
+            e.target.value = '';
+            return;
+          }
+          adminMsg.value = 'Restoring…';
+          adminWorking.value = true;
+          try {
+            const buf = await file.arrayBuffer();
+            const r = await fetch('/api/admin/import', {
+              method: 'POST',
+              headers: { 'content-type': 'application/zip' },
+              body: buf,
+            });
+            if (!r.ok) throw new Error(`HTTP ${r.status}`);
+            adminMsg.value = 'Restore complete! Refresh the page to see changes.';
+          } catch (e) {
+            adminMsg.value = 'Error: ' + (e.message ?? 'failed');
+          } finally {
+            adminWorking.value = false;
+            e.target.value = '';
+          }
+        }
+
         async function loadSettingsData() {
           try {
             const [m, p] = await Promise.all([
@@ -510,7 +646,7 @@
             providers.value = (p?.providers ?? []);
           } catch { /* ignore */ }
 
-          await Promise.all([loadConnectors(), loadAgent(), loadMemories(), loadTasks(), loadWorkstyle()]);
+          await Promise.all([loadConnectors(), loadAgent(), loadMemories(), loadTasks(), loadWorkstyle(), loadUsage()]);
 
           try {
             const h = await api('GET', '/health/full').catch(() => fetch('/health').then(r => r.json()).catch(() => null));
@@ -599,10 +735,12 @@
           memories, memoryQuery,
           tasks, newTask, taskError, taskSuccess, taskSaving,
           workstyleContent, workstyleSaving, workstyleMsg,
+          usageSummary, usageDaily, budgetStatus, budgetLimit, budgetSaving, budgetMsg, dailyMax, budgetPct,
+          adminMsg, adminWorking, updateInfo,
           openSettings, addConnector, removeConnector, extraFields, connIcon, renderMd,
           saveAgent, loadMemories, deleteMemoryItem,
           submitTask, toggleTaskEnabled, deleteTaskItem,
-          saveWorkstyle,
+          saveWorkstyle, saveBudget, exportData, triggerBackup, checkUpdates, handleImport,
         };
       },
 
@@ -675,6 +813,8 @@
               <div class="modal-tab" :class="{ active: settingsTab === 'connectors' }" @click="settingsTab = 'connectors'">Connectors</div>
               <div class="modal-tab" :class="{ active: settingsTab === 'memories' }" @click="settingsTab = 'memories'">Memories</div>
               <div class="modal-tab" :class="{ active: settingsTab === 'scheduler' }" @click="settingsTab = 'scheduler'">Scheduler</div>
+              <div class="modal-tab" :class="{ active: settingsTab === 'usage' }" @click="settingsTab = 'usage'">Usage</div>
+              <div class="modal-tab" :class="{ active: settingsTab === 'admin' }" @click="settingsTab = 'admin'">Admin</div>
               <div class="modal-tab" :class="{ active: settingsTab === 'system' }" @click="settingsTab = 'system'">System</div>
             </div>
             <div class="modal-body">
@@ -857,6 +997,108 @@
                   </button>
                   <div v-if="taskError" class="form-error">{{ taskError }}</div>
                   <div v-if="taskSuccess" class="form-success">{{ taskSuccess }}</div>
+                </div>
+              </div>
+
+              <!-- Usage tab -->
+              <div v-if="settingsTab === 'usage'">
+                <div class="setting-section" v-if="usageSummary">
+                  <h3>Summary</h3>
+                  <div class="info-row">
+                    <span class="info-label">Total Tokens</span>
+                    <span class="info-value">{{ (usageSummary.totalTokens ?? 0).toLocaleString() }}</span>
+                  </div>
+                  <div class="info-row">
+                    <span class="info-label">Total Cost</span>
+                    <span class="info-value">\${{ (usageSummary.totalCost ?? 0).toFixed(4) }}</span>
+                  </div>
+                  <template v-if="usageSummary.byModel && Object.keys(usageSummary.byModel).length > 0">
+                    <div style="margin-top:12px">
+                      <div class="setting-section">
+                        <h3>By Model</h3>
+                        <div v-for="(v, k) in usageSummary.byModel" :key="k" class="info-row">
+                          <span class="info-label" style="font-family:monospace;font-size:12px">{{ k }}</span>
+                          <span class="info-value" style="font-size:12px">\${{ (v.cost ?? 0).toFixed(4) }} · {{ (v.tokens ?? 0).toLocaleString() }} tok</span>
+                        </div>
+                      </div>
+                    </div>
+                  </template>
+                </div>
+                <div class="setting-section">
+                  <h3>Monthly Budget</h3>
+                  <template v-if="budgetStatus">
+                    <div class="info-row">
+                      <span class="info-label">Current Spend</span>
+                      <span :class="['badge', budgetStatus.level === 'ok' ? 'green' : budgetStatus.level === 'warn' ? 'blue' : 'red']">
+                        \${{ (budgetStatus.currentSpend ?? 0).toFixed(4) }}
+                      </span>
+                    </div>
+                    <div v-if="budgetStatus.limit" class="info-row">
+                      <span class="info-label">Budget Limit</span>
+                      <span class="info-value">\${{ budgetStatus.limit }}</span>
+                    </div>
+                    <div v-if="budgetStatus.limit" style="margin:8px 12px 12px">
+                      <div class="usage-bar-wrap">
+                        <div :class="['usage-bar', budgetStatus.level && budgetStatus.level !== 'ok' ? budgetStatus.level : '']"
+                             :style="{ width: budgetPct + '%' }"></div>
+                      </div>
+                      <div style="font-size:11px;color:#6b7a99;margin-top:4px;text-align:right">{{ budgetPct }}% used</div>
+                    </div>
+                  </template>
+                  <div class="form-row" style="margin-top:8px">
+                    <label>Set Monthly Budget ($)</label>
+                    <input v-model="budgetLimit" type="number" min="0" step="1" placeholder="e.g. 20" />
+                  </div>
+                  <button class="btn-primary" :disabled="budgetSaving || !budgetLimit" @click="saveBudget">
+                    {{ budgetSaving ? 'Saving…' : 'Save Budget' }}
+                  </button>
+                  <span v-if="budgetMsg" :style="{ color: budgetMsg.startsWith('Error') ? '#f87171' : '#22c55e', marginLeft: '10px', fontSize: '12px' }">{{ budgetMsg }}</span>
+                </div>
+                <div class="setting-section" v-if="usageDaily.length > 0">
+                  <h3>Last 7 Days</h3>
+                  <div v-for="d in usageDaily" :key="d.date" class="daily-row">
+                    <span class="daily-date">{{ d.date }}</span>
+                    <div class="daily-bar-wrap">
+                      <div class="daily-bar" :style="{ width: Math.round(((d.totalCost ?? 0) / dailyMax) * 100) + '%' }"></div>
+                    </div>
+                    <span class="daily-cost">\${{ (d.totalCost ?? 0).toFixed(4) }}</span>
+                  </div>
+                </div>
+                <div v-if="!usageSummary && !budgetStatus" class="empty-msg">No usage data yet. Start chatting to track token usage.</div>
+              </div>
+
+              <!-- Admin tab -->
+              <div v-if="settingsTab === 'admin'">
+                <div class="setting-section">
+                  <h3>Maintenance</h3>
+                  <div class="admin-btn-row">
+                    <button class="btn-secondary" :disabled="adminWorking" @click="triggerBackup">Manual Backup</button>
+                    <button class="btn-secondary" :disabled="adminWorking" @click="checkUpdates">Check for Updates</button>
+                  </div>
+                  <div v-if="updateInfo" class="info-row" style="margin-top:10px">
+                    <span class="info-label">Latest version</span>
+                    <span :class="['badge', updateInfo.updateAvailable ? 'blue' : 'green']">
+                      {{ updateInfo.latest ?? 'unknown' }}{{ updateInfo.updateAvailable ? ' (available)' : ' (current)' }}
+                    </span>
+                  </div>
+                  <div v-if="adminMsg" :style="{ color: adminMsg.startsWith('Error') ? '#f87171' : '#22c55e', fontSize: '12px', marginTop: '8px' }">{{ adminMsg }}</div>
+                </div>
+                <div class="setting-section">
+                  <h3>Export Data</h3>
+                  <div class="admin-btn-row">
+                    <button class="btn-secondary" @click="exportData('zip')">⬇ Download ZIP</button>
+                    <button class="btn-secondary" @click="exportData('json')">⬇ Export JSON</button>
+                    <button class="btn-secondary" @click="exportData('markdown')">⬇ Export Markdown</button>
+                  </div>
+                  <p style="font-size:12px;color:#6b7a99;margin-top:6px">ZIP contains all sessions, memories, context docs, and config.</p>
+                </div>
+                <div class="setting-section">
+                  <h3>Restore from Backup</h3>
+                  <p style="font-size:12px;color:#f87171;margin-bottom:10px">⚠ This will overwrite your existing data.</p>
+                  <label style="cursor:pointer">
+                    <span class="btn-danger-outline">⬆ Upload backup ZIP…</span>
+                    <input type="file" accept=".zip" style="display:none" @change="handleImport" :disabled="adminWorking" />
+                  </label>
                 </div>
               </div>
 

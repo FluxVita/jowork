@@ -191,7 +191,7 @@
 | Phase 39：前端完善 — Markdown 渲染 + 设置面板 + 连接器管理 UI | ✅ 完成 | 2026-03-05 | marked.js Markdown渲染(v-html)+⚙设置面板(Models/Connectors/System三标签)+连接器CRUD UI+健康/stats展示；apps/jowork+apps/fluxvita均更新；pnpm lint+test全绿（260/260） |
 | Phase 40：设置面板扩展 — Agent 配置 + 记忆管理 UI | ✅ 完成 | 2026-03-05 | Agent标签(name/systemPrompt/model可编辑+PATCH保存)+Memories标签(列表+搜索+单条删除)+默认打开Agent标签；apps/jowork+apps/fluxvita均更新；pnpm lint+test全绿（260/260） |
 | Phase 41：Scheduler UI + Workstyle 文档 UI | ✅ 完成 | 2026-03-05 | Scheduler标签(任务列表+创建+toggle+删除)+ Agent标签新增WorkStyle文档编辑区(GET+PUT /api/context/workstyle)；apps/jowork+apps/fluxvita均更新；pnpm lint+test全绿（260/260） |
-| Phase 42：LLM 用量仪表板 UI + 管理员备份/恢复 UI | 🔄 进行中 | 2026-03-05 | - |
+| Phase 42：LLM 用量仪表板 UI + 管理员备份/恢复 UI | ✅ 完成 | 2026-03-05 | Usage标签(Summary+Budget进度条+7日日报+预算设置)+Admin标签(手动备份+更新检查+导出ZIP/JSON/MD+从ZIP恢复)；apps/jowork+apps/fluxvita均更新；pnpm lint+test全绿（260/260） |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*
@@ -3054,6 +3054,13 @@ GET /health → {
 - [x] Scheduler 标签新增创建表单：name / cronExpr / action 字段（`POST /api/tasks`）
 - [x] Agent 标签新增 Work Style Document 编辑区：加载（`GET /api/context?layer=personal&docType=workstyle`）+ 保存（`PUT /api/context/workstyle`）
 - [x] `apps/fluxvita/public/index.html`：同步上述所有改动（保留 FluxVita 品牌色）
+- [x] pnpm lint+test 全绿（260/260）
+
+### Phase 42: LLM 用量仪表板 UI + 管理员备份/恢复 UI（0.5 天）
+
+- [x] 设置面板新增 Usage 标签：Summary（总 tokens + 总费用 + 按模型明细）+ 月度预算（进度条 + 告警等级 + 设置预算金额）+ 最近 7 天日报迷你柱状图
+- [x] 设置面板新增 Admin 标签：手动备份按钮 + 检查更新 + 数据导出（ZIP/JSON/Markdown）+ 从 ZIP 恢复（文件上传 + confirm 确认）
+- [x] `apps/fluxvita/public/index.html`：同步上述两标签（保留 FluxVita 蓝色品牌）
 - [x] pnpm lint+test 全绿（260/260）
 
 **AI 辅助开发预计总工期：6-10 个工作日**（全程 AI 写代码，人工只做决策/审查/测试）
