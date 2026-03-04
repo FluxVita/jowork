@@ -212,6 +212,7 @@
 | Phase 60：会话导出（Session Export） | ✅ 完成 | 2026-03-05 | GET /api/sessions/:id/export?format=md|json|txt；sessionRouter新增export路由(全量消息+格式化)；前端⬇按钮+exportSession()；9新测试；pnpm lint+test全绿（330/330） |
 | Phase 61：Geek Mode 基础终端 | ✅ 完成 | 2026-03-05 | terminal/index.ts(execInSession+CWD持久化+输出截断+超时)；terminalRouter(POST exec+GET info+DELETE reset)；前端Terminal标签+CSS(历史↑↓+cwd显示+Reset)；两app均更新；13新测试；pnpm lint+test全绿（343/343） |
 | Phase 62：连接器内容缓存 | ✅ 完成 | 2026-03-05 | connector_items表+FTS5虚表+003迁移；cache.ts(syncConnectorItems/listConnectorItems/countConnectorItems/deleteConnectorItems)；POST sync+GET items+DELETE items路由；GET /api/connectors附加cachedItems计数；前端Sync按钮+条目数显示；12新测试；pnpm lint+test全绿（355/355） |
+| Phase 63：全局搜索增强（connector_items） | ✅ 完成 | 2026-03-05 | search.ts新增connectorItems域（FTS5+LIKE降级）；SearchResultConnectorItem类型+SearchResponse扩展；前端Cmd+K搜索结果新增Connector Content分组（可点击跳转URL）；3新测试（空/FTS命中/跨用户隔离）；pnpm lint+test全绿（358/358） |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*
@@ -3299,6 +3300,18 @@ GET /health → {
 - [x] 更新 `migrator.test.ts`：调整 migration 期望（003_connector_items）
 - [x] `connector-cache.test.ts`：12 个新测试（schema/migration/CRUD/FTS/pagination/route）
 - [x] pnpm lint+test 全绿（355/355）
+
+### Phase 63: 全局搜索增强 — connector_items 纳入搜索（0.25 天）
+
+- [x] `gateway/routes/search.ts`：新增 `SearchResultConnectorItem` 类型（kind/id/connectorId/connectorName/title/snippet/uri/url?/fetchedAt）
+- [x] `SearchResponse` 接口新增 `connectorItems` 字段
+- [x] 空查询返回 `connectorItems: []`
+- [x] connector_items FTS5 搜索（JOIN connector_items_fts + connectors 表 owner_id 过滤）+ LIKE 降级
+- [x] `gateway/index.ts` 导出 `SearchResultConnectorItem` 类型
+- [x] `apps/jowork/public/index.html`：`hasSearchResults` 包含 `connectorItems`；搜索结果新增 "Connector Content" 分组；点击带 URL 的结果在新标签页打开
+- [x] `apps/fluxvita/public/index.html`：同步上述前端改动
+- [x] `search.test.ts` 追加 3 个测试（空 connectorItems 数组 + FTS5 命中 connector item + 跨用户隔离验证）
+- [x] pnpm lint+test 全绿（358/358）
 
 **AI 辅助开发预计总工期：6-10 个工作日**（全程 AI 写代码，人工只做决策/审查/测试）
 

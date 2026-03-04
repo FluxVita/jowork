@@ -238,4 +238,64 @@ describe('/api/search', () => {
       assert.ok(Array.isArray(body.messages));
     } finally { await close(); }
   });
+
+  test('returns connectorItems array in response (empty when no items)', async () => {
+    const { port, close } = await makeServer();
+    try {
+      const res = await fetch(`http://localhost:${port}/api/search?q=kubernetes`);
+      assert.equal(res.status, 200);
+      const body = await res.json() as { connectorItems: unknown[] };
+      assert.ok(Array.isArray(body.connectorItems));
+      assert.equal(body.connectorItems.length, 0);
+    } finally { await close(); }
+  });
+
+  test('finds connector items via FTS5', async () => {
+    // Seed a connector and its cached items
+    const now = new Date().toISOString();
+    db.prepare(`INSERT INTO connectors (id, kind, name, settings, owner_id, created_at) VALUES (?,?,?,?,?,?)`)
+      .run('conn-1', 'github', 'My GitHub', '{}', PERSONAL_ID, now);
+    db.prepare(`INSERT INTO connector_items (id, connector_id, uri, title, content, content_type, sensitivity, fetched_at) VALUES (?,?,?,?,?,?,?,?)`)
+      .run('ci-1', 'conn-1', 'github:repo:test/kubernetes', 'Kubernetes Guide', 'Deploy pods to production cluster', 'text/plain', 'internal', now);
+    // Maintain FTS index
+    const row = db.prepare(`SELECT rowid FROM connector_items WHERE id = ?`).get('ci-1') as { rowid: number };
+    db.prepare(`INSERT INTO connector_items_fts(rowid, title, content) VALUES (?, ?, ?)`)
+      .run(row.rowid, 'Kubernetes Guide', 'Deploy pods to production cluster');
+
+    const { port, close } = await makeServer();
+    try {
+      const res = await fetch(`http://localhost:${port}/api/search?q=kubernetes`);
+      assert.equal(res.status, 200);
+      const body = await res.json() as {
+        connectorItems: Array<{ id: string; title: string; connectorName: string; uri: string }>;
+      };
+      assert.equal(body.connectorItems.length, 1);
+      assert.equal(body.connectorItems[0]!.id, 'ci-1');
+      assert.equal(body.connectorItems[0]!.title, 'Kubernetes Guide');
+      assert.equal(body.connectorItems[0]!.connectorName, 'My GitHub');
+      assert.equal(body.connectorItems[0]!.uri, 'github:repo:test/kubernetes');
+    } finally { await close(); }
+  });
+
+  test('does not return connector items from other users connectors', async () => {
+    const now = new Date().toISOString();
+    // Create connector owned by another user
+    db.prepare(`INSERT OR IGNORE INTO users (id, name, email, role, created_at) VALUES (?,?,?,?,?)`)
+      .run('user-other', 'Other', 'other@test', 'member', now);
+    db.prepare(`INSERT INTO connectors (id, kind, name, settings, owner_id, created_at) VALUES (?,?,?,?,?,?)`)
+      .run('conn-other', 'notion', 'Other Notion', '{}', 'user-other', now);
+    db.prepare(`INSERT INTO connector_items (id, connector_id, uri, title, content, content_type, sensitivity, fetched_at) VALUES (?,?,?,?,?,?,?,?)`)
+      .run('ci-other', 'conn-other', 'notion:page:secret', 'Secret Plans', 'Top secret project details', 'text/plain', 'confidential', now);
+    const otherRow = db.prepare(`SELECT rowid FROM connector_items WHERE id = ?`).get('ci-other') as { rowid: number };
+    db.prepare(`INSERT INTO connector_items_fts(rowid, title, content) VALUES (?, ?, ?)`)
+      .run(otherRow.rowid, 'Secret Plans', 'Top secret project details');
+
+    const { port, close } = await makeServer();
+    try {
+      const res = await fetch(`http://localhost:${port}/api/search?q=secret`);
+      assert.equal(res.status, 200);
+      const body = await res.json() as { connectorItems: Array<{ id: string }> };
+      assert.equal(body.connectorItems.length, 0, 'should not see other user connector items');
+    } finally { await close(); }
+  });
 });

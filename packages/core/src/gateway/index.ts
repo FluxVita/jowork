@@ -21,5 +21,5 @@ export { contextRouter } from './routes/context.js';
 export { statsRouter } from './routes/stats.js';
 export { modelsRouter } from './routes/models.js';
 export { searchRouter } from './routes/search.js';
-export type { SearchResponse, SearchResult, SearchResultMessage, SearchResultMemory, SearchResultContext } from './routes/search.js';
+export type { SearchResponse, SearchResult, SearchResultMessage, SearchResultMemory, SearchResultContext, SearchResultConnectorItem } from './routes/search.js';
 export { terminalRouter } from './routes/terminal.js';

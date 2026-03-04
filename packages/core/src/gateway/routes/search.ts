@@ -1,8 +1,8 @@
 // @jowork/core/gateway/routes/search — Global search REST API
 //
-// Searches across messages, memories, and context docs for the authenticated user.
-// All three domains use FTS5 (messages_fts, memories_fts, context_docs_fts),
-// with automatic LIKE fallback on FTS5 syntax errors.
+// Searches across messages, memories, context docs, and connector items
+// for the authenticated user.
+// All four domains use FTS5, with automatic LIKE fallback on FTS5 syntax errors.
 //
 // Routes:
 //   GET /api/search?q=<query>&limit=<n>
@@ -40,13 +40,26 @@ export interface SearchResultContext {
   updatedAt: string;
 }
 
-export type SearchResult = SearchResultMessage | SearchResultMemory | SearchResultContext;
+export interface SearchResultConnectorItem {
+  kind: 'connector_item';
+  id: string;
+  connectorId: string;
+  connectorName: string;
+  title: string;
+  snippet: string;
+  uri: string;
+  url?: string;
+  fetchedAt: string;
+}
+
+export type SearchResult = SearchResultMessage | SearchResultMemory | SearchResultContext | SearchResultConnectorItem;
 
 export interface SearchResponse {
   query: string;
   messages: SearchResultMessage[];
   memories: SearchResultMemory[];
   context: SearchResultContext[];
+  connectorItems: SearchResultConnectorItem[];
 }
 
 export function searchRouter(): Router {
@@ -59,7 +72,7 @@ export function searchRouter(): Router {
       const userId = req.auth!.userId;
 
       if (!q) {
-        res.json({ query: '', messages: [], memories: [], context: [] } satisfies SearchResponse);
+        res.json({ query: '', messages: [], memories: [], context: [], connectorItems: [] } satisfies SearchResponse);
         return;
       }
 
@@ -202,7 +215,65 @@ export function searchRouter(): Router {
         }));
       }
 
-      res.json({ query: q, messages, memories, context } satisfies SearchResponse);
+      // Search connector items (FTS5 on title+content) — user's connectors only
+      let connectorItems: SearchResultConnectorItem[] = [];
+      try {
+        const ciRows = db.prepare(`
+          SELECT ci.id, ci.connector_id, c.name as connector_name, ci.title, ci.content, ci.uri, ci.url, ci.fetched_at
+          FROM connector_items ci
+          JOIN connector_items_fts f ON ci.rowid = f.rowid
+          JOIN connectors c ON ci.connector_id = c.id
+          WHERE c.owner_id = ? AND connector_items_fts MATCH ?
+          ORDER BY rank
+          LIMIT ?
+        `).all(userId, q, limit) as Array<{
+          id: string; connector_id: string; connector_name: string;
+          title: string; content: string; uri: string; url: string | null; fetched_at: string;
+        }>;
+        connectorItems = ciRows.map(r => {
+          const item: SearchResultConnectorItem = {
+            kind: 'connector_item',
+            id: r.id,
+            connectorId: r.connector_id,
+            connectorName: r.connector_name,
+            title: r.title,
+            snippet: r.content.length > 200 ? r.content.slice(0, 200) + '…' : r.content,
+            uri: r.uri,
+            fetchedAt: r.fetched_at,
+          };
+          if (r.url !== null) item.url = r.url;
+          return item;
+        });
+      } catch {
+        // FTS5 query syntax error — fall back to LIKE
+        const ciRows = db.prepare(`
+          SELECT ci.id, ci.connector_id, c.name as connector_name, ci.title, ci.content, ci.uri, ci.url, ci.fetched_at
+          FROM connector_items ci
+          JOIN connectors c ON ci.connector_id = c.id
+          WHERE c.owner_id = ? AND (ci.title LIKE ? OR ci.content LIKE ?)
+          ORDER BY ci.fetched_at DESC
+          LIMIT ?
+        `).all(userId, likeQ, likeQ, limit) as Array<{
+          id: string; connector_id: string; connector_name: string;
+          title: string; content: string; uri: string; url: string | null; fetched_at: string;
+        }>;
+        connectorItems = ciRows.map(r => {
+          const item: SearchResultConnectorItem = {
+            kind: 'connector_item',
+            id: r.id,
+            connectorId: r.connector_id,
+            connectorName: r.connector_name,
+            title: r.title,
+            snippet: r.content.length > 200 ? r.content.slice(0, 200) + '…' : r.content,
+            uri: r.uri,
+            fetchedAt: r.fetched_at,
+          };
+          if (r.url !== null) item.url = r.url;
+          return item;
+        });
+      }
+
+      res.json({ query: q, messages, memories, context, connectorItems } satisfies SearchResponse);
     } catch (err) { next(err); }
   });
 

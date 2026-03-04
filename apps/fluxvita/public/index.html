@@ -498,7 +498,8 @@
           if (!searchResults.value) return false;
           return searchResults.value.messages.length > 0 ||
                  searchResults.value.memories.length > 0 ||
-                 searchResults.value.context.length > 0;
+                 searchResults.value.context.length > 0 ||
+                 (searchResults.value.connectorItems?.length ?? 0) > 0;
         });
 
         // ─── Chat helpers ─────────────────────────────────────────────
@@ -1305,10 +1306,23 @@
                       <div class="search-item-meta">{{ item.layer }} · {{ item.docType }} · {{ item.updatedAt.slice(0,10) }}</div>
                     </div>
                   </template>
+                  <template v-if="searchResults.connectorItems?.length > 0">
+                    <div class="search-section-label">Connector Content</div>
+                    <div
+                      v-for="item in searchResults.connectorItems" :key="item.id"
+                      class="search-item"
+                      @click="item.url && window.open(item.url, '_blank')"
+                      :style="item.url ? 'cursor:pointer' : ''"
+                    >
+                      <div class="search-item-title">{{ item.title }}</div>
+                      <div class="search-item-snippet">{{ item.snippet }}</div>
+                      <div class="search-item-meta">{{ item.connectorName }} · {{ item.fetchedAt.slice(0,10) }}</div>
+                    </div>
+                  </template>
                 </template>
               </template>
               <div v-else-if="searchQuery" class="search-empty">Type to search…</div>
-              <div v-else class="search-empty">Search messages, memories and context docs</div>
+              <div v-else class="search-empty">Search messages, memories, context docs and connector content</div>
             </div>
           </div>
         </div>
