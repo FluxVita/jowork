@@ -41,9 +41,7 @@ jobs:
           git add -A
           if ! git diff --cached --quiet; then
             DONE=$(grep -c '- \[x\]' docs/JOWORK-PLAN.md 2>/dev/null || echo 0)
-            git commit -m "feat(jowork): 自主开发 — 已完成 ${DONE} 项 [skip ci]
-
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
+            git commit -m "feat(jowork): 自主开发 — 已完成 ${DONE} 项 [skip ci]"
             git push
             echo "✅ 推送成功"
           else
