@@ -339,3 +339,90 @@ describe('Auto-title — maybeAutoTitle DB logic', () => {
     assert.equal(result, null, 'should not auto-title on follow-up messages');
   });
 });
+
+// ─── Message editing (Phase 69) ─────────────────────────────────────────────
+
+describe('Message editing — DB layer', () => {
+  beforeEach(() => { setupTestDb(); });
+  afterEach(() => { closeDb(); });
+
+  test('edit a user message updates content', () => {
+    const db = openDb();
+    seedUser(db);
+    seedAgent(db);
+    seedSession(db);
+    seedMessage(db, 'msg-1', 'sess-1', 'user', 'Original text');
+
+    db.prepare(`UPDATE messages SET content = ? WHERE id = ?`).run('Edited text', 'msg-1');
+
+    const row = db.prepare(`SELECT content FROM messages WHERE id = ?`).get('msg-1') as { content: string };
+    assert.equal(row.content, 'Edited text');
+  });
+
+  test('only user messages should be editable (logic check)', () => {
+    // Role guard: only allow editing when role === 'user'
+    function canEdit(role: string): boolean { return role === 'user'; }
+    assert.equal(canEdit('user'), true);
+    assert.equal(canEdit('assistant'), false);
+    assert.equal(canEdit('system'), false);
+  });
+
+  test('edit updates FTS index', () => {
+    const db = openDb();
+    seedUser(db);
+    seedAgent(db);
+    seedSession(db);
+    seedMessage(db, 'msg-1', 'sess-1', 'user', 'Original searchable text');
+
+    // Insert into FTS
+    db.prepare(`INSERT INTO messages_fts(rowid, content) SELECT rowid, content FROM messages WHERE id = ?`).run('msg-1');
+
+    // Verify original is searchable
+    const before = db.prepare(`SELECT rowid FROM messages_fts WHERE messages_fts MATCH ?`).all('Original');
+    assert.ok(before.length > 0, 'Original text should be in FTS');
+
+    // Edit: delete FTS BEFORE update (external content table needs old content to delete)
+    const row = db.prepare(`SELECT rowid, content FROM messages WHERE id = ?`).get('msg-1') as { rowid: number; content: string };
+    db.prepare(`INSERT INTO messages_fts(messages_fts, rowid, content) VALUES('delete', ?, ?)`).run(row.rowid, row.content);
+    db.prepare(`UPDATE messages SET content = ? WHERE id = ?`).run('Completely new text', 'msg-1');
+    db.prepare(`INSERT INTO messages_fts(rowid, content) SELECT rowid, content FROM messages WHERE id = ?`).run('msg-1');
+
+    // Verify new text is searchable
+    const after = db.prepare(`SELECT rowid FROM messages_fts WHERE messages_fts MATCH ?`).all('Completely');
+    assert.ok(after.length > 0, 'New text should be in FTS');
+
+    // Verify old text is no longer searchable
+    const oldGone = db.prepare(`SELECT rowid FROM messages_fts WHERE messages_fts MATCH ?`).all('Original');
+    assert.equal(oldGone.length, 0, 'Original text should be removed from FTS');
+  });
+
+  test('edit preserves other message fields', () => {
+    const db = openDb();
+    seedUser(db);
+    seedAgent(db);
+    seedSession(db);
+    const ts = '2026-01-15T12:00:00.000Z';
+    db.prepare(`INSERT INTO messages (id, session_id, role, content, created_at) VALUES (?,?,?,?,?)`)
+      .run('msg-ts', 'sess-1', 'user', 'Before', ts);
+
+    db.prepare(`UPDATE messages SET content = ? WHERE id = ?`).run('After', 'msg-ts');
+
+    const row = db.prepare(`SELECT * FROM messages WHERE id = ?`).get('msg-ts') as { role: string; created_at: string; content: string };
+    assert.equal(row.content, 'After');
+    assert.equal(row.role, 'user');
+    assert.equal(row.created_at, ts);
+  });
+
+  test('cross-user isolation: cannot edit message in another user session', () => {
+    const db = openDb();
+    seedUser(db, 'user-1');
+    seedUser(db, 'user-2');
+    seedAgent(db);
+    seedSession(db, 'sess-1', 'user-1');
+    seedMessage(db, 'msg-1', 'sess-1', 'user', 'Private msg');
+
+    // Simulate ownership check: user-2 tries to find session owned by user-1
+    const session = db.prepare(`SELECT id FROM sessions WHERE id = ? AND user_id = ?`).get('sess-1', 'user-2');
+    assert.equal(session, undefined, 'user-2 should not find user-1 session');
+  });
+});

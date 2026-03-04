@@ -62,6 +62,18 @@
     .msg-meta { display: flex; align-items: center; gap: 8px; margin-top: 4px; font-size: 10px; color: #4a5568; }
     .msg.user .msg-meta { justify-content: flex-end; }
 
+    /* ─── Message edit ────────────────────────────────────────────── */
+    .msg-edit-area { width: 100%; background: #0f1117; border: 1px solid #4c4fff; border-radius: 8px; padding: 8px 12px; color: #e2e8f0; font-size: 14px; resize: vertical; min-height: 40px; max-height: 200px; font-family: inherit; outline: none; box-sizing: border-box; }
+    .msg-edit-actions { display: flex; gap: 6px; margin-top: 6px; }
+    .msg-edit-actions button { font-size: 12px; padding: 4px 12px; border-radius: 4px; cursor: pointer; border: none; }
+    .msg-edit-save { background: #4c4fff; color: white; }
+    .msg-edit-save:hover { background: #6366ff; }
+    .msg-edit-cancel { background: transparent; color: #6b7a99; border: 1px solid #3a3f55 !important; }
+    .msg-edit-cancel:hover { background: #2d3148; color: #c8d0e8; }
+    .msg-user-actions { display: none; position: absolute; top: 6px; right: 6px; gap: 4px; }
+    .msg.user:hover .msg-user-actions { display: flex; }
+    .msg.user { position: relative; }
+
     /* ─── Markdown rendered content ──────────────────────────────────── */
     .md-body { word-break: break-word; }
     .md-body p { margin: 0 0 8px; }
@@ -742,6 +754,26 @@
           catch { toast('Copy failed', 'error'); }
         }
 
+        const editingMsgId = ref(null);
+        const editingContent = ref('');
+        function startEditMessage(msg) {
+          editingMsgId.value = msg.id;
+          editingContent.value = msg.content;
+        }
+        function cancelEditMessage() {
+          editingMsgId.value = null;
+          editingContent.value = '';
+        }
+        async function saveEditMessage(msg) {
+          if (!activeSessionId.value || !editingContent.value.trim()) return;
+          try {
+            const result = await api('PATCH', `/api/sessions/${activeSessionId.value}/messages/${msg.id}`, { content: editingContent.value.trim() });
+            msg.content = result.content;
+            toast('Message updated', 'success');
+          } catch { toast('Failed to update message', 'error'); }
+          cancelEditMessage();
+        }
+
         async function toggleFeedback(msg, rating) {
           if (!activeSessionId.value) return;
           const sid = activeSessionId.value;
@@ -1305,6 +1337,7 @@
           showSearch, searchQuery, searchResults, searchLoading, hasSearchResults,
           openSearch, closeSearch, onSearchInput, searchGoToSession,
           toasts, formatTime, formatTimeFull, copyMessage,
+          editingMsgId, editingContent, startEditMessage, cancelEditMessage, saveEditMessage,
         };
       },
 
@@ -1373,7 +1406,19 @@
                 <div class="msg-meta" :title="formatTimeFull(m.createdAt)">{{ formatTime(m.createdAt) }}</div>
               </div>
               <div v-else class="msg" :class="m.role">
-                {{ m.content }}
+                <template v-if="editingMsgId === m.id">
+                  <textarea class="msg-edit-area" v-model="editingContent" @keydown.enter.exact.prevent="saveEditMessage(m)" @keydown.escape="cancelEditMessage"></textarea>
+                  <div class="msg-edit-actions">
+                    <button class="msg-edit-save" @click="saveEditMessage(m)">Save</button>
+                    <button class="msg-edit-cancel" @click="cancelEditMessage">Cancel</button>
+                  </div>
+                </template>
+                <template v-else>
+                  {{ m.content }}
+                  <div v-if="m.role === 'user'" class="msg-user-actions">
+                    <button class="msg-action-btn" title="Edit message" @click="startEditMessage(m)">✏️</button>
+                  </div>
+                </template>
                 <div class="msg-meta" :title="formatTimeFull(m.createdAt)">{{ formatTime(m.createdAt) }}</div>
               </div>
             </template>

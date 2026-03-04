@@ -6,6 +6,7 @@
 //   GET    /api/sessions/:id          — get session with last 40 messages + hasMore flag
 //   PATCH  /api/sessions/:id          — update session title
 //   DELETE /api/sessions/:id          — delete session and all its messages
+//   PATCH  /api/sessions/:id/messages/:msgId — edit a user message
 //   DELETE /api/sessions/:id/messages/:msgId — delete a single message
 //   GET    /api/sessions/:id/messages — paginated message history (cursor-based)
 //   GET    /api/sessions/:id/export   — export full session as md|json|txt
@@ -209,6 +210,45 @@ export function sessionsRouter(): Router {
       db.prepare(`DELETE FROM sessions WHERE id = ?`).run(session.id);
 
       res.status(204).end();
+    } catch (err) { next(err); }
+  });
+
+  // Edit a user message — ownership checked via session ownership
+  router.patch('/api/sessions/:id/messages/:msgId', authenticate, (req, res, next) => {
+    try {
+      const db      = getDb();
+      const userId  = req.auth!.userId;
+      const session = db.prepare(
+        `SELECT id FROM sessions WHERE id = ? AND user_id = ?`,
+      ).get(String(req.params['id']), userId) as { id: string } | undefined;
+
+      if (!session) { res.status(404).json({ error: 'NOT_FOUND' }); return; }
+
+      const msgId = String(req.params['msgId']);
+      const msg   = db.prepare(`SELECT id, role, content, rowid FROM messages WHERE id = ? AND session_id = ?`).get(msgId, session.id) as { id: string; role: string; content: string; rowid: number } | undefined;
+
+      if (!msg) { res.status(404).json({ error: 'NOT_FOUND' }); return; }
+      if (msg.role !== 'user') { res.status(400).json({ error: 'INVALID_INPUT', message: 'Only user messages can be edited' }); return; }
+
+      const { content } = req.body as { content?: string };
+      if (!content?.trim()) { res.status(400).json({ error: 'INVALID_INPUT', message: 'content is required' }); return; }
+
+      // FTS5 external content: delete old entry BEFORE updating message (needs old content)
+      try {
+        db.prepare(`INSERT INTO messages_fts(messages_fts, rowid, content) VALUES('delete', ?, ?)`).run(msg.rowid, msg.content);
+      } catch { /* FTS cleanup best-effort */ }
+
+      db.prepare(`UPDATE messages SET content = ? WHERE id = ?`).run(content.trim(), msgId);
+
+      // Re-index with new content
+      try {
+        db.prepare(`INSERT INTO messages_fts(rowid, content) SELECT rowid, content FROM messages WHERE id = ?`).run(msgId);
+      } catch { /* FTS update best-effort */ }
+
+      // Update session timestamp
+      db.prepare(`UPDATE sessions SET updated_at = ? WHERE id = ?`).run(nowISO(), session.id);
+
+      res.json({ id: msgId, content: content.trim() });
     } catch (err) { next(err); }
   });
 
