@@ -158,6 +158,7 @@
 | Phase 5：CI/CD + GitHub 同步 | ✅ 完成 | 2026-03-04 | ci.yml + .gitlab-ci.yml（双 app lint+test+build）+ sync-to-github.sh；首次 push 需 GitHub repo 存在 |
 | Phase 6：三层上下文系统 | ✅ 完成 | 2026-03-04 | ContextDoc 类型 + context_docs/FTS 表已存在 + context/index.ts（CRUD+组装+自学习+workstyle shortcut）+ context 路由（两 app）；pnpm lint+test全绿 |
 | Phase 7：开源清理 + 安全审计 | ✅ 完成 | 2026-03-04 | 扫描无硬编码凭证；.env.example + .gitignore 完善；ci.yml 增加 TruffleHog secret scan job |
+| Phase 8：扩展性重构 | ✅ 完成 | 2026-03-05 | JCP 协议接口 + ModelProvider 注册器（Anthropic/OpenAI/Ollama 内置）+ JoworkChannel 接口 + GitHub/Notion connector + Telegram channel；pnpm lint+test全绿 |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*
@@ -867,11 +868,11 @@ CREATE VIRTUAL TABLE context_docs_fts USING fts5(
 
 **目标**：Connector / Channel / Model Provider 插件化
 
-- [ ] 实现 Jowork Connect Protocol（见第九节）
-- [ ] 实现 Channel 插件接口（见第十节）
-- [ ] Model Provider 动态注册（去掉硬编码）
-- [ ] 为开源版增加通用 Connector：GitHub Issues、Slack、Notion（至少 2 个）
-- [ ] 为开源版增加通用 Channel：Telegram、Discord（至少 1 个）
+- [x] 实现 Jowork Connect Protocol（connectors/protocol.ts — JoworkConnector + ConnectorManifest + registry）
+- [x] 实现 Channel 插件接口（channels/protocol.ts — JoworkChannel + capabilities + registry）
+- [x] Model Provider 动态注册（models/provider.ts — Anthropic/OpenAI/Ollama 内置 + registerModelProvider()）
+- [x] 为开源版增加通用 Connector：GitHub（connectors/github.ts）+ Notion（connectors/notion.ts）
+- [x] 为开源版增加通用 Channel：Telegram（channels/telegram.ts — webhook + long-poll 两模式）
 
 ### Phase 9: 平台兼容 + 国际化 + Docker（2-3 天）
 

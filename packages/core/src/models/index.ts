@@ -1,7 +1,11 @@
-// @jowork/core/models — basic model router (user-supplied API key)
-// Advanced routing (Klaude, multi-model) is in @jowork/premium
+// @jowork/core/models — model router + provider registry
+// Advanced routing (circuit-breaker, Klaude) is in @jowork/premium
 
+export * from './provider.js';
+import { resolveProviderFromEnv, type ModelProvider } from './provider.js';
 import type { ModelConfig } from '../types.js';
+
+// ─── Chat types ───────────────────────────────────────────────────────────────
 
 export interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
@@ -20,34 +24,47 @@ export interface ChatResponse {
   outputTokens: number;
 }
 
-/** Resolve model from env if not explicitly provided */
+// ─── Legacy resolveModel (kept for backward-compat) ──────────────────────────
+
+/** @deprecated Use resolveProviderFromEnv() from ./provider instead */
 export function resolveModel(): ModelConfig {
-  const provider = (process.env['MODEL_PROVIDER'] ?? 'anthropic') as ModelConfig['provider'];
-  const model = process.env['MODEL_NAME'] ?? 'claude-3-5-sonnet-latest';
-  const apiKey = process.env['ANTHROPIC_API_KEY'] ?? process.env['OPENAI_API_KEY'];
-  const baseUrl = process.env['MODEL_BASE_URL'];
-  const cfg: ModelConfig = { provider, model };
+  const { provider, model, apiKey } = resolveProviderFromEnv();
+  const cfg: ModelConfig = {
+    provider: provider.id as ModelConfig['provider'],
+    model,
+  };
   if (apiKey) cfg.apiKey = apiKey;
-  if (baseUrl) cfg.baseUrl = baseUrl;
+  if (process.env['MODEL_BASE_URL']) cfg.baseUrl = process.env['MODEL_BASE_URL'];
   return cfg;
 }
 
+// ─── chat() ───────────────────────────────────────────────────────────────────
+
 /**
- * Send a chat request to the configured model.
- * This is a minimal implementation — just calls the Anthropic Messages API directly
- * using native fetch (no SDK dependency in core).
+ * Send a chat request using the configured model provider.
+ * Supports Anthropic (native) and OpenAI-compatible APIs.
  */
 export async function chat(
   messages: ChatMessage[],
   opts: ChatOptions = {},
 ): Promise<ChatResponse> {
-  const model = opts.model ?? resolveModel();
-
-  if (model.provider === 'anthropic') {
-    return callAnthropic(messages, model, opts);
+  if (opts.model) {
+    // Legacy ModelConfig path
+    if (opts.model.provider === 'anthropic') {
+      return callAnthropic(messages, opts.model, opts);
+    }
+    throw new Error(`Provider '${opts.model.provider}' not supported via legacy ModelConfig`);
   }
 
-  throw new Error(`Model provider '${model.provider}' not supported in core. Use @jowork/premium for extended routing.`);
+  const { provider, model, apiKey } = resolveProviderFromEnv();
+  if (provider.apiFormat === 'anthropic') {
+    return callAnthropic(messages, { provider: 'anthropic', model, apiKey }, opts);
+  }
+  if (provider.apiFormat === 'openai') {
+    return callOpenAI(messages, provider, model, apiKey, opts);
+  }
+
+  throw new Error(`Unknown API format: ${String(provider.apiFormat)}`);
 }
 
 // ─── Anthropic ────────────────────────────────────────────────────────────────
@@ -74,7 +91,8 @@ async function callAnthropic(
   const systemMsg = opts.systemPrompt ?? messages.find(m => m.role === 'system')?.content;
   if (systemMsg) body['system'] = systemMsg;
 
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
+  const endpoint = model.baseUrl ?? 'https://api.anthropic.com';
+  const res = await fetch(`${endpoint}/v1/messages`, {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
@@ -91,9 +109,49 @@ async function callAnthropic(
 
   const data = await res.json() as AnthropicResponse;
   const text = data.content.find(b => b.type === 'text')?.text ?? '';
-  return {
-    content: text,
-    inputTokens: data.usage.input_tokens,
-    outputTokens: data.usage.output_tokens,
+  return { content: text, inputTokens: data.usage.input_tokens, outputTokens: data.usage.output_tokens };
+}
+
+// ─── OpenAI-compatible ────────────────────────────────────────────────────────
+
+interface OpenAIResponse {
+  choices: Array<{ message: { content: string } }>;
+  usage: { prompt_tokens: number; completion_tokens: number };
+}
+
+async function callOpenAI(
+  messages: ChatMessage[],
+  provider: ModelProvider,
+  modelId: string,
+  apiKey: string,
+  opts: ChatOptions,
+): Promise<ChatResponse> {
+  const body: Record<string, unknown> = {
+    model: modelId,
+    max_tokens: opts.maxTokens ?? 8096,
+    messages: messages.map(m => ({ role: m.role, content: m.content })),
   };
+
+  const systemMsg = opts.systemPrompt;
+  if (systemMsg) {
+    (body['messages'] as ChatMessage[]).unshift({ role: 'system', content: systemMsg });
+  }
+
+  const headers: Record<string, string> = { 'content-type': 'application/json' };
+  if (apiKey) headers['authorization'] = `Bearer ${apiKey}`;
+
+  const res = await fetch(`${provider.endpoint}/chat/completions`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`${provider.name} API error ${res.status}: ${text}`);
+  }
+
+  const data = await res.json() as OpenAIResponse;
+  const content = data.choices[0]?.message.content ?? '';
+  return { content, inputTokens: data.usage.prompt_tokens, outputTokens: data.usage.completion_tokens };
 }
