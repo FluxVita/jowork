@@ -213,6 +213,7 @@
 | Phase 61：Geek Mode 基础终端 | ✅ 完成 | 2026-03-05 | terminal/index.ts(execInSession+CWD持久化+输出截断+超时)；terminalRouter(POST exec+GET info+DELETE reset)；前端Terminal标签+CSS(历史↑↓+cwd显示+Reset)；两app均更新；13新测试；pnpm lint+test全绿（343/343） |
 | Phase 62：连接器内容缓存 | ✅ 完成 | 2026-03-05 | connector_items表+FTS5虚表+003迁移；cache.ts(syncConnectorItems/listConnectorItems/countConnectorItems/deleteConnectorItems)；POST sync+GET items+DELETE items路由；GET /api/connectors附加cachedItems计数；前端Sync按钮+条目数显示；12新测试；pnpm lint+test全绿（355/355） |
 | Phase 63：全局搜索增强（connector_items） | ✅ 完成 | 2026-03-05 | search.ts新增connectorItems域（FTS5+LIKE降级）；SearchResultConnectorItem类型+SearchResponse扩展；前端Cmd+K搜索结果新增Connector Content分组（可点击跳转URL）；3新测试（空/FTS命中/跨用户隔离）；pnpm lint+test全绿（358/358） |
+| Phase 64：Agent工具增强（search_cached_content） | ✅ 完成 | 2026-03-05 | agent/tools/index.ts新增第7个工具search_cached_content（搜索本地缓存的connector内容，支持指定connector_id或跨所有connector搜索）；assertSameUser跨用户保护；测试断言更新6→7；pnpm lint+test全绿（358/358） |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*
@@ -3311,6 +3312,15 @@ GET /health → {
 - [x] `apps/jowork/public/index.html`：`hasSearchResults` 包含 `connectorItems`；搜索结果新增 "Connector Content" 分组；点击带 URL 的结果在新标签页打开
 - [x] `apps/fluxvita/public/index.html`：同步上述前端改动
 - [x] `search.test.ts` 追加 3 个测试（空 connectorItems 数组 + FTS5 命中 connector item + 跨用户隔离验证）
+- [x] pnpm lint+test 全绿（358/358）
+
+### Phase 64: Agent 工具增强 — search_cached_content（0.1 天）
+
+- [x] `agent/tools/index.ts`：新增第 7 个内建工具 `search_cached_content`
+- [x] 支持 `query`（必填）+ `connector_id`（可选，限定搜索范围）
+- [x] 无 connector_id 时跨用户所有 connector 搜索，结果合并去重 top 10
+- [x] `assertSameUser` 跨用户保护
+- [x] `agent-tools.test.ts` 更新：工具数量断言 6→7，expected tools 新增 `search_cached_content`
 - [x] pnpm lint+test 全绿（358/358）
 
 **AI 辅助开发预计总工期：6-10 个工作日**（全程 AI 写代码，人工只做决策/审查/测试）

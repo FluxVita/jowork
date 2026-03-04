@@ -37,9 +37,9 @@ describe('getToolSchemas', () => {
     }
   });
 
-  test('includes all 6 expected tools', () => {
+  test('includes all 7 expected tools', () => {
     const names = getToolSchemas().map(s => s.name);
-    for (const expected of ['search_memory', 'create_memory', 'list_connectors', 'fetch_connector', 'search_connector', 'list_context']) {
+    for (const expected of ['search_memory', 'create_memory', 'list_connectors', 'fetch_connector', 'search_connector', 'list_context', 'search_cached_content']) {
       assert.ok(names.includes(expected), `missing tool: ${expected}`);
     }
   });
@@ -155,7 +155,7 @@ describe('GET /api/agent/tools', () => {
       assert.equal(res.status, 200);
       const body = await res.json() as { tools: Array<{ name: string }> };
       assert.ok(Array.isArray(body.tools));
-      assert.ok(body.tools.length >= 6);
+      assert.ok(body.tools.length >= 7);
       const names = body.tools.map((t: { name: string }) => t.name);
       assert.ok(names.includes('search_memory'));
       assert.ok(names.includes('create_memory'));

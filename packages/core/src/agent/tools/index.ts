@@ -10,7 +10,7 @@
 
 import { searchMemory, saveMemory } from '../../memory/index.js';
 import { listContextDocs } from '../../context/index.js';
-import { getConnector, getConnectorConfig, listConnectorConfigs } from '../../connectors/index.js';
+import { getConnector, getConnectorConfig, listConnectorConfigs, listConnectorItems } from '../../connectors/index.js';
 import { ForbiddenError, type ConnectorId, type ConnectorKind } from '../../types.js';
 
 export interface ToolDefinition {
@@ -189,6 +189,54 @@ const listContextTool: ToolDefinition = {
   },
 };
 
+// ─── Tool: search_cached_content ─────────────────────────────────────────────
+
+const searchCachedContentTool: ToolDefinition = {
+  name: 'search_cached_content',
+  description: 'Search locally cached connector content (fast, no external API call). Searches across all synced connector items.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      query:        { type: 'string', description: 'Search query text' },
+      connector_id: { type: 'string', description: 'Optional: limit search to a specific connector ID' },
+    },
+    required: ['query'],
+  },
+  async execute(input, ctx) {
+    assertSameUser(input, ctx);
+    const query = String(input['query'] ?? '').trim();
+    if (!query) return 'Error: query cannot be empty.';
+
+    const connectorId = input['connector_id'] as string | undefined;
+
+    // If specific connector, search its items
+    if (connectorId) {
+      const cfg = getConnectorConfig(connectorId as ConnectorId);
+      if (cfg.ownerId !== ctx.userId) throw new ForbiddenError('access another user\'s connector');
+      const result = listConnectorItems(connectorId, { query, limit: 10 });
+      if (result.items.length === 0) return 'No cached content found matching the query.';
+      return result.items.map(i => `- **${i.title}** (${i.uri}): ${i.content.slice(0, 300)}`).join('\n');
+    }
+
+    // Search across all user's connectors
+    const configs = listConnectorConfigs(ctx.userId);
+    if (configs.length === 0) return 'No connectors configured.';
+
+    const allResults: Array<{ title: string; uri: string; content: string; connectorName: string }> = [];
+    for (const cfg of configs) {
+      const result = listConnectorItems(cfg.id, { query, limit: 5 });
+      for (const item of result.items) {
+        allResults.push({ title: item.title, uri: item.uri, content: item.content, connectorName: cfg.name });
+      }
+    }
+
+    if (allResults.length === 0) return 'No cached content found matching the query.';
+    return allResults.slice(0, 10).map(i =>
+      `- **${i.title}** [${i.connectorName}] (${i.uri}): ${i.content.slice(0, 300)}`
+    ).join('\n');
+  },
+};
+
 // ─── Exported tool list + schema helper ──────────────────────────────────────
 
 export const BUILTIN_TOOLS: ToolDefinition[] = [
@@ -198,6 +246,7 @@ export const BUILTIN_TOOLS: ToolDefinition[] = [
   fetchConnectorTool,
   searchConnectorTool,
   listContextTool,
+  searchCachedContentTool,
 ];
 
 /** Return tool list as JSON Schema descriptors (for UI display or LLM tool_use) */
