@@ -9,3 +9,5 @@ export { networkRouter } from './routes/network.js';
 export { adminRouter } from './routes/admin.js';
 export { usageRouter } from './routes/usage.js';
 export { schedulerRouter } from './routes/scheduler.js';
+export { agentsRouter } from './routes/agents.js';
+export { onboardingRouter } from './routes/onboarding.js';

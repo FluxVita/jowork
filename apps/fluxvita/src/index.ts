@@ -17,6 +17,8 @@ import {
   adminRouter,
   channelsRouter,
   schedulerRouter,
+  agentsRouter,
+  onboardingRouter,
 } from '@jowork/core';
 
 import { activatePremium } from '@jowork/premium';
@@ -77,6 +79,8 @@ async function main(): Promise<void> {
   const app = createApp({
     port: config.port,
     setup(expressApp) {
+      expressApp.use(agentsRouter());
+      expressApp.use(onboardingRouter());
       expressApp.use(sessionsRouter());
       expressApp.use(chatRouter());
       expressApp.use(memoryRouter());

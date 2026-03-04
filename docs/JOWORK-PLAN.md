@@ -177,7 +177,7 @@
 | Phase 25：Discord Channel | ✅ 完成 | 2026-03-05 | discordChannel（webhook发送+rich embeds+bot轮询接收）；pnpm lint+test全绿（124/124） |
 | Phase 26：Channels REST API | ✅ 完成 | 2026-03-05 | channels/router.ts（列表/init/message/shutdown端点）+ env自动初始化 + 协议状态追踪；pnpm lint+test全绿（137/137） |
 | Phase 27：Scheduler REST API + Webhook Channel | ✅ 完成 | 2026-03-05 | schedulerRouter(/api/tasks CRUD)+ webhookChannel(inbound Bearer auth+outgoing POST)+两个app均挂载；pnpm lint+test全绿（156/156） |
-| Phase 28：Agent 管理 + Onboarding REST API | 🔄 进行中 | 2026-03-05 | /api/agents CRUD + /api/onboarding 状态/推进路由 |
+| Phase 28：Agent 管理 + Onboarding REST API | ✅ 完成 | 2026-03-05 | agentsRouter(/api/agents CRUD，owner隔离)+onboardingRouter(/api/onboarding GET+POST /advance)；两app均挂载；pnpm lint+test全绿（168/168） |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*
