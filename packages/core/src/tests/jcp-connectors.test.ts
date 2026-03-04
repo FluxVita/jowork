@@ -201,3 +201,45 @@ describe('Figma connector', () => {
     assert.equal(page.objects.length, 0);
   });
 });
+
+// Phase 50: Connector Schema API
+import { getConnectorTypeManifest } from '../index.js';
+
+describe('listAllConnectorTypes — Phase 50 schema enrichment', () => {
+  test('JCP connector entries include authType and description', () => {
+    const types = listAllConnectorTypes();
+    const github = types.find(t => t.id === 'github');
+    assert.ok(github, 'github should be in types list');
+    assert.equal(github?.authType, 'api_token');
+    assert.ok(typeof github?.description === 'string' && github.description.length > 0, 'should have description');
+  });
+
+  test('JCP connector entries include configSchema', () => {
+    const types = listAllConnectorTypes();
+    const gitlab = types.find(t => t.id === 'gitlab');
+    assert.ok(gitlab, 'gitlab should be in types list');
+    const schema = gitlab?.configSchema as { properties?: { baseUrl?: unknown } } | undefined;
+    assert.ok(schema?.properties?.baseUrl, 'gitlab should expose baseUrl in configSchema.properties');
+  });
+});
+
+describe('getConnectorTypeManifest', () => {
+  test('returns full manifest for a known JCP connector', () => {
+    const manifest = getConnectorTypeManifest('github');
+    assert.ok(manifest, 'Should return manifest for github');
+    assert.equal(manifest?.id, 'github');
+    assert.equal(manifest?.authType, 'api_token');
+    assert.ok(manifest?.configSchema, 'Should include configSchema');
+  });
+
+  test('returns undefined for unknown connector id', () => {
+    const manifest = getConnectorTypeManifest('nonexistent-connector');
+    assert.equal(manifest, undefined);
+  });
+
+  test('returned manifest includes configSchema.properties for figma', () => {
+    const manifest = getConnectorTypeManifest('figma');
+    const props = (manifest?.configSchema as { properties?: Record<string, unknown> })?.properties;
+    assert.ok(props?.['teamId'], 'figma manifest should have teamId in configSchema.properties');
+  });
+});

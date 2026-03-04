@@ -126,11 +126,33 @@ export function listRegisteredConnectors(): ConnectorKind[] {
 
 // ─── JCP bridge helpers ───────────────────────────────────────────────────────
 
-/** List all available connector types: legacy registry + JCP connectors */
-export function listAllConnectorTypes(): { id: string; name: string; system: 'legacy' | 'jcp' }[] {
+export interface ConnectorTypeInfo {
+  id: string;
+  name: string;
+  system: 'legacy' | 'jcp';
+  authType?: string;
+  description?: string;
+  /** JSON Schema object — configSchema.properties entries for the connector settings */
+  configSchema?: Record<string, unknown>;
+}
+
+/** List all available connector types with manifest details for JCP connectors */
+export function listAllConnectorTypes(): ConnectorTypeInfo[] {
   const legacy = Array.from(registry.keys()).map(k => ({ id: k as string, name: k as string, system: 'legacy' as const }));
-  const jcp    = listJCPConnectors().map(m => ({ id: m.id, name: m.name, system: 'jcp' as const }));
+  const jcp    = listJCPConnectors().map(m => ({
+    id: m.id,
+    name: m.name,
+    system: 'jcp' as const,
+    authType: m.authType,
+    description: m.description,
+    ...(m.configSchema !== undefined ? { configSchema: m.configSchema } : {}),
+  }));
   return [...legacy, ...jcp];
+}
+
+/** Get the full manifest for a JCP connector type by ID */
+export function getConnectorTypeManifest(id: string): import('./protocol.js').ConnectorManifest | undefined {
+  return listJCPConnectors().find(m => m.id === id);
 }
 
 /**

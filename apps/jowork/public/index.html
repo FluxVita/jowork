@@ -240,10 +240,6 @@
 
     const API = '';
     const CONNECTOR_ICONS = { github: '🐙', notion: '📝', slack: '💬', linear: '📐', gitlab: '🦊', figma: '🎨' };
-    const CONNECTOR_EXTRA_FIELDS = {
-      gitlab: [{ key: 'baseUrl', label: 'GitLab URL (optional)', placeholder: 'https://gitlab.example.com' }],
-      figma:  [{ key: 'teamId',  label: 'Team ID (optional)',   placeholder: 'your-team-id' }],
-    };
 
     async function api(method, path, body) {
       const r = await fetch(API + path, {
@@ -886,7 +882,12 @@
         }
 
         function extraFields(kind) {
-          return CONNECTOR_EXTRA_FIELDS[kind] ?? [];
+          const typeInfo = connectorTypes.value.find(t => t.id === kind);
+          const props = typeInfo?.configSchema?.properties;
+          if (!props) return [];
+          return Object.entries(props)
+            .filter(([, v]) => v.type === 'string')
+            .map(([key, v]) => ({ key, label: v.title ?? key, placeholder: v.description ?? '' }));
         }
 
         function connIcon(kind) {

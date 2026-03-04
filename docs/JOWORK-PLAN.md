@@ -199,6 +199,7 @@
 | Phase 47：Toast 通知系统 | ✅ 完成 | 2026-03-05 | toast(msg, type) 全局通知函数；右下角堆叠容器+2.5s自动消失；替换所有alert()+inline msg span；apps/jowork+apps/fluxvita均更新；pnpm lint+test全绿（263/263） |
 | Phase 48：全局搜索 UI | ✅ 完成 | 2026-03-05 | searchRouter(GET /api/search?q=&limit=)跨messages/memories/context三域搜索；Cmd+K模态框+分组结果+点击跳转session；7新测试；apps/jowork+apps/fluxvita均更新；pnpm lint+test全绿（270/270） |
 | Phase 49：消息搜索 FTS5 支持 | ✅ 完成 | 2026-03-05 | messages_fts虚表(init.ts)+迁移002_messages_fts(含回填已有消息)+chat.ts两端点维护索引+search.ts改用FTS5+LIKE降级+2新测试；pnpm lint+test全绿（272/272） |
+| Phase 50：Connector Schema API + 动态表单 UI | ✅ 完成 | 2026-03-05 | ConnectorTypeInfo接口(authType/description/configSchema)+listAllConnectorTypes扩展+GET /api/connector-types/:id+getConnectorTypeManifest()；前端移除CONNECTOR_EXTRA_FIELDS改用schema动态渲染；5新测试；pnpm lint+test全绿（277/277） |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*
@@ -3129,6 +3130,17 @@ GET /health → {
 - [x] `apps/fluxvita/public/index.html`：同步上述功能（保留 FluxVita 品牌色）
 - [x] 添加测试（searchRouter 端点 + 空查询/有结果/无结果 覆盖）
 - [x] pnpm lint+test 全绿（270/270）
+
+### Phase 50: Connector Schema API + 动态表单 UI（0.5 天）
+
+- [x] 在 `connectors/index.ts` 中定义 `ConnectorTypeInfo` 接口（增加 `authType`/`description`/`configSchema` 字段）
+- [x] 更新 `listAllConnectorTypes()` 为 JCP 连接器附加 manifest 数据（使用条件展开避免 `exactOptionalPropertyTypes` 错误）
+- [x] 添加 `getConnectorTypeManifest(id)` 函数，返回指定 JCP 连接器的完整 manifest
+- [x] 在 `gateway/routes/connectors.ts` 新增 `GET /api/connector-types/:id` 端点
+- [x] `apps/jowork/public/index.html`：移除硬编码 `CONNECTOR_EXTRA_FIELDS`，`extraFields(kind)` 改为从 `connectorTypes` 数据中的 `configSchema.properties` 动态推导
+- [x] `apps/fluxvita/public/index.html`：同步上述改动
+- [x] 在 `jcp-connectors.test.ts` 追加 5 个新测试（listAllConnectorTypes schema 字段 + getConnectorTypeManifest 返回/缺失）
+- [x] pnpm lint+test 全绿（277/277）
 
 ### Phase 49: 消息搜索 FTS5 支持（0.5 天）
 

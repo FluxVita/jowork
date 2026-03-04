@@ -1,7 +1,8 @@
 // @jowork/core/gateway/routes/connectors — Connector management REST API
 //
 // Routes:
-//   GET    /api/connector-types          — list all available connector types
+//   GET    /api/connector-types          — list all available connector types (with manifest info)
+//   GET    /api/connector-types/:id      — full manifest for a specific JCP connector type
 //   GET    /api/connectors               — list user's connector instances
 //   POST   /api/connectors               — create a new connector instance (admin+)
 //   POST   /api/connectors/:id/discover  — discover objects via connector
@@ -13,7 +14,7 @@ import { Router } from 'express';
 import { authenticate, requireRole } from '../middleware/auth.js';
 import {
   createConnectorConfig, listConnectorConfigs, getConnectorConfig, deleteConnectorConfig,
-  listAllConnectorTypes, discoverViaConnector, connectorFetch, connectorSearch,
+  listAllConnectorTypes, getConnectorTypeManifest, discoverViaConnector, connectorFetch, connectorSearch,
 } from '../../connectors/index.js';
 import type { ConnectorKind } from '../../types.js';
 
@@ -22,6 +23,12 @@ export function connectorsRouter(): Router {
 
   router.get('/api/connector-types', authenticate, (_req, res) => {
     res.json(listAllConnectorTypes());
+  });
+
+  router.get('/api/connector-types/:id', authenticate, (req, res) => {
+    const manifest = getConnectorTypeManifest(String(req.params['id']));
+    if (!manifest) { res.status(404).json({ error: 'NOT_FOUND' }); return; }
+    res.json(manifest);
   });
 
   router.get('/api/connectors', authenticate, (req, res, next) => {
