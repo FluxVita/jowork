@@ -11,7 +11,6 @@ import { getDb } from '../../datamap/index.js';
 import { generateId, nowISO } from '../../utils/index.js';
 import { NotFoundError } from '../../types.js';
 import { runBuiltin } from '../../agent/index.js';
-import { chatStream } from '../../models/index.js';
 import type { RunOptions, RunResult } from '../../agent/engines/builtin.js';
 
 export type DispatchFn = (opts: RunOptions) => Promise<RunResult>;
@@ -77,11 +76,15 @@ export function chatRouter(dispatchFn?: DispatchFn): Router {
     } catch (err) { next(err); }
   });
 
-  // ── SSE streaming endpoint ─────────────────────────────────────────────────
+  // ── SSE streaming endpoint (agent-aware: supports tool execution) ───────────
   // Client sends user message; server streams assistant reply as SSE events:
-  //   data: {"type":"chunk","text":"..."}\n\n  — text delta
-  //   data: {"type":"done","messageId":"..."}\n\n — final event with message ID
-  //   data: {"type":"error","message":"..."}\n\n  — on error
+  //   data: {"type":"chunk","text":"..."}\n\n     — text delta (real-time)
+  //   data: {"type":"done","messageId":"..."}\n\n  — final event with message ID
+  //   data: {"type":"error","message":"..."}\n\n   — on error
+  //
+  // Text chunks are emitted character-by-character (Anthropic native streaming).
+  // Tool execution happens transparently between turns; no tool events are emitted
+  // to keep the protocol simple and backwards compatible.
   router.post('/api/sessions/:id/messages/stream', authenticate, async (req, res, next) => {
     try {
       const sessionId = String(req.params['id']);
@@ -96,46 +99,45 @@ export function chatRouter(dispatchFn?: DispatchFn): Router {
       const { session, agent, history } = loadSession(sessionId, userId);
       const systemPrompt = agent?.system_prompt ?? 'You are a helpful AI coworker.';
 
-      // Persist user message first
-      const db = getDb();
-      const now = nowISO();
-      const userMsgId = generateId();
-      db.prepare(`INSERT INTO messages (id, session_id, role, content, created_at) VALUES (?,?,?,?,?)`)
-        .run(userMsgId, sessionId, 'user', content, now);
-
-      // Set up SSE headers
+      // Set up SSE headers before running the agent loop
       res.setHeader('Content-Type', 'text/event-stream');
       res.setHeader('Cache-Control', 'no-cache');
       res.setHeader('Connection', 'keep-alive');
       res.setHeader('X-Accel-Buffering', 'no');
       res.flushHeaders();
 
-      // Stream assistant reply
-      const apiMessages = [
-        ...history.map(m => ({ role: m.role as 'user' | 'assistant', content: m.content })),
-        { role: 'user' as const, content },
-      ];
-
-      let fullText = '';
+      // Run agent loop with streaming chunks written directly to SSE
+      let result;
       try {
-        for await (const chunk of chatStream(apiMessages, { systemPrompt })) {
-          fullText += chunk;
-          res.write(`data: ${JSON.stringify({ type: 'chunk', text: chunk })}\n\n`);
-        }
-      } catch (streamErr) {
-        res.write(`data: ${JSON.stringify({ type: 'error', message: String(streamErr) })}\n\n`);
+        result = await doDispatch({
+          sessionId,
+          agentId: session.agent_id,
+          userId,
+          systemPrompt,
+          history,
+          userMessage: content,
+          onChunk: (text) => {
+            res.write(`data: ${JSON.stringify({ type: 'chunk', text })}\n\n`);
+          },
+        });
+      } catch (agentErr) {
+        res.write(`data: ${JSON.stringify({ type: 'error', message: String(agentErr) })}\n\n`);
         res.end();
         return;
       }
 
-      // Persist assistant message
-      const assistantMsgId = generateId();
-      const doneAt = nowISO();
-      db.prepare(`INSERT INTO messages (id, session_id, role, content, created_at) VALUES (?,?,?,?,?)`)
-        .run(assistantMsgId, sessionId, 'assistant', fullText, doneAt);
-      db.prepare(`UPDATE sessions SET updated_at = ? WHERE id = ?`).run(doneAt, sessionId);
+      // Persist all messages from the agent loop
+      const db = getDb();
+      const now = nowISO();
+      const insert = db.prepare(`INSERT INTO messages (id, session_id, role, content, created_at) VALUES (?,?,?,?,?)`);
+      for (const msg of result.messages) {
+        insert.run(msg.id ?? generateId(), msg.sessionId, msg.role, msg.content, msg.createdAt ?? now);
+      }
+      db.prepare(`UPDATE sessions SET updated_at = ? WHERE id = ?`).run(now, sessionId);
 
-      res.write(`data: ${JSON.stringify({ type: 'done', messageId: assistantMsgId })}\n\n`);
+      const assistantMsgs = result.messages.filter(m => m.role === 'assistant');
+      const assistantMsg = assistantMsgs[assistantMsgs.length - 1];
+      res.write(`data: ${JSON.stringify({ type: 'done', messageId: assistantMsg?.id ?? generateId() })}\n\n`);
       res.end();
     } catch (err) { next(err); }
   });

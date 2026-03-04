@@ -145,6 +145,142 @@ function _flattenContent(content: ApiContent[]): string {
     .join('');
 }
 
+// ─── streamWithTools() — streaming Anthropic API with tool_use support ────────
+
+/** Events emitted by streamWithTools() */
+export type StreamEvent =
+  | { type: 'chunk'; text: string }
+  | { type: 'tool_complete'; tool: ToolUseBlock };
+
+/**
+ * Stream a chat response from Anthropic with tool support.
+ * Yields text chunks as they arrive, plus complete ToolUseBlock events
+ * when the model requests a tool call.
+ *
+ * Non-Anthropic fallback: calls chatWithTools() and emits a single chunk.
+ */
+export async function* streamWithTools(
+  messages: ApiMessage[],
+  tools: ToolSchema[],
+  opts: ChatOptions = {},
+): AsyncGenerator<StreamEvent> {
+  const { provider, model, apiKey } = resolveProviderFromEnv();
+
+  if (provider.apiFormat !== 'anthropic') {
+    // Fallback: non-streaming, emit complete text as one chunk
+    const resp = await chatWithTools(messages, tools, opts);
+    if (resp.text) yield { type: 'chunk', text: resp.text };
+    for (const tool of resp.toolCalls) yield { type: 'tool_complete', tool };
+    return;
+  }
+
+  const key = apiKey;
+  if (!key) throw new Error('ANTHROPIC_API_KEY is not set');
+
+  const body: Record<string, unknown> = {
+    model,
+    max_tokens: opts.maxTokens ?? 8096,
+    messages,
+    tools,
+    stream: true,
+  };
+  if (opts.systemPrompt) body['system'] = opts.systemPrompt;
+
+  const endpoint = process.env['ANTHROPIC_BASE_URL'] ?? 'https://api.anthropic.com';
+  const res = await fetch(`${endpoint}/v1/messages`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-api-key': key,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const txt = await res.text();
+    throw new Error(`Anthropic API error ${res.status}: ${txt}`);
+  }
+  if (!res.body) throw new Error('No response body from Anthropic streaming');
+
+  // Track in-progress content blocks by index
+  interface InProgressBlock {
+    type: 'text' | 'tool_use';
+    id?: string;
+    name?: string;
+    jsonBuf?: string;
+  }
+  const blocks = new Map<number, InProgressBlock>();
+
+  const decoder = new TextDecoder();
+  const reader = res.body.getReader();
+  let buf = '';
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buf += decoder.decode(value, { stream: true });
+      const lines = buf.split('\n');
+      buf = lines.pop() ?? '';
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const data = line.slice(6).trim();
+        if (data === '[DONE]') return;
+
+        let evt: Record<string, unknown>;
+        try { evt = JSON.parse(data) as Record<string, unknown>; }
+        catch { continue; }
+
+        const evtType = evt['type'] as string;
+
+        if (evtType === 'content_block_start') {
+          const idx = evt['index'] as number;
+          const block = evt['content_block'] as Record<string, unknown>;
+          if (block['type'] === 'tool_use') {
+            blocks.set(idx, {
+              type: 'tool_use',
+              id: block['id'] as string,
+              name: block['name'] as string,
+              jsonBuf: '',
+            });
+          } else {
+            blocks.set(idx, { type: 'text' });
+          }
+        } else if (evtType === 'content_block_delta') {
+          const idx = evt['index'] as number;
+          const delta = evt['delta'] as Record<string, unknown>;
+          const deltaType = delta['type'] as string;
+
+          if (deltaType === 'text_delta') {
+            const text = delta['text'] as string;
+            if (text) yield { type: 'chunk', text };
+          } else if (deltaType === 'input_json_delta') {
+            const block = blocks.get(idx);
+            if (block?.type === 'tool_use') {
+              block.jsonBuf = (block.jsonBuf ?? '') + (delta['partial_json'] as string ?? '');
+            }
+          }
+        } else if (evtType === 'content_block_stop') {
+          const idx = evt['index'] as number;
+          const block = blocks.get(idx);
+          if (block?.type === 'tool_use') {
+            let input: Record<string, unknown> = {};
+            try { input = JSON.parse(block.jsonBuf ?? '{}') as Record<string, unknown>; }
+            catch { /* malformed JSON from model */ }
+            yield { type: 'tool_complete', tool: { id: block.id!, name: block.name!, input } };
+            blocks.delete(idx);
+          }
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+}
+
 // ─── Legacy resolveModel (kept for backward-compat) ──────────────────────────
 
 /** @deprecated Use resolveProviderFromEnv() from ./provider instead */

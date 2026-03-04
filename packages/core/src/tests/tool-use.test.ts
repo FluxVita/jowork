@@ -184,7 +184,39 @@ describe('chatWithTools()', () => {
   });
 });
 
-// ── runBuiltin() with mocked chatWithTools ────────────────────────────────────
+// ── SSE stream helpers for runBuiltin() tests ────────────────────────────────
+
+const enc2 = new TextEncoder();
+
+function makeStreamBody(events: string[]): ReadableStream<Uint8Array> {
+  const payload = events.join('');
+  return new ReadableStream({
+    start(controller) {
+      controller.enqueue(enc2.encode(payload));
+      controller.close();
+    },
+  });
+}
+
+function textStreamBody(text: string): ReadableStream<Uint8Array> {
+  return makeStreamBody([
+    `data: ${JSON.stringify({ type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } })}\n\n`,
+    `data: ${JSON.stringify({ type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text } })}\n\n`,
+    `data: ${JSON.stringify({ type: 'content_block_stop', index: 0 })}\n\n`,
+    `data: ${JSON.stringify({ type: 'message_stop' })}\n\n`,
+  ]);
+}
+
+function toolUseStreamBody(id: string, name: string, inputJson: string): ReadableStream<Uint8Array> {
+  return makeStreamBody([
+    `data: ${JSON.stringify({ type: 'content_block_start', index: 0, content_block: { type: 'tool_use', id, name, input: {} } })}\n\n`,
+    `data: ${JSON.stringify({ type: 'content_block_delta', index: 0, delta: { type: 'input_json_delta', partial_json: inputJson } })}\n\n`,
+    `data: ${JSON.stringify({ type: 'content_block_stop', index: 0 })}\n\n`,
+    `data: ${JSON.stringify({ type: 'message_stop' })}\n\n`,
+  ]);
+}
+
+// ── runBuiltin() with streaming mocks ────────────────────────────────────────
 
 describe('runBuiltin() native tool_use loop', () => {
   const SESSION_ID = 'sess-tu-1';
@@ -203,21 +235,13 @@ describe('runBuiltin() native tool_use loop', () => {
   });
 
   test('completes when no tool calls are returned', async () => {
-    // Patch chatWithTools to return plain text
     const origEnv = process.env['ANTHROPIC_API_KEY'];
     process.env['ANTHROPIC_API_KEY'] = 'test-key';
     const origProvider = process.env['MODEL_PROVIDER'];
     process.env['MODEL_PROVIDER'] = 'anthropic';
 
-    const mockFetch = mock.fn(async () => ({
-      ok: true,
-      json: async () => ({
-        content: [{ type: 'text', text: 'Done!' }],
-        usage: { input_tokens: 5, output_tokens: 5 },
-      }),
-    }));
     const origFetch = globalThis.fetch;
-    globalThis.fetch = mockFetch as unknown as typeof fetch;
+    globalThis.fetch = mock.fn(async () => ({ ok: true, body: textStreamBody('Done!') })) as unknown as typeof fetch;
 
     try {
       const { runBuiltin } = await import('../agent/engines/builtin.js');
@@ -229,7 +253,6 @@ describe('runBuiltin() native tool_use loop', () => {
         history: [],
         userMessage: 'Hello',
       });
-      // Should have exactly 2 messages: user + assistant
       assert.equal(result.messages.length, 2);
       assert.equal(result.messages[0]!.role, 'user');
       assert.equal(result.messages[1]!.role, 'assistant');
@@ -249,31 +272,14 @@ describe('runBuiltin() native tool_use loop', () => {
     process.env['MODEL_PROVIDER'] = 'anthropic';
 
     let callCount = 0;
-    const mockFetch = mock.fn(async () => {
+    const origFetch = globalThis.fetch;
+    globalThis.fetch = mock.fn(async () => {
       callCount++;
       if (callCount === 1) {
-        // First turn: return a tool_use block
-        return {
-          ok: true,
-          json: async () => ({
-            content: [
-              { type: 'tool_use', id: 'tu_abc', name: 'search_memory', input: { query: 'test' } },
-            ],
-            usage: { input_tokens: 10, output_tokens: 5 },
-          }),
-        };
+        return { ok: true, body: toolUseStreamBody('tu_abc', 'search_memory', '{"query":"test"}') };
       }
-      // Second turn: return plain text (done)
-      return {
-        ok: true,
-        json: async () => ({
-          content: [{ type: 'text', text: 'I found the memory.' }],
-          usage: { input_tokens: 20, output_tokens: 10 },
-        }),
-      };
-    });
-    const origFetch = globalThis.fetch;
-    globalThis.fetch = mockFetch as unknown as typeof fetch;
+      return { ok: true, body: textStreamBody('I found the memory.') };
+    }) as unknown as typeof fetch;
 
     try {
       const { runBuiltin } = await import('../agent/engines/builtin.js');
@@ -285,10 +291,8 @@ describe('runBuiltin() native tool_use loop', () => {
         history: [],
         userMessage: 'Search my memory',
       });
-      // Should have called fetch twice (2 turns)
       assert.equal(callCount, 2);
       assert.equal(result.turnCount, 2);
-      // Final message should be the assistant text
       const assistantMsg = result.messages.find(m => m.role === 'assistant');
       assert.ok(assistantMsg);
       assert.equal(assistantMsg.content, 'I found the memory.');
@@ -303,18 +307,11 @@ describe('runBuiltin() native tool_use loop', () => {
     process.env['ANTHROPIC_API_KEY'] = 'test-key';
     process.env['MODEL_PROVIDER'] = 'anthropic';
 
-    // Always return a tool_use block — infinite loop scenario
-    const mockFetch = mock.fn(async () => ({
-      ok: true,
-      json: async () => ({
-        content: [
-          { type: 'tool_use', id: 'tu_loop', name: 'search_memory', input: { query: 'x' } },
-        ],
-        usage: { input_tokens: 5, output_tokens: 5 },
-      }),
-    }));
     const origFetch = globalThis.fetch;
-    globalThis.fetch = mockFetch as unknown as typeof fetch;
+    globalThis.fetch = mock.fn(async () => ({
+      ok: true,
+      body: toolUseStreamBody('tu_loop', 'search_memory', '{"query":"x"}'),
+    })) as unknown as typeof fetch;
 
     try {
       const { runBuiltin, BUILTIN_MAX_TURNS } = await import('../agent/engines/builtin.js');
@@ -326,7 +323,6 @@ describe('runBuiltin() native tool_use loop', () => {
         history: [],
         userMessage: 'Loop test',
       });
-      // Should stop at max turns
       assert.equal(result.turnCount, BUILTIN_MAX_TURNS);
     } finally {
       globalThis.fetch = origFetch;
@@ -339,15 +335,8 @@ describe('runBuiltin() native tool_use loop', () => {
     process.env['ANTHROPIC_API_KEY'] = 'test-key';
     process.env['MODEL_PROVIDER'] = 'anthropic';
 
-    const mockFetch = mock.fn(async () => ({
-      ok: true,
-      json: async () => ({
-        content: [{ type: 'text', text: 'chunk text' }],
-        usage: { input_tokens: 5, output_tokens: 5 },
-      }),
-    }));
     const origFetch = globalThis.fetch;
-    globalThis.fetch = mockFetch as unknown as typeof fetch;
+    globalThis.fetch = mock.fn(async () => ({ ok: true, body: textStreamBody('chunk text') })) as unknown as typeof fetch;
 
     const chunks: string[] = [];
     try {

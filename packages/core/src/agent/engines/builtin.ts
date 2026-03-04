@@ -1,12 +1,12 @@
 // @jowork/core/agent/engines/builtin — agentic loop using Anthropic native tool_use
 //
-// Replaces XML-parsing hack with the proper Anthropic tool_use protocol:
-//   1. Call chatWithTools() with all tool schemas
-//   2. Execute any tool_use blocks returned
-//   3. Append assistant message (with tool_use content) + user tool_result message
+// Uses streamWithTools() for real-time text streaming while supporting tool calls:
+//   1. Stream text chunks via onChunk callback (character-level)
+//   2. Collect complete tool_use blocks from the stream
+//   3. Execute tools, append tool_result messages
 //   4. Repeat until no tool calls remain or max turns exceeded
 
-import { chatWithTools, type ApiMessage, type ApiContent } from '../../models/index.js';
+import { streamWithTools, type ApiMessage, type ApiContent } from '../../models/index.js';
 import { BUILTIN_TOOLS } from '../tools/index.js';
 import type { ToolContext } from '../tools/index.js';
 import type { Message } from '../../types.js';
@@ -36,7 +36,7 @@ const TOOL_SCHEMAS = BUILTIN_TOOLS.map(t => ({
   input_schema: t.inputSchema,
 }));
 
-/** Run the builtin agentic loop using Anthropic native tool_use protocol */
+/** Run the builtin agentic loop with streaming text and native tool_use */
 export async function runBuiltin(opts: RunOptions): Promise<RunResult> {
   const ctx: ToolContext = { userId: opts.userId, agentId: opts.agentId };
   const storedMessages: Message[] = [];
@@ -60,25 +60,29 @@ export async function runBuiltin(opts: RunOptions): Promise<RunResult> {
     createdAt: nowISO(),
   });
 
-  let finalText = '';
-
   while (turnCount < BUILTIN_MAX_TURNS) {
     turnCount++;
 
-    const response = await chatWithTools(apiMessages, TOOL_SCHEMAS, {
-      systemPrompt: opts.systemPrompt,
-    });
+    // Collect events from the streaming response
+    let turnText = '';
+    const toolCalls: Array<{ id: string; name: string; input: Record<string, unknown> }> = [];
 
-    finalText = response.text;
-    opts.onChunk?.(response.text);
+    for await (const event of streamWithTools(apiMessages, TOOL_SCHEMAS, { systemPrompt: opts.systemPrompt })) {
+      if (event.type === 'chunk') {
+        turnText += event.text;
+        opts.onChunk?.(event.text);
+      } else if (event.type === 'tool_complete') {
+        toolCalls.push(event.tool);
+      }
+    }
 
-    if (response.toolCalls.length === 0) {
+    if (toolCalls.length === 0) {
       // No tool calls — done. Store the final assistant message.
       storedMessages.push({
         id: generateId(),
         sessionId: opts.sessionId,
         role: 'assistant',
-        content: response.text,
+        content: turnText,
         createdAt: nowISO(),
       });
       break;
@@ -86,17 +90,17 @@ export async function runBuiltin(opts: RunOptions): Promise<RunResult> {
 
     // Build the assistant message content array (text + tool_use blocks)
     const assistantContent: ApiContent[] = [];
-    if (response.text) {
-      assistantContent.push({ type: 'text', text: response.text });
+    if (turnText) {
+      assistantContent.push({ type: 'text', text: turnText });
     }
-    for (const tc of response.toolCalls) {
+    for (const tc of toolCalls) {
       assistantContent.push({ type: 'tool_use', id: tc.id, name: tc.name, input: tc.input });
     }
     apiMessages.push({ role: 'assistant', content: assistantContent });
 
     // Execute each tool and collect results
     const toolResults: ApiContent[] = [];
-    for (const tc of response.toolCalls) {
+    for (const tc of toolCalls) {
       const tool = BUILTIN_TOOLS.find(t => t.name === tc.name);
       const result = tool
         ? await tool.execute(tc.input, ctx).catch(e => `Error: ${String(e)}`)
@@ -108,13 +112,13 @@ export async function runBuiltin(opts: RunOptions): Promise<RunResult> {
     apiMessages.push({ role: 'user', content: toolResults });
   }
 
-  // If loop exhausted without final text message, store what we have
+  // If loop exhausted without storing assistant message, store what we have
   if (!storedMessages.some(m => m.role === 'assistant')) {
     storedMessages.push({
       id: generateId(),
       sessionId: opts.sessionId,
       role: 'assistant',
-      content: finalText || '(no response)',
+      content: '(max turns reached)',
       createdAt: nowISO(),
     });
   }

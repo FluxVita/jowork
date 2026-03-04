@@ -187,7 +187,7 @@
 | Phase 35：OpenAI-compatible 流式 + Ollama 开箱即用 | ✅ 完成 | 2026-03-05 | streamOpenAI()（OpenAI SSE格式）+ chatStream()路由到openai format + discoverOllamaModels()自动发现 + /api/models路由（providers/active/ollama-discover）；pnpm lint+test全绿（231/231） |
 | Phase 36：Agent 内置工具集扩展 | ✅ 完成 | 2026-03-05 | create_memory+fetch_connector+search_connector+list_context 4新工具+getToolSchemas()+/api/agent/tools；2→6工具；pnpm lint+test全绿（244/244） |
 | Phase 37：Anthropic 原生 tool_use API | ✅ 完成 | 2026-03-05 | chatWithTools()+ApiMessage/ToolSchema/ToolUseBlock/ApiContent类型；builtin engine改用原生tool_use多轮协议（替换XML hack）；11新测试；pnpm lint+test全绿（255/255） |
-| Phase 38：流式端点工具执行支持 | 🔄 进行中 | 2026-03-05 | /stream 端点改用 runBuiltin+onChunk，工具执行透明化；sse_tool_call/sse_tool_result 事件 |
+| Phase 38：流式端点工具执行支持 | ✅ 完成 | 2026-03-05 | streamWithTools()真正流式Anthropic SSE+tool_use解析；runBuiltin()改用streamWithTools()实现字符级流+工具执行；/stream端点改用runBuiltin+onChunk透明工具执行；5新测试；pnpm lint+test全绿（255→260） |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*
@@ -3017,6 +3017,15 @@ GET /health → {
 - [x] 重写 `agent/engines/builtin.ts`：使用原生 tool_use 协议（替换 XML 解析 hack）；`runBuiltin()` 使用 `chatWithTools()` 做多轮循环，`assistantContent` 数组含 tool_use 块，`tool_result` 通过 user 消息结构化返回
 - [x] 11 个新测试：`ApiMessage`/`ToolSchema` 类型校验 + `chatWithTools()` 无工具/有工具/401错误/缺key + `runBuiltin()` 无工具/执行工具两轮/max turns截停/onChunk回调
 - [x] pnpm lint+test 全绿（255/255）
+
+### Phase 38: 流式端点工具执行支持（0.5 天）
+
+- [x] 新增 `StreamEvent` 类型（`chunk` | `tool_complete`）+ `streamWithTools()` 生成器：使用 Anthropic streaming SSE，实时 yield 文本 chunk，累积 `input_json_delta` 直到 `content_block_stop` 再 yield 完整 ToolUseBlock；非 Anthropic fallback 到 `chatWithTools()`
+- [x] 更新 `runBuiltin()` 使用 `streamWithTools()`：`onChunk` 现在是字符级回调（每个 `text_delta` 独立触发），工具执行透明发生在 turn 之间
+- [x] 更新 `/api/sessions/:id/messages/stream` 端点：改用 `runBuiltin()` + `onChunk`（工具执行透明化，协议向后兼容：`chunk`/`done`/`error` 事件不变）
+- [x] 修正 `tool-use.test.ts` 中的 `runBuiltin()` 测试：从非流式 mock 升级为 SSE ReadableStream mock
+- [x] 新增 `stream-with-tools.test.ts`：`streamWithTools()` 纯文本/纯工具/混合/错误 + `runBuiltin()` onChunk字符级验证（5个新测试）
+- [x] pnpm lint+test 全绿（255 → 260）
 
 **AI 辅助开发预计总工期：6-10 个工作日**（全程 AI 写代码，人工只做决策/审查/测试）
 
