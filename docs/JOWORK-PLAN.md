@@ -150,8 +150,8 @@
 | Phase | 状态 | 最后更新 | 备注 |
 |-------|------|---------|------|
 | Phase -1：稳定化（清零 3 个阻塞） | ✅ 完成 | 2026-03-04 | N/A：本仓库从零构建，无旧代码阻塞 |
-| Phase 0：Monorepo 骨架 | 🔄 进行中 | 2026-03-04 | 决策已拍板（见 32.6）；从零建立 monorepo |
-| Phase 1：抽取 core 包 | ⏳ 未开始 | - | 依赖 Phase 0 |
+| Phase 0：Monorepo 骨架 | ✅ 完成 | 2026-03-04 | pnpm workspaces + tsconfig 骨架 + edition.ts + pnpm lint 全绿 |
+| Phase 1：抽取 core 包 | 🔄 进行中 | 2026-03-04 | types/config/utils/datamap/auth/policy/gateway 已实现；memory/models/agent/scheduler 待续 |
 | Phase 2：抽取 premium 包 | ⏳ 未开始 | - | 依赖 Phase 1 |
 | Phase 3：apps/jowork | ⏳ 未开始 | - | 依赖 Phase 1-2；前端用 Vue 3 CDN |
 | Phase 4：apps/fluxvita | ⏳ 未开始 | - | 依赖 Phase 3 |
@@ -771,12 +771,12 @@ CREATE VIRTUAL TABLE context_docs_fts USING fts5(
 
 **目标**：搭建 Monorepo 骨架，不移动任何代码
 
-- [ ] 安装 pnpm，创建 `pnpm-workspace.yaml`
-- [ ] 创建 `packages/core/package.json`、`packages/premium/package.json`
-- [ ] 创建 `apps/jowork/package.json`、`apps/fluxvita/package.json`
-- [ ] 创建 `tsconfig.base.json`，各包继承
-- [ ] 验证 `pnpm install` 和 `pnpm --filter` 正常工作
-- [ ] **此阶段不动现有代码，只加新文件**
+- [x] 安装 pnpm，创建 `pnpm-workspace.yaml`
+- [x] 创建 `packages/core/package.json`、`packages/premium/package.json`
+- [x] 创建 `apps/jowork/package.json`、`apps/fluxvita/package.json`
+- [x] 创建 `tsconfig.base.json`，各包继承
+- [x] 验证 `pnpm install` 和 `pnpm --filter` 正常工作
+- [x] **此阶段不动现有代码，只加新文件**
 
 ### Phase 1: 抽取 packages/core（2-3 天）
 

@@ -8,3 +8,4 @@ data/
 .env.local
 target/
 .DS_Store
+logs/

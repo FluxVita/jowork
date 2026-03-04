@@ -1,0 +1,23 @@
+{
+  "name": "@jowork/app",
+  "version": "0.1.0",
+  "description": "Jowork — open-source desktop app (Tauri + Vue 3 CDN)",
+  "license": "AGPL-3.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "clean": "rm -rf dist",
+    "lint": "tsc --noEmit -p tsconfig.json",
+    "test": "echo 'no tests yet'",
+    "start": "node dist/index.js",
+    "dev": "node --watch dist/index.js"
+  },
+  "dependencies": {
+    "@jowork/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.4.0"
+  }
+}

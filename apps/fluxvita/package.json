@@ -1,0 +1,24 @@
+{
+  "name": "@jowork/app-fluxvita",
+  "version": "0.1.0",
+  "description": "FluxVita — internal commercial edition (core + premium)",
+  "license": "UNLICENSED",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "clean": "rm -rf dist",
+    "lint": "tsc --noEmit -p tsconfig.json",
+    "test": "echo 'no tests yet'",
+    "start": "node dist/index.js",
+    "dev": "node --watch dist/index.js"
+  },
+  "dependencies": {
+    "@jowork/core": "workspace:*",
+    "@jowork/premium": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.4.0"
+  }
+}

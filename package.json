@@ -1,0 +1,20 @@
+{
+  "name": "jowork-monorepo",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Jowork — open-source AI coworker platform (monorepo root)",
+  "scripts": {
+    "build": "pnpm --filter @jowork/core build && pnpm --filter @jowork/premium build && pnpm --filter @jowork/app build && pnpm --filter @jowork/app-fluxvita build",
+    "test": "pnpm -r test",
+    "lint": "pnpm --filter @jowork/core lint && pnpm --filter @jowork/core build && pnpm --filter @jowork/premium lint && pnpm --filter @jowork/premium build && pnpm --filter @jowork/app lint && pnpm --filter @jowork/app-fluxvita lint",
+    "clean": "pnpm -r clean"
+  },
+  "engines": {
+    "node": ">=22",
+    "pnpm": ">=10"
+  },
+  "packageManager": "pnpm@10.17.1",
+  "pnpm": {
+    "onlyBuiltDependencies": ["better-sqlite3"]
+  }
+}
