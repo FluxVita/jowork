@@ -19,6 +19,7 @@ import {
   schedulerRouter,
   agentsRouter,
   onboardingRouter,
+  usersRouter,
 } from '@jowork/core';
 
 import { sessionsRouter } from './routes/sessions.js';
@@ -64,6 +65,7 @@ async function main(): Promise<void> {
   const app = createApp({
     port: config.port,
     setup(expressApp) {
+      expressApp.use(usersRouter());
       expressApp.use(agentsRouter());
       expressApp.use(onboardingRouter());
       expressApp.use(sessionsRouter());
