@@ -149,8 +149,8 @@
 
 | Phase | 状态 | 最后更新 | 备注 |
 |-------|------|---------|------|
-| Phase -1：稳定化（清零 3 个阻塞） | ⏳ 未开始 | - | lint + cargo + test 必须全绿才能进 Phase 0 |
-| Phase 0：Monorepo 骨架 | ⏳ 未开始 | - | 决策已拍板（见 32.6）；在 `monorepo-migration` 分支操作 |
+| Phase -1：稳定化（清零 3 个阻塞） | ✅ 完成 | 2026-03-04 | N/A：本仓库从零构建，无旧代码阻塞 |
+| Phase 0：Monorepo 骨架 | 🔄 进行中 | 2026-03-04 | 决策已拍板（见 32.6）；从零建立 monorepo |
 | Phase 1：抽取 core 包 | ⏳ 未开始 | - | 依赖 Phase 0 |
 | Phase 2：抽取 premium 包 | ⏳ 未开始 | - | 依赖 Phase 1 |
 | Phase 3：apps/jowork | ⏳ 未开始 | - | 依赖 Phase 1-2；前端用 Vue 3 CDN |
