@@ -4,7 +4,7 @@ import { Router } from 'express';
 import {
   authenticate, requireRole,
   createConnectorConfig, listConnectorConfigs, getConnectorConfig, deleteConnectorConfig,
-  listRegisteredConnectors, getConnector,
+  listAllConnectorTypes, discoverViaConnector,
 } from '@jowork/core';
 import type { ConnectorKind } from '@jowork/core';
 
@@ -12,7 +12,7 @@ export function connectorsRouter(): Router {
   const router = Router();
 
   router.get('/api/connector-types', authenticate, (_req, res) => {
-    res.json(listRegisteredConnectors());
+    res.json(listAllConnectorTypes());
   });
 
   router.get('/api/connectors', authenticate, (req, res, next) => {
@@ -31,10 +31,10 @@ export function connectorsRouter(): Router {
 
   router.post('/api/connectors/:id/discover', authenticate, async (req, res, next) => {
     try {
-      const cfg = getConnectorConfig(String(req.params['id']));
-      const connector = getConnector(cfg.kind);
-      const results = await connector.discover(cfg);
-      res.json(results);
+      const cfg    = getConnectorConfig(String(req.params['id']));
+      const cursor = req.query['cursor'] as string | undefined;
+      const result = await discoverViaConnector(cfg, cursor);
+      res.json(result);
     } catch (err) { next(err); }
   });
 

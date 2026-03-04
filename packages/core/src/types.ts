@@ -84,13 +84,18 @@ export interface AgentSession {
 // ─── Connectors ──────────────────────────────────────────────────────────────
 
 export type ConnectorKind =
+  // Legacy connectors (FluxVita era — implementations may be custom per deployment)
   | 'feishu'
   | 'gitlab'
   | 'linear'
   | 'posthog'
   | 'figma'
   | 'email'
-  | 'oss';
+  | 'oss'
+  // JCP connectors (built-in, auto-registered in connectors/index.ts)
+  | 'github'
+  | 'notion'
+  | 'slack';
 
 export interface ConnectorConfig {
   id: ConnectorId;

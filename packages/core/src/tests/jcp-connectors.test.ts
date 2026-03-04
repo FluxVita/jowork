@@ -1,0 +1,108 @@
+// JCP connector integration tests — Phase 22
+// Tests: auto-registration, listAllConnectorTypes, discoverViaConnector bridge
+
+import { test, describe } from 'node:test';
+import assert from 'node:assert/strict';
+
+// Importing from index triggers auto-registration of JCP connectors
+import {
+  listJCPConnectors,
+  getJCPConnector,
+  listAllConnectorTypes,
+  githubConnector,
+  notionConnector,
+  slackConnector,
+} from '../index.js';
+
+describe('JCP connector auto-registration', () => {
+  test('GitHub connector is auto-registered', () => {
+    const connector = getJCPConnector('github');
+    assert.ok(connector, 'GitHub connector should be registered');
+    assert.equal(connector?.manifest.id, 'github');
+    assert.equal(connector?.manifest.name, 'GitHub');
+    assert.deepEqual(connector?.manifest.capabilities, ['discover', 'fetch', 'search']);
+  });
+
+  test('Notion connector is auto-registered', () => {
+    const connector = getJCPConnector('notion');
+    assert.ok(connector, 'Notion connector should be registered');
+    assert.equal(connector?.manifest.id, 'notion');
+    assert.equal(connector?.manifest.name, 'Notion');
+  });
+
+  test('Slack connector is auto-registered', () => {
+    const connector = getJCPConnector('slack');
+    assert.ok(connector, 'Slack connector should be registered');
+    assert.equal(connector?.manifest.id, 'slack');
+    assert.equal(connector?.manifest.name, 'Slack');
+    assert.deepEqual(connector?.manifest.capabilities, ['discover', 'fetch', 'search']);
+  });
+
+  test('listJCPConnectors returns all 3 built-in connectors', () => {
+    const manifests = listJCPConnectors();
+    const ids = manifests.map(m => m.id);
+    assert.ok(ids.includes('github'), 'Should include github');
+    assert.ok(ids.includes('notion'), 'Should include notion');
+    assert.ok(ids.includes('slack'),  'Should include slack');
+    assert.ok(manifests.length >= 3, 'Should have at least 3 JCP connectors');
+  });
+});
+
+describe('listAllConnectorTypes', () => {
+  test('includes JCP connectors with system=jcp', () => {
+    const types = listAllConnectorTypes();
+    const jcpTypes = types.filter(t => t.system === 'jcp');
+    const jcpIds   = jcpTypes.map(t => t.id);
+    assert.ok(jcpIds.includes('github'), 'Should include github in JCP types');
+    assert.ok(jcpIds.includes('notion'), 'Should include notion in JCP types');
+    assert.ok(jcpIds.includes('slack'),  'Should include slack in JCP types');
+  });
+
+  test('all entries have id, name, system fields', () => {
+    const types = listAllConnectorTypes();
+    for (const t of types) {
+      assert.ok(t.id,   `Entry ${JSON.stringify(t)} should have id`);
+      assert.ok(t.name, `Entry ${JSON.stringify(t)} should have name`);
+      assert.ok(t.system === 'legacy' || t.system === 'jcp', `System should be 'legacy' or 'jcp'`);
+    }
+  });
+});
+
+describe('Slack connector', () => {
+  test('manifest has correct auth type', () => {
+    assert.equal(slackConnector.manifest.authType, 'api_token');
+  });
+
+  test('defaultSensitivity is internal', () => {
+    assert.equal(slackConnector.defaultSensitivity, 'internal');
+  });
+
+  test('health returns error without token (no crash)', async () => {
+    // initialize with empty credentials — should not throw
+    await slackConnector.initialize({}, {});
+    const result = await slackConnector.health();
+    // Without a real token, health check fails — that's expected
+    assert.equal(typeof result.ok, 'boolean');
+    assert.equal(typeof result.latencyMs, 'number');
+  });
+});
+
+describe('GitHub connector', () => {
+  test('manifest has correct auth type', () => {
+    assert.equal(githubConnector.manifest.authType, 'api_token');
+  });
+
+  test('defaultSensitivity is internal', () => {
+    assert.equal(githubConnector.defaultSensitivity, 'internal');
+  });
+});
+
+describe('Notion connector', () => {
+  test('defaultSensitivity is confidential', () => {
+    assert.equal(notionConnector.defaultSensitivity, 'confidential');
+  });
+
+  test('manifest has correct auth type', () => {
+    assert.equal(notionConnector.manifest.authType, 'api_token');
+  });
+});

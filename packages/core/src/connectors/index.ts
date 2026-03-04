@@ -1,5 +1,6 @@
 // @jowork/core/connectors — connector registry and base interface
 // Connectors: feishu, gitlab, linear, posthog, figma, email, oss
+//             + JCP connectors: github, notion, slack (auto-registered below)
 
 import type { ConnectorConfig, ConnectorId, ConnectorKind, SensitivityLevel } from '../types.js';
 import { getDb } from '../datamap/db.js';
@@ -7,6 +8,17 @@ import { generateId, nowISO, logger } from '../utils/index.js';
 import { withRetry } from '../utils/retry.js';
 import { getEdition } from '../edition.js';
 import { JoworkError } from '../types.js';
+import { registerJCPConnector, getJCPConnector, listJCPConnectors } from './protocol.js';
+import { githubConnector } from './github.js';
+import { notionConnector } from './notion.js';
+import { slackConnector } from './slack.js';
+
+// ─── Auto-register built-in JCP connectors ───────────────────────────────────
+// These run at module load time so all imports of @jowork/core get them.
+
+registerJCPConnector(githubConnector);
+registerJCPConnector(notionConnector);
+registerJCPConnector(slackConnector);
 
 // ─── Base interface ───────────────────────────────────────────────────────────
 
@@ -104,6 +116,66 @@ export function getConnector(kind: ConnectorKind): BaseConnector {
 
 export function listRegisteredConnectors(): ConnectorKind[] {
   return Array.from(registry.keys());
+}
+
+// ─── JCP bridge helpers ───────────────────────────────────────────────────────
+
+/** List all available connector types: legacy registry + JCP connectors */
+export function listAllConnectorTypes(): { id: string; name: string; system: 'legacy' | 'jcp' }[] {
+  const legacy = Array.from(registry.keys()).map(k => ({ id: k as string, name: k as string, system: 'legacy' as const }));
+  const jcp    = listJCPConnectors().map(m => ({ id: m.id, name: m.name, system: 'jcp' as const }));
+  return [...legacy, ...jcp];
+}
+
+/**
+ * Try to get a JCP connector by kind ID.
+ * Returns undefined if not a JCP connector.
+ */
+export { getJCPConnector };
+
+/**
+ * Discover objects using either legacy or JCP connector.
+ * JCP connectors are identified by their manifest ID matching the config kind.
+ */
+export async function discoverViaConnector(
+  cfg: ConnectorConfig,
+  cursor?: string,
+): Promise<{ objects: { id: string; name: string; kind: string; url?: string; metadata?: Record<string, unknown> }[]; nextCursor?: string }> {
+  const jcp = getJCPConnector(cfg.kind);
+  if (jcp) {
+    const apiKey = cfg.settings['apiKey'] as string | undefined;
+    await jcp.initialize(cfg.settings, apiKey ? { apiKey } : {});
+    const page = await jcp.discover(cursor);
+    return {
+      objects: page.objects.map(o => {
+        const obj: { id: string; name: string; kind: string; url?: string; metadata?: Record<string, unknown> } = {
+          id:   o.uri,
+          name: o.name,
+          kind: o.kind,
+        };
+        if (o.url      !== undefined) obj.url      = o.url;
+        if (o.metadata !== undefined) obj.metadata = o.metadata;
+        return obj;
+      }),
+      ...(page.nextCursor !== undefined ? { nextCursor: page.nextCursor } : {}),
+    };
+  }
+
+  // Fall back to legacy system
+  const connector = getConnector(cfg.kind);
+  const results = await connector.discover(cfg);
+  return {
+    objects: results.map(r => {
+      const obj: { id: string; name: string; kind: string; url?: string; metadata?: Record<string, unknown> } = {
+        id:   r.id,
+        name: r.name,
+        kind: r.kind,
+      };
+      if (r.url      !== undefined) obj.url      = r.url;
+      if (r.metadata !== undefined) obj.metadata = r.metadata;
+      return obj;
+    }),
+  };
 }
 
 // ─── Self-healing wrapper ─────────────────────────────────────────────────────
