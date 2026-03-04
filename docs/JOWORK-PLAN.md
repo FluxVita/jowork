@@ -214,6 +214,7 @@
 | Phase 62：连接器内容缓存 | ✅ 完成 | 2026-03-05 | connector_items表+FTS5虚表+003迁移；cache.ts(syncConnectorItems/listConnectorItems/countConnectorItems/deleteConnectorItems)；POST sync+GET items+DELETE items路由；GET /api/connectors附加cachedItems计数；前端Sync按钮+条目数显示；12新测试；pnpm lint+test全绿（355/355） |
 | Phase 63：全局搜索增强（connector_items） | ✅ 完成 | 2026-03-05 | search.ts新增connectorItems域（FTS5+LIKE降级）；SearchResultConnectorItem类型+SearchResponse扩展；前端Cmd+K搜索结果新增Connector Content分组（可点击跳转URL）；3新测试（空/FTS命中/跨用户隔离）；pnpm lint+test全绿（358/358） |
 | Phase 64：Agent工具增强（search_cached_content） | ✅ 完成 | 2026-03-05 | agent/tools/index.ts新增第7个工具search_cached_content（搜索本地缓存的connector内容，支持指定connector_id或跨所有connector搜索）；assertSameUser跨用户保护；测试断言更新6→7；pnpm lint+test全绿（358/358） |
+| Phase 65：消息重新生成（Regenerate） | ✅ 完成 | 2026-03-05 | POST /api/sessions/:id/messages/:msgId/regenerate SSE端点（删除目标assistant消息及后续消息+重新dispatch）；前端↻Regenerate按钮（最后一条assistant消息）；migrator测试修复004_connector_sync_schedule；7新测试；apps/jowork+apps/fluxvita均更新；pnpm lint+test全绿（365/365） |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*
@@ -3322,6 +3323,17 @@ GET /health → {
 - [x] `assertSameUser` 跨用户保护
 - [x] `agent-tools.test.ts` 更新：工具数量断言 6→7，expected tools 新增 `search_cached_content`
 - [x] pnpm lint+test 全绿（358/358）
+
+### Phase 65: 消息重新生成（Regenerate）（0.25 天）
+
+- [x] `chat.ts`：新增 `POST /api/sessions/:id/messages/:msgId/regenerate` SSE 端点
+- [x] 逻辑：验证session所有权→找到assistant消息→找到前置user消息→删除目标消息及后续消息（含FTS清理）→用相同user消息重新dispatch→流式返回新响应
+- [x] 前端：最后一条 assistant 消息显示「↻ Regenerate」按钮（不在streaming时显示）
+- [x] `.msg-actions` + `.msg-action-btn` 样式（暗色主题适配）
+- [x] `regenerate.test.ts`：7 个测试（查找消息/级联删除/用户消息拒绝/历史保留/所有权隔离/FTS清理/多轮保留）
+- [x] 修复 `migrator.test.ts` 遗留问题（004_connector_sync_schedule 未更新断言）
+- [x] apps/jowork + apps/fluxvita 均更新
+- [x] pnpm lint+test 全绿（365/365）
 
 **AI 辅助开发预计总工期：6-10 个工作日**（全程 AI 写代码，人工只做决策/审查/测试）
 

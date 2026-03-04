@@ -43,6 +43,9 @@
     .msg { max-width: 720px; line-height: 1.6; font-size: 14px; }
     .msg.user { align-self: flex-end; background: #4c4fff; color: white; padding: 10px 16px; border-radius: 16px 16px 4px 16px; white-space: pre-wrap; word-break: break-word; }
     .msg.assistant { align-self: flex-start; background: #1a1d26; border: 1px solid #2d3148; padding: 12px 16px; border-radius: 4px 16px 16px 16px; }
+    .msg-actions { margin-top: 6px; display: flex; gap: 6px; }
+    .msg-action-btn { background: none; border: 1px solid #3a3f55; color: #8892b0; font-size: 11px; padding: 2px 8px; border-radius: 4px; cursor: pointer; transition: all 0.15s; }
+    .msg-action-btn:hover { background: #2d3148; color: #c8d0e8; border-color: #5a6180; }
     .msg.system { align-self: center; color: #6b7a99; font-size: 12px; font-style: italic; }
     .cursor { display: inline-block; width: 2px; height: 1em; background: #a8b4ff; margin-left: 2px; vertical-align: text-bottom; animation: blink 0.8s step-end infinite; }
     @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
@@ -688,6 +691,83 @@
           }
         }
 
+        async function regenerateMessage(msgId) {
+          if (streaming.value) return;
+          if (!activeSessionId.value) return;
+
+          // Remove the assistant message from the local messages array
+          const idx = messages.value.findIndex(m => m.id === msgId);
+          if (idx >= 0) messages.value.splice(idx);
+
+          streaming.value = true;
+          streamingText.value = '';
+
+          const ctrl = new AbortController();
+          abortController.value = ctrl;
+
+          try {
+            const resp = await fetch(`/api/sessions/${activeSessionId.value}/messages/${msgId}/regenerate`, {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              signal: ctrl.signal,
+            });
+
+            if (!resp.ok) {
+              const err = await resp.json().catch(() => ({ message: `HTTP ${resp.status}` }));
+              throw new Error(err.message ?? `HTTP ${resp.status}`);
+            }
+
+            const reader = resp.body.getReader();
+            const decoder = new TextDecoder();
+            let buf = '';
+
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              buf += decoder.decode(value, { stream: true });
+              const lines = buf.split('\n');
+              buf = lines.pop();
+
+              for (const line of lines) {
+                if (!line.startsWith('data: ')) continue;
+                const raw = line.slice(6).trim();
+                if (!raw || raw === '[DONE]') continue;
+                try {
+                  const evt = JSON.parse(raw);
+                  if (evt.type === 'chunk') {
+                    streamingText.value += evt.text;
+                    await nextTick(); scrollToBottom();
+                  } else if (evt.type === 'done') {
+                    messages.value.push({
+                      id: evt.messageId ?? Date.now() + 1,
+                      role: 'assistant',
+                      content: streamingText.value,
+                      createdAt: new Date().toISOString(),
+                    });
+                    streamingText.value = '';
+                  } else if (evt.type === 'error') {
+                    throw new Error(evt.message ?? 'Stream error');
+                  }
+                } catch { /* skip malformed SSE */ }
+              }
+            }
+          } catch (e) {
+            if (e.name === 'AbortError') {
+              if (streamingText.value) {
+                messages.value.push({ id: Date.now() + 1, role: 'assistant', content: streamingText.value, createdAt: new Date().toISOString() });
+              }
+              streamingText.value = '';
+            } else {
+              messages.value.push({ id: Date.now() + 1, role: 'system', content: 'Error: ' + e.message });
+              streamingText.value = '';
+            }
+          } finally {
+            streaming.value = false;
+            abortController.value = null;
+            await nextTick(); scrollToBottom();
+          }
+        }
+
         function scrollToBottom() {
           const el = document.getElementById('messages');
           if (el) el.scrollTop = el.scrollHeight;
@@ -1135,7 +1215,7 @@
 
         return {
           sessions, activeSessionId, messages, inputText, streaming, streamingText, healthy, activeSession,
-          selectSession, newSession, sendMessage, onKeydown,
+          selectSession, newSession, sendMessage, regenerateMessage, onKeydown,
           renamingSessionId, renameText, startRename, confirmRename, cancelRename, deleteSession, exportSession,
           sessionFilter, filteredSessions, hasMore, nextCursor, loadingMore, loadMoreMessages,
           showSettings, settingsTab, modelInfo, providers, modelPickProvider, modelPickModel, modelSaving,
@@ -1214,9 +1294,12 @@
               {{ loadingMore ? 'Loading…' : '↑ Load earlier messages' }}
             </button>
             <div v-if="messages.length === 0 && !streaming" class="msg system">Start a conversation with your AI coworker.</div>
-            <template v-for="m in messages" :key="m.id">
+            <template v-for="(m, mi) in messages" :key="m.id">
               <div v-if="m.role === 'assistant'" class="msg assistant">
                 <div class="md-body" v-html="renderMd(m.content)"></div>
+                <div v-if="mi === messages.length - 1 && !streaming" class="msg-actions">
+                  <button class="msg-action-btn" title="Regenerate" @click="regenerateMessage(m.id)">↻ Regenerate</button>
+                </div>
               </div>
               <div v-else class="msg" :class="m.role">{{ m.content }}</div>
             </template>
