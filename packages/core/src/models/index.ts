@@ -24,6 +24,127 @@ export interface ChatResponse {
   outputTokens: number;
 }
 
+// ─── Tool-use types (Anthropic native tool_use protocol) ─────────────────────
+
+/** JSON-schema description of a tool, sent to the Anthropic API */
+export interface ToolSchema {
+  name: string;
+  description: string;
+  input_schema: {
+    type: 'object';
+    properties: Record<string, { type: string; description: string }>;
+    required?: string[];
+  };
+}
+
+/** A tool_use block returned by the Anthropic API */
+export interface ToolUseBlock {
+  id: string;
+  name: string;
+  input: Record<string, unknown>;
+}
+
+/** Structured content block for internal API messages */
+export type ApiContent =
+  | { type: 'text'; text: string }
+  | { type: 'tool_use'; id: string; name: string; input: Record<string, unknown> }
+  | { type: 'tool_result'; tool_use_id: string; content: string };
+
+/** Internal message format — content can be plain string or structured array */
+export interface ApiMessage {
+  role: 'user' | 'assistant';
+  content: string | ApiContent[];
+}
+
+/** Result of chatWithTools() — text + pending tool calls */
+export interface ChatWithToolsResponse {
+  text: string;
+  toolCalls: ToolUseBlock[];
+  inputTokens: number;
+  outputTokens: number;
+}
+
+// ─── chatWithTools() — Anthropic tool_use protocol ───────────────────────────
+
+/**
+ * Single-turn call to Anthropic with tool definitions.
+ * Returns the assistant's text and any tool_use blocks.
+ * Use this in an agentic loop: execute tools, append tool_result messages, repeat.
+ */
+export async function chatWithTools(
+  messages: ApiMessage[],
+  tools: ToolSchema[],
+  opts: ChatOptions = {},
+): Promise<ChatWithToolsResponse> {
+  const { provider, model, apiKey } = resolveProviderFromEnv();
+  if (provider.apiFormat !== 'anthropic') {
+    // Non-Anthropic providers: fall back to plain chat (no tool_use support)
+    const plainMessages: ChatMessage[] = messages.map(m => ({
+      role: m.role,
+      content: typeof m.content === 'string' ? m.content : _flattenContent(m.content),
+    }));
+    const resp = await chat(plainMessages, opts);
+    return { text: resp.content, toolCalls: [], inputTokens: resp.inputTokens, outputTokens: resp.outputTokens };
+  }
+
+  const key = apiKey;
+  if (!key) throw new Error('ANTHROPIC_API_KEY is not set');
+
+  const body: Record<string, unknown> = {
+    model,
+    max_tokens: opts.maxTokens ?? 8096,
+    messages,
+    tools,
+  };
+  if (opts.systemPrompt) body['system'] = opts.systemPrompt;
+
+  const endpoint = process.env['ANTHROPIC_BASE_URL'] ?? 'https://api.anthropic.com';
+  const res = await fetch(`${endpoint}/v1/messages`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-api-key': key,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const txt = await res.text();
+    throw new Error(`Anthropic API error ${res.status}: ${txt}`);
+  }
+
+  interface AnthropicToolResponse {
+    content: Array<
+      | { type: 'text'; text: string }
+      | { type: 'tool_use'; id: string; name: string; input: Record<string, unknown> }
+    >;
+    usage: { input_tokens: number; output_tokens: number };
+  }
+
+  const data = await res.json() as AnthropicToolResponse;
+  const text = data.content.filter(b => b.type === 'text').map(b => (b as { type: 'text'; text: string }).text).join('');
+  const toolCalls: ToolUseBlock[] = data.content
+    .filter(b => b.type === 'tool_use')
+    .map(b => {
+      const tu = b as { type: 'tool_use'; id: string; name: string; input: Record<string, unknown> };
+      return { id: tu.id, name: tu.name, input: tu.input };
+    });
+
+  return { text, toolCalls, inputTokens: data.usage.input_tokens, outputTokens: data.usage.output_tokens };
+}
+
+/** Flatten structured content to a plain string (for non-Anthropic fallback) */
+function _flattenContent(content: ApiContent[]): string {
+  return content
+    .map(c => {
+      if (c.type === 'text') return c.text;
+      if (c.type === 'tool_result') return `[tool_result: ${c.content}]`;
+      return '';
+    })
+    .join('');
+}
+
 // ─── Legacy resolveModel (kept for backward-compat) ──────────────────────────
 
 /** @deprecated Use resolveProviderFromEnv() from ./provider instead */

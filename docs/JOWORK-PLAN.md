@@ -186,7 +186,7 @@
 | Phase 34：前端 SSE 流式渲染 + 停止生成 | ✅ 完成 | 2026-03-05 | apps/jowork + apps/fluxvita 均升级为 SSE stream 端点；流式光标+停止按钮；pnpm lint+test全绿（222/222） |
 | Phase 35：OpenAI-compatible 流式 + Ollama 开箱即用 | ✅ 完成 | 2026-03-05 | streamOpenAI()（OpenAI SSE格式）+ chatStream()路由到openai format + discoverOllamaModels()自动发现 + /api/models路由（providers/active/ollama-discover）；pnpm lint+test全绿（231/231） |
 | Phase 36：Agent 内置工具集扩展 | ✅ 完成 | 2026-03-05 | create_memory+fetch_connector+search_connector+list_context 4新工具+getToolSchemas()+/api/agent/tools；2→6工具；pnpm lint+test全绿（244/244） |
-| Phase 37：Anthropic 原生 tool_use API | 🔄 进行中 | 2026-03-05 | 替换 builtin engine XML hack → chatWithTools()；ApiMessage/ToolSchema类型；原生多轮tool_use协议 |
+| Phase 37：Anthropic 原生 tool_use API | ✅ 完成 | 2026-03-05 | chatWithTools()+ApiMessage/ToolSchema/ToolUseBlock/ApiContent类型；builtin engine改用原生tool_use多轮协议（替换XML hack）；11新测试；pnpm lint+test全绿（255/255） |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*
@@ -3008,6 +3008,14 @@ GET /health → {
 - [x] 两个 app 均挂载 `modelsRouter()`
 - [x] 9 个新测试覆盖：Ollama 离线/在线/非ok响应、OpenAI 流式 chunk/错误/空 delta、provider 列表/active/discover 端点
 - [x] pnpm lint+test 全绿（231/231）
+
+### Phase 37: Anthropic 原生 tool_use API（0.5 天）
+
+- [x] 在 `models/index.ts` 中新增类型：`ToolSchema`、`ToolUseBlock`、`ApiContent`、`ApiMessage`、`ChatWithToolsResponse`
+- [x] 实现 `chatWithTools(messages, tools, opts)` 函数：使用 Anthropic `/v1/messages` + `tools` 参数，解析 `tool_use` 内容块，非 Anthropic 提供商自动 fallback 到 `chat()`
+- [x] 重写 `agent/engines/builtin.ts`：使用原生 tool_use 协议（替换 XML 解析 hack）；`runBuiltin()` 使用 `chatWithTools()` 做多轮循环，`assistantContent` 数组含 tool_use 块，`tool_result` 通过 user 消息结构化返回
+- [x] 11 个新测试：`ApiMessage`/`ToolSchema` 类型校验 + `chatWithTools()` 无工具/有工具/401错误/缺key + `runBuiltin()` 无工具/执行工具两轮/max turns截停/onChunk回调
+- [x] pnpm lint+test 全绿（255/255）
 
 **AI 辅助开发预计总工期：6-10 个工作日**（全程 AI 写代码，人工只做决策/审查/测试）
 
