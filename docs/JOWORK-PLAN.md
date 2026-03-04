@@ -197,7 +197,7 @@
 | Phase 45：键盘快捷键 | ✅ 完成 | 2026-03-05 | globalKeydown(Cmd+N新建会话/Cmd+/开关设置/Esc关闭)；onMounted注册+onUnmounted移除；apps/jowork+apps/fluxvita均更新；pnpm lint+test全绿（263/263） |
 | Phase 46：Onboarding Flow UI | ✅ 完成 | 2026-03-05 | 4步向导覆盖层(welcome/setup_agent/add_connector/workstyle_doc)；checkOnboarding启动检测；步骤指示器；skip支持；apps/jowork+apps/fluxvita均更新；pnpm lint+test全绿（263/263） |
 | Phase 47：Toast 通知系统 | ✅ 完成 | 2026-03-05 | toast(msg, type) 全局通知函数；右下角堆叠容器+2.5s自动消失；替换所有alert()+inline msg span；apps/jowork+apps/fluxvita均更新；pnpm lint+test全绿（263/263） |
-| Phase 48：全局搜索 UI | 🔄 进行中 | 2026-03-05 | - |
+| Phase 48：全局搜索 UI | ✅ 完成 | 2026-03-05 | searchRouter(GET /api/search?q=&limit=)跨messages/memories/context三域搜索；Cmd+K模态框+分组结果+点击跳转session；7新测试；apps/jowork+apps/fluxvita均更新；pnpm lint+test全绿（270/270） |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*
@@ -3122,12 +3122,12 @@ GET /health → {
 
 ### Phase 48: 全局搜索 UI（0.5 天）
 
-- [ ] 实现 `gateway/routes/search.ts`（GET /api/search?q=&limit=10；跨 messages/memories/context_docs 三域搜索；messages 用 LIKE，memories/context 用 FTS5）
-- [ ] 导出 `searchRouter` 并在 apps/jowork 和 apps/fluxvita 均挂载
-- [ ] `apps/jowork/public/index.html`：Cmd+K / Ctrl+K 打开全局搜索模态框；搜索框 + 结果列表（分 Messages / Memories / Context 三组）；点击 message 结果跳转到对应 session
-- [ ] `apps/fluxvita/public/index.html`：同步上述功能（保留 FluxVita 品牌色）
-- [ ] 添加测试（searchRouter 端点 + 空查询/有结果/无结果 覆盖）
-- [ ] pnpm lint+test 全绿
+- [x] 实现 `gateway/routes/search.ts`（GET /api/search?q=&limit=10；跨 messages/memories/context_docs 三域搜索；messages 用 LIKE，memories/context 用 FTS5）
+- [x] 导出 `searchRouter` 并在 apps/jowork 和 apps/fluxvita 均挂载
+- [x] `apps/jowork/public/index.html`：Cmd+K / Ctrl+K 打开全局搜索模态框；搜索框 + 结果列表（分 Messages / Memories / Context 三组）；点击 message 结果跳转到对应 session
+- [x] `apps/fluxvita/public/index.html`：同步上述功能（保留 FluxVita 品牌色）
+- [x] 添加测试（searchRouter 端点 + 空查询/有结果/无结果 覆盖）
+- [x] pnpm lint+test 全绿（270/270）
 
 **AI 辅助开发预计总工期：6-10 个工作日**（全程 AI 写代码，人工只做决策/审查/测试）
 

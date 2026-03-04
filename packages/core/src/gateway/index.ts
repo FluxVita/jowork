@@ -20,3 +20,5 @@ export { memoryRouter } from './routes/memory.js';
 export { contextRouter } from './routes/context.js';
 export { statsRouter } from './routes/stats.js';
 export { modelsRouter } from './routes/models.js';
+export { searchRouter } from './routes/search.js';
+export type { SearchResponse, SearchResult, SearchResultMessage, SearchResultMemory, SearchResultContext } from './routes/search.js';

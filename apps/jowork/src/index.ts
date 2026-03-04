@@ -27,6 +27,7 @@ import {
   contextRouter,
   statsRouter,
   modelsRouter,
+  searchRouter,
 } from '@jowork/core';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -75,6 +76,7 @@ async function main(): Promise<void> {
       expressApp.use(contextRouter());
       expressApp.use(statsRouter());
       expressApp.use(modelsRouter());
+      expressApp.use(searchRouter());
       expressApp.use(schedulerRouter());
       expressApp.use(networkRouter());
       expressApp.use(adminRouter());

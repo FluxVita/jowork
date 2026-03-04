@@ -29,6 +29,8 @@
     #new-session-btn:hover { background: #3b82f6; }
     #settings-btn { padding: 8px 10px; background: transparent; color: #6b7a99; border: 1px solid #1f2a3c; border-radius: 6px; cursor: pointer; font-size: 15px; }
     #settings-btn:hover { background: #1f2a3c; color: #e2e8f0; }
+    #search-btn { padding: 8px 10px; background: transparent; color: #6b7a99; border: 1px solid #1f2a3c; border-radius: 6px; cursor: pointer; font-size: 15px; }
+    #search-btn:hover { background: #1f2a3c; color: #e2e8f0; }
 
     /* ─── Main ────────────────────────────────────────────────────────── */
     #main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
@@ -184,6 +186,24 @@
     .toast.info    { background: #1e3a5f; color: #93c5fd; border: 1px solid #1d4ed8; }
     @keyframes toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 
+    /* ─── Global search ─────────────────────────────────────────── */
+    .search-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 150; display: flex; align-items: flex-start; justify-content: center; padding-top: 80px; }
+    .search-box { background: #0f172a; border: 1px solid #1e3a5f; border-radius: 12px; width: 600px; max-width: 95vw; max-height: 70vh; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 8px 32px rgba(0,0,0,0.6); }
+    .search-input-row { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid #1e3a5f; }
+    .search-icon { color: #475569; font-size: 16px; flex-shrink: 0; }
+    .search-input { flex: 1; background: transparent; border: none; outline: none; color: #e2e8f0; font-size: 15px; }
+    .search-input::placeholder { color: #334155; }
+    .search-kbd { font-size: 11px; color: #334155; background: #1e3a5f; border-radius: 4px; padding: 2px 6px; flex-shrink: 0; }
+    .search-results { overflow-y: auto; padding: 8px 0; }
+    .search-section-label { font-size: 11px; color: #475569; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; padding: 8px 16px 4px; }
+    .search-item { display: flex; flex-direction: column; gap: 2px; padding: 10px 16px; cursor: pointer; transition: background 0.15s; }
+    .search-item:hover { background: #1e2d45; }
+    .search-item-title { font-size: 13px; color: #e2e8f0; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .search-item-snippet { font-size: 12px; color: #475569; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .search-item-meta { font-size: 11px; color: #334155; }
+    .search-empty { padding: 24px 16px; text-align: center; color: #334155; font-size: 13px; }
+    .search-loading { padding: 24px 16px; text-align: center; color: #475569; font-size: 13px; }
+
     /* ─── Onboarding wizard ──────────────────────────────────────── */
     .onboarding-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.88); z-index: 200; display: flex; align-items: center; justify-content: center; }
     .onboarding-card { background: #0f172a; border: 1px solid #1e3a5f; border-radius: 16px; width: 520px; max-width: 95vw; max-height: 90vh; overflow-y: auto; padding: 40px; }
@@ -334,6 +354,57 @@
           toasts.value.push({ id, message, type });
           setTimeout(() => { toasts.value = toasts.value.filter(t => t.id !== id); }, 2500);
         }
+
+        // ─── Global search ────────────────────────────────────────────
+        const showSearch    = ref(false);
+        const searchQuery   = ref('');
+        const searchResults = ref(null);
+        const searchLoading = ref(false);
+        let searchTimer     = null;
+
+        function openSearch() {
+          showSearch.value = true;
+          searchQuery.value = '';
+          searchResults.value = null;
+          nextTick(() => {
+            const el = document.getElementById('global-search-input');
+            if (el) el.focus();
+          });
+        }
+
+        function closeSearch() {
+          showSearch.value = false;
+          clearTimeout(searchTimer);
+        }
+
+        async function doSearch(q) {
+          if (!q.trim()) { searchResults.value = null; return; }
+          searchLoading.value = true;
+          try {
+            const r = await api('GET', `/api/search?q=${encodeURIComponent(q)}&limit=8`);
+            searchResults.value = r;
+          } catch { searchResults.value = null; }
+          finally { searchLoading.value = false; }
+        }
+
+        function onSearchInput(e) {
+          const q = e.target.value;
+          searchQuery.value = q;
+          clearTimeout(searchTimer);
+          searchTimer = setTimeout(() => doSearch(q), 250);
+        }
+
+        function searchGoToSession(sessionId) {
+          closeSearch();
+          selectSession(sessionId);
+        }
+
+        const hasSearchResults = computed(() => {
+          if (!searchResults.value) return false;
+          return searchResults.value.messages.length > 0 ||
+                 searchResults.value.memories.length > 0 ||
+                 searchResults.value.context.length > 0;
+        });
 
         // ─── Chat helpers ─────────────────────────────────────────────
         async function checkHealth() {
@@ -514,6 +585,8 @@
           const mod = e.metaKey || e.ctrlKey;
           if (mod && e.key === 'n') { e.preventDefault(); newSession(); return; }
           if (mod && e.key === '/') { e.preventDefault(); showSettings.value ? (showSettings.value = false) : openSettings(); return; }
+          if (mod && e.key === 'k') { e.preventDefault(); showSearch.value ? closeSearch() : openSearch(); return; }
+          if (e.key === 'Escape' && showSearch.value) { closeSearch(); return; }
           if (e.key === 'Escape' && showSettings.value) { showSettings.value = false; }
         }
 
@@ -909,6 +982,8 @@
           saveWorkstyle, saveBudget, exportData, triggerBackup, checkUpdates, handleImport,
           onboarding, showOnboarding, onboardingStep, onboardingWorking,
           onboardingNextStep, onboardingAddConnectorAndAdvance, skipOnboardingStep,
+          showSearch, searchQuery, searchResults, searchLoading, hasSearchResults,
+          openSearch, closeSearch, onSearchInput, searchGoToSession,
           toasts,
         };
       },
@@ -945,6 +1020,7 @@
           </div>
           <div id="sidebar-footer">
             <button id="new-session-btn" @click="newSession">+ New chat</button>
+            <button id="search-btn" @click="openSearch" title="Search (⌘K)">🔍</button>
             <button id="settings-btn" @click="openSettings" title="Settings">⚙</button>
           </div>
         </div>
@@ -992,6 +1068,69 @@
         </div>
 
         <!-- ─── Settings modal ─────────────────────────────────────── -->
+        <!-- ─── Global Search Modal ────────────────────────────────── -->
+        <div v-if="showSearch" class="search-overlay" @click.self="closeSearch">
+          <div class="search-box">
+            <div class="search-input-row">
+              <span class="search-icon">🔍</span>
+              <input
+                id="global-search-input"
+                class="search-input"
+                placeholder="Search messages, memories, context…"
+                :value="searchQuery"
+                @input="onSearchInput"
+                @keydown.esc.prevent="closeSearch"
+              />
+              <span class="search-kbd">Esc</span>
+            </div>
+            <div class="search-results">
+              <div v-if="searchLoading" class="search-loading">Searching…</div>
+              <template v-else-if="searchResults">
+                <template v-if="!hasSearchResults">
+                  <div class="search-empty">No results for "{{ searchQuery }}"</div>
+                </template>
+                <template v-else>
+                  <template v-if="searchResults.messages.length > 0">
+                    <div class="search-section-label">Messages</div>
+                    <div
+                      v-for="item in searchResults.messages" :key="item.id"
+                      class="search-item"
+                      @click="searchGoToSession(item.sessionId)"
+                    >
+                      <div class="search-item-title">{{ item.sessionTitle }}</div>
+                      <div class="search-item-snippet">{{ item.snippet }}</div>
+                      <div class="search-item-meta">{{ item.role }} · {{ item.createdAt.slice(0,10) }}</div>
+                    </div>
+                  </template>
+                  <template v-if="searchResults.memories.length > 0">
+                    <div class="search-section-label">Memories</div>
+                    <div
+                      v-for="item in searchResults.memories" :key="item.id"
+                      class="search-item"
+                    >
+                      <div class="search-item-snippet">{{ item.snippet }}</div>
+                      <div class="search-item-meta">{{ item.source }} · {{ item.createdAt.slice(0,10) }}</div>
+                    </div>
+                  </template>
+                  <template v-if="searchResults.context.length > 0">
+                    <div class="search-section-label">Context Documents</div>
+                    <div
+                      v-for="item in searchResults.context" :key="item.id"
+                      class="search-item"
+                    >
+                      <div class="search-item-title">{{ item.title }}</div>
+                      <div class="search-item-snippet">{{ item.snippet }}</div>
+                      <div class="search-item-meta">{{ item.layer }} · {{ item.docType }} · {{ item.updatedAt.slice(0,10) }}</div>
+                    </div>
+                  </template>
+                </template>
+              </template>
+              <div v-else-if="searchQuery" class="search-empty">Type to search…</div>
+              <div v-else class="search-empty">Search messages, memories and context docs</div>
+            </div>
+          </div>
+        </div>
+
         <div v-if="showSettings" class="modal-overlay" @click.self="showSettings = false">
           <div class="modal-box">
             <div class="modal-header">
