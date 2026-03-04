@@ -3,10 +3,13 @@
 // Routes:
 //   GET    /api/sessions              — list current user's sessions
 //   POST   /api/sessions              — create a new session
-//   GET    /api/sessions/:id          — get session with its messages
+//   GET    /api/sessions/:id          — get session with last 40 messages + hasMore flag
 //   PATCH  /api/sessions/:id          — update session title
 //   DELETE /api/sessions/:id          — delete session and all its messages
 //   DELETE /api/sessions/:id/messages/:msgId — delete a single message
+//   GET    /api/sessions/:id/messages — paginated message history (cursor-based)
+
+const PAGE_SIZE = 40;
 
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
@@ -91,7 +94,7 @@ export function sessionsRouter(): Router {
     } catch (err) { next(err); }
   });
 
-  // Get a single session with its messages — ownership enforced
+  // Get a single session with its last PAGE_SIZE messages + hasMore flag — ownership enforced
   router.get('/api/sessions/:id', authenticate, (req, res, next) => {
     try {
       const db      = getDb();
@@ -102,11 +105,69 @@ export function sessionsRouter(): Router {
 
       if (!session) { res.status(404).json({ error: 'NOT_FOUND' }); return; }
 
-      const messages = db.prepare(
-        `SELECT * FROM messages WHERE session_id = ? ORDER BY created_at`,
-      ).all(session.id) as MessageRow[];
+      // Fetch one extra to determine hasMore
+      const rows = db.prepare(
+        `SELECT * FROM messages WHERE session_id = ? ORDER BY created_at DESC LIMIT ?`,
+      ).all(session.id, PAGE_SIZE + 1) as MessageRow[];
 
-      res.json(rowToSession(session, messages));
+      const hasMore = rows.length > PAGE_SIZE;
+      const messages = rows.slice(0, PAGE_SIZE).reverse();
+      const nextCursor = hasMore ? messages[0]?.id ?? null : null;
+
+      res.json({ ...rowToSession(session, messages), hasMore, nextCursor });
+    } catch (err) { next(err); }
+  });
+
+  // Cursor-based message pagination — GET /api/sessions/:id/messages?before=<msgId>&limit=<n>
+  // Returns messages older than `before` (exclusive), newest-first within the page, reversed for display.
+  router.get('/api/sessions/:id/messages', authenticate, (req, res, next) => {
+    try {
+      const db      = getDb();
+      const userId  = req.auth!.userId;
+      const session = db.prepare(
+        `SELECT id FROM sessions WHERE id = ? AND user_id = ?`,
+      ).get(String(req.params['id']), userId) as { id: string } | undefined;
+
+      if (!session) { res.status(404).json({ error: 'NOT_FOUND' }); return; }
+
+      const rawLimit = parseInt(String(req.query['limit'] ?? PAGE_SIZE), 10);
+      const limit    = Number.isNaN(rawLimit) || rawLimit < 1 ? PAGE_SIZE : Math.min(rawLimit, 100);
+      const before   = req.query['before'] ? String(req.query['before']) : null;
+
+      let rows: MessageRow[];
+      if (before) {
+        // Find the created_at of the cursor message, then fetch older ones
+        const cursor = db.prepare(
+          `SELECT created_at FROM messages WHERE id = ? AND session_id = ?`,
+        ).get(before, session.id) as { created_at: string } | undefined;
+
+        if (!cursor) { res.status(404).json({ error: 'CURSOR_NOT_FOUND' }); return; }
+
+        // Fetch limit+1 to detect hasMore
+        rows = db.prepare(
+          `SELECT * FROM messages WHERE session_id = ? AND created_at < ? ORDER BY created_at DESC LIMIT ?`,
+        ).all(session.id, cursor.created_at, limit + 1) as MessageRow[];
+      } else {
+        rows = db.prepare(
+          `SELECT * FROM messages WHERE session_id = ? ORDER BY created_at DESC LIMIT ?`,
+        ).all(session.id, limit + 1) as MessageRow[];
+      }
+
+      const hasMore = rows.length > limit;
+      const page    = rows.slice(0, limit).reverse();
+      const nextCursor = hasMore ? page[0]?.id ?? null : null;
+
+      res.json({
+        messages: page.map(m => ({
+          id: m.id,
+          sessionId: m.session_id,
+          role: m.role as 'user' | 'assistant',
+          content: m.content,
+          createdAt: m.created_at,
+        })),
+        hasMore,
+        nextCursor,
+      });
     } catch (err) { next(err); }
   });
 
