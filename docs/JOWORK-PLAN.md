@@ -164,6 +164,7 @@
 | Phase 11：安全加固 | ✅ 完成 | 2026-03-05 | SensitivityLevel类型+字段（MemoryEntry/ContextDoc/DB schema）+ Connector defaultSensitivity + Context PEP（assembleContext按role过滤）+ 聚合stats API + Agent跨用户防护 + session所有权校验；pnpm lint+test全绿（18/18） |
 | Phase 12：性能优化 | ✅ 完成 | 2026-03-05 | Semaphore(2)+LRU cache+LLM限流(1req/s)+DB维护(TTL+optimize)+Node.js Cluster+LaunchAgent；pnpm lint+test全绿（28/28） |
 | Phase 13：网络架构 | ✅ 完成 | 2026-03-05 | mDNS广播(UDP multicast)+Tunnel管理(cloudflared spawn)+/api/network/info发现端点+docs/custom-domain.md；pnpm lint+test全绿（36/36） |
+| Phase 14：版本更新基础设施 | ✅ 完成 | 2026-03-05 | schema_migrations表+migrator.ts(含bootstrap+热备份)+001_initial内联迁移+backupDb+adminRouter(更新检查/手动备份/迁移列表)；pnpm lint+test全绿（44/44） |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*
@@ -2830,10 +2831,10 @@ GET /health → {
 
 ### Phase 14: 版本更新基础设施（1-2 天）
 
-- [ ] 实现 `schema_migrations` 表 + `migrator.ts`
-- [ ] 编写现有表结构的 `001_initial.sql` 基线迁移
-- [ ] Tauri Updater 配置（GitHub Releases 检查）
-- [ ] 更新前自动备份逻辑（`data/backups/`）
+- [x] 实现 `schema_migrations` 表 + `migrator.ts`（packages/core/src/datamap/migrator.ts；ensureMigrationsTable + migrate + bootstrap兼容逻辑）
+- [x] 编写现有表结构的 `001_initial.sql` 基线迁移（内联 Migration 定义；与 init.ts 完全一致；idempotent via IF NOT EXISTS）
+- [x] Tauri Updater 配置（GitHub Releases 检查）（GET /api/admin/updates/check；从 api.github.com/repos/fluxvita/jowork 检查版本；semver比较；降级友好响应）
+- [x] 更新前自动备份逻辑（`data/backups/`）（backupDb via better-sqlite3 hot backup；自动保留最近5份；migrate() 执行前自动备份；POST /api/admin/backup 手动触发）
 
 ### Phase 15: 生产可靠性（2 天）
 

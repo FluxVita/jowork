@@ -6,3 +6,4 @@ export { authenticate, requireRole } from './middleware/auth.js';
 export { errorHandler } from './middleware/error.js';
 export { llmRateLimit, purgeStaleBuckets } from './middleware/rate-limit.js';
 export { networkRouter } from './routes/network.js';
+export { adminRouter } from './routes/admin.js';

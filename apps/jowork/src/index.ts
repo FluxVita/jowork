@@ -8,12 +8,13 @@ import { createServer } from 'node:http';
 
 import {
   config, logger,
-  openDb, initSchema,
+  openDb, initSchema, migrate,
   createApp,
   getEdition,
   getOnboardingState,
   advertiseMdns,
   networkRouter,
+  adminRouter,
 } from '@jowork/core';
 
 import { sessionsRouter } from './routes/sessions.js';
@@ -27,9 +28,14 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = join(__dirname, '..', 'public');
 
 async function main(): Promise<void> {
-  // 1. Init DB
+  // 1. Init DB — run schema + migrations (backs up if pending migrations exist)
   const db = openDb(config.dataDir);
-  initSchema(db);
+  initSchema(db); // ensures tables exist for old installs before migrate()
+  const { applied } = await migrate(db, { dataDir: config.dataDir });
+  if (applied.length > 0) {
+    logger.info('Migrations applied', { migrations: applied });
+  }
+
   logger.info('Jowork starting', {
     mode: config.personalMode ? 'personal' : 'team',
     dataDir: config.dataDir,
@@ -61,6 +67,7 @@ async function main(): Promise<void> {
       expressApp.use(contextRouter());
       expressApp.use(statsRouter());
       expressApp.use(networkRouter());
+      expressApp.use(adminRouter());
 
       // Serve Vue 3 CDN SPA from public/
       if (existsSync(join(PUBLIC_DIR, 'index.html'))) {

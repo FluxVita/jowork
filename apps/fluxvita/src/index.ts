@@ -8,12 +8,13 @@ import { createServer } from 'node:http';
 
 import {
   config, logger,
-  openDb, initSchema,
+  openDb, initSchema, migrate,
   createApp,
   getEdition,
   getOnboardingState,
   advertiseMdns,
   networkRouter,
+  adminRouter,
 } from '@jowork/core';
 
 import { activatePremium } from '@jowork/premium';
@@ -35,7 +36,11 @@ activatePremium(licenseKey || undefined);
 
 async function main(): Promise<void> {
   const db = openDb(config.dataDir);
-  initSchema(db);
+  initSchema(db); // ensures tables exist for old installs before migrate()
+  const { applied } = await migrate(db, { dataDir: config.dataDir });
+  if (applied.length > 0) {
+    logger.info('Migrations applied', { migrations: applied });
+  }
 
   const edition = getEdition();
   logger.info('FluxVita starting', {
@@ -73,6 +78,7 @@ async function main(): Promise<void> {
       expressApp.use(premiumRouter());
       expressApp.use(statsRouter());
       expressApp.use(networkRouter());
+      expressApp.use(adminRouter());
 
       // Serve FluxVita SPA from public/
       if (existsSync(join(PUBLIC_DIR, 'index.html'))) {
