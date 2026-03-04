@@ -210,6 +210,7 @@
 | Phase 58：Confluence JCP 连接器 | ✅ 完成 | 2026-03-05 | confluence.ts(Cloud+Server；CQL搜索；htmlToText；confidential sensitivity；spaceKey过滤)；ConnectorKind+='confluence'；注册+导出；7新测试；pnpm lint+test全绿（318/318） |
 | Phase 59：连接器健康测试端点 | ✅ 完成 | 2026-03-05 | checkConnectorHealth()函数 + POST /api/connectors/:id/health-check路由 + 前端"Test"按钮(.btn-sm)+testConnector()；两app均更新；3新测试；pnpm lint+test全绿（321/321） |
 | Phase 60：会话导出（Session Export） | ✅ 完成 | 2026-03-05 | GET /api/sessions/:id/export?format=md|json|txt；sessionRouter新增export路由(全量消息+格式化)；前端⬇按钮+exportSession()；9新测试；pnpm lint+test全绿（330/330） |
+| Phase 61：Geek Mode 基础终端 | ✅ 完成 | 2026-03-05 | terminal/index.ts(execInSession+CWD持久化+输出截断+超时)；terminalRouter(POST exec+GET info+DELETE reset)；前端Terminal标签+CSS(历史↑↓+cwd显示+Reset)；两app均更新；13新测试；pnpm lint+test全绿（343/343） |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*
@@ -3261,6 +3262,22 @@ GET /health → {
 - [x] apps/jowork + apps/fluxvita 均更新
 - [x] `session-export.test.ts`：9 个测试覆盖 md/json/txt/unknown格式/404/空会话/Content-Disposition
 - [x] pnpm lint+test 全绿（330/330）
+
+### Phase 61: Geek Mode 基础终端（0.5 天）
+
+- [x] `packages/core/src/terminal/index.ts`：`execInSession()`（命令执行+CWD持久化+stdout/stderr/exitCode+超时+输出截断50KB）
+- [x] `getSessionInfo()` / `resetSession()` / `listSessions()` / `removeSession()` 辅助函数
+- [x] CWD 捕获：`__CWD_CAPTURE__:$(pwd)` 标记解析，`cd` 命令后 cwd 自动更新
+- [x] `packages/core/src/gateway/routes/terminal.ts`：`terminalRouter()`
+  - `POST /api/terminal/exec` — 运行命令返回 {stdout, stderr, exitCode, cwd}
+  - `GET /api/terminal` — 获取当前会话 cwd/createdAt
+  - `DELETE /api/terminal` — 重置 cwd 到 home
+- [x] `gateway/index.ts` 导出 `terminalRouter`；`index.ts` 导出 `terminal/index`
+- [x] apps/jowork + apps/fluxvita：import + `expressApp.use(terminalRouter())`
+- [x] 前端 Terminal 标签（两 app）：cwd 显示条 + 输出框 + 命令输入行 + ↑↓ 历史 + Reset 按钮
+- [x] CSS 样式（terminal-cwd / terminal-output / terminal-input 等）
+- [x] `terminal.test.ts`：13 个测试（execInSession/session管理/REST router）
+- [x] pnpm lint+test 全绿（343/343）
 
 **AI 辅助开发预计总工期：6-10 个工作日**（全程 AI 写代码，人工只做决策/审查/测试）
 

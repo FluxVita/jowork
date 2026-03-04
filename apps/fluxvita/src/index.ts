@@ -28,6 +28,7 @@ import {
   statsRouter,
   modelsRouter,
   searchRouter,
+  terminalRouter,
 } from '@jowork/core';
 
 import { activatePremium, dispatch } from '@jowork/premium';
@@ -93,6 +94,7 @@ async function main(): Promise<void> {
       expressApp.use(statsRouter());
       expressApp.use(modelsRouter());
       expressApp.use(searchRouter());
+      expressApp.use(terminalRouter());
       expressApp.use(schedulerRouter());
       expressApp.use(networkRouter());
       expressApp.use(adminRouter());

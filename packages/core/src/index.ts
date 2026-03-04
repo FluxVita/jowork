@@ -34,3 +34,4 @@ export * from './services/index.js';
 export * from './onboarding/index.js';
 export * from './context/index.js';
 export * from './network/index.js';
+export * from './terminal/index.js';

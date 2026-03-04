@@ -120,6 +120,19 @@
     .btn-sm { background: transparent; border: 1px solid #1e3a5f; color: #94a3b8; border-radius: 4px; padding: 3px 8px; cursor: pointer; font-size: 12px; }
     .btn-sm:hover { background: #152a45; }
     .btn-sm:disabled { opacity: 0.5; cursor: default; }
+    .terminal-cwd { display: flex; align-items: center; gap: 6px; font-size: 12px; margin-bottom: 8px; }
+    .terminal-cwd-label { color: #6b7a99; }
+    .terminal-cwd-path { color: #7dd3fc; font-family: monospace; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .terminal-output { background: #050810; border: 1px solid #1e3a5f; border-radius: 6px; padding: 10px 12px; font-family: monospace; font-size: 12px; line-height: 1.6; min-height: 200px; max-height: 360px; overflow-y: auto; margin-bottom: 8px; }
+    .terminal-line { white-space: pre-wrap; word-break: break-all; }
+    .terminal-line-cmd { color: #7dd3fc; }
+    .terminal-line-out { color: #e2e8f0; }
+    .terminal-line-err { color: #f87171; }
+    .terminal-line-info { color: #6b7a99; font-style: italic; }
+    .terminal-input-row { display: flex; align-items: center; gap: 6px; }
+    .terminal-prompt { color: #4ade80; font-family: monospace; font-size: 13px; }
+    .terminal-input { flex: 1; background: #0a1628; border: 1px solid #1e3a5f; border-radius: 4px; color: #e2e8f0; font-family: monospace; font-size: 13px; padding: 4px 8px; outline: none; }
+    .terminal-input:focus { border-color: #3b82f6; }
     .connector-delete { background: transparent; border: 1px solid #450a0a; color: #f87171; border-radius: 4px; padding: 3px 8px; cursor: pointer; font-size: 12px; }
     .connector-delete:hover { background: #450a0a; }
     .health-badge { font-size: 10px; padding: 2px 6px; border-radius: 10px; font-weight: 600; letter-spacing: 0.03em; flex-shrink: 0; }
@@ -342,6 +355,64 @@
           if (!budgetStatus.value?.limit) return 0;
           return Math.min(100, Math.round(((budgetStatus.value.currentSpend ?? 0) / budgetStatus.value.limit) * 100));
         });
+
+        // Terminal (Geek Mode)
+        const terminalInput      = ref('');
+        const terminalOutput     = ref([]);
+        const terminalCwd        = ref('~');
+        const terminalBusy       = ref(false);
+        const terminalHistory    = ref([]);
+        const terminalHistoryIdx = ref(-1);
+        const terminalOutputEl   = ref(null);
+
+        async function runTerminalCommand() {
+          const cmd = terminalInput.value.trim();
+          if (!cmd || terminalBusy.value) return;
+          terminalHistory.value.unshift(cmd);
+          terminalHistoryIdx.value = -1;
+          terminalOutput.value.push({ type: 'cmd', text: `$ ${cmd}` });
+          terminalInput.value = '';
+          terminalBusy.value = true;
+          try {
+            const r = await api('POST', '/api/terminal/exec', { command: cmd });
+            if (r.stdout) terminalOutput.value.push({ type: 'out', text: r.stdout.replace(/\n$/, '') });
+            if (r.stderr) terminalOutput.value.push({ type: 'err', text: r.stderr.replace(/\n$/, '') });
+            terminalCwd.value = r.cwd ?? terminalCwd.value;
+          } catch (e) {
+            terminalOutput.value.push({ type: 'err', text: String(e.message ?? e) });
+          } finally {
+            terminalBusy.value = false;
+            Vue.nextTick(() => {
+              if (terminalOutputEl.value) terminalOutputEl.value.scrollTop = terminalOutputEl.value.scrollHeight;
+            });
+          }
+        }
+
+        async function terminalReset() {
+          try {
+            const r = await api('DELETE', '/api/terminal');
+            terminalCwd.value = r.cwd ?? '~';
+            terminalOutput.value.push({ type: 'info', text: `[reset] cwd → ${r.cwd}` });
+          } catch (e) { toast('Terminal reset failed', 'error'); }
+        }
+
+        function terminalHistoryUp() {
+          if (!terminalHistory.value.length) return;
+          terminalHistoryIdx.value = Math.min(terminalHistoryIdx.value + 1, terminalHistory.value.length - 1);
+          terminalInput.value = terminalHistory.value[terminalHistoryIdx.value] ?? '';
+        }
+
+        function terminalHistoryDown() {
+          terminalHistoryIdx.value = Math.max(terminalHistoryIdx.value - 1, -1);
+          terminalInput.value = terminalHistoryIdx.value === -1 ? '' : (terminalHistory.value[terminalHistoryIdx.value] ?? '');
+        }
+
+        async function loadTerminalInfo() {
+          try {
+            const r = await api('GET', '/api/terminal');
+            terminalCwd.value = r.cwd ?? '~';
+          } catch (_) { /* ignore */ }
+        }
 
         // Admin
         const adminWorking = ref(false);
@@ -642,6 +713,7 @@
         async function openSettings() {
           showSettings.value = true;
           await loadSettingsData();
+          loadTerminalInfo();
         }
 
         async function loadAgent() {
@@ -1061,6 +1133,8 @@
           workstyleContent, workstyleSaving,
           usageSummary, usageDaily, budgetStatus, budgetLimit, budgetSaving, dailyMax, budgetPct,
           adminWorking, updateInfo,
+          terminalInput, terminalOutput, terminalCwd, terminalBusy, terminalHistory, terminalHistoryIdx, terminalOutputEl,
+          runTerminalCommand, terminalReset, terminalHistoryUp, terminalHistoryDown,
           openSettings, applyModel, addConnector, removeConnector, testConnector, connectorTesting, extraFields, connIcon, renderMd,
           saveAgent, loadMemories, deleteMemoryItem, addMemory,
           submitTask, toggleTaskEnabled, deleteTaskItem,
@@ -1240,6 +1314,7 @@
               <div class="modal-tab" :class="{ active: settingsTab === 'usage' }" @click="settingsTab = 'usage'">Usage</div>
               <div class="modal-tab" :class="{ active: settingsTab === 'admin' }" @click="settingsTab = 'admin'">Admin</div>
               <div class="modal-tab" :class="{ active: settingsTab === 'system' }" @click="settingsTab = 'system'">System</div>
+              <div class="modal-tab" :class="{ active: settingsTab === 'terminal' }" @click="settingsTab = 'terminal'">Terminal</div>
             </div>
             <div class="modal-body">
 
@@ -1612,6 +1687,38 @@
                       <span class="info-value">{{ healthFull.version }}</span>
                     </div>
                   </template>
+                </div>
+              </div>
+
+              <!-- Terminal tab -->
+              <div v-if="settingsTab === 'terminal'">
+                <div class="setting-section">
+                  <h3>Terminal</h3>
+                  <div class="terminal-cwd">
+                    <span class="terminal-cwd-label">cwd:</span>
+                    <span class="terminal-cwd-path">{{ terminalCwd }}</span>
+                    <button class="btn-sm" @click="terminalReset" style="margin-left:auto">Reset</button>
+                  </div>
+                  <div class="terminal-output" ref="terminalOutputEl">
+                    <div v-for="(line, i) in terminalOutput" :key="i" :class="'terminal-line terminal-line-' + line.type">{{ line.text }}</div>
+                    <div v-if="terminalBusy" class="terminal-line terminal-line-info">Running…</div>
+                  </div>
+                  <form class="terminal-input-row" @submit.prevent="runTerminalCommand">
+                    <span class="terminal-prompt">$</span>
+                    <input
+                      v-model="terminalInput"
+                      class="terminal-input"
+                      placeholder="Enter command…"
+                      :disabled="terminalBusy"
+                      @keydown.up.prevent="terminalHistoryUp"
+                      @keydown.down.prevent="terminalHistoryDown"
+                      autocomplete="off"
+                      autocorrect="off"
+                      spellcheck="false"
+                    />
+                    <button type="submit" class="btn-sm" :disabled="terminalBusy">Run</button>
+                  </form>
+                  <div style="margin-top:6px;font-size:11px;color:#6b7a99">Tip: use ↑↓ to recall history · reset clears working directory</div>
                 </div>
               </div>
 

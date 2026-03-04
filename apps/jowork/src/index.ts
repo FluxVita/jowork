@@ -28,6 +28,7 @@ import {
   statsRouter,
   modelsRouter,
   searchRouter,
+  terminalRouter,
 } from '@jowork/core';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -77,6 +78,7 @@ async function main(): Promise<void> {
       expressApp.use(statsRouter());
       expressApp.use(modelsRouter());
       expressApp.use(searchRouter());
+      expressApp.use(terminalRouter());
       expressApp.use(schedulerRouter());
       expressApp.use(networkRouter());
       expressApp.use(adminRouter());
