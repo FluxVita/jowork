@@ -209,6 +209,7 @@
 | Phase 57：Jira JCP 连接器 | ✅ 完成 | 2026-03-05 | jira.ts(Cloud+Server；Basic/Bearer auth；JQL discover/fetch/search；baseUrl+projectKey+email configSchema)；ConnectorKind+='jira'；index.ts导出+注册；7新测试；pnpm lint+test全绿（311/311） |
 | Phase 58：Confluence JCP 连接器 | ✅ 完成 | 2026-03-05 | confluence.ts(Cloud+Server；CQL搜索；htmlToText；confidential sensitivity；spaceKey过滤)；ConnectorKind+='confluence'；注册+导出；7新测试；pnpm lint+test全绿（318/318） |
 | Phase 59：连接器健康测试端点 | ✅ 完成 | 2026-03-05 | checkConnectorHealth()函数 + POST /api/connectors/:id/health-check路由 + 前端"Test"按钮(.btn-sm)+testConnector()；两app均更新；3新测试；pnpm lint+test全绿（321/321） |
+| Phase 60：会话导出（Session Export） | ✅ 完成 | 2026-03-05 | GET /api/sessions/:id/export?format=md|json|txt；sessionRouter新增export路由(全量消息+格式化)；前端⬇按钮+exportSession()；9新测试；pnpm lint+test全绿（330/330） |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*
@@ -3241,6 +3242,25 @@ GET /health → {
 - [x] 在 `index.ts` 追加 `export * from './connectors/confluence.js'`
 - [x] `jcp-connectors.test.ts`：更新 listJCPConnectors 数量（7→8），追加 7 个 Confluence 测试
 - [x] pnpm lint+test 全绿（318/318）
+
+### Phase 59: 连接器健康测试端点（0.25 天）
+
+- [x] `checkConnectorHealth()` 函数（connectors/index.ts，返回 ConnectorHealth）
+- [x] `POST /api/connectors/:id/health-check` 路由（connectorsRouter）
+- [x] 前端"Test"按钮（.btn-sm）+ `testConnector()` 函数
+- [x] apps/jowork + apps/fluxvita 均更新
+- [x] 3 新测试；pnpm lint+test 全绿（321/321）
+
+### Phase 60: 会话导出（Session Export）（0.25 天）
+
+- [x] `GET /api/sessions/:id/export?format=md|json|txt` 路由（sessionsRouter）
+- [x] 三种格式：Markdown（标题+消息对话+时间戳）、JSON（session+messages结构体）、TXT（纯文本）
+- [x] Content-Disposition 附件头（文件名安全化：title前60字符+session短ID）
+- [x] 全量消息导出（不分页，ORDER BY created_at ASC）
+- [x] 前端 `exportSession(id, title, format)` 函数 + ⬇ 按钮（session-action-btn）
+- [x] apps/jowork + apps/fluxvita 均更新
+- [x] `session-export.test.ts`：9 个测试覆盖 md/json/txt/unknown格式/404/空会话/Content-Disposition
+- [x] pnpm lint+test 全绿（330/330）
 
 **AI 辅助开发预计总工期：6-10 个工作日**（全程 AI 写代码，人工只做决策/审查/测试）
 

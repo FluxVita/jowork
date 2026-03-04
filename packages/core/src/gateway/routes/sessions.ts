@@ -8,6 +8,7 @@
 //   DELETE /api/sessions/:id          — delete session and all its messages
 //   DELETE /api/sessions/:id/messages/:msgId — delete a single message
 //   GET    /api/sessions/:id/messages — paginated message history (cursor-based)
+//   GET    /api/sessions/:id/export   — export full session as md|json|txt
 
 const PAGE_SIZE = 40;
 
@@ -229,6 +230,90 @@ export function sessionsRouter(): Router {
 
       db.prepare(`DELETE FROM messages WHERE id = ?`).run(msgId);
       res.status(204).end();
+    } catch (err) { next(err); }
+  });
+
+  // Export full session as markdown, JSON, or plain text — ownership enforced
+  // GET /api/sessions/:id/export?format=md|json|txt  (default: md)
+  router.get('/api/sessions/:id/export', authenticate, (req, res, next) => {
+    try {
+      const db      = getDb();
+      const userId  = req.auth!.userId;
+      const session = db.prepare(
+        `SELECT * FROM sessions WHERE id = ? AND user_id = ?`,
+      ).get(String(req.params['id']), userId) as SessionRow | undefined;
+
+      if (!session) { res.status(404).json({ error: 'NOT_FOUND' }); return; }
+
+      const messages = db.prepare(
+        `SELECT * FROM messages WHERE session_id = ? ORDER BY created_at ASC`,
+      ).all(session.id) as MessageRow[];
+
+      const fmt = String(req.query['format'] ?? 'md').toLowerCase();
+      const safe = session.title.replace(/[^a-z0-9_-]/gi, '_').slice(0, 60);
+      const filename = `${safe}_${session.id.slice(0, 8)}`;
+
+      if (fmt === 'json') {
+        res.setHeader('Content-Type', 'application/json; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}.json"`);
+        res.json({
+          session: {
+            id: session.id,
+            title: session.title,
+            createdAt: session.created_at,
+            updatedAt: session.updated_at,
+          },
+          messages: messages.map(m => ({
+            id: m.id,
+            role: m.role,
+            content: m.content,
+            createdAt: m.created_at,
+          })),
+        });
+        return;
+      }
+
+      if (fmt === 'txt') {
+        const lines: string[] = [
+          `Session: ${session.title}`,
+          `Created: ${session.created_at}`,
+          `Messages: ${messages.length}`,
+          '',
+          '---',
+          '',
+        ];
+        for (const m of messages) {
+          lines.push(`[${m.role === 'user' ? 'User' : 'Assistant'}] ${m.created_at}`);
+          lines.push(m.content);
+          lines.push('');
+        }
+        res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}.txt"`);
+        res.send(lines.join('\n'));
+        return;
+      }
+
+      // Default: markdown
+      const lines: string[] = [
+        `# ${session.title}`,
+        '',
+        `*Created: ${session.created_at} | Messages: ${messages.length}*`,
+        '',
+        '---',
+        '',
+      ];
+      for (const m of messages) {
+        const speaker = m.role === 'user' ? '**User**' : '**Assistant**';
+        lines.push(`${speaker} *(${m.created_at})*`);
+        lines.push('');
+        lines.push(m.content);
+        lines.push('');
+        lines.push('---');
+        lines.push('');
+      }
+      res.setHeader('Content-Type', 'text/markdown; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}.md"`);
+      res.send(lines.join('\n'));
     } catch (err) { next(err); }
   });
 

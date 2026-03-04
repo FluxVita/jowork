@@ -527,6 +527,14 @@
           } catch (e) { toast('Delete failed: ' + e.message, 'error'); }
         }
 
+        function exportSession(id, title, format = 'md') {
+          const safe = (title || 'session').replace(/[^a-z0-9_-]/gi, '_').slice(0, 60);
+          const a = document.createElement('a');
+          a.href = `/api/sessions/${id}/export?format=${format}`;
+          a.download = `${safe}.${format}`;
+          a.click();
+        }
+
         async function sendMessage() {
           if (streaming.value) { stopStream(); return; }
           const content = inputText.value.trim();
@@ -1042,7 +1050,7 @@
         return {
           sessions, activeSessionId, messages, inputText, streaming, streamingText, healthy, activeSession, edition, engineName,
           selectSession, newSession, sendMessage, onKeydown,
-          renamingSessionId, renameText, startRename, confirmRename, cancelRename, deleteSession,
+          renamingSessionId, renameText, startRename, confirmRename, cancelRename, deleteSession, exportSession,
           sessionFilter, filteredSessions, hasMore, nextCursor, loadingMore, loadMoreMessages,
           showSettings, settingsTab, modelInfo, providers, modelPickProvider, modelPickModel, modelSaving,
           connectors, connectorTypes, stats, healthFull,
@@ -1096,6 +1104,7 @@
               <span v-else class="session-title">{{ s.title }}</span>
               <div v-if="renamingSessionId !== s.id" class="session-actions" @click.stop>
                 <button class="session-action-btn" @click.stop="startRename(s)" title="Rename">✏</button>
+                <button class="session-action-btn" @click.stop="exportSession(s.id, s.title)" title="Export as Markdown">⬇</button>
                 <button class="session-action-btn delete" @click.stop="deleteSession(s.id)" title="Delete">×</button>
               </div>
             </div>
