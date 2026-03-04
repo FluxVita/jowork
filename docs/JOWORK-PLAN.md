@@ -211,6 +211,7 @@
 | Phase 59：连接器健康测试端点 | ✅ 完成 | 2026-03-05 | checkConnectorHealth()函数 + POST /api/connectors/:id/health-check路由 + 前端"Test"按钮(.btn-sm)+testConnector()；两app均更新；3新测试；pnpm lint+test全绿（321/321） |
 | Phase 60：会话导出（Session Export） | ✅ 完成 | 2026-03-05 | GET /api/sessions/:id/export?format=md|json|txt；sessionRouter新增export路由(全量消息+格式化)；前端⬇按钮+exportSession()；9新测试；pnpm lint+test全绿（330/330） |
 | Phase 61：Geek Mode 基础终端 | ✅ 完成 | 2026-03-05 | terminal/index.ts(execInSession+CWD持久化+输出截断+超时)；terminalRouter(POST exec+GET info+DELETE reset)；前端Terminal标签+CSS(历史↑↓+cwd显示+Reset)；两app均更新；13新测试；pnpm lint+test全绿（343/343） |
+| Phase 62：连接器内容缓存 | 🔄 进行中 | 2026-03-05 | connector_items表+FTS；POST sync+GET items+DELETE；前端Sync按钮+条目数 |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*
