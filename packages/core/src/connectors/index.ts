@@ -39,6 +39,12 @@ export {
 } from './cache.js';
 export type { ConnectorItem, SyncResult } from './cache.js';
 
+// Re-export sync scheduler
+export {
+  startConnectorSyncScheduler,
+  stopConnectorSyncScheduler,
+} from './sync-scheduler.js';
+
 // ─── Base interface ───────────────────────────────────────────────────────────
 
 export interface ConnectorCapabilities {
@@ -349,11 +355,13 @@ interface RawRow {
   name: string;
   settings: string;
   owner_id: string;
+  sync_schedule: string | null;
+  last_sync_at: string | null;
   created_at: string;
 }
 
 function fromRow(row: RawRow): ConnectorConfig {
-  return {
+  const cfg: ConnectorConfig = {
     id: row.id,
     kind: row.kind as ConnectorKind,
     name: row.name,
@@ -361,4 +369,22 @@ function fromRow(row: RawRow): ConnectorConfig {
     ownerId: row.owner_id,
     createdAt: row.created_at,
   };
+  if (row.sync_schedule !== null) cfg.syncSchedule = row.sync_schedule;
+  if (row.last_sync_at !== null) cfg.lastSyncAt = row.last_sync_at;
+  return cfg;
+}
+
+/**
+ * Update the sync schedule for a connector.
+ * Pass null/undefined to disable auto-sync.
+ */
+export function updateSyncSchedule(connectorId: ConnectorId, schedule: string | null): void {
+  getDb().prepare(`UPDATE connectors SET sync_schedule = ? WHERE id = ?`).run(schedule, connectorId);
+}
+
+/**
+ * Update last_sync_at timestamp for a connector (called by sync scheduler).
+ */
+export function updateLastSyncAt(connectorId: ConnectorId, ts: string): void {
+  getDb().prepare(`UPDATE connectors SET last_sync_at = ? WHERE id = ?`).run(ts, connectorId);
 }

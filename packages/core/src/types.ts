@@ -105,6 +105,8 @@ export interface ConnectorConfig {
   name: string;
   settings: Record<string, unknown>;
   ownerId: UserId;
+  syncSchedule?: string;
+  lastSyncAt?: string;
   createdAt: string;
 }
 

@@ -164,6 +164,21 @@ const MIGRATIONS: Migration[] = [
       `);
     },
   },
+  {
+    name: '004_connector_sync_schedule',
+    up(db) {
+      // Add sync_schedule (cron expr) and last_sync_at columns to connectors table.
+      // ALTER TABLE ADD COLUMN is idempotent-safe via IF NOT EXISTS check.
+      const cols = db.prepare(`PRAGMA table_info(connectors)`).all() as Array<{ name: string }>;
+      const colNames = new Set(cols.map(c => c.name));
+      if (!colNames.has('sync_schedule')) {
+        db.exec(`ALTER TABLE connectors ADD COLUMN sync_schedule TEXT`);
+      }
+      if (!colNames.has('last_sync_at')) {
+        db.exec(`ALTER TABLE connectors ADD COLUMN last_sync_at TEXT`);
+      }
+    },
+  },
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

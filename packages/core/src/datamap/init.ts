@@ -73,12 +73,14 @@ CREATE VIRTUAL TABLE IF NOT EXISTS memories_fts USING fts5(
 
 -- Connectors
 CREATE TABLE IF NOT EXISTS connectors (
-  id         TEXT PRIMARY KEY,
-  kind       TEXT NOT NULL,
-  name       TEXT NOT NULL,
-  settings   TEXT NOT NULL DEFAULT '{}',
-  owner_id   TEXT NOT NULL REFERENCES users(id),
-  created_at TEXT NOT NULL
+  id            TEXT PRIMARY KEY,
+  kind          TEXT NOT NULL,
+  name          TEXT NOT NULL,
+  settings      TEXT NOT NULL DEFAULT '{}',
+  owner_id      TEXT NOT NULL REFERENCES users(id),
+  sync_schedule TEXT,
+  last_sync_at  TEXT,
+  created_at    TEXT NOT NULL
 );
 
 -- Connector items cache (synced content from connectors)
