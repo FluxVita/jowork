@@ -153,8 +153,8 @@
 | Phase 0：Monorepo 骨架 | ✅ 完成 | 2026-03-04 | pnpm workspaces + tsconfig 骨架 + edition.ts + pnpm lint 全绿 |
 | Phase 1：抽取 core 包 | ✅ 完成 | 2026-03-04 | 全部14个模块实现完毕：types/config/utils/datamap/auth/policy/gateway/memory/models/agent/scheduler/connectors/channels/services/onboarding；pnpm lint+test全绿 |
 | Phase 2：抽取 premium 包 | ✅ 完成 | 2026-03-04 | activatePremium + dispatcher + claude-agent + embedding + geek-mode + alerts + skills + klaude-manager + context；pnpm lint+test全绿 |
-| Phase 3：apps/jowork | 🔄 进行中 | 2026-03-04 | 依赖 Phase 1-2 ✅；前端用 Vue 3 CDN |
-| Phase 4：apps/fluxvita | ⏳ 未开始 | - | 依赖 Phase 3 |
+| Phase 3：apps/jowork | ✅ 完成 | 2026-03-04 | Express gateway + sessions/chat/memory/connectors 路由 + Vue 3 CDN SPA（暗色主题聊天界面）；pnpm lint全绿 |
+| Phase 4：apps/fluxvita | ✅ 完成 | 2026-03-04 | activatePremium + 完整 Express gateway（sessions/chat/memory/connectors/premium 路由）+ FluxVita 品牌 SPA + Klaude 状态 API + 飞书 OAuth 占位；pnpm lint+test全绿 |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*
@@ -826,10 +826,10 @@ CREATE VIRTUAL TABLE context_docs_fts USING fts5(
 
 **目标**：当前项目成为内部版，加载 core + premium
 
-- [ ] 创建 `apps/fluxvita/src/index.ts`（完整启动，加载 Premium）
-- [ ] 迁移 FluxVita 品牌前端
-- [ ] 确保飞书 OAuth、Mac mini 部署等 FluxVita 专属逻辑正常
-- [ ] 全部测试通过（以当前总用例数为准）
+- [x] 创建 `apps/fluxvita/src/index.ts`（完整启动，加载 Premium）
+- [x] 迁移 FluxVita 品牌前端
+- [x] 确保飞书 OAuth、Mac mini 部署等 FluxVita 专属逻辑正常
+- [x] 全部测试通过（以当前总用例数为准）
 
 ### Phase 5: CI/CD + GitHub 同步（1 天）
 

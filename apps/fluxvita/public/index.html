@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FluxVita</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0f1a; color: #e2e8f0; min-height: 100vh; display: flex; }
+
+    /* Sidebar */
+    #sidebar { width: 240px; background: #111827; border-right: 1px solid #1f2a3c; display: flex; flex-direction: column; flex-shrink: 0; }
+    #sidebar-header { padding: 16px; border-bottom: 1px solid #1f2a3c; }
+    #sidebar-header h1 { font-size: 18px; font-weight: 700; color: #60a5fa; letter-spacing: -0.3px; }
+    #sidebar-header p { font-size: 11px; color: #6b7a99; margin-top: 2px; }
+    #premium-badge { display: inline-block; font-size: 9px; font-weight: 600; color: #fbbf24; background: rgba(251,191,36,0.12); border: 1px solid rgba(251,191,36,0.3); border-radius: 3px; padding: 1px 5px; margin-top: 4px; letter-spacing: 0.5px; }
+    #sessions-list { flex: 1; overflow-y: auto; padding: 8px; }
+    .session-item { padding: 8px 10px; border-radius: 6px; cursor: pointer; font-size: 13px; color: #94a3b8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 2px; }
+    .session-item:hover, .session-item.active { background: #1f2a3c; color: #e2e8f0; }
+    #new-session-btn { margin: 8px; padding: 8px 12px; background: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; }
+    #new-session-btn:hover { background: #3b82f6; }
+
+    /* Main */
+    #main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    #messages { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+    .msg { max-width: 680px; line-height: 1.6; font-size: 14px; white-space: pre-wrap; word-break: break-word; }
+    .msg.user { align-self: flex-end; background: #2563eb; color: white; padding: 10px 16px; border-radius: 16px 16px 4px 16px; }
+    .msg.assistant { align-self: flex-start; background: #111827; border: 1px solid #1f2a3c; padding: 10px 16px; border-radius: 4px 16px 16px 16px; }
+    .msg.system { align-self: center; color: #6b7a99; font-size: 12px; font-style: italic; }
+
+    /* Input */
+    #input-area { padding: 16px; border-top: 1px solid #1f2a3c; display: flex; gap: 8px; }
+    #msg-input { flex: 1; background: #111827; border: 1px solid #1f2a3c; border-radius: 8px; padding: 10px 14px; color: #e2e8f0; font-size: 14px; outline: none; resize: none; max-height: 120px; font-family: inherit; }
+    #msg-input:focus { border-color: #2563eb; }
+    #send-btn { background: #2563eb; color: white; border: none; border-radius: 8px; padding: 10px 20px; cursor: pointer; font-weight: 500; font-size: 14px; align-self: flex-end; }
+    #send-btn:hover { background: #3b82f6; }
+    #send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* Loading */
+    .loading { display: inline-block; width: 20px; height: 20px; border: 2px solid #2563eb; border-radius: 50%; border-top-color: transparent; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Status bar */
+    #status-bar { padding: 6px 16px; background: #0a0f1a; border-bottom: 1px solid #111827; font-size: 11px; color: #6b7a99; display: flex; align-items: center; gap: 6px; }
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: #22c55e; }
+    .dot.error { background: #ef4444; }
+    .engine-tag { margin-left: 8px; font-size: 10px; font-weight: 600; color: #60a5fa; background: rgba(96,165,250,0.1); border: 1px solid rgba(96,165,250,0.25); border-radius: 3px; padding: 1px 5px; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div style="display:flex;align-items:center;justify-content:center;height:100vh;color:#6b7a99">Loading FluxVita...</div>
+  </div>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "vue": "https://unpkg.com/vue@3/dist/vue.esm-browser.js"
+      }
+    }
+  </script>
+
+  <script type="module">
+    import { createApp, ref, computed, onMounted, nextTick } from 'vue';
+
+    const API = '';
+
+    async function api(method, path, body) {
+      const r = await fetch(API + path, {
+        method,
+        headers: { 'content-type': 'application/json' },
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      if (!r.ok) throw new Error(`API error ${r.status}`);
+      if (r.status === 204) return null;
+      return r.json();
+    }
+
+    const App = {
+      setup() {
+        const sessions = ref([]);
+        const activeSessionId = ref(null);
+        const messages = ref([]);
+        const inputText = ref('');
+        const sending = ref(false);
+        const healthy = ref(true);
+        const edition = ref(null);
+
+        const activeSession = computed(() => sessions.value.find(s => s.id === activeSessionId.value));
+        const engineName = computed(() => {
+          if (!edition.value) return '';
+          return edition.value.agentEngines.includes('claude-agent') ? 'Claude Agent' : 'Builtin';
+        });
+
+        async function checkHealth() {
+          try {
+            await fetch('/health');
+            healthy.value = true;
+          } catch {
+            healthy.value = false;
+          }
+        }
+
+        async function loadEdition() {
+          try {
+            edition.value = await api('GET', '/api/premium/edition');
+          } catch { /* ignore */ }
+        }
+
+        async function loadSessions() {
+          try {
+            sessions.value = await api('GET', '/api/sessions');
+          } catch { /* ignore */ }
+        }
+
+        async function selectSession(id) {
+          activeSessionId.value = id;
+          try {
+            const s = await api('GET', `/api/sessions/${id}`);
+            messages.value = s.messages;
+          } catch { messages.value = []; }
+          await nextTick();
+          scrollToBottom();
+        }
+
+        async function newSession() {
+          try {
+            const s = await api('POST', '/api/sessions', { title: 'New chat' });
+            sessions.value.unshift(s);
+            await selectSession(s.id);
+          } catch (e) { alert('Error: ' + e.message); }
+        }
+
+        async function sendMessage() {
+          const content = inputText.value.trim();
+          if (!content || sending.value) return;
+          if (!activeSessionId.value) await newSession();
+
+          sending.value = true;
+          inputText.value = '';
+          messages.value.push({ id: Date.now(), role: 'user', content, createdAt: new Date().toISOString() });
+          await nextTick(); scrollToBottom();
+
+          try {
+            const r = await api('POST', `/api/sessions/${activeSessionId.value}/messages`, { content });
+            messages.value.push(...r.messages.filter(m => m.role === 'assistant'));
+          } catch (e) {
+            messages.value.push({ id: Date.now() + 1, role: 'system', content: 'Error: ' + e.message });
+          } finally {
+            sending.value = false;
+            await nextTick(); scrollToBottom();
+          }
+        }
+
+        function scrollToBottom() {
+          const el = document.getElementById('messages');
+          if (el) el.scrollTop = el.scrollHeight;
+        }
+
+        function onKeydown(e) {
+          if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+        }
+
+        onMounted(async () => {
+          await Promise.all([checkHealth(), loadEdition()]);
+          await loadSessions();
+          if (sessions.value.length === 0) await newSession();
+          else await selectSession(sessions.value[0].id);
+        });
+
+        return { sessions, activeSessionId, messages, inputText, sending, healthy, activeSession, edition, engineName, selectSession, newSession, sendMessage, onKeydown };
+      },
+
+      template: `
+        <div id="sidebar">
+          <div id="sidebar-header">
+            <h1>FluxVita</h1>
+            <p>Your AI coworker</p>
+            <div id="premium-badge">PREMIUM</div>
+          </div>
+          <div id="sessions-list">
+            <div
+              v-for="s in sessions" :key="s.id"
+              class="session-item" :class="{ active: s.id === activeSessionId }"
+              @click="selectSession(s.id)"
+            >{{ s.title }}</div>
+          </div>
+          <button id="new-session-btn" @click="newSession">+ New chat</button>
+        </div>
+        <div id="main">
+          <div id="status-bar">
+            <div class="dot" :class="{ error: !healthy }"></div>
+            {{ healthy ? 'Connected' : 'Offline' }}
+            <span v-if="engineName" class="engine-tag">{{ engineName }}</span>
+            <span v-if="activeSession" style="margin-left:auto;color:#94a3b8">{{ activeSession.title }}</span>
+          </div>
+          <div id="messages">
+            <div v-if="messages.length === 0" class="msg system">Start a conversation with your FluxVita AI coworker.</div>
+            <div v-for="m in messages" :key="m.id" class="msg" :class="m.role">{{ m.content }}</div>
+            <div v-if="sending" class="msg assistant"><div class="loading"></div></div>
+          </div>
+          <div id="input-area">
+            <textarea
+              id="msg-input"
+              v-model="inputText"
+              placeholder="Ask FluxVita anything... (Enter to send, Shift+Enter for newline)"
+              rows="1"
+              @keydown="onKeydown"
+            ></textarea>
+            <button id="send-btn" :disabled="sending || !inputText.trim()" @click="sendMessage">Send</button>
+          </div>
+        </div>
+      `,
+    };
+
+    createApp(App).mount('#app');
+  </script>
+</body>
+</html>

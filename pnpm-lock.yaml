@@ -16,10 +16,22 @@ importers:
       '@jowork/premium':
         specifier: workspace:*
         version: link:../../packages/premium
+      express:
+        specifier: ^5.0.0
+        version: 5.2.1
+      serve-static:
+        specifier: ^2.1.0
+        version: 2.2.1
     devDependencies:
+      '@types/express':
+        specifier: ^5.0.0
+        version: 5.0.6
       '@types/node':
         specifier: ^22.0.0
         version: 22.19.13
+      '@types/serve-static':
+        specifier: ^1.15.0
+        version: 1.15.10
       typescript:
         specifier: ^5.4.0
         version: 5.9.3
@@ -29,10 +41,22 @@ importers:
       '@jowork/core':
         specifier: workspace:*
         version: link:../../packages/core
+      express:
+        specifier: ^5.0.0
+        version: 5.2.1
+      serve-static:
+        specifier: ^2.1.0
+        version: 2.2.1
     devDependencies:
+      '@types/express':
+        specifier: ^5.0.0
+        version: 5.0.6
       '@types/node':
         specifier: ^22.0.0
         version: 22.19.13
+      '@types/serve-static':
+        specifier: ^1.15.0
+        version: 1.15.10
       typescript:
         specifier: ^5.4.0
         version: 5.9.3
@@ -92,6 +116,9 @@ packages:
   '@types/http-errors@2.0.5':
     resolution: {integrity: sha512-r8Tayk8HJnX0FztbZN7oVqGccWgw98T/0neJphO91KkmOzug1KkofZURD4UaD5uH8AqcFLfdPErnBod0u71/qg==}
 
+  '@types/mime@1.3.5':
+    resolution: {integrity: sha512-/pyBZWSLD2n0dcHE3hq8s8ZvcETHtEuF+3E7XVt0Ig2nvsVQXdghHVcEkIWjy9A0wKfTn97a/PSDYohKIlnP/w==}
+
   '@types/node@22.19.13':
     resolution: {integrity: sha512-akNQMv0wW5uyRpD2v2IEyRSZiR+BeGuoB6L310EgGObO44HSMNT8z1xzio28V8qOrgYaopIDNA18YgdXd+qTiw==}
 
@@ -101,8 +128,14 @@ packages:
   '@types/range-parser@1.2.7':
     resolution: {integrity: sha512-hKormJbkJqzQGhziax5PItDUTMAM9uE2XXQmM37dyd4hVM+5aVl7oVxMVUiVQn2oCQFN/LKCZdvSM0pFRqbSmQ==}
 
+  '@types/send@0.17.6':
+    resolution: {integrity: sha512-Uqt8rPBE8SY0RK8JB1EzVOIZ32uqy8HwdxCnoCOsYrvnswqmFZ/k+9Ikidlk/ImhsdvBsloHbAlewb2IEBV/Og==}
+
   '@types/send@1.2.1':
     resolution: {integrity: sha512-arsCikDvlU99zl1g69TcAB3mzZPpxgw0UQnaHeC1Nwb015xp8bknZv5rIfri9xTOcMuaVgvabfIRA7PSZVuZIQ==}
+
+  '@types/serve-static@1.15.10':
+    resolution: {integrity: sha512-tRs1dB+g8Itk72rlSI2ZrW6vZg0YrLI81iQSTkMmOqnqCaNr/8Ek4VwWcN5vZgCYWbg/JJSGBlUaYGAOP73qBw==}
 
   '@types/serve-static@2.2.0':
     resolution: {integrity: sha512-8mam4H1NHLtu7nmtalF7eyBH14QyOASmcxHhSfEoRyr0nP/YdoesEtU+uSRvMe96TW/HPTtkoKqQLl53N7UXMQ==}
@@ -519,6 +552,8 @@ snapshots:
 
   '@types/http-errors@2.0.5': {}
 
+  '@types/mime@1.3.5': {}
+
   '@types/node@22.19.13':
     dependencies:
       undici-types: 6.21.0
@@ -527,9 +562,20 @@ snapshots:
 
   '@types/range-parser@1.2.7': {}
 
+  '@types/send@0.17.6':
+    dependencies:
+      '@types/mime': 1.3.5
+      '@types/node': 22.19.13
+
   '@types/send@1.2.1':
     dependencies:
       '@types/node': 22.19.13
+
+  '@types/serve-static@1.15.10':
+    dependencies:
+      '@types/http-errors': 2.0.5
+      '@types/node': 22.19.13
+      '@types/send': 0.17.6
 
   '@types/serve-static@2.2.0':
     dependencies:
