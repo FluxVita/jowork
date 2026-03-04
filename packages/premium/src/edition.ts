@@ -1,13 +1,20 @@
-// Premium edition activation
-// Phase 0 skeleton — license validation to be implemented in Phase 2
+// @jowork/premium — premium edition activation
+// Call activatePremium() during app startup to unlock premium features.
 
 import { registerEdition } from '@jowork/core';
+import { logger } from '@jowork/core';
 
-export function activatePremium(_licenseKey: string): void {
-  // TODO Phase 2: validate license key via LemonSqueezy
+export function activatePremium(licenseKey?: string): void {
+  // TODO: validate licenseKey via LemonSqueezy API (Phase 5+)
+  if (licenseKey) {
+    logger.info('Activating premium edition', { keyPrefix: licenseKey.slice(0, 8) });
+  } else {
+    logger.warn('Activating premium edition without license key (dev mode)');
+  }
+
   registerEdition({
     maxDataSources: Infinity,
-    maxUsers: Infinity,
+    maxUsers: 200,
     maxContextTokens: 100_000,
     agentEngines: ['builtin', 'claude-agent'],
     hasVectorMemory: true,
