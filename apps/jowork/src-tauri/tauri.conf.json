@@ -1,0 +1,56 @@
+{
+  "$schema": "https://raw.githubusercontent.com/nicholasrice/tauri/dev/core/tauri/schema.json",
+  "productName": "Jowork",
+  "version": "0.1.0",
+  "identifier": "com.jowork.app",
+  "build": {
+    "frontendDist": "../public",
+    "devUrl": "http://localhost:18800",
+    "beforeBuildCommand": "",
+    "beforeDevCommand": ""
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "title": "Jowork",
+        "width": 1200,
+        "height": 800,
+        "minWidth": 800,
+        "minHeight": 600,
+        "center": true,
+        "resizable": true,
+        "decorations": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com; style-src 'self' 'unsafe-inline'; connect-src 'self' http://localhost:* http://127.0.0.1:*; img-src 'self' data:"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "externalBin": [
+      "binaries/jowork-gateway"
+    ]
+  },
+  "plugins": {
+    "shell": {
+      "sidecar": true,
+      "scope": [
+        {
+          "name": "binaries/jowork-gateway",
+          "sidecar": true,
+          "args": true
+        }
+      ]
+    }
+  }
+}

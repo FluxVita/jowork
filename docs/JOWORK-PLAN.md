@@ -221,6 +221,8 @@
 | Phase 69：消息编辑（Message Editing） | ✅ 完成 | 2026-03-05 | PATCH /api/sessions/:id/messages/:msgId（仅user消息可编辑+FTS5外部内容表正确删除旧索引再重建）；前端inline编辑UI（hover ✏️按钮+textarea+Save/Cancel+Enter/Esc快捷键）；5新测试；apps/jowork+apps/fluxvita均更新；pnpm lint+test全绿（379/379） |
 | Phase 70：暗/亮主题切换（Theme Toggle） | ✅ 完成 | 2026-03-05 | CSS变量系统（:root暗色+[data-theme=light]亮色）；jowork核心结构色全部迁移到var()；System标签Dark/Light/Auto三按钮；localStorage持久化+prefers-color-scheme自动检测；apps/jowork+apps/fluxvita均更新；pnpm lint全绿（纯前端） |
 | Phase 71：消息删除 UI（Message Delete） | ✅ 完成 | 2026-03-05 | deleteMessage()函数（DELETE API+列表移除+toast）；assistant消息操作栏🗑按钮；user消息hover🗑按钮；apps/jowork+apps/fluxvita均更新；pnpm lint全绿（纯前端，后端DELETE端点已有） |
+| Phase 72：Bun compile Gateway Sidecar | ✅ 完成 | 2026-03-05 | sidecar.ts入口点(bun:sqlite+setDb注入+CLI参数解析)；db.ts改用createRequire动态加载better-sqlite3(允许Bun跳过)；setDb()注入函数；build-sidecar.sh(TS编译+Bun --compile+平台检测)；59MB单文件二进制(bun:sqlite内置，无需native addon)；验证通过：health+sessions API；pnpm lint+test全绿（379/379） |
+| Phase 73：Tauri 2 Desktop Shell | ✅ 完成 | 2026-03-05 | Tauri 2项目结构(Cargo.toml+tauri.conf.json+lib.rs+main.rs)；sidecar启动逻辑(ShellExt+stdout监听"Gateway ready")；externalBin配置；CSP安全策略；图标生成(icns/ico/png全平台)；tauri:dev+tauri:build脚本；cargo check全绿 |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*
@@ -3390,6 +3392,27 @@ GET /health → {
 - [x] `localStorage` 持久化 + `prefers-color-scheme` 自动检测 + 实时响应系统主题变化
 - [x] apps/jowork + apps/fluxvita 均更新
 - [x] pnpm lint 全绿（纯前端改动）
+
+### Phase 72: Bun compile Gateway Sidecar（0.5 天）
+
+- [x] 创建 `apps/jowork/src/sidecar.ts`（Bun 编译入口点，使用 `bun:sqlite` 代替 `better-sqlite3`）
+- [x] 修改 `packages/core/src/datamap/db.ts`：`import` 改为 `import type` + `createRequire()` 动态加载（允许 Bun 跳过 native addon）
+- [x] 新增 `setDb()` 注入函数，导出至 core public API
+- [x] 创建 `scripts/build-sidecar.sh`（TypeScript 编译 + `bun build --compile` + 平台检测 + Tauri target triple 命名）
+- [x] 产物：59MB 单文件二进制（`bun:sqlite` 内置，无需额外 native addon）
+- [x] 验证通过：sidecar 启动 → health check → sessions API 全部正常
+- [x] `@types/bun` 添加为 devDependency
+- [x] pnpm lint+test 全绿（379/379）
+
+### Phase 73: Tauri 2 Desktop Shell（0.5 天）
+
+- [x] 创建 `apps/jowork/src-tauri/` 项目结构（Cargo.toml + build.rs + tauri.conf.json）
+- [x] `src/lib.rs`：`start_gateway()` 通过 `ShellExt::sidecar()` 启动 Gateway，监听 stdout "Gateway ready" 信号
+- [x] `src/main.rs`：标准 Tauri 入口（Windows 隐藏控制台窗口）
+- [x] `tauri.conf.json`：`externalBin: ["binaries/jowork-gateway"]` + CSP 安全策略 + 窗口配置（1200×800）
+- [x] 使用 `npx @tauri-apps/cli icon` 生成全平台图标（icns/ico/png）
+- [x] `package.json` 新增 `tauri:dev` / `tauri:build` 脚本
+- [x] `cargo check` 全绿
 
 **AI 辅助开发预计总工期：6-10 个工作日**（全程 AI 写代码，人工只做决策/审查/测试）
 

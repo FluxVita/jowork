@@ -13,7 +13,6 @@ logs/
 *.log
 *.tgz
 .pnpm-store/
-# Bun sidecar binaries
+# Bun sidecar binaries (built by scripts/build-sidecar.sh)
+apps/jowork/src-tauri/binaries/
 *.exe
-gateway-sidecar
-gateway-sidecar-*
