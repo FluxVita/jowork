@@ -5,14 +5,32 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>FluxVita</title>
   <style>
+    :root {
+      --bg-primary: #0a0f1a; --bg-secondary: #111827; --bg-tertiary: #1f2a3c;
+      --text-primary: #e2e8f0; --text-secondary: #94a3b8; --text-muted: #6b7a99; --text-strong: #f1f5f9;
+      --accent: #2563eb; --accent-hover: #3b82f6; --accent-light: #60a5fa; --accent-bg: #dbeafe;
+      --border: #1f2a3c; --border-focus: #2563eb;
+      --msg-user-bg: #2563eb; --msg-user-text: white; --msg-assistant-bg: #111827; --msg-assistant-border: #1f2a3c;
+      --code-bg: #0a0f1a; --code-border: #1f2a3c; --code-text: #60a5fa;
+      --error: #ef4444; --success: #22c55e;
+    }
+    [data-theme="light"] {
+      --bg-primary: #ffffff; --bg-secondary: #f8fafc; --bg-tertiary: #e2e8f0;
+      --text-primary: #1e293b; --text-secondary: #64748b; --text-muted: #94a3b8; --text-strong: #0f172a;
+      --accent: #2563eb; --accent-hover: #1d4ed8; --accent-light: #3b82f6; --accent-bg: #dbeafe;
+      --border: #e2e8f0; --border-focus: #2563eb;
+      --msg-user-bg: #2563eb; --msg-user-text: white; --msg-assistant-bg: #f1f5f9; --msg-assistant-border: #e2e8f0;
+      --code-bg: #f8fafc; --code-border: #e2e8f0; --code-text: #2563eb;
+      --error: #ef4444; --success: #16a34a;
+    }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0f1a; color: #e2e8f0; min-height: 100vh; display: flex; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg-primary); color: var(--text-primary); min-height: 100vh; display: flex; }
 
     /* ─── Sidebar ─────────────────────────────────────────────────────── */
-    #sidebar { width: 240px; background: #111827; border-right: 1px solid #1f2a3c; display: flex; flex-direction: column; flex-shrink: 0; }
-    #sidebar-header { padding: 16px; border-bottom: 1px solid #1f2a3c; }
-    #sidebar-header h1 { font-size: 18px; font-weight: 700; color: #60a5fa; letter-spacing: -0.3px; }
-    #sidebar-header p { font-size: 11px; color: #6b7a99; margin-top: 2px; }
+    #sidebar { width: 240px; background: var(--bg-secondary); border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; }
+    #sidebar-header { padding: 16px; border-bottom: 1px solid var(--border); }
+    #sidebar-header h1 { font-size: 18px; font-weight: 700; color: var(--accent-light); letter-spacing: -0.3px; }
+    #sidebar-header p { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
     #premium-badge { display: inline-block; font-size: 9px; font-weight: 600; color: #fbbf24; background: rgba(251,191,36,0.12); border: 1px solid rgba(251,191,36,0.3); border-radius: 3px; padding: 1px 5px; margin-top: 4px; letter-spacing: 0.5px; }
     #sessions-list { flex: 1; overflow-y: auto; padding: 8px; }
     #session-filter { width: 100%; background: #0a0f1a; border: 1px solid #1e3a5f; border-radius: 6px; padding: 6px 10px; color: #e2e8f0; font-size: 12px; outline: none; box-sizing: border-box; margin-bottom: 6px; }
@@ -42,8 +60,8 @@
     #main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
     #messages { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 16px; }
     .msg { max-width: 720px; line-height: 1.6; font-size: 14px; }
-    .msg.user { align-self: flex-end; background: #2563eb; color: white; padding: 10px 16px; border-radius: 16px 16px 4px 16px; white-space: pre-wrap; word-break: break-word; }
-    .msg.assistant { align-self: flex-start; background: #111827; border: 1px solid #1f2a3c; padding: 12px 16px; border-radius: 4px 16px 16px 16px; }
+    .msg.user { align-self: flex-end; background: var(--msg-user-bg); color: var(--msg-user-text); padding: 10px 16px; border-radius: 16px 16px 4px 16px; white-space: pre-wrap; word-break: break-word; }
+    .msg.assistant { align-self: flex-start; background: var(--msg-assistant-bg); border: 1px solid var(--msg-assistant-border); padding: 12px 16px; border-radius: 4px 16px 16px 16px; }
     .msg-actions { margin-top: 6px; display: flex; gap: 6px; }
     .msg-action-btn { background: none; border: 1px solid #2d3748; color: #8892b0; font-size: 11px; padding: 2px 8px; border-radius: 4px; cursor: pointer; transition: all 0.15s; }
     .msg-action-btn:hover { background: #1f2937; color: #c8d0e8; border-color: #4a5568; }
@@ -343,6 +361,25 @@
         const engineName = computed(() => {
           if (!edition.value) return '';
           return edition.value.agentEngines?.includes('claude-agent') ? 'Claude Agent' : 'Builtin';
+        });
+
+        // ─── Theme ────────────────────────────────────────────────────
+        const currentTheme = ref(localStorage.getItem('fluxvita-theme') || 'dark');
+        function applyTheme(theme) {
+          const resolved = theme === 'auto'
+            ? (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
+            : theme;
+          document.documentElement.setAttribute('data-theme', resolved === 'light' ? 'light' : '');
+          if (resolved !== 'light') document.documentElement.removeAttribute('data-theme');
+        }
+        function setTheme(theme) {
+          currentTheme.value = theme;
+          localStorage.setItem('fluxvita-theme', theme);
+          applyTheme(theme);
+        }
+        applyTheme(currentTheme.value);
+        window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
+          if (currentTheme.value === 'auto') applyTheme('auto');
         });
 
         // ─── Settings state ───────────────────────────────────────────
@@ -1334,6 +1371,7 @@
           openSearch, closeSearch, onSearchInput, searchGoToSession,
           toasts, formatTime, formatTimeFull, copyMessage,
           editingMsgId, editingContent, startEditMessage, cancelEditMessage, saveEditMessage,
+          currentTheme, setTheme,
         };
       },
 
@@ -1868,6 +1906,14 @@
 
               <!-- System tab -->
               <div v-if="settingsTab === 'system'">
+                <div class="setting-section">
+                  <h3>Appearance</h3>
+                  <div style="display:flex;gap:8px">
+                    <button class="btn-sm" :style="currentTheme === 'dark' ? 'border-color:var(--accent);color:var(--accent-light)' : ''" @click="setTheme('dark')">Dark</button>
+                    <button class="btn-sm" :style="currentTheme === 'light' ? 'border-color:var(--accent);color:var(--accent-light)' : ''" @click="setTheme('light')">Light</button>
+                    <button class="btn-sm" :style="currentTheme === 'auto' ? 'border-color:var(--accent);color:var(--accent-light)' : ''" @click="setTheme('auto')">Auto</button>
+                  </div>
+                </div>
                 <div class="setting-section" v-if="stats">
                   <h3>Usage Stats</h3>
                   <div class="stats-grid">

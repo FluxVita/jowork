@@ -219,6 +219,7 @@
 | Phase 67：消息反馈（Message Feedback） | ✅ 完成 | 2026-03-05 | migration 005_message_feedback（message_feedback表+UNIQUE+CHECK约束+CASCADE DELETE）；feedbackRouter 4端点（GET batch/POST upsert/GET single/DELETE）；前端👍👎按钮（所有assistant消息）+session加载时批量获取feedback；9新测试；apps/jowork+apps/fluxvita均更新；pnpm lint+test全绿（374/374） |
 | Phase 68：UX 打磨 — Typing Indicator + 消息复制 + 时间戳 | ✅ 完成 | 2026-03-05 | typing-indicator三点弹跳动画（替换静态Thinking）+消息📋Copy按钮（clipboard API+toast反馈）+消息时间戳（相对时间+hover绝对时间）；apps/jowork+apps/fluxvita均更新；pnpm lint全绿（纯前端） |
 | Phase 69：消息编辑（Message Editing） | ✅ 完成 | 2026-03-05 | PATCH /api/sessions/:id/messages/:msgId（仅user消息可编辑+FTS5外部内容表正确删除旧索引再重建）；前端inline编辑UI（hover ✏️按钮+textarea+Save/Cancel+Enter/Esc快捷键）；5新测试；apps/jowork+apps/fluxvita均更新；pnpm lint+test全绿（379/379） |
+| Phase 70：暗/亮主题切换（Theme Toggle） | ✅ 完成 | 2026-03-05 | CSS变量系统（:root暗色+[data-theme=light]亮色）；jowork核心结构色全部迁移到var()；System标签Dark/Light/Auto三按钮；localStorage持久化+prefers-color-scheme自动检测；apps/jowork+apps/fluxvita均更新；pnpm lint全绿（纯前端） |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*
@@ -3378,6 +3379,16 @@ GET /health → {
 - [x] 5 个新测试（编辑内容更新/角色限制/FTS索引同步/字段保留/跨用户隔离）
 - [x] apps/jowork + apps/fluxvita 均更新
 - [x] pnpm lint+test 全绿（379/379）
+
+### Phase 70: 暗/亮主题切换（Theme Toggle）（0.5 天）
+
+- [x] CSS 变量系统：`:root` 定义暗色主题 token，`[data-theme="light"]` 覆盖亮色
+- [x] jowork：核心结构色全部迁移到 `var()`（sidebar/messages/input/code blocks/modal/forms/stats/terminal/search）
+- [x] fluxvita：CSS 变量定义 + 关键结构色（body/sidebar/messages）迁移
+- [x] System 标签新增 Appearance 区：Dark / Light / Auto 三按钮
+- [x] `localStorage` 持久化 + `prefers-color-scheme` 自动检测 + 实时响应系统主题变化
+- [x] apps/jowork + apps/fluxvita 均更新
+- [x] pnpm lint 全绿（纯前端改动）
 
 **AI 辅助开发预计总工期：6-10 个工作日**（全程 AI 写代码，人工只做决策/审查/测试）
 
