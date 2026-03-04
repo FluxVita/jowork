@@ -192,7 +192,7 @@
 | Phase 40：设置面板扩展 — Agent 配置 + 记忆管理 UI | ✅ 完成 | 2026-03-05 | Agent标签(name/systemPrompt/model可编辑+PATCH保存)+Memories标签(列表+搜索+单条删除)+默认打开Agent标签；apps/jowork+apps/fluxvita均更新；pnpm lint+test全绿（260/260） |
 | Phase 41：Scheduler UI + Workstyle 文档 UI | ✅ 完成 | 2026-03-05 | Scheduler标签(任务列表+创建+toggle+删除)+ Agent标签新增WorkStyle文档编辑区(GET+PUT /api/context/workstyle)；apps/jowork+apps/fluxvita均更新；pnpm lint+test全绿（260/260） |
 | Phase 42：LLM 用量仪表板 UI + 管理员备份/恢复 UI | ✅ 完成 | 2026-03-05 | Usage标签(Summary+Budget进度条+7日日报+预算设置)+Admin标签(手动备份+更新检查+导出ZIP/JSON/MD+从ZIP恢复)；apps/jowork+apps/fluxvita均更新；pnpm lint+test全绿（260/260） |
-| Phase 43：Session 管理 UI — 重命名/删除会话 | 🔄 进行中 | 2026-03-05 | hover菜单(rename+delete)；inline编辑；级联删除自动切换session；apps/jowork+apps/fluxvita均更新 |
+| Phase 43：Session 管理 UI — 重命名/删除会话 | ✅ 完成 | 2026-03-05 | hover菜单(✏rename+×delete)；inline input编辑(Enter保存/Esc取消/blur取消)；级联删除自动切换session；apps/jowork+apps/fluxvita均更新；pnpm lint+test全绿（260/260） |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*
@@ -3066,11 +3066,11 @@ GET /health → {
 
 ### Phase 43: Session 管理 UI — 重命名/删除会话（0.5 天）
 
-- [ ] Session 列表项 hover 时右侧显示操作图标（✏ rename，🗑 delete）
-- [ ] 点击 rename：session title 变为 inline input，Enter 保存（`PATCH /api/sessions/:id`），ESC 取消
-- [ ] 点击 delete：confirm 确认后删除（`DELETE /api/sessions/:id`），自动切换到列表第一项或新建
-- [ ] `apps/fluxvita/public/index.html`：同步上述功能（保留 FluxVita 品牌色）
-- [ ] pnpm lint+test 全绿（260/260）
+- [x] Session 列表项 hover 时右侧显示操作图标（✏ rename，× delete）
+- [x] 点击 rename：session title 变为 inline input，Enter 保存（`PATCH /api/sessions/:id`），ESC/blur 取消
+- [x] 点击 delete：confirm 确认后删除（`DELETE /api/sessions/:id`），自动切换到列表第一项或新建
+- [x] `apps/fluxvita/public/index.html`：同步上述功能（保留 FluxVita 品牌色）
+- [x] pnpm lint+test 全绿（260/260）
 
 **AI 辅助开发预计总工期：6-10 个工作日**（全程 AI 写代码，人工只做决策/审查/测试）
 
