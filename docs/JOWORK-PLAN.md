@@ -184,6 +184,7 @@
 | Phase 32：SSE 流式聊天端点 | ✅ 完成 | 2026-03-05 | chatStream()异步生成器（Anthropic streaming API）+ POST /api/sessions/:id/messages/stream SSE端点（chunk/done/error事件）；pnpm lint+test全绿（217/217） |
 | Phase 33：Connector Fetch + Search API | ✅ 完成 | 2026-03-05 | connectorSearch()函数（能力门控，无search抛NOT_SUPPORTED）+ POST /api/connectors/:id/fetch + POST /api/connectors/:id/search；pnpm lint+test全绿（222/222） |
 | Phase 34：前端 SSE 流式渲染 + 停止生成 | ✅ 完成 | 2026-03-05 | apps/jowork + apps/fluxvita 均升级为 SSE stream 端点；流式光标+停止按钮；pnpm lint+test全绿（222/222） |
+| Phase 35：OpenAI-compatible 流式 + Ollama 开箱即用 | 🔄 进行中 | 2026-03-05 | - |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*
