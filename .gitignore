@@ -6,6 +6,14 @@ data/
 *.db-wal
 .env
 .env.local
+.env.production
 target/
 .DS_Store
 logs/
+*.log
+*.tgz
+.pnpm-store/
+# Bun sidecar binaries
+*.exe
+gateway-sidecar
+gateway-sidecar-*

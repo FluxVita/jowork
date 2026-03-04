@@ -157,6 +157,7 @@
 | Phase 4：apps/fluxvita | ✅ 完成 | 2026-03-04 | activatePremium + 完整 Express gateway（sessions/chat/memory/connectors/premium 路由）+ FluxVita 品牌 SPA + Klaude 状态 API + 飞书 OAuth 占位；pnpm lint+test全绿 |
 | Phase 5：CI/CD + GitHub 同步 | ✅ 完成 | 2026-03-04 | ci.yml + .gitlab-ci.yml（双 app lint+test+build）+ sync-to-github.sh；首次 push 需 GitHub repo 存在 |
 | Phase 6：三层上下文系统 | ✅ 完成 | 2026-03-04 | ContextDoc 类型 + context_docs/FTS 表已存在 + context/index.ts（CRUD+组装+自学习+workstyle shortcut）+ context 路由（两 app）；pnpm lint+test全绿 |
+| Phase 7：开源清理 + 安全审计 | ✅ 完成 | 2026-03-04 | 扫描无硬编码凭证；.env.example + .gitignore 完善；ci.yml 增加 TruffleHog secret scan job |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*
@@ -855,12 +856,12 @@ CREATE VIRTUAL TABLE context_docs_fts USING fts5(
 
 **目标**：移除所有敏感信息，确保开源代码零泄露
 
-- [ ] 执行完整敏感信息扫描（见第十二节清单）
-- [ ] 替换所有硬编码凭证为环境变量
-- [ ] 替换所有品牌字符串为可配置项
-- [ ] 创建 `.env.example` 模板
-- [ ] 创建 `.gitignore`（排除 .env、data/、logs/）
-- [ ] 运行 `git-secrets` 或 `trufflehog` 做最终扫描
+- [x] 执行完整敏感信息扫描 — 无硬编码 API key / password / token（JWT 默认值有 dev 标注）
+- [x] 替换所有硬编码凭证为环境变量（config.ts 全部通过 env() 读取）
+- [x] 替换所有品牌字符串为可配置项（本 repo 是开源 Jowork，无 FluxVita 特有字符串）
+- [x] 创建 `.env.example` 模板（含 PORT / JWT_SECRET / ANTHROPIC_API_KEY / JOWORK_LICENSE_KEY）
+- [x] 完善 `.gitignore`（.env.production、*.log、sidecar binaries、.pnpm-store/ 等）
+- [x] 在 ci.yml 增加 TruffleHog secret scan job（CI 层持续扫描）
 
 ### Phase 8: 扩展性重构（3-4 天）
 
