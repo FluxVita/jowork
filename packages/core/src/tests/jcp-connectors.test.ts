@@ -1,4 +1,4 @@
-// JCP connector integration tests — Phase 22
+// JCP connector integration tests — Phase 22 + Phase 23
 // Tests: auto-registration, listAllConnectorTypes, discoverViaConnector bridge
 
 import { test, describe } from 'node:test';
@@ -12,6 +12,8 @@ import {
   githubConnector,
   notionConnector,
   slackConnector,
+  linearConnector,
+  gitlabConnector,
 } from '../index.js';
 
 describe('JCP connector auto-registration', () => {
@@ -38,13 +40,29 @@ describe('JCP connector auto-registration', () => {
     assert.deepEqual(connector?.manifest.capabilities, ['discover', 'fetch', 'search']);
   });
 
-  test('listJCPConnectors returns all 3 built-in connectors', () => {
+  test('Linear connector is auto-registered', () => {
+    const connector = getJCPConnector('linear');
+    assert.ok(connector, 'Linear connector should be registered');
+    assert.equal(connector?.manifest.id, 'linear');
+    assert.equal(connector?.manifest.name, 'Linear');
+  });
+
+  test('GitLab connector is auto-registered', () => {
+    const connector = getJCPConnector('gitlab');
+    assert.ok(connector, 'GitLab connector should be registered');
+    assert.equal(connector?.manifest.id, 'gitlab');
+    assert.equal(connector?.manifest.name, 'GitLab');
+  });
+
+  test('listJCPConnectors returns all 5 built-in connectors', () => {
     const manifests = listJCPConnectors();
     const ids = manifests.map(m => m.id);
     assert.ok(ids.includes('github'), 'Should include github');
     assert.ok(ids.includes('notion'), 'Should include notion');
     assert.ok(ids.includes('slack'),  'Should include slack');
-    assert.ok(manifests.length >= 3, 'Should have at least 3 JCP connectors');
+    assert.ok(ids.includes('linear'), 'Should include linear');
+    assert.ok(ids.includes('gitlab'), 'Should include gitlab');
+    assert.ok(manifests.length >= 5, 'Should have at least 5 JCP connectors');
   });
 });
 
@@ -104,5 +122,46 @@ describe('Notion connector', () => {
 
   test('manifest has correct auth type', () => {
     assert.equal(notionConnector.manifest.authType, 'api_token');
+  });
+});
+
+describe('Linear connector', () => {
+  test('manifest has correct auth type', () => {
+    assert.equal(linearConnector.manifest.authType, 'api_token');
+  });
+
+  test('defaultSensitivity is internal', () => {
+    assert.equal(linearConnector.defaultSensitivity, 'internal');
+  });
+
+  test('manifest includes search capability', () => {
+    assert.ok(linearConnector.manifest.capabilities.includes('search'));
+  });
+
+  test('health returns error without token (no crash)', async () => {
+    await linearConnector.initialize({}, {});
+    const result = await linearConnector.health();
+    assert.equal(typeof result.ok, 'boolean');
+    assert.equal(typeof result.latencyMs, 'number');
+  });
+});
+
+describe('GitLab connector', () => {
+  test('manifest has correct auth type', () => {
+    assert.equal(gitlabConnector.manifest.authType, 'api_token');
+  });
+
+  test('defaultSensitivity is internal', () => {
+    assert.equal(gitlabConnector.defaultSensitivity, 'internal');
+  });
+
+  test('manifest includes search and fetch capabilities', () => {
+    assert.ok(gitlabConnector.manifest.capabilities.includes('fetch'));
+    assert.ok(gitlabConnector.manifest.capabilities.includes('search'));
+  });
+
+  test('configSchema allows custom base URL', () => {
+    const schema = gitlabConnector.manifest.configSchema as { properties: { baseUrl: unknown } };
+    assert.ok(schema.properties.baseUrl, 'Should have baseUrl in config schema');
   });
 });

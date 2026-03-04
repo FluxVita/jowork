@@ -19,6 +19,8 @@ export * from './connectors/protocol.js';
 export * from './connectors/github.js';
 export * from './connectors/notion.js';
 export * from './connectors/slack.js';
+export * from './connectors/linear.js';
+export * from './connectors/gitlab.js';
 export * from './channels/index.js';
 export * from './channels/protocol.js';
 export * from './channels/telegram.js';
