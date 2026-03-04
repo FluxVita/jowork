@@ -176,6 +176,7 @@
 | Phase 20：GTM准备 | ✅ 完成 | 2026-03-05 | quick-start.md(3种安装方式)；product-hunt.md(tagline+文案)；reddit-hn.md(4平台帖子)；官网/视频/Discord需人工执行 |
 | Phase 25：Discord Channel | ✅ 完成 | 2026-03-05 | discordChannel（webhook发送+rich embeds+bot轮询接收）；pnpm lint+test全绿（124/124） |
 | Phase 26：Channels REST API | ✅ 完成 | 2026-03-05 | channels/router.ts（列表/init/message/shutdown端点）+ env自动初始化 + 协议状态追踪；pnpm lint+test全绿（137/137） |
+| Phase 27：Scheduler REST API + Webhook Channel | 🔄 进行中 | 2026-03-05 | Scheduler CRUD路由（/api/tasks）+ Webhook入站渠道（tokenAuth+outgoing webhook） |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*
