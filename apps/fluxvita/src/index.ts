@@ -12,6 +12,8 @@ import {
   createApp,
   getEdition,
   getOnboardingState,
+  advertiseMdns,
+  networkRouter,
 } from '@jowork/core';
 
 import { activatePremium } from '@jowork/premium';
@@ -70,6 +72,7 @@ async function main(): Promise<void> {
       expressApp.use(contextRouter());
       expressApp.use(premiumRouter());
       expressApp.use(statsRouter());
+      expressApp.use(networkRouter());
 
       // Serve FluxVita SPA from public/
       if (existsSync(join(PUBLIC_DIR, 'index.html'))) {
@@ -81,6 +84,8 @@ async function main(): Promise<void> {
   });
 
   const server = createServer(app);
+  const mdns = advertiseMdns(config.port, 'fluxvita-gateway');
+
   server.listen(config.port, () => {
     logger.info('FluxVita ready', {
       url: `http://localhost:${config.port}`,
@@ -88,8 +93,8 @@ async function main(): Promise<void> {
     });
   });
 
-  process.on('SIGTERM', () => { server.close(() => process.exit(0)); });
-  process.on('SIGINT', () => { server.close(() => process.exit(0)); });
+  process.on('SIGTERM', () => { mdns.stop(); server.close(() => process.exit(0)); });
+  process.on('SIGINT', () => { mdns.stop(); server.close(() => process.exit(0)); });
 }
 
 main().catch(err => {

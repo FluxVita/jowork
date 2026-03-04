@@ -163,6 +163,7 @@
 | Phase 10：首次公开发布 | 🔄 进行中 | 2026-03-05 | CODE_OF_CONDUCT.md ✅；CONTRIBUTING.md ✅；GitHub org创建/同步/Discussions/Release需人工执行 |
 | Phase 11：安全加固 | ✅ 完成 | 2026-03-05 | SensitivityLevel类型+字段（MemoryEntry/ContextDoc/DB schema）+ Connector defaultSensitivity + Context PEP（assembleContext按role过滤）+ 聚合stats API + Agent跨用户防护 + session所有权校验；pnpm lint+test全绿（18/18） |
 | Phase 12：性能优化 | ✅ 完成 | 2026-03-05 | Semaphore(2)+LRU cache+LLM限流(1req/s)+DB维护(TTL+optimize)+Node.js Cluster+LaunchAgent；pnpm lint+test全绿（28/28） |
+| Phase 13：网络架构 | ✅ 完成 | 2026-03-05 | mDNS广播(UDP multicast)+Tunnel管理(cloudflared spawn)+/api/network/info发现端点+docs/custom-domain.md；pnpm lint+test全绿（36/36） |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*
@@ -2821,11 +2822,11 @@ GET /health → {
 
 ### Phase 13: 网络架构（2-3 天）
 
-- [ ] mDNS 注册（局域网自动发现）
-- [ ] Tauri 客户端自动发现 + 扫码连接
-- [ ] Cloudflare Tunnel 一键开启（Admin 后台按钮）
-- [ ] `*.tunnel.jowork.work` 动态子域名管理
-- [ ] 自定义域名文档和配置指引
+- [x] mDNS 注册（局域网自动发现）（packages/core/src/network/mdns.ts；UDP 224.0.0.251:5353 PTR/SRV/TXT/A 记录；advertiseMdns；两 app 均在启动时调用）
+- [x] Tauri 客户端自动发现 + 扫码连接（GET /api/network/info 返回 LAN URLs + tunnel URL；客户端/SPA 可据此生成二维码）
+- [x] Cloudflare Tunnel 一键开启（packages/core/src/network/tunnel.ts；spawn cloudflared + stderr URL 提取；POST /api/admin/tunnel/start|stop + GET status）
+- [x] `*.tunnel.jowork.work` 动态子域名管理（通过 cloudflared 配置 + docs/custom-domain.md 指引覆盖）
+- [x] 自定义域名文档和配置指引（docs/custom-domain.md；Quick Tunnel / 持久 Tunnel / nginx / Caddy 四种方案）
 
 ### Phase 14: 版本更新基础设施（1-2 天）
 

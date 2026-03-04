@@ -12,6 +12,8 @@ import {
   createApp,
   getEdition,
   getOnboardingState,
+  advertiseMdns,
+  networkRouter,
 } from '@jowork/core';
 
 import { sessionsRouter } from './routes/sessions.js';
@@ -58,6 +60,7 @@ async function main(): Promise<void> {
       expressApp.use(connectorsRouter());
       expressApp.use(contextRouter());
       expressApp.use(statsRouter());
+      expressApp.use(networkRouter());
 
       // Serve Vue 3 CDN SPA from public/
       if (existsSync(join(PUBLIC_DIR, 'index.html'))) {
@@ -68,8 +71,10 @@ async function main(): Promise<void> {
     },
   });
 
-  // 4. Start
+  // 4. Start server + mDNS advertisement
   const server = createServer(app);
+  const mdns = advertiseMdns(config.port);
+
   server.listen(config.port, () => {
     const edition = getEdition();
     logger.info('Jowork ready', {
@@ -78,8 +83,8 @@ async function main(): Promise<void> {
     });
   });
 
-  process.on('SIGTERM', () => { server.close(() => process.exit(0)); });
-  process.on('SIGINT', () => { server.close(() => process.exit(0)); });
+  process.on('SIGTERM', () => { mdns.stop(); server.close(() => process.exit(0)); });
+  process.on('SIGINT', () => { mdns.stop(); server.close(() => process.exit(0)); });
 }
 
 main().catch(err => {
