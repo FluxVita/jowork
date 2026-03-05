@@ -225,6 +225,7 @@
 | Phase 73：Tauri 2 Desktop Shell | ✅ 完成 | 2026-03-05 | Tauri 2项目结构(Cargo.toml+tauri.conf.json+lib.rs+main.rs)；sidecar启动逻辑(ShellExt+stdout监听"Gateway ready")；externalBin配置；CSP安全策略；图标生成(icns/ico/png全平台)；tauri:dev+tauri:build脚本；cargo check全绿 |
 | Phase 74：Session Pinning + Folder 组织 | ✅ 完成 | 2026-03-05 | 迁移006_session_pinned_folder(pinned+folder列)；PATCH支持pinned/folder/title多字段更新；GET按pinned DESC排序+?folder=过滤；GET /api/sessions/folders；前端📌pin+📂folder+folder chips过滤器；apps/jowork+apps/fluxvita均更新；10新测试；pnpm lint+test全绿（389/389） |
 | Phase 75：Session Fork（对话分叉） | ✅ 完成 | 2026-03-05 | 迁移007_session_forked_from(forked_from列)；POST /api/sessions/:id/fork(afterMessageId可选，复制消息+FTS索引)；前端🔀Fork按钮(assistant+user消息均可fork)；forkedFrom字段贯穿类型+API+前端；apps/jowork+apps/fluxvita均更新；4新测试；pnpm lint+test全绿（393/393） |
+| Phase 76：Connector 自动同步配置 UI | ✅ 完成 | 2026-03-05 | updateConnectorConfig函数(name/settings/syncSchedule更新)；PATCH /api/connectors/:id端点；前端Sync Schedule行(Auto-sync状态+lastSyncAt+Edit/Presets/cron输入/Save)；matchesCron测试+CRUD测试+路由测试；apps/jowork+apps/fluxvita均更新；12新测试；pnpm lint+test全绿（405/405） |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*
@@ -3441,6 +3442,18 @@ GET /health → {
 - [x] `apps/fluxvita/public/index.html`：同步上述功能
 - [x] 4 个新测试（fork全量/fork到指定点/forked_from默认null/fork后独立删除）
 - [x] pnpm lint+test 全绿（393/393）
+
+### Phase 76: Connector 自动同步配置 UI（0.25 天）
+
+- [x] `connectors/index.ts` 新增 `updateConnectorConfig(id, { name?, settings?, syncSchedule? })` 函数（动态 SQL 构建，NOT_FOUND 校验）
+- [x] `gateway/routes/connectors.ts` 新增 `PATCH /api/connectors/:id` 端点（admin+，支持 name/settings/syncSchedule 更新）
+- [x] 前端 connector 列表项新增同步计划行：Auto-sync 状态显示 + lastSyncAt 相对时间 + Edit 按钮
+- [x] 编辑模式：Presets 下拉（Hourly/Every 6h/Daily/Weekdays 8am）+ cron 输入框 + Save/Cancel
+- [x] `formatSyncSchedule()` 将常见 cron 表达式转为人类可读标签
+- [x] `formatLastSync()` 显示相对时间（just now / Xm ago / Xh ago / 日期）
+- [x] `apps/fluxvita/public/index.html`：同步上述全部改动（保留 FluxVita 蓝色品牌色）
+- [x] `connector-sync-schedule.test.ts`：12 个新测试（updateConnectorConfig CRUD + updateSyncSchedule/updateLastSyncAt + matchesCron 本地时间 + PATCH 路由验证）
+- [x] pnpm lint+test 全绿（405/405）
 
 **AI 辅助开发预计总工期：6-10 个工作日**（全程 AI 写代码，人工只做决策/审查/测试）
 

@@ -1364,6 +1364,50 @@
             .map(([key, v]) => ({ key, label: v.title ?? key, placeholder: v.description ?? '' }));
         }
 
+        const editingSyncSchedule = ref({});
+        const syncScheduleInput = ref({});
+
+        function startEditSync(c) {
+          editingSyncSchedule.value = { ...editingSyncSchedule.value, [c.id]: true };
+          syncScheduleInput.value = { ...syncScheduleInput.value, [c.id]: c.syncSchedule ?? '' };
+        }
+
+        function cancelEditSync(id) {
+          editingSyncSchedule.value = { ...editingSyncSchedule.value, [id]: false };
+        }
+
+        async function saveSyncSchedule(id) {
+          const val = (syncScheduleInput.value[id] ?? '').trim();
+          try {
+            await api('PATCH', `/api/connectors/${id}`, { syncSchedule: val || null });
+            toast(val ? 'Sync schedule set' : 'Auto-sync disabled', 'success');
+            editingSyncSchedule.value = { ...editingSyncSchedule.value, [id]: false };
+            await loadConnectors();
+          } catch (e) {
+            toast('Failed: ' + (e.message ?? String(e)), 'error');
+          }
+        }
+
+        function applySyncPreset(id, cron) {
+          syncScheduleInput.value = { ...syncScheduleInput.value, [id]: cron };
+        }
+
+        function formatSyncSchedule(cron) {
+          if (!cron) return 'Off';
+          const presets = { '0 * * * *': 'Hourly', '0 */6 * * *': 'Every 6h', '0 0 * * *': 'Daily', '0 8 * * 1-5': 'Weekdays 8am' };
+          return presets[cron] ?? cron;
+        }
+
+        function formatLastSync(ts) {
+          if (!ts) return 'Never';
+          const d = new Date(ts);
+          const diff = Date.now() - d.getTime();
+          if (diff < 60000) return 'just now';
+          if (diff < 3600000) return Math.floor(diff / 60000) + 'm ago';
+          if (diff < 86400000) return Math.floor(diff / 3600000) + 'h ago';
+          return d.toLocaleDateString();
+        }
+
         function connIcon(kind) {
           return CONNECTOR_ICONS[kind] ?? '🔌';
         }
@@ -1454,6 +1498,7 @@
           terminalInput, terminalOutput, terminalCwd, terminalBusy, terminalHistory, terminalHistoryIdx, terminalOutputEl,
           runTerminalCommand, terminalReset, terminalHistoryUp, terminalHistoryDown,
           openSettings, applyModel, addConnector, removeConnector, testConnector, connectorTesting, syncConnector, connectorSyncing, extraFields, connIcon, renderMd,
+          editingSyncSchedule, syncScheduleInput, startEditSync, cancelEditSync, saveSyncSchedule, applySyncPreset, formatSyncSchedule, formatLastSync,
           saveAgent, loadMemories, deleteMemoryItem, addMemory,
           submitTask, toggleTaskEnabled, deleteTaskItem,
           saveWorkstyle, saveBudget, exportData, triggerBackup, checkUpdates, handleImport,
@@ -1809,7 +1854,7 @@
                 <div class="setting-section">
                   <h3>Connected ({{ connectors.length }})</h3>
                   <div v-if="connectors.length === 0" class="empty-msg">No connectors configured yet.</div>
-                  <div v-for="c in connectors" :key="c.id" class="connector-item">
+                  <div v-for="c in connectors" :key="c.id" class="connector-item" style="flex-wrap:wrap">
                     <div class="connector-icon" style="background:#1f2a3c">{{ connIcon(c.kind) }}</div>
                     <div class="connector-info">
                       <div class="connector-name">{{ c.name }}</div>
@@ -1823,6 +1868,24 @@
                       {{ connectorTesting[c.id] ? '…' : 'Test' }}
                     </button>
                     <button class="connector-delete" @click="removeConnector(c.id)">Remove</button>
+                    <!-- Sync schedule row -->
+                    <div style="width:100%;margin-top:6px;padding-left:38px;display:flex;align-items:center;gap:8px;font-size:12px;color:#94a3b8">
+                      <span>Auto-sync: <strong style="color:#e2e8f0">{{ formatSyncSchedule(c.syncSchedule) }}</strong></span>
+                      <span v-if="c.lastSyncAt">· Last: {{ formatLastSync(c.lastSyncAt) }}</span>
+                      <button v-if="!editingSyncSchedule[c.id]" class="btn-sm" style="font-size:11px;padding:1px 6px" @click="startEditSync(c)">Edit</button>
+                      <template v-if="editingSyncSchedule[c.id]">
+                        <select style="font-size:11px;padding:2px 4px;background:#0d1117;color:#e2e8f0;border:1px solid #1f2a3c;border-radius:4px" @change="applySyncPreset(c.id, $event.target.value); $event.target.selectedIndex=0">
+                          <option value="">Presets…</option>
+                          <option value="0 * * * *">Hourly</option>
+                          <option value="0 */6 * * *">Every 6h</option>
+                          <option value="0 0 * * *">Daily</option>
+                          <option value="0 8 * * 1-5">Weekdays 8am</option>
+                        </select>
+                        <input v-model="syncScheduleInput[c.id]" placeholder="cron e.g. 0 */6 * * *" style="width:140px;font-size:11px;padding:2px 6px;background:#0d1117;color:#e2e8f0;border:1px solid #1f2a3c;border-radius:4px" @keyup.enter="saveSyncSchedule(c.id)" />
+                        <button class="btn-sm" style="font-size:11px;padding:1px 6px" @click="saveSyncSchedule(c.id)">Save</button>
+                        <button class="btn-sm" style="font-size:11px;padding:1px 6px" @click="cancelEditSync(c.id)">✕</button>
+                      </template>
+                    </div>
                   </div>
                 </div>
                 <div class="add-connector-form">

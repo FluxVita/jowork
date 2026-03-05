@@ -383,6 +383,43 @@ export function updateSyncSchedule(connectorId: ConnectorId, schedule: string | 
 }
 
 /**
+ * Update a connector's mutable fields (name, settings, syncSchedule).
+ * Returns the updated ConnectorConfig.
+ */
+export function updateConnectorConfig(
+  connectorId: ConnectorId,
+  updates: { name?: string; settings?: Record<string, unknown>; syncSchedule?: string | null },
+): ConnectorConfig {
+  const db = getDb();
+  const row = db.prepare(`SELECT * FROM connectors WHERE id = ?`).get(connectorId) as RawRow | undefined;
+  if (!row) throw new JoworkError('NOT_FOUND', `Connector ${connectorId} not found`, 404);
+
+  const sets: string[] = [];
+  const vals: unknown[] = [];
+
+  if (updates.name !== undefined) {
+    sets.push('name = ?');
+    vals.push(updates.name);
+  }
+  if (updates.settings !== undefined) {
+    sets.push('settings = ?');
+    vals.push(JSON.stringify(updates.settings));
+  }
+  if (updates.syncSchedule !== undefined) {
+    sets.push('sync_schedule = ?');
+    vals.push(updates.syncSchedule);
+  }
+
+  if (sets.length === 0) return fromRow(row);
+
+  vals.push(connectorId);
+  db.prepare(`UPDATE connectors SET ${sets.join(', ')} WHERE id = ?`).run(...vals);
+
+  const updated = db.prepare(`SELECT * FROM connectors WHERE id = ?`).get(connectorId) as RawRow;
+  return fromRow(updated);
+}
+
+/**
  * Update last_sync_at timestamp for a connector (called by sync scheduler).
  */
 export function updateLastSyncAt(connectorId: ConnectorId, ts: string): void {

@@ -5,6 +5,7 @@
 //   GET    /api/connector-types/:id      — full manifest for a specific JCP connector type
 //   GET    /api/connectors               — list user's connector instances
 //   POST   /api/connectors               — create a new connector instance (admin+)
+//   PATCH  /api/connectors/:id           — update connector name/settings/syncSchedule (admin+)
 //   POST   /api/connectors/:id/discover  — discover objects via connector
 //   POST   /api/connectors/:id/fetch     — fetch specific object content by ID
 //   POST   /api/connectors/:id/search    — full-text search within connector
@@ -17,6 +18,7 @@ import { Router } from 'express';
 import { authenticate, requireRole } from '../middleware/auth.js';
 import {
   createConnectorConfig, listConnectorConfigs, getConnectorConfig, deleteConnectorConfig,
+  updateConnectorConfig,
   listAllConnectorTypes, getConnectorTypeManifest, discoverViaConnector, connectorFetch, connectorSearch,
   getConnectorHealth, checkConnectorHealth,
   syncConnectorItems, listConnectorItems, countConnectorItems, deleteConnectorItems,
@@ -54,6 +56,20 @@ export function connectorsRouter(): Router {
       const { kind, name, settings } = req.body as { kind: ConnectorKind; name: string; settings: Record<string, unknown> };
       const cfg = createConnectorConfig({ kind, name, settings, ownerId: req.auth!.userId });
       res.status(201).json(cfg);
+    } catch (err) { next(err); }
+  });
+
+  // PATCH /api/connectors/:id — update connector name, settings, or sync schedule
+  router.patch('/api/connectors/:id', authenticate, requireRole('admin'), (req, res, next) => {
+    try {
+      const id = String(req.params['id']);
+      const body = req.body as Record<string, unknown>;
+      const updates: { name?: string; settings?: Record<string, unknown>; syncSchedule?: string | null } = {};
+      if ('name' in body)         updates.name = String(body['name']);
+      if ('settings' in body)     updates.settings = body['settings'] as Record<string, unknown>;
+      if ('syncSchedule' in body) updates.syncSchedule = body['syncSchedule'] as string | null;
+      const updated = updateConnectorConfig(id, updates);
+      res.json(updated);
     } catch (err) { next(err); }
   });
 
