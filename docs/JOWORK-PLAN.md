@@ -233,6 +233,7 @@
 | Phase 81：Custom Provider UI | ✅ 完成 | 2026-03-05 | Models标签新增Custom Providers区域（+Add表单：id/name/apiFormat/endpoint/models；列表展示+×删除按钮；空状态提示）；apps/jowork+apps/fluxvita均更新；pnpm lint全绿（纯前端） |
 | Phase 82：Audit Logging 审计日志 | ✅ 完成 | 2026-03-05 | audit/index.ts(recordAudit+queryAuditLog+purgeAuditBefore+inferResourceType)；迁移009_audit_log；auditMiddleware自动记录非GET请求；auditRouter(GET /api/audit+DELETE /api/audit/purge)；两app均挂载；14新测试（迁移2+CRUD6+infer2+API4）；pnpm lint+test全绿（448/448） |
 | Phase 83：API Versioning（/api/v1/*） | ✅ 完成 | 2026-03-05 | apiVersionMiddleware(/api/v1/*→/api/*重写+/api/* Deprecation/Sunset/Link header)；createApp自动挂载(JSON解析后第一层)；7新测试（v1路由3+deprecation header 4）；pnpm lint+test全绿（455/455） |
+| Phase 84：Conversation Templates 会话模板 | ✅ 完成 | 2026-03-05 | 迁移010_conversation_templates；templates/index.ts(CRUD+seedBuiltinTemplates 4个内置模板)；templatesRouter(GET/POST/GET:id/PATCH/DELETE)；两app均挂载+启动seed；19新测试（迁移2+CRUD8+builtin2+API7）；pnpm lint+test全绿（474/474） |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*
@@ -3531,6 +3532,19 @@ GET /health → {
 - [x] gateway/index.ts 导出 `apiVersionMiddleware`
 - [x] 7 个新测试（v1 路由正确匹配 3 + deprecation header 设置 4）
 - [x] pnpm lint+test 全绿（455/455）
+
+### Phase 84: Conversation Templates 会话模板（0.25 天）
+
+- [x] 迁移 `010_conversation_templates`：conversation_templates 表（id/name/description/system_prompt/first_message/icon/owner_id/is_builtin/created_at/updated_at）
+- [x] `packages/core/src/templates/index.ts`：`createTemplate()` / `listTemplates()` / `getTemplate()` / `updateTemplate()` / `deleteTemplate()` / `seedBuiltinTemplates()`
+- [x] 4 个内置模板：Code Review / Brainstorm / Debug Helper / Summarize
+- [x] `seedBuiltinTemplates()` 幂等（is_builtin=1 已存在则跳过）
+- [x] `templatesRouter()`：GET /api/templates + POST + GET/:id + PATCH/:id + DELETE/:id
+- [x] owner 隔离（用户只能编辑/删除自己的模板，builtin 不可编辑/删除）
+- [x] 两 app 入口调 `seedBuiltinTemplates()` + 挂载 `templatesRouter()`
+- [x] migrator.test.ts 更新（新增 010 到断言数组）
+- [x] 19 个新测试（迁移 2 + CRUD 8 + builtin 2 + API 7）
+- [x] pnpm lint+test 全绿（474/474）
 
 **AI 辅助开发预计总工期：6-10 个工作日**（全程 AI 写代码，人工只做决策/审查/测试）
 

@@ -257,6 +257,26 @@ const MIGRATIONS: Migration[] = [
       `);
     },
   },
+  {
+    name: '010_conversation_templates',
+    up(db) {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS conversation_templates (
+          id          TEXT PRIMARY KEY,
+          name        TEXT NOT NULL,
+          description TEXT NOT NULL DEFAULT '',
+          system_prompt TEXT NOT NULL DEFAULT '',
+          first_message TEXT NOT NULL DEFAULT '',
+          icon        TEXT NOT NULL DEFAULT '',
+          owner_id    TEXT NOT NULL,
+          is_builtin  INTEGER NOT NULL DEFAULT 0,
+          created_at  TEXT NOT NULL,
+          updated_at  TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_conv_templates_owner ON conversation_templates(owner_id);
+      `);
+    },
+  },
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

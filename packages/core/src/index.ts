@@ -39,3 +39,5 @@ export { recordRequest, collectSnapshot, renderPrometheus, resetMetrics } from '
 export type { MetricsSnapshot } from './metrics/collector.js';
 export { recordAudit, queryAuditLog, purgeAuditBefore, inferResourceType } from './audit/index.js';
 export type { AuditEntry, AuditQuery, AuditQueryResult } from './audit/index.js';
+export { createTemplate, listTemplates, getTemplate, updateTemplate, deleteTemplate, seedBuiltinTemplates } from './templates/index.js';
+export type { ConversationTemplate, CreateTemplateInput, UpdateTemplateInput } from './templates/index.js';

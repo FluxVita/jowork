@@ -32,6 +32,8 @@ import {
   terminalRouter,
   feedbackRouter,
   auditRouter,
+  templatesRouter,
+  seedBuiltinTemplates,
 } from '@jowork/core';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -52,8 +54,9 @@ async function main(): Promise<void> {
     port: config.port,
   });
 
-  // 2. Load custom model providers from DB into in-memory registry
+  // 2. Load custom model providers + seed builtin templates
   loadCustomProviders();
+  seedBuiltinTemplates();
 
   // 3. Ensure default user + agent exist in personal mode
   if (config.personalMode) {
@@ -91,6 +94,7 @@ async function main(): Promise<void> {
       expressApp.use(channelsRouter());
       expressApp.use(feedbackRouter());
       expressApp.use(auditRouter());
+      expressApp.use(templatesRouter());
 
       // Serve Vue 3 CDN SPA from public/
       if (existsSync(join(PUBLIC_DIR, 'index.html'))) {

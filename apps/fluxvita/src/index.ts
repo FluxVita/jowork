@@ -32,6 +32,8 @@ import {
   terminalRouter,
   feedbackRouter,
   auditRouter,
+  templatesRouter,
+  seedBuiltinTemplates,
 } from '@jowork/core';
 
 import { activatePremium, dispatch } from '@jowork/premium';
@@ -66,8 +68,9 @@ async function main(): Promise<void> {
     geekMode: edition.hasGeekMode,
   });
 
-  // Load custom model providers from DB into in-memory registry
+  // Load custom model providers + seed builtin templates
   loadCustomProviders();
+  seedBuiltinTemplates();
 
   // Ensure default user + agent exist in personal mode
   if (config.personalMode) {
@@ -107,6 +110,7 @@ async function main(): Promise<void> {
       expressApp.use(channelsRouter());
       expressApp.use(feedbackRouter());
       expressApp.use(auditRouter());
+      expressApp.use(templatesRouter());
 
       // Serve FluxVita SPA from public/
       if (existsSync(join(PUBLIC_DIR, 'index.html'))) {
