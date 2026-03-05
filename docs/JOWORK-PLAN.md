@@ -230,6 +230,7 @@
 | Phase 78：自动展开输入框 | ✅ 完成 | 2026-03-05 | textarea autoResizeInput(@input自动调整高度，max-height:120px后滚动)；resetInputHeight(发送后重置)；overflow-y:auto；apps/jowork+apps/fluxvita均更新；pnpm lint全绿（纯前端） |
 | Phase 79：Prometheus Metrics + 系统指标采集 | ✅ 完成 | 2026-03-05 | MetricsCollector(recordRequest+collectSnapshot+renderPrometheus)；metricsMiddleware(请求计数/延迟/直方图)；GET /metrics Prometheus text exposition format；createApp自动挂载；10新测试；pnpm lint+test全绿（419/419） |
 | Phase 80：Custom Model Provider 管理 | ✅ 完成 | 2026-03-05 | 迁移008_model_providers表；store.ts(CRUD+loadCustomProviders启动加载)；POST/PATCH/DELETE /api/models/providers端点；两app启动时调loadCustomProviders()；15新测试（迁移2+CRUD7+API5+loader1）；pnpm lint+test全绿（434/434） |
+| Phase 81：Custom Provider UI | ✅ 完成 | 2026-03-05 | Models标签新增Custom Providers区域（+Add表单：id/name/apiFormat/endpoint/models；列表展示+×删除按钮；空状态提示）；apps/jowork+apps/fluxvita均更新；pnpm lint全绿（纯前端） |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*

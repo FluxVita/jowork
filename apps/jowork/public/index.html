@@ -428,6 +428,11 @@
         const stats         = ref(null);
         const healthFull    = ref(null);
 
+        // Custom provider form
+        const showAddProvider = ref(false);
+        const newProvider = ref({ id: '', name: '', apiFormat: 'openai', endpoint: '', models: '' });
+        const providerSaving = ref(false);
+
         // Add connector form
         const newConn = ref({ kind: '', name: '', apiKey: '', extra: {} });
         const connError = ref('');
@@ -1180,6 +1185,44 @@
           }
         }
 
+        async function addCustomProvider() {
+          const p = newProvider.value;
+          if (!p.id || !p.name || !p.endpoint) { toast('ID, Name, and Endpoint are required', 'error'); return; }
+          providerSaving.value = true;
+          try {
+            // Parse models string: "model-id:Model Name, model-id2:Model Name 2"
+            let models = [];
+            if (p.models.trim()) {
+              models = p.models.split(',').map(s => {
+                const [id, ...rest] = s.trim().split(':');
+                return { id: id.trim(), name: rest.join(':').trim() || id.trim(), contextWindow: 128000 };
+              });
+            }
+            await api('POST', '/api/models/providers', { id: p.id, name: p.name, apiFormat: p.apiFormat, endpoint: p.endpoint, models });
+            toast('Provider added!', 'success');
+            newProvider.value = { id: '', name: '', apiFormat: 'openai', endpoint: '', models: '' };
+            showAddProvider.value = false;
+            // Refresh providers list
+            const resp = await api('GET', '/api/models/providers').catch(() => ({ providers: [] }));
+            providers.value = resp?.providers ?? [];
+          } catch (e) {
+            toast('Failed: ' + (e instanceof Error ? e.message : 'error'), 'error');
+          } finally {
+            providerSaving.value = false;
+          }
+        }
+
+        async function deleteProvider(id) {
+          try {
+            await api('DELETE', '/api/models/providers/' + id);
+            toast('Provider removed', 'success');
+            const resp = await api('GET', '/api/models/providers').catch(() => ({ providers: [] }));
+            providers.value = resp?.providers ?? [];
+          } catch (e) {
+            toast('Delete failed: ' + (e instanceof Error ? e.message : 'error'), 'error');
+          }
+        }
+
         async function loadMemories() {
           try {
             const q = memoryQuery.value.trim();
@@ -1644,7 +1687,7 @@
           renamingSessionId, renameText, startRename, confirmRename, cancelRename, deleteSession, exportSession,
           togglePin, folders, folderFilter, setFolderFilter, openFolderInput, showFolderInput, folderInputText, confirmFolder, cancelFolder, renameFolder, deleteFolder,
           sessionFilter, filteredSessions, hasMore, nextCursor, loadingMore, loadMoreMessages,
-          showSettings, settingsTab, modelInfo, providers, modelPickProvider, modelPickModel, modelSaving,
+          showSettings, settingsTab, modelInfo, providers, modelPickProvider, modelPickModel, modelSaving, showAddProvider, newProvider, providerSaving, addCustomProvider, deleteProvider,
           connectors, connectorTypes, stats, healthFull,
           newConn, connError, connSaving,
           agents, selectedAgentId, selectedAgent, agentMap, agentSaving,
@@ -1982,6 +2025,39 @@
                     </div>
                     <p style="font-size:11px;color:#6b7a99;margin-top:2px">Changes apply immediately but reset on restart. Set MODEL_PROVIDER / MODEL_NAME env vars for permanent config.</p>
                   </div>
+                </div>
+                <div class="setting-section">
+                  <h3 style="display:flex;justify-content:space-between;align-items:center">
+                    Custom Providers
+                    <button @click="showAddProvider = !showAddProvider" style="background:#2d3148;color:#94a3b8;border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px">
+                      {{ showAddProvider ? 'Cancel' : '+ Add' }}
+                    </button>
+                  </h3>
+                  <div v-if="showAddProvider" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;padding:10px;background:#0f1117;border:1px solid #2d3148;border-radius:8px">
+                    <div style="display:flex;gap:8px">
+                      <input v-model="newProvider.id" placeholder="provider-id" style="flex:1;background:#1a1d2e;border:1px solid #2d3148;border-radius:6px;color:#e2e8f0;padding:6px 8px;font-size:12px" />
+                      <input v-model="newProvider.name" placeholder="Display Name" style="flex:1;background:#1a1d2e;border:1px solid #2d3148;border-radius:6px;color:#e2e8f0;padding:6px 8px;font-size:12px" />
+                    </div>
+                    <div style="display:flex;gap:8px">
+                      <select v-model="newProvider.apiFormat" style="background:#1a1d2e;border:1px solid #2d3148;border-radius:6px;color:#e2e8f0;padding:6px 8px;font-size:12px">
+                        <option value="openai">OpenAI format</option>
+                        <option value="anthropic">Anthropic format</option>
+                      </select>
+                      <input v-model="newProvider.endpoint" placeholder="https://api.example.com/v1" style="flex:1;background:#1a1d2e;border:1px solid #2d3148;border-radius:6px;color:#e2e8f0;padding:6px 8px;font-size:12px" />
+                    </div>
+                    <input v-model="newProvider.models" placeholder="model-id:Model Name, model-id2:Name 2 (optional)" style="background:#1a1d2e;border:1px solid #2d3148;border-radius:6px;color:#e2e8f0;padding:6px 8px;font-size:12px" />
+                    <button @click="addCustomProvider" :disabled="providerSaving" style="align-self:flex-start;background:#4c4fff;color:white;border:none;border-radius:6px;padding:6px 14px;cursor:pointer;font-size:12px">
+                      {{ providerSaving ? 'Adding…' : 'Add Provider' }}
+                    </button>
+                  </div>
+                  <div v-for="p in providers.filter(p => !['anthropic','openai','ollama'].includes(p.id))" :key="p.id" class="info-row" style="padding:6px 0">
+                    <div style="flex:1">
+                      <div style="font-size:13px;color:#e2e8f0">{{ p.name }}</div>
+                      <div style="font-size:11px;color:#6b7a99">{{ p.id }} · {{ p.apiFormat }} · {{ p.endpoint }}</div>
+                    </div>
+                    <button @click="deleteProvider(p.id)" style="background:none;border:none;color:#f87171;cursor:pointer;font-size:14px" title="Remove">×</button>
+                  </div>
+                  <div v-if="providers.filter(p => !['anthropic','openai','ollama'].includes(p.id)).length === 0 && !showAddProvider" class="empty-msg">No custom providers yet. Click + Add to connect to Azure, Gemini, OpenRouter, etc.</div>
                 </div>
                 <div class="setting-section">
                   <h3>API Keys</h3>
