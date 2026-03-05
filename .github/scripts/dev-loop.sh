@@ -57,12 +57,17 @@ while [ "$ROUND" -lt "$MAX_ROUNDS" ]; do
     -p "$(cat "${PROMPT_FILE}")" || true
 
   git add -A
-  if ! git diff --cached --quiet; then
-    DONE=$(done_count)
-    git commit -m "feat(jowork): round=${ROUND} done=${DONE} [skip ci]"
-    # ⚠️ || true：push 失败不终止循环，下轮还能继续
+  # ⚠️ 关键修复：Claude 在 session 内部 commit 后暂存区为空，但有 unpushed commits
+  # 必须同时检测 staged changes 和 unpushed commits 两种情况
+  UNPUSHED=$(git log origin/main..HEAD --oneline 2>/dev/null | wc -l | tr -d ' ')
+  if ! git diff --cached --quiet || [ "$UNPUSHED" -gt 0 ]; then
+    # 如果还有未提交的 staged 内容，先提交
+    if ! git diff --cached --quiet; then
+      DONE=$(done_count)
+      git commit -m "feat(jowork): round=${ROUND} done=${DONE} [skip ci]"
+    fi
     git push origin main || echo "push 失败，继续下一轮"
-    echo "Round ${ROUND} pushed, done=${DONE}"
+    echo "Round ${ROUND} pushed, done=$(done_count), unpushed_before_push=${UNPUSHED}"
   else
     echo "No changes in round ${ROUND}"
   fi

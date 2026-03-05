@@ -3,10 +3,12 @@ name: Jowork Autonomous Dev
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 8 * * *'
+    # fallback：每 3 小时检查一次，防止自触发链断掉
+    - cron: '0 */3 * * *'
 
 permissions:
-  contents: write
+  contents: write   # git push
+  actions: write    # 触发下一轮 workflow_dispatch
 
 jobs:
   develop:
@@ -27,6 +29,7 @@ jobs:
 
       - name: setup-pnpm
         uses: pnpm/action-setup@v4
+        # ⚠️ 不写 version，由 package.json 的 packageManager 字段决定
 
       - name: install-deps
         run: pnpm install --frozen-lockfile
@@ -48,3 +51,11 @@ jobs:
         run: |
           unset CLAUDECODE
           bash .github/scripts/dev-loop.sh
+
+      - name: trigger-next-run
+        # ⚠️ if: always() 确保即使 dev-loop 出错也能触发下一轮
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          bash .github/scripts/trigger-next.sh
