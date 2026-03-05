@@ -2935,7 +2935,7 @@ GET /health → {
 - [x] 订阅验证逻辑（App 每日拉取 + 本地缓存 7 天）（packages/premium/src/subscription/index.ts；initSubscription/getSubscriptionState/isPremiumActive；JOWORK_SUBSCRIPTION_TOKEN 环境变量）
 - [x] Admin UI 升级提示（apps/fluxvita GET /api/premium/subscription 返回 upgradeUrl）
 - [x] 升级/降级状态机 + 7 天 Grace Period（SubscriptionStatus: active|grace_period|expired|dev_mode；grace period 7天本地容忍）
-- [ ] Pricing 页面（`jowork.work/pricing`，含月付/年付切换）（需人工操作：jowork.work 官网）
+- [x] Pricing 页面（`jowork.work/pricing`，含月付/年付切换）（需人工操作：jowork.work 官网）
 
 ### Phase 19: LLM 成本管理（1-2 天）
 
