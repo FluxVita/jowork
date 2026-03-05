@@ -1,0 +1,1065 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Jowork — Your AI Coworker That Knows Your Business</title>
+  <meta name="description" content="Open-source, self-hosted AI coworker. Connects to your codebase, docs, project management, and calendar. Runs autonomously on your own infrastructure." />
+  <meta property="og:title" content="Jowork — AI Coworker That Knows Your Business" />
+  <meta property="og:description" content="Open-source AI coworker that deeply connects to your company data. Self-hosted, autonomous, and free forever for personal use." />
+  <meta property="og:image" content="https://fluxvita.github.io/jowork/assets/og.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Urbanist:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0a0a0b;
+      --white: #FAFAFA;
+      --dark: #09090b;
+      --lime: #9DD84A;
+      --lime-subtle: rgba(157,216,74,0.08);
+      --lime-border: rgba(157,216,74,0.18);
+      --cyan: #5CC8D8;
+      --purple: #C4B8E8;
+      --yellow: #E8D24A;
+      --coral: #E8A898;
+      --amber: #D4A847;
+      --text: #E8E8E8;
+      --text-muted: rgba(255,255,255,0.45);
+      --text-dim: rgba(255,255,255,0.28);
+      --border: rgba(255,255,255,0.07);
+      --radius: 10px;
+      --F: 'Urbanist', sans-serif;
+      --F-mono: 'JetBrains Mono', monospace;
+      --max: 1400px;
+      --ease: cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: var(--F);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+    a { color: inherit; text-decoration: none; }
+    em { font-style: normal; color: var(--lime); }
+
+    /* ── Layout ── */
+    .wrap { max-width: var(--max); margin: 0 auto; padding: 0 clamp(20px, 4vw, 64px); }
+    .section { padding: clamp(64px, 10vh, 120px) 0; }
+
+    /* ── Nav ── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      padding: 0 clamp(20px, 4vw, 64px);
+      height: 64px;
+      display: flex; align-items: center; justify-content: space-between;
+      background: rgba(10,10,11,0.85);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-logo {
+      font-family: var(--F);
+      font-weight: 900;
+      font-size: 20px;
+      letter-spacing: -0.04em;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .nav-logo-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--lime); }
+    .nav-links { display: flex; align-items: center; gap: clamp(16px, 2.5vw, 32px); }
+    .nav-links a {
+      font-size: 14px; font-weight: 500; color: var(--text-muted);
+      transition: color 0.25s;
+    }
+    .nav-links a:hover { color: var(--text); }
+    .nav-cta {
+      background: var(--lime); color: var(--dark);
+      padding: 8px 18px; border-radius: 6px;
+      font-weight: 700; font-size: 13px;
+      transition: opacity 0.25s var(--ease);
+    }
+    .nav-cta:hover { opacity: 0.85; color: var(--dark); }
+    .nav-gh {
+      display: flex; align-items: center; gap: 6px;
+      border: 1px solid var(--border);
+      padding: 7px 14px; border-radius: 6px;
+      font-size: 13px; font-weight: 600; color: var(--text-muted);
+      transition: border-color 0.25s, color 0.25s;
+    }
+    .nav-gh:hover { border-color: rgba(255,255,255,0.2); color: var(--text); }
+    @media (max-width: 768px) {
+      .nav-links a:not(.nav-cta):not(.nav-gh) { display: none; }
+    }
+
+    /* ── Tag ── */
+    .tag {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 12px;
+      background: var(--lime-subtle);
+      border: 1px solid var(--lime-border);
+      border-radius: 4px;
+      font-family: var(--F-mono);
+      font-size: clamp(10px, 1.2vw, 11px);
+      font-weight: 700;
+      color: var(--lime);
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      margin-bottom: clamp(16px, 2vh, 24px);
+    }
+
+    /* ── Gradient line ── */
+    .grad-line {
+      height: 2px; border-radius: 1px;
+      background: linear-gradient(90deg, #9DD84A, #5CC8D8, #C4B8E8, #E8A898);
+      opacity: 0.35;
+      margin: clamp(32px, 5vh, 60px) 0;
+    }
+
+    /* ── Hero ── */
+    #hero {
+      padding-top: calc(64px + clamp(60px, 10vh, 100px));
+      padding-bottom: clamp(60px, 10vh, 100px);
+      position: relative;
+      overflow: hidden;
+    }
+    #hero::before {
+      content: '';
+      position: absolute; top: -200px; left: 50%; transform: translateX(-50%);
+      width: 800px; height: 800px;
+      background: radial-gradient(ellipse at center, rgba(157,216,74,0.06) 0%, transparent 65%);
+      pointer-events: none;
+    }
+    .hero-inner {
+      display: grid; grid-template-columns: 1fr 1fr; gap: clamp(32px, 5vw, 80px);
+      align-items: center;
+    }
+    .hero-eyebrow {
+      display: flex; align-items: center; gap: 8px; margin-bottom: 20px;
+    }
+    .hero-eyebrow-badge {
+      font-family: var(--F-mono); font-size: 11px; font-weight: 700;
+      color: var(--lime); background: var(--lime-subtle);
+      border: 1px solid var(--lime-border); border-radius: 4px;
+      padding: 3px 10px; text-transform: uppercase; letter-spacing: 1px;
+    }
+    .hero-eyebrow-sep { color: var(--text-dim); }
+    .hero-eyebrow-text { font-size: 13px; color: var(--text-muted); font-weight: 500; }
+    .hero-h1 {
+      font-size: clamp(36px, 5.5vw, 72px);
+      font-weight: 900; line-height: 1.05;
+      letter-spacing: -0.05em;
+      margin-bottom: clamp(16px, 2.5vh, 28px);
+    }
+    .hero-sub {
+      font-size: clamp(15px, 1.8vw, 18px);
+      color: var(--text-muted); line-height: 1.65;
+      margin-bottom: clamp(28px, 4vh, 40px);
+      max-width: 500px;
+    }
+    .hero-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+    .btn-primary {
+      background: var(--lime); color: var(--dark);
+      padding: 13px 28px; border-radius: 8px;
+      font-weight: 800; font-size: 15px;
+      transition: opacity 0.25s var(--ease), transform 0.25s var(--ease);
+      display: inline-flex; align-items: center; gap: 8px;
+    }
+    .btn-primary:hover { opacity: 0.88; transform: translateY(-1px); color: var(--dark); }
+    .btn-ghost {
+      border: 1px solid var(--border); color: var(--text-muted);
+      padding: 12px 24px; border-radius: 8px;
+      font-weight: 600; font-size: 14px;
+      transition: border-color 0.25s, color 0.25s, transform 0.25s var(--ease);
+      display: inline-flex; align-items: center; gap: 8px;
+    }
+    .btn-ghost:hover { border-color: rgba(255,255,255,0.2); color: var(--text); transform: translateY(-1px); }
+    .hero-trust {
+      margin-top: 28px;
+      display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
+    }
+    .trust-item {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 12px; color: var(--text-dim); font-family: var(--F-mono);
+    }
+    .trust-item::before { content: '✓'; color: var(--lime); font-weight: 700; }
+
+    /* Hero right: terminal mockup */
+    .hero-visual {
+      position: relative;
+    }
+    .terminal-mock {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 32px 80px rgba(0,0,0,0.6);
+    }
+    .terminal-top {
+      padding: 12px 16px;
+      background: rgba(255,255,255,0.04);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 6px;
+    }
+    .t-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .t-red { background: #FF5F57; }
+    .t-yellow { background: #FEBC2E; }
+    .t-green { background: #28C840; }
+    .terminal-title { font-family: var(--F-mono); font-size: 12px; color: var(--text-dim); margin-left: 8px; }
+    .terminal-body { padding: 20px; font-family: var(--F-mono); font-size: 13px; line-height: 1.8; }
+    .t-prompt { color: var(--lime); }
+    .t-cmd { color: var(--text); }
+    .t-out { color: var(--text-muted); padding-left: 20px; }
+    .t-tool { color: var(--cyan); }
+    .t-result { color: var(--amber); }
+    .t-cursor { display: inline-block; width: 8px; height: 14px; background: var(--lime); vertical-align: middle; animation: blink 1s step-end infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+    @media (max-width: 1024px) {
+      .hero-inner { grid-template-columns: 1fr; }
+      .hero-visual { display: none; }
+    }
+
+    /* ── Stats bar ── */
+    .stats-bar {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      overflow: hidden;
+    }
+    .stat-item {
+      padding: clamp(20px, 3vh, 32px) clamp(16px, 2.5vw, 28px);
+      border-right: 1px solid var(--border);
+      text-align: center;
+    }
+    .stat-item:last-child { border-right: none; }
+    .stat-num {
+      font-family: var(--F-mono);
+      font-size: clamp(22px, 2.8vw, 36px);
+      font-weight: 900; letter-spacing: -0.03em;
+      color: var(--white);
+    }
+    .stat-num em { color: var(--lime); }
+    .stat-label {
+      font-size: 12px; color: var(--text-dim);
+      text-transform: uppercase; letter-spacing: 1.5px;
+      font-family: var(--F-mono); margin-top: 4px;
+    }
+    @media (max-width: 640px) {
+      .stats-bar { grid-template-columns: repeat(2, 1fr); }
+      .stat-item:nth-child(2) { border-right: none; }
+    }
+
+    /* ── Problem ── */
+    .problem-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: clamp(12px, 1.5vw, 20px); margin-top: clamp(32px, 4vh, 48px); }
+    @media (max-width: 768px) { .problem-grid { grid-template-columns: 1fr; } }
+    .problem-card {
+      background: rgba(255,255,255,0.025);
+      border-radius: var(--radius);
+      padding: clamp(20px, 2.5vh, 28px);
+      border: 1px solid var(--border);
+    }
+    .problem-num {
+      font-family: var(--F-mono); font-size: 11px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 2px; margin-bottom: 14px;
+    }
+    .problem-title { font-size: clamp(15px, 1.8vw, 18px); font-weight: 800; margin-bottom: 10px; }
+    .problem-desc { font-size: clamp(13px, 1.4vw, 15px); color: var(--text-muted); line-height: 1.65; }
+
+    /* ── Features ── */
+    .features-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: clamp(12px, 1.5vw, 20px); margin-top: clamp(32px, 4vh, 48px); }
+    @media (max-width: 1024px) { .features-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 640px) { .features-grid { grid-template-columns: 1fr; } }
+    .feature-card {
+      background: rgba(255,255,255,0.025);
+      border-radius: var(--radius); padding: clamp(20px, 2.5vh, 28px);
+      border: 1px solid var(--border);
+      transition: transform 0.4s var(--ease), border-color 0.4s var(--ease), background 0.4s var(--ease);
+    }
+    .feature-card:hover { transform: translateY(-3px); }
+    .feature-icon { font-size: 28px; margin-bottom: 14px; }
+    .feature-title { font-size: clamp(15px, 1.6vw, 17px); font-weight: 800; margin-bottom: 8px; }
+    .feature-desc { font-size: 14px; color: var(--text-muted); line-height: 1.65; }
+    .feature-list { margin-top: 12px; display: flex; flex-direction: column; gap: 4px; }
+    .feature-list-item {
+      font-size: 13px; color: var(--text-muted);
+      display: flex; align-items: flex-start; gap: 7px; line-height: 1.5;
+    }
+    .feature-list-item::before { content: '→'; color: var(--lime); font-weight: 700; flex-shrink: 0; margin-top: 1px; }
+
+    /* ── Comparison ── */
+    .compare-table { width: 100%; border-collapse: collapse; margin-top: clamp(32px, 4vh, 48px); }
+    .compare-table th, .compare-table td {
+      padding: clamp(12px, 1.5vh, 18px) clamp(12px, 2vw, 24px);
+      text-align: left; font-size: 14px;
+      border-bottom: 1px solid var(--border);
+    }
+    .compare-table thead th {
+      font-family: var(--F-mono); font-size: 11px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 1.5px;
+      color: var(--text-dim); background: rgba(255,255,255,0.02);
+    }
+    .compare-table thead th.highlight {
+      background: var(--lime-subtle);
+      color: var(--lime);
+      border: 1px solid var(--lime-border); border-bottom: none;
+    }
+    .compare-table tbody tr:hover td { background: rgba(255,255,255,0.02); }
+    .compare-table td { color: var(--text-muted); }
+    .compare-table td.highlight {
+      background: var(--lime-subtle);
+      color: var(--text);
+      font-weight: 600;
+      border-left: 1px solid var(--lime-border);
+      border-right: 1px solid var(--lime-border);
+    }
+    .compare-table tr:last-child td.highlight { border-bottom: 1px solid var(--lime-border); }
+    .compare-table td.feature-name { color: var(--text); font-weight: 500; }
+    .icon-yes { color: var(--lime); font-weight: 700; }
+    .icon-no { color: var(--text-dim); }
+    .icon-partial { color: var(--amber); }
+
+    /* ── How it works ── */
+    .howto-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: clamp(12px, 1.5vw, 20px); margin-top: clamp(32px, 4vh, 48px); }
+    @media (max-width: 768px) { .howto-grid { grid-template-columns: 1fr; } }
+    .step-card {
+      background: rgba(255,255,255,0.025);
+      border-radius: var(--radius); padding: clamp(20px, 2.5vh, 28px);
+      border: 1px solid var(--border);
+      position: relative;
+    }
+    .step-num {
+      font-family: var(--F-mono); font-size: 11px; font-weight: 700;
+      color: var(--lime); background: var(--lime-subtle);
+      border: 1px solid var(--lime-border); border-radius: 4px;
+      padding: 3px 8px; display: inline-block;
+      margin-bottom: 16px; letter-spacing: 1px;
+    }
+    .step-title { font-size: clamp(15px, 1.6vw, 17px); font-weight: 800; margin-bottom: 8px; }
+    .step-desc { font-size: 14px; color: var(--text-muted); line-height: 1.65; }
+
+    /* ── Quickstart ── */
+    .code-block {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: clamp(20px, 3vh, 32px);
+      font-family: var(--F-mono); font-size: 13px; line-height: 2;
+      overflow-x: auto;
+      position: relative;
+    }
+    .code-label {
+      font-size: 11px; font-weight: 700; letter-spacing: 1.5px;
+      text-transform: uppercase; color: var(--text-dim);
+      margin-bottom: 12px; display: block;
+    }
+    .c-comment { color: var(--text-dim); }
+    .c-cmd { color: var(--text); }
+    .c-key { color: var(--cyan); }
+    .c-val { color: var(--lime); }
+    .c-str { color: var(--amber); }
+    .code-tabs { display: flex; gap: 0; margin-bottom: 0; }
+    .code-tab {
+      padding: 8px 18px; font-size: 12px; font-family: var(--F-mono);
+      font-weight: 700; cursor: pointer; color: var(--text-dim);
+      border: 1px solid var(--border); border-bottom: none;
+      border-radius: var(--radius) var(--radius) 0 0;
+      background: transparent; margin-right: 2px;
+      transition: color 0.2s, background 0.2s;
+    }
+    .code-tab.active { color: var(--lime); background: var(--lime-subtle); border-color: var(--lime-border); }
+    .code-panel { display: none; }
+    .code-panel.active { display: block; }
+    .code-block-tabbed { border-top-left-radius: 0; }
+
+    /* ── Pricing ── */
+    .pricing-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: clamp(12px, 1.5vw, 16px); margin-top: clamp(32px, 4vh, 48px); }
+    @media (max-width: 1024px) { .pricing-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 640px) { .pricing-grid { grid-template-columns: 1fr; } }
+    .plan-card {
+      background: rgba(255,255,255,0.025);
+      border-radius: var(--radius); padding: clamp(20px, 2.5vh, 28px);
+      border: 1px solid var(--border);
+      display: flex; flex-direction: column;
+    }
+    .plan-card.popular {
+      background: var(--lime-subtle);
+      border-color: var(--lime-border);
+    }
+    .plan-name { font-size: 12px; font-family: var(--F-mono); font-weight: 700; text-transform: uppercase; letter-spacing: 2px; color: var(--text-dim); margin-bottom: 12px; }
+    .plan-price {
+      font-size: clamp(28px, 3vw, 38px); font-weight: 900; font-family: var(--F-mono);
+      letter-spacing: -0.04em; line-height: 1; margin-bottom: 4px;
+    }
+    .plan-price em { color: var(--lime); font-style: normal; }
+    .plan-period { font-size: 13px; color: var(--text-dim); margin-bottom: 20px; }
+    .plan-desc { font-size: 14px; color: var(--text-muted); margin-bottom: 20px; line-height: 1.5; }
+    .plan-features { flex: 1; display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
+    .plan-feat {
+      font-size: 13px; display: flex; align-items: flex-start; gap: 8px; color: var(--text-muted); line-height: 1.4;
+    }
+    .plan-feat::before { content: '✓'; color: var(--lime); font-weight: 700; flex-shrink: 0; }
+    .plan-feat.dim::before { content: '–'; color: var(--text-dim); }
+    .plan-feat.dim { color: var(--text-dim); }
+    .plan-btn {
+      text-align: center; padding: 11px 16px; border-radius: 7px;
+      font-weight: 700; font-size: 14px; cursor: pointer;
+      transition: opacity 0.25s, transform 0.25s var(--ease);
+    }
+    .plan-btn:hover { opacity: 0.85; transform: translateY(-1px); }
+    .plan-btn-primary { background: var(--lime); color: var(--dark); }
+    .plan-btn-ghost { border: 1px solid var(--border); color: var(--text-muted); }
+    .plan-btn-ghost:hover { border-color: rgba(255,255,255,0.2); color: var(--text); }
+
+    /* ── Open Source ── */
+    .oss-inner {
+      background: rgba(255,255,255,0.025);
+      border: 1px solid var(--border);
+      border-radius: 14px; padding: clamp(32px, 5vh, 56px) clamp(24px, 4vw, 56px);
+      display: grid; grid-template-columns: 1fr auto; gap: 40px; align-items: center;
+    }
+    @media (max-width: 768px) { .oss-inner { grid-template-columns: 1fr; } }
+    .oss-title { font-size: clamp(22px, 3vw, 36px); font-weight: 900; letter-spacing: -0.04em; margin-bottom: 12px; }
+    .oss-desc { font-size: 15px; color: var(--text-muted); line-height: 1.65; max-width: 520px; }
+    .oss-badges { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+    .oss-badge {
+      font-family: var(--F-mono); font-size: 10px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 1px;
+      padding: 4px 10px; border-radius: 4px;
+    }
+
+    /* ── CTA ── */
+    #cta { text-align: center; }
+    .cta-title { font-size: clamp(28px, 4vw, 52px); font-weight: 900; letter-spacing: -0.05em; margin-bottom: 16px; line-height: 1.1; }
+    .cta-sub { font-size: clamp(15px, 1.8vw, 18px); color: var(--text-muted); margin-bottom: 36px; }
+    .cta-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+    /* ── Footer ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: clamp(40px, 6vh, 64px) 0 clamp(32px, 4vh, 48px);
+    }
+    .footer-inner {
+      display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 40px;
+    }
+    @media (max-width: 768px) { .footer-inner { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 480px) { .footer-inner { grid-template-columns: 1fr; } }
+    .footer-brand p { font-size: 13px; color: var(--text-muted); margin-top: 8px; line-height: 1.6; max-width: 260px; }
+    .footer-col-title { font-family: var(--F-mono); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; color: var(--text-dim); margin-bottom: 14px; }
+    .footer-links { display: flex; flex-direction: column; gap: 8px; }
+    .footer-links a { font-size: 13px; color: var(--text-muted); transition: color 0.2s; }
+    .footer-links a:hover { color: var(--text); }
+    .footer-bottom { margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+    .footer-bottom-text { font-size: 12px; color: var(--text-dim); font-family: var(--F-mono); }
+
+    /* ── Callout ── */
+    .callout {
+      background: var(--lime-subtle);
+      border-left: 3px solid var(--lime);
+      border-radius: 0 var(--radius) var(--radius) 0;
+      padding: clamp(16px, 2.5vh, 24px) clamp(18px, 2.5vw, 28px);
+      margin-top: clamp(32px, 4vh, 48px);
+    }
+    .callout-text { font-size: clamp(14px, 1.6vw, 16px); color: var(--text); line-height: 1.65; }
+    .callout-text strong { color: var(--lime); }
+
+    /* ── Section header ── */
+    .sec-header { max-width: 680px; }
+    .sec-title { font-size: clamp(26px, 3.5vw, 44px); font-weight: 900; letter-spacing: -0.04em; line-height: 1.1; margin-bottom: clamp(12px, 1.5vh, 18px); }
+    .sec-desc { font-size: clamp(14px, 1.6vw, 17px); color: var(--text-muted); line-height: 1.65; }
+
+    /* ── Animations ── */
+    .fade-up {
+      opacity: 0; transform: translateY(20px);
+      transition: opacity 0.7s var(--ease), transform 0.7s var(--ease);
+    }
+    .fade-up.visible { opacity: 1; transform: translateY(0); }
+    .d1 { transition-delay: 0.08s; }
+    .d2 { transition-delay: 0.16s; }
+    .d3 { transition-delay: 0.24s; }
+    .d4 { transition-delay: 0.32s; }
+    .d5 { transition-delay: 0.40s; }
+    .d6 { transition-delay: 0.48s; }
+
+    /* ── Mobile nav toggle ── */
+    @media (max-width: 480px) {
+      .nav-links { gap: 8px; }
+      .nav-gh span { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ─── Nav ─────────────────────────────────────────────────────── -->
+<nav>
+  <a href="#" class="nav-logo">
+    <div class="nav-logo-dot"></div>
+    Jowork
+  </a>
+  <div class="nav-links">
+    <a href="#features">Features</a>
+    <a href="#pricing">Pricing</a>
+    <a href="https://github.com/fluxvita/jowork" target="_blank" class="nav-gh">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 21.795 24 17.295 24 12c0-6.63-5.37-12-12-12"/></svg>
+      <span>GitHub</span>
+    </a>
+    <a href="https://github.com/fluxvita/jowork/releases/latest" target="_blank" class="nav-cta">Download</a>
+  </div>
+</nav>
+
+<!-- ─── Hero ─────────────────────────────────────────────────────── -->
+<section id="hero">
+  <div class="wrap">
+    <div class="hero-inner">
+      <div class="fade-up">
+        <div class="hero-eyebrow">
+          <span class="hero-eyebrow-badge">Open Source</span>
+          <span class="hero-eyebrow-sep">·</span>
+          <span class="hero-eyebrow-text">AGPL-3.0 · Free Forever for Personal Use</span>
+        </div>
+        <h1 class="hero-h1">Your AI coworker that <em>actually knows</em> your business.</h1>
+        <p class="hero-sub">Connect your codebase, docs, project management, analytics, and calendar — and let Jowork work alongside your team 24/7. Self-hosted. No data leaves your server.</p>
+        <div class="hero-actions">
+          <a href="https://github.com/fluxvita/jowork/releases/latest" class="btn-primary">
+            ⬇ Download App
+          </a>
+          <a href="https://github.com/fluxvita/jowork" target="_blank" class="btn-ghost">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 21.795 24 17.295 24 12c0-6.63-5.37-12-12-12"/></svg>
+            View on GitHub
+          </a>
+        </div>
+        <div class="hero-trust">
+          <span class="trust-item">No data leaves your server</span>
+          <span class="trust-item">Works with Anthropic, OpenAI, local models</span>
+          <span class="trust-item">macOS · Windows · Docker</span>
+        </div>
+      </div>
+      <div class="hero-visual fade-up d2">
+        <div class="terminal-mock">
+          <div class="terminal-top">
+            <div class="t-dot t-red"></div>
+            <div class="t-dot t-yellow"></div>
+            <div class="t-dot t-green"></div>
+            <span class="terminal-title">Jowork Agent</span>
+          </div>
+          <div class="terminal-body">
+            <div><span class="t-prompt">You →</span> <span class="t-cmd">What's blocking the checkout feature?</span></div>
+            <div style="margin-top:4px"><span class="t-out">Searching codebase...</span></div>
+            <div class="t-tool">  ⚙ search_data("checkout", gitlab)</div>
+            <div class="t-tool">  ⚙ fetch_content(PR #247)</div>
+            <div class="t-tool">  ⚙ read_memory("checkout context")</div>
+            <div style="margin-top:8px"><span class="t-result">Found 3 blocking issues:</span></div>
+            <div style="color:var(--text-muted); padding-left:20px; font-size:12px;">
+              <div>• PR #247 needs review (Sarah)</div>
+              <div>• Linear JOW-89: payment timeout bug</div>
+              <div>• Staging deploy blocked by CI failure</div>
+            </div>
+            <div style="margin-top:8px; color:var(--lime);">Shall I draft a Slack message to the team? <span class="t-cursor"></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grad-line" style="margin-top: clamp(48px, 7vh, 80px);"></div>
+
+    <!-- Stats -->
+    <div class="stats-bar fade-up">
+      <div class="stat-item">
+        <div class="stat-num"><em>7</em></div>
+        <div class="stat-label">Data Connectors</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num"><em>15</em>+</div>
+        <div class="stat-label">Built-in Agent Tools</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num"><em>100K</em></div>
+        <div class="stat-label">Token Context Window</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num"><em>0</em></div>
+        <div class="stat-label">Data Sent to Vendor</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── Problem ───────────────────────────────────────────────────── -->
+<section class="section">
+  <div class="wrap">
+    <div class="sec-header fade-up">
+      <div class="tag">01 / The Problem</div>
+      <div class="sec-title">Every AI tool lacks one thing: <em>your context.</em></div>
+      <p class="sec-desc">ChatGPT doesn't know your codebase. Notion AI can't see your Linear tickets. Slack AI doesn't understand your deployment pipeline. You're left copy-pasting context all day.</p>
+    </div>
+
+    <div class="problem-grid">
+      <div class="problem-card fade-up d1" style="border-left: 3px solid var(--coral);">
+        <div class="problem-num" style="color:var(--coral);">Gap 01</div>
+        <div class="problem-title">No real business context</div>
+        <p class="problem-desc">Generic AI knows the internet, not your company. Every conversation starts from zero. You spend more time explaining than getting work done.</p>
+      </div>
+      <div class="problem-card fade-up d2" style="border-left: 3px solid var(--yellow);">
+        <div class="problem-num" style="color:var(--yellow);">Gap 02</div>
+        <div class="problem-title">Answers, but no action</div>
+        <p class="problem-desc">Existing tools are read-only assistants. They can't create a PR, send a message, run a check, or schedule a follow-up. You still do all the work.</p>
+      </div>
+      <div class="problem-card fade-up d3" style="border-left: 3px solid var(--purple);">
+        <div class="problem-num" style="color:var(--purple);">Gap 03</div>
+        <div class="problem-title">Your data on their servers</div>
+        <p class="problem-desc">SaaS AI tools ingest your codebase, customer data, and internal docs. GDPR, IP risk, vendor lock-in. You lose control the moment you sign up.</p>
+      </div>
+    </div>
+
+    <div class="callout fade-up">
+      <p class="callout-text">Jowork is different. It runs <strong>on your server</strong>, connects to <strong>all your tools natively</strong>, and takes <strong>real action</strong> — not just gives suggestions.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ─── Features ─────────────────────────────────────────────────── -->
+<section class="section" id="features" style="background: rgba(255,255,255,0.015); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);">
+  <div class="wrap">
+    <div class="sec-header fade-up">
+      <div class="tag">02 / Features</div>
+      <div class="sec-title">Everything your team needs, <em>deeply integrated.</em></div>
+      <p class="sec-desc">Jowork isn't a chatbot wrapper. It's a full agent infrastructure built for real business work.</p>
+    </div>
+
+    <div class="features-grid">
+      <div class="feature-card fade-up d1" style="border-top: 2px solid var(--cyan);">
+        <div class="feature-icon">🔌</div>
+        <div class="feature-title">Connect Everything</div>
+        <p class="feature-desc">7 native connectors. Jowork reads your full business context in real time.</p>
+        <div class="feature-list">
+          <div class="feature-list-item">GitHub & GitLab — code, PRs, issues</div>
+          <div class="feature-list-item">Linear — projects, sprints, bugs</div>
+          <div class="feature-list-item">Feishu / Slack — messages, calendar</div>
+          <div class="feature-list-item">PostHog — analytics & user behavior</div>
+          <div class="feature-list-item">Figma, Email + custom REST APIs</div>
+        </div>
+      </div>
+      <div class="feature-card fade-up d2" style="border-top: 2px solid var(--lime);">
+        <div class="feature-icon">🤖</div>
+        <div class="feature-title">Autonomous Agent</div>
+        <p class="feature-desc">Don't just ask — let Jowork act. Schedule tasks, react to events, pursue goals.</p>
+        <div class="feature-list">
+          <div class="feature-list-item">Scheduled tasks with cron expressions</div>
+          <div class="feature-list-item">Event-triggered workflows</div>
+          <div class="feature-list-item">Create PRs, send messages, run queries</div>
+          <div class="feature-list-item">25-turn tool-calling loop, built-in</div>
+        </div>
+      </div>
+      <div class="feature-card fade-up d3" style="border-top: 2px solid var(--coral);">
+        <div class="feature-icon">📚</div>
+        <div class="feature-title">Deep Context Memory</div>
+        <p class="feature-desc">Three-layer context architecture ensures Jowork always knows the right thing.</p>
+        <div class="feature-list">
+          <div class="feature-list-item">Company layer — mission, glossary, ADRs</div>
+          <div class="feature-list-item">Team layer — processes, OKRs, style guides</div>
+          <div class="feature-list-item">Personal layer — your preferences & history</div>
+          <div class="feature-list-item">Semantic vector memory, auto-updated</div>
+        </div>
+      </div>
+      <div class="feature-card fade-up d4" style="border-top: 2px solid var(--yellow);">
+        <div class="feature-icon">💻</div>
+        <div class="feature-title">Geek Mode</div>
+        <p class="feature-desc">Full developer power, no restrictions. Your agent, your rules.</p>
+        <div class="feature-list">
+          <div class="feature-list-item">Integrated terminal in the UI</div>
+          <div class="feature-list-item">Sandboxed shell execution</div>
+          <div class="feature-list-item">MCP protocol — connect any tool</div>
+          <div class="feature-list-item">Custom Skills in JavaScript</div>
+        </div>
+      </div>
+      <div class="feature-card fade-up d5" style="border-top: 2px solid var(--purple);">
+        <div class="feature-icon">🔒</div>
+        <div class="feature-title">Truly Self-Hosted</div>
+        <p class="feature-desc">Your server, your data, your infrastructure. Zero vendor lock-in.</p>
+        <div class="feature-list">
+          <div class="feature-list-item">SQLite — no external database needed</div>
+          <div class="feature-list-item">Works with any Anthropic-compatible API</div>
+          <div class="feature-list-item">Local LLMs supported via custom providers</div>
+          <div class="feature-list-item">Docker one-liner or desktop app</div>
+        </div>
+      </div>
+      <div class="feature-card fade-up d6" style="border-top: 2px solid var(--amber);">
+        <div class="feature-icon">🌐</div>
+        <div class="feature-title">Team + Personal Modes</div>
+        <p class="feature-desc">Solo use or full team deployment — both work out of the box.</p>
+        <div class="feature-list">
+          <div class="feature-list-item">Personal mode — no login required</div>
+          <div class="feature-list-item">Team mode — RBAC, 7 roles, ACL</div>
+          <div class="feature-list-item">Desktop app (macOS + Windows)</div>
+          <div class="feature-list-item">Browser-based + mobile-ready</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── Comparison ───────────────────────────────────────────────── -->
+<section class="section">
+  <div class="wrap">
+    <div class="sec-header fade-up">
+      <div class="tag">03 / Comparison</div>
+      <div class="sec-title">Why not just use <em>existing AI tools?</em></div>
+    </div>
+    <div class="fade-up" style="overflow-x: auto;">
+      <table class="compare-table">
+        <thead>
+          <tr>
+            <th>Capability</th>
+            <th>ChatGPT / Notion AI</th>
+            <th>Dust.tt / Glean</th>
+            <th class="highlight">Jowork</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="feature-name">Knows your codebase</td>
+            <td><span class="icon-no">✗ No context</span></td>
+            <td><span class="icon-partial">~ Read-only</span></td>
+            <td class="highlight"><span class="icon-yes">✓ Deep + writable</span></td>
+          </tr>
+          <tr>
+            <td class="feature-name">Runs autonomously</td>
+            <td><span class="icon-no">✗ Chat only</span></td>
+            <td><span class="icon-no">✗ Search only</span></td>
+            <td class="highlight"><span class="icon-yes">✓ Event-driven + scheduled</span></td>
+          </tr>
+          <tr>
+            <td class="feature-name">Self-hosted</td>
+            <td><span class="icon-no">✗ SaaS only</span></td>
+            <td><span class="icon-no">✗ SaaS only</span></td>
+            <td class="highlight"><span class="icon-yes">✓ Your server, your data</span></td>
+          </tr>
+          <tr>
+            <td class="feature-name">Takes real action</td>
+            <td><span class="icon-no">✗ Suggestions only</span></td>
+            <td><span class="icon-no">✗ Search only</span></td>
+            <td class="highlight"><span class="icon-yes">✓ Creates PRs, sends msgs</span></td>
+          </tr>
+          <tr>
+            <td class="feature-name">Works without internet</td>
+            <td><span class="icon-no">✗</span></td>
+            <td><span class="icon-no">✗</span></td>
+            <td class="highlight"><span class="icon-yes">✓ Local models supported</span></td>
+          </tr>
+          <tr>
+            <td class="feature-name">Personal use cost</td>
+            <td><span class="icon-partial">$20/month</span></td>
+            <td><span class="icon-no">$$$</span></td>
+            <td class="highlight"><span class="icon-yes">✓ Free forever</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ─── How It Works ─────────────────────────────────────────────── -->
+<section class="section" style="background: rgba(255,255,255,0.015); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);">
+  <div class="wrap">
+    <div class="sec-header fade-up">
+      <div class="tag">04 / How It Works</div>
+      <div class="sec-title">Up and running in <em>under 2 minutes.</em></div>
+    </div>
+    <div class="howto-grid">
+      <div class="step-card fade-up d1">
+        <div class="step-num">STEP 01</div>
+        <div class="step-title">Install &amp; Launch</div>
+        <p class="step-desc">Download the desktop app or run the Docker one-liner. Jowork starts a local Gateway on port 18800. No external accounts or signups needed.</p>
+      </div>
+      <div class="step-card fade-up d2">
+        <div class="step-num">STEP 02</div>
+        <div class="step-title">Connect Your Tools</div>
+        <p class="step-desc">Add your API tokens for GitHub, Linear, Slack, etc. Jowork discovers your data automatically and builds an index in the background.</p>
+      </div>
+      <div class="step-card fade-up d3">
+        <div class="step-num">STEP 03</div>
+        <div class="step-title">Start Working</div>
+        <p class="step-desc">Ask questions, delegate tasks, set up scheduled jobs. Jowork knows your context and can take real action — create PRs, send messages, run analysis.</p>
+      </div>
+    </div>
+
+    <!-- Code tabs -->
+    <div class="fade-up" style="margin-top: clamp(32px, 5vh, 56px);">
+      <div class="code-tabs">
+        <div class="code-tab active" onclick="switchTab('docker')">Docker</div>
+        <div class="code-tab" onclick="switchTab('desktop')">Desktop App</div>
+        <div class="code-tab" onclick="switchTab('source')">From Source</div>
+      </div>
+
+      <div id="tab-docker" class="code-panel active">
+        <div class="code-block code-block-tabbed">
+          <code>
+<span class="c-comment"># One-liner quickstart</span>
+<span class="c-cmd">docker run -d \</span>
+<span class="c-cmd">  --name jowork \</span>
+<span class="c-cmd">  -p 18800:18800 \</span>
+<span class="c-cmd">  -v ./jowork-data:/app/data \</span>
+<span class="c-cmd">  -e <span class="c-key">ANTHROPIC_API_KEY</span>=<span class="c-val">your_key_here</span> \</span>
+<span class="c-cmd">  ghcr.io/fluxvita/jowork:latest</span>
+<span style="display:block;margin-top:8px"></span>
+<span class="c-comment"># Then open:</span>
+<span class="c-cmd">open <span class="c-val">http://localhost:18800</span></span>
+          </code>
+        </div>
+      </div>
+
+      <div id="tab-desktop" class="code-panel">
+        <div class="code-block code-block-tabbed">
+          <code>
+<span class="c-comment"># Download the latest release</span>
+<span class="c-comment"># macOS (Apple Silicon)</span>
+<span class="c-cmd">→ Jowork-x.x.x-aarch64.dmg</span>
+<span style="display:block;margin-top:4px"></span>
+<span class="c-comment"># macOS (Intel)</span>
+<span class="c-cmd">→ Jowork-x.x.x-x86_64.dmg</span>
+<span style="display:block;margin-top:4px"></span>
+<span class="c-comment"># Windows</span>
+<span class="c-cmd">→ Jowork-x.x.x-setup.exe</span>
+<span style="display:block;margin-top:8px"></span>
+<span class="c-comment"># The app bundles a local Gateway.</span>
+<span class="c-comment"># Opens like VS Code. No server setup required.</span>
+          </code>
+        </div>
+      </div>
+
+      <div id="tab-source" class="code-panel">
+        <div class="code-block code-block-tabbed">
+          <code>
+<span class="c-cmd">git clone https://github.com/fluxvita/jowork</span>
+<span class="c-cmd">cd jowork</span>
+<span class="c-cmd">pnpm install</span>
+<span class="c-cmd">pnpm --filter @jowork/core build</span>
+<span class="c-cmd">pnpm --filter @jowork/app build</span>
+<span class="c-cmd">node apps/jowork/dist/index.js</span>
+<span style="display:block;margin-top:8px"></span>
+<span class="c-comment"># Requires: Node.js 22+, pnpm 10+</span>
+<span class="c-cmd">open <span class="c-val">http://localhost:18800</span></span>
+          </code>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── Pricing ──────────────────────────────────────────────────── -->
+<section class="section" id="pricing">
+  <div class="wrap">
+    <div class="sec-header fade-up">
+      <div class="tag">05 / Pricing</div>
+      <div class="sec-title">Free for personal use. <em>Scales with your team.</em></div>
+      <p class="sec-desc">The core is open-source and free forever. Premium features are available for teams that need more power.</p>
+    </div>
+
+    <div class="pricing-grid">
+      <div class="plan-card fade-up d1">
+        <div class="plan-name">Free</div>
+        <div class="plan-price">$<em>0</em></div>
+        <div class="plan-period">forever, personal use</div>
+        <div class="plan-desc">Everything you need to get started. No credit card, no expiry.</div>
+        <div class="plan-features">
+          <div class="plan-feat">1 user (personal mode)</div>
+          <div class="plan-feat">3 data source connectors</div>
+          <div class="plan-feat">32K token context window</div>
+          <div class="plan-feat">5 scheduled tasks</div>
+          <div class="plan-feat">Basic terminal (Geek Mode)</div>
+          <div class="plan-feat">MCP protocol support</div>
+          <div class="plan-feat dim">Sub-agent orchestration</div>
+          <div class="plan-feat dim">Event triggers</div>
+        </div>
+        <a href="https://github.com/fluxvita/jowork/releases/latest" class="plan-btn plan-btn-ghost">Get Started Free</a>
+      </div>
+
+      <div class="plan-card popular fade-up d2">
+        <div class="plan-name">Pro</div>
+        <div class="plan-price">$<em>12</em></div>
+        <div class="plan-period">per month, billed monthly</div>
+        <div class="plan-desc">Power user features. More connectors, larger context, priority support.</div>
+        <div class="plan-features">
+          <div class="plan-feat">1 user</div>
+          <div class="plan-feat">10 data source connectors</div>
+          <div class="plan-feat">100K token context window</div>
+          <div class="plan-feat">20 scheduled tasks</div>
+          <div class="plan-feat">Full terminal + code exec</div>
+          <div class="plan-feat">Priority issue support</div>
+          <div class="plan-feat dim">Sub-agent orchestration</div>
+          <div class="plan-feat dim">Event triggers</div>
+        </div>
+        <a href="https://jowork.work/pricing" class="plan-btn plan-btn-primary">Start Pro →</a>
+      </div>
+
+      <div class="plan-card fade-up d3">
+        <div class="plan-name">Team</div>
+        <div class="plan-price">$<em>49</em></div>
+        <div class="plan-period">per month, up to 10 users</div>
+        <div class="plan-desc">For engineering teams. Shared context, collaborative agent, event workflows.</div>
+        <div class="plan-features">
+          <div class="plan-feat">Up to 10 users + RBAC</div>
+          <div class="plan-feat">Unlimited connectors</div>
+          <div class="plan-feat">100K token context window</div>
+          <div class="plan-feat">Unlimited scheduled tasks</div>
+          <div class="plan-feat">Sub-agent orchestration</div>
+          <div class="plan-feat">Event-triggered workflows</div>
+          <div class="plan-feat">Email support</div>
+          <div class="plan-feat dim">Audit log &amp; SSO</div>
+        </div>
+        <a href="https://jowork.work/pricing" class="plan-btn plan-btn-ghost">Start Team →</a>
+      </div>
+
+      <div class="plan-card fade-up d4">
+        <div class="plan-name">Business</div>
+        <div class="plan-price">$<em>199</em></div>
+        <div class="plan-period">per month, unlimited users</div>
+        <div class="plan-desc">Enterprise-grade. Unlimited scale, SSO, audit logs, dedicated support.</div>
+        <div class="plan-features">
+          <div class="plan-feat">Unlimited users</div>
+          <div class="plan-feat">Unlimited connectors</div>
+          <div class="plan-feat">200K token context window</div>
+          <div class="plan-feat">Goal-driven autonomous mode</div>
+          <div class="plan-feat">Audit log</div>
+          <div class="plan-feat">SSO / SAML</div>
+          <div class="plan-feat">Dedicated support</div>
+          <div class="plan-feat">Custom contract available</div>
+        </div>
+        <a href="mailto:hello@jowork.work" class="plan-btn plan-btn-ghost">Contact Sales →</a>
+      </div>
+    </div>
+
+    <div class="callout fade-up" style="margin-top:32px;">
+      <p class="callout-text">Running Jowork internally at your company? <strong>No subscription needed.</strong> AGPL-3.0 allows free internal use — even commercial — as long as you don't distribute modifications without sharing them.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ─── Open Source ──────────────────────────────────────────────── -->
+<section class="section" style="background: rgba(255,255,255,0.015); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);">
+  <div class="wrap">
+    <div class="oss-inner fade-up">
+      <div>
+        <div class="tag">Open Source</div>
+        <div class="oss-title">Built in public. <em>For the community.</em></div>
+        <p class="oss-desc">Jowork core is AGPL-3.0. You can inspect every line, contribute features, build connectors, and self-host without restrictions. The premium layer is optional.</p>
+        <div class="oss-badges">
+          <span class="oss-badge" style="background:var(--lime-subtle); color:var(--lime); border:1px solid var(--lime-border);">AGPL-3.0</span>
+          <span class="oss-badge" style="background:rgba(92,200,216,0.1); color:var(--cyan); border:1px solid rgba(92,200,216,0.2);">TypeScript</span>
+          <span class="oss-badge" style="background:rgba(232,210,74,0.1); color:var(--yellow); border:1px solid rgba(232,210,74,0.2);">Node.js 22+</span>
+          <span class="oss-badge" style="background:rgba(196,184,232,0.1); color:var(--purple); border:1px solid rgba(196,184,232,0.2);">SQLite</span>
+          <span class="oss-badge" style="background:rgba(232,168,152,0.1); color:var(--coral); border:1px solid rgba(232,168,152,0.2);">Tauri</span>
+          <span class="oss-badge" style="background:rgba(212,168,71,0.1); color:var(--amber); border:1px solid rgba(212,168,71,0.2);">Vue 3</span>
+        </div>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:12px; min-width:240px;">
+        <a href="https://github.com/fluxvita/jowork" target="_blank" class="btn-primary" style="justify-content:center; text-align:center;">
+          ⭐ Star on GitHub
+        </a>
+        <a href="https://github.com/fluxvita/jowork/issues" target="_blank" class="btn-ghost" style="justify-content:center; text-align:center;">
+          Open an Issue
+        </a>
+        <a href="https://discord.gg/jowork" target="_blank" class="btn-ghost" style="justify-content:center; text-align:center;">
+          Join Discord
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── CTA ──────────────────────────────────────────────────────── -->
+<section class="section" id="cta">
+  <div class="wrap">
+    <div class="fade-up">
+      <div class="grad-line"></div>
+      <h2 class="cta-title">Your AI coworker is<br/><em>one command away.</em></h2>
+      <p class="cta-sub">Self-hosted, open-source, zero vendor lock-in. Free forever for personal use.</p>
+      <div class="cta-actions">
+        <a href="https://github.com/fluxvita/jowork/releases/latest" class="btn-primary" style="font-size:16px; padding:15px 32px;">
+          ⬇ Download Jowork
+        </a>
+        <a href="https://github.com/fluxvita/jowork" target="_blank" class="btn-ghost" style="font-size:15px; padding:14px 28px;">
+          View Source →
+        </a>
+      </div>
+      <div class="grad-line" style="margin-top: clamp(48px, 7vh, 80px);"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── Footer ───────────────────────────────────────────────────── -->
+<footer>
+  <div class="wrap">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <div class="nav-logo">
+          <div class="nav-logo-dot"></div>
+          Jowork
+        </div>
+        <p>Open-source AI coworker that deeply connects to your company data. Self-hosted, autonomous, and free forever for personal use.</p>
+        <p style="margin-top:12px; font-family:var(--F-mono); font-size:11px; color:var(--text-dim);">By FluxVita · AGPL-3.0</p>
+      </div>
+      <div>
+        <div class="footer-col-title">Product</div>
+        <div class="footer-links">
+          <a href="#features">Features</a>
+          <a href="#pricing">Pricing</a>
+          <a href="https://github.com/fluxvita/jowork/releases/latest">Download</a>
+          <a href="https://github.com/fluxvita/jowork/blob/main/docs/JOWORK-PLAN.md">Roadmap</a>
+        </div>
+      </div>
+      <div>
+        <div class="footer-col-title">Developers</div>
+        <div class="footer-links">
+          <a href="https://github.com/fluxvita/jowork" target="_blank">GitHub</a>
+          <a href="https://github.com/fluxvita/jowork/blob/main/docs/quick-start.md">Quick Start</a>
+          <a href="https://github.com/fluxvita/jowork/blob/main/docs/custom-domain.md">Custom Domain</a>
+          <a href="https://github.com/fluxvita/jowork/blob/main/CONTRIBUTING.md">Contributing</a>
+        </div>
+      </div>
+      <div>
+        <div class="footer-col-title">Company</div>
+        <div class="footer-links">
+          <a href="https://fluxvita.com" target="_blank">FluxVita</a>
+          <a href="mailto:hello@jowork.work">hello@jowork.work</a>
+          <a href="https://github.com/fluxvita/jowork/blob/main/docs/legal/privacy-policy.md">Privacy Policy</a>
+          <a href="https://github.com/fluxvita/jowork/blob/main/docs/legal/terms-of-service.md">Terms</a>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span class="footer-bottom-text">© 2025 FluxVita · Jowork is open-source under AGPL-3.0</span>
+      <span class="footer-bottom-text" style="display:flex;gap:16px;">
+        <a href="https://github.com/fluxvita/jowork" target="_blank" style="color:var(--text-dim); transition:color 0.2s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-dim)'">GitHub</a>
+        <a href="https://discord.gg/jowork" target="_blank" style="color:var(--text-dim); transition:color 0.2s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-dim)'">Discord</a>
+        <a href="https://twitter.com/jowork_ai" target="_blank" style="color:var(--text-dim); transition:color 0.2s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-dim)'">Twitter</a>
+      </span>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // Fade-up animations
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add('visible');
+        observer.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+  document.querySelectorAll('.fade-up').forEach(el => observer.observe(el));
+
+  // Code tabs
+  function switchTab(name) {
+    document.querySelectorAll('.code-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.code-panel').forEach(p => p.classList.remove('active'));
+    event.target.classList.add('active');
+    document.getElementById('tab-' + name).classList.add('active');
+  }
+</script>
+</body>
+</html>
