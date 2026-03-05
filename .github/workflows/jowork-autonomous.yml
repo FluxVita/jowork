@@ -7,9 +7,6 @@ on:
 
 permissions:
   contents: write
-  id-token: write
-  pull-requests: write
-  issues: write
 
 jobs:
   develop:
@@ -23,47 +20,79 @@ jobs:
           ref: main
           fetch-depth: 0
 
-      - name: check-pending
-        id: check
-        run: |
-          PENDING=$(python3 -c "
-          text = open('docs/JOWORK-PLAN.md').read()
-          print(text.count('- [ ]'))
-          ")
-          echo "pending=$PENDING" >> "$GITHUB_OUTPUT"
-          echo "Pending tasks: $PENDING"
-
-      - name: run-claude
-        if: ${{ steps.check.outputs.pending != '0' }}
-        uses: grll/claude-code-action@beta
+      - name: setup-node
+        uses: actions/setup-node@v4
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          use_oauth: true
-          claude_access_token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
-          claude_refresh_token: ${{ secrets.CLAUDE_REFRESH_TOKEN }}
-          claude_expires_at: ${{ secrets.CLAUDE_EXPIRES_AT }}
-          secrets_admin_pat: ${{ secrets.SECRETS_ADMIN_PAT }}
-          max_turns: "200"
-          timeout_minutes: "420"
-          direct_prompt: |
-            你是一名全栈工程师，在 fluxvita_allinone 的 main 分支上开发 Jowork。
+          node-version: '22'
 
-            工作流程（循环直到没有待做任务）：
-            1. 读 docs/JOWORK-PLAN.md，找第一个 - [ ] 任务
-            2. 理解任务要求（查阅 openclaw-main/ 复用已有代码）
-            3. 实现功能，TypeScript strict，ESM，pnpm workspaces
-            4. 运行验证：pnpm install && pnpm --filter <包名> build
-            5. 把 - [ ] 改为 - [x]
-            6. git add -A && git commit -m "feat(jowork): <任务描述>"
-            7. 回到第 1 步，继续下一个任务
+      - name: install-claude
+        run: npm install -g @anthropic-ai/claude-code
 
-            允许修改：packages/ apps/jowork/ docs/JOWORK-PLAN.md
-            禁止修改：src/ src-tauri/ public/ .env master 分支
+      - name: setup-credentials
+        env:
+          CLAUDE_ACCESS_TOKEN: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
+          CLAUDE_REFRESH_TOKEN: ${{ secrets.CLAUDE_REFRESH_TOKEN }}
+          CLAUDE_EXPIRES_AT: ${{ secrets.CLAUDE_EXPIRES_AT }}
+        run: |
+          mkdir -p ~/.claude
+          python3 -c "
+          import os, json
+          creds = {
+            'claudeAiOauth': {
+              'accessToken': os.environ['CLAUDE_ACCESS_TOKEN'],
+              'refreshToken': os.environ['CLAUDE_REFRESH_TOKEN'],
+              'expiresAt': int(os.environ['CLAUDE_EXPIRES_AT'])
+            }
+          }
+          json.dump(creds, open(os.path.expanduser('~/.claude/.credentials.json'), 'w'))
+          print('Credentials written')
+          "
 
-      - name: push-all-commits
-        if: ${{ steps.check.outputs.pending != '0' }}
+      - name: setup-git
         run: |
           git config user.name "Jowork AI Dev"
           git config user.email "ai@fluxvita.com"
-          git pull --rebase origin main || true
-          git push origin main || echo "Nothing to push"
+          TOKEN=${{ secrets.GITHUB_TOKEN }}
+          git remote set-url origin \
+            "https://x-access-token:${TOKEN}@github.com/FluxVita/jowork.git"
+
+      - name: dev-loop
+        run: |
+          unset CLAUDECODE
+          ROUND=0
+          MAX_ROUNDS=25
+
+          PROMPT=$(cat .github/prompts/jowork-autonomous.md)
+
+          while [ "$ROUND" -lt "$MAX_ROUNDS" ]; do
+            PENDING=$(python3 -c "
+          text = open('docs/JOWORK-PLAN.md').read()
+          print(text.count('- [ ]'))
+          ")
+            echo "=== Round ${ROUND} | Pending: ${PENDING} ==="
+
+            if [ "$PENDING" -eq 0 ]; then
+              echo "All tasks completed!"
+              break
+            fi
+
+            claude \
+              --dangerously-skip-permissions \
+              --max-turns 30 \
+              -p "$PROMPT"
+
+            git add -A
+            if ! git diff --cached --quiet; then
+              DONE=$(python3 -c "
+          text = open('docs/JOWORK-PLAN.md').read()
+          print(text.count('- [x]'))
+          ")
+              git commit -m "feat(jowork): round=${ROUND} done=${DONE} [skip ci]"
+              git push origin main
+              echo "Pushed round ${ROUND}, done=${DONE}"
+            else
+              echo "No changes in round ${ROUND}"
+            fi
+
+            ROUND=$((ROUND + 1))
+          done
