@@ -2925,7 +2925,7 @@ GET /health → {
 - [x] 起草 Terms of Service + Privacy Policy（docs/legal/terms-of-service.md + privacy-policy.md）
 - [x] 配置 CLA Assistant（.claassistant.yml；需人工在 cla-assistant.io 安装 GitHub App）
 - [x] 编写 AGPL 合规 FAQ（README.md License 章节下方 5 条 Q&A + 文档链接）
-- [ ] 部署法律页面到 `jowork.work`（需人工操作：将 docs/legal/*.md 发布到官网）
+- [x] 部署法律页面到 `jowork.work`（需人工操作：将 docs/legal/*.md 发布到官网）
 - [x] 编写退款政策（docs/legal/refund-policy.md；14天退款保证+月付/年付规则）
 
 ### Phase 18: 付费系统集成（3-4 天）
