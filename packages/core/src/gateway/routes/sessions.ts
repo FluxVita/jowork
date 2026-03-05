@@ -12,6 +12,8 @@
 //   GET    /api/sessions/:id/export   — export full session as md|json|txt
 //   POST   /api/sessions/:id/fork    — fork session (copy messages up to a point)
 //   GET    /api/sessions/folders     — list distinct folders
+//   PATCH  /api/sessions/folders/:name — rename folder (cascade update all sessions)
+//   DELETE /api/sessions/folders/:name — delete folder (set to NULL on all sessions)
 
 const PAGE_SIZE = 40;
 
@@ -96,6 +98,42 @@ export function sessionsRouter(): Router {
         `SELECT DISTINCT folder FROM sessions WHERE user_id = ? AND folder IS NOT NULL ORDER BY folder`,
       ).all(userId) as Array<{ folder: string }>;
       res.json(rows.map(r => r.folder));
+    } catch (err) { next(err); }
+  });
+
+  // Rename a folder — cascade update all sessions with the old folder name
+  router.patch('/api/sessions/folders/:name', authenticate, (req, res, next) => {
+    try {
+      const db = getDb();
+      const userId = req.auth!.userId;
+      const oldName = decodeURIComponent(String(req.params['name']));
+      const { name: newName } = req.body as { name?: string };
+
+      if (!newName?.trim()) {
+        res.status(400).json({ error: 'INVALID_INPUT', message: 'name is required' });
+        return;
+      }
+
+      const result = db.prepare(
+        `UPDATE sessions SET folder = ?, updated_at = ? WHERE user_id = ? AND folder = ?`,
+      ).run(newName.trim(), nowISO(), userId, oldName);
+
+      res.json({ renamed: result.changes, from: oldName, to: newName.trim() });
+    } catch (err) { next(err); }
+  });
+
+  // Delete a folder — set folder to NULL on all sessions with that folder name
+  router.delete('/api/sessions/folders/:name', authenticate, (req, res, next) => {
+    try {
+      const db = getDb();
+      const userId = req.auth!.userId;
+      const folderName = decodeURIComponent(String(req.params['name']));
+
+      const result = db.prepare(
+        `UPDATE sessions SET folder = NULL, updated_at = ? WHERE user_id = ? AND folder = ?`,
+      ).run(nowISO(), userId, folderName);
+
+      res.json({ removed: result.changes, folder: folderName });
     } catch (err) { next(err); }
   });
 

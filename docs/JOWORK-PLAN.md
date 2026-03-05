@@ -226,6 +226,7 @@
 | Phase 74：Session Pinning + Folder 组织 | ✅ 完成 | 2026-03-05 | 迁移006_session_pinned_folder(pinned+folder列)；PATCH支持pinned/folder/title多字段更新；GET按pinned DESC排序+?folder=过滤；GET /api/sessions/folders；前端📌pin+📂folder+folder chips过滤器；apps/jowork+apps/fluxvita均更新；10新测试；pnpm lint+test全绿（389/389） |
 | Phase 75：Session Fork（对话分叉） | ✅ 完成 | 2026-03-05 | 迁移007_session_forked_from(forked_from列)；POST /api/sessions/:id/fork(afterMessageId可选，复制消息+FTS索引)；前端🔀Fork按钮(assistant+user消息均可fork)；forkedFrom字段贯穿类型+API+前端；apps/jowork+apps/fluxvita均更新；4新测试；pnpm lint+test全绿（393/393） |
 | Phase 76：Connector 自动同步配置 UI | ✅ 完成 | 2026-03-05 | updateConnectorConfig函数(name/settings/syncSchedule更新)；PATCH /api/connectors/:id端点；前端Sync Schedule行(Auto-sync状态+lastSyncAt+Edit/Presets/cron输入/Save)；matchesCron测试+CRUD测试+路由测试；apps/jowork+apps/fluxvita均更新；12新测试；pnpm lint+test全绿（405/405） |
+| Phase 77：Session 文件夹管理增强 | ✅ 完成 | 2026-03-05 | PATCH /api/sessions/folders/:name(重命名，级联更新)；DELETE /api/sessions/folders/:name(删除，级联设NULL)；前端folder chips双击重命名+右键删除；用户隔离；apps/jowork+apps/fluxvita均更新；4新测试；pnpm lint+test全绿（409/409） |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*
@@ -3454,6 +3455,17 @@ GET /health → {
 - [x] `apps/fluxvita/public/index.html`：同步上述全部改动（保留 FluxVita 蓝色品牌色）
 - [x] `connector-sync-schedule.test.ts`：12 个新测试（updateConnectorConfig CRUD + updateSyncSchedule/updateLastSyncAt + matchesCron 本地时间 + PATCH 路由验证）
 - [x] pnpm lint+test 全绿（405/405）
+
+### Phase 77: Session 文件夹管理增强（0.25 天）
+
+- [x] `sessions.ts` 新增 `PATCH /api/sessions/folders/:name` — 重命名文件夹（级联更新所有匹配 session 的 folder 字段，用户隔离）
+- [x] `sessions.ts` 新增 `DELETE /api/sessions/folders/:name` — 删除文件夹（级联设 folder = NULL，用户隔离）
+- [x] URL 中 folder name 使用 `decodeURIComponent` 处理特殊字符
+- [x] 前端 folder chips：双击（dblclick）触发重命名 prompt；右键（contextmenu）触发删除 confirm
+- [x] 重命名/删除后客户端同步更新 sessions 列表 + folderFilter + 重新加载 folders
+- [x] `apps/fluxvita/public/index.html`：同步上述全部改动
+- [x] `sessions.test.ts` 追加 4 个测试（rename 级联 + delete 级联设 NULL + 用户隔离 + 路由存在验证）
+- [x] pnpm lint+test 全绿（409/409）
 
 **AI 辅助开发预计总工期：6-10 个工作日**（全程 AI 写代码，人工只做决策/审查/测试）
 

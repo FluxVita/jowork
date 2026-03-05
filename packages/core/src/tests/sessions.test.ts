@@ -678,3 +678,79 @@ describe('Session — forking', () => {
     assert.equal(forkMsgs.length, 1, 'forked messages should survive');
   });
 });
+
+// ─── Phase 77: Folder rename / delete ──────────────────────────────────────
+
+describe('Phase 77 — folder management', () => {
+  beforeEach(() => { setupTestDb(); });
+  afterEach(() => { closeDb(); });
+
+  test('rename folder cascades to all sessions', () => {
+    const db = openDb();
+    seedUser(db);
+    seedAgent(db);
+    seedSession(db, 's1', 'user-1', 'agent-1', 'S1', { folder: 'work' });
+    seedSession(db, 's2', 'user-1', 'agent-1', 'S2', { folder: 'work' });
+    seedSession(db, 's3', 'user-1', 'agent-1', 'S3', { folder: 'personal' });
+
+    db.prepare(`UPDATE sessions SET folder = ? WHERE user_id = ? AND folder = ?`)
+      .run('projects', 'user-1', 'work');
+
+    const rows = db.prepare(`SELECT folder FROM sessions WHERE user_id = ? ORDER BY id`).all('user-1') as Array<{ folder: string | null }>;
+    assert.equal(rows[0]!.folder, 'projects');
+    assert.equal(rows[1]!.folder, 'projects');
+    assert.equal(rows[2]!.folder, 'personal');
+  });
+
+  test('delete folder sets folder to NULL on affected sessions', () => {
+    const db = openDb();
+    seedUser(db);
+    seedAgent(db);
+    seedSession(db, 's1', 'user-1', 'agent-1', 'S1', { folder: 'work' });
+    seedSession(db, 's2', 'user-1', 'agent-1', 'S2', { folder: 'work' });
+    seedSession(db, 's3', 'user-1', 'agent-1', 'S3', { folder: 'personal' });
+
+    db.prepare(`UPDATE sessions SET folder = NULL WHERE user_id = ? AND folder = ?`)
+      .run('user-1', 'work');
+
+    const rows = db.prepare(`SELECT folder FROM sessions WHERE user_id = ? ORDER BY id`).all('user-1') as Array<{ folder: string | null }>;
+    assert.equal(rows[0]!.folder, null);
+    assert.equal(rows[1]!.folder, null);
+    assert.equal(rows[2]!.folder, 'personal');
+  });
+
+  test('folder rename is user-isolated', () => {
+    const db = openDb();
+    seedUser(db, 'user-1');
+    seedUser(db, 'user-2');
+    seedAgent(db, 'agent-1', 'user-1');
+    seedAgent(db, 'agent-2', 'user-2');
+    seedSession(db, 's1', 'user-1', 'agent-1', 'S1', { folder: 'work' });
+    seedSession(db, 's2', 'user-2', 'agent-2', 'S2', { folder: 'work' });
+
+    // Only rename user-1's folders
+    db.prepare(`UPDATE sessions SET folder = ? WHERE user_id = ? AND folder = ?`)
+      .run('projects', 'user-1', 'work');
+
+    const u1 = db.prepare(`SELECT folder FROM sessions WHERE id = 's1'`).get() as { folder: string };
+    const u2 = db.prepare(`SELECT folder FROM sessions WHERE id = 's2'`).get() as { folder: string };
+    assert.equal(u1.folder, 'projects');
+    assert.equal(u2.folder, 'work');  // untouched
+  });
+
+  test('sessionsRouter exposes PATCH and DELETE folder routes', async () => {
+    const { sessionsRouter } = await import('../gateway/routes/sessions.js');
+    const router = sessionsRouter();
+    const stack = (router as unknown as {
+      stack: Array<{ route?: { path: string; methods: Record<string, boolean> } }>
+    }).stack;
+    const routes = stack
+      .filter(l => l.route)
+      .map(l => ({ path: l.route!.path, methods: Object.keys(l.route!.methods) }));
+
+    const patchRoute = routes.find(r => r.path === '/api/sessions/folders/:name' && r.methods.includes('patch'));
+    const deleteRoute = routes.find(r => r.path === '/api/sessions/folders/:name' && r.methods.includes('delete'));
+    assert.ok(patchRoute, 'PATCH /api/sessions/folders/:name should exist');
+    assert.ok(deleteRoute, 'DELETE /api/sessions/folders/:name should exist');
+  });
+});

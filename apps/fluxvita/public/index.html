@@ -762,6 +762,29 @@
           folderInputText.value = '';
         }
 
+        async function renameFolder(oldName) {
+          const newName = prompt(`Rename folder "${oldName}" to:`, oldName);
+          if (!newName?.trim() || newName.trim() === oldName) return;
+          try {
+            await api('PATCH', `/api/sessions/folders/${encodeURIComponent(oldName)}`, { name: newName.trim() });
+            sessions.value.forEach(s => { if (s.folder === oldName) s.folder = newName.trim(); });
+            if (folderFilter.value === oldName) folderFilter.value = newName.trim();
+            await loadFolders();
+            toast(`Renamed to "${newName.trim()}"`, 'success');
+          } catch (e) { toast('Rename failed: ' + e.message, 'error'); }
+        }
+
+        async function deleteFolder(name) {
+          if (!confirm(`Remove folder "${name}"? Sessions will be unfiled but not deleted.`)) return;
+          try {
+            await api('DELETE', `/api/sessions/folders/${encodeURIComponent(name)}`);
+            sessions.value.forEach(s => { if (s.folder === name) s.folder = null; });
+            if (folderFilter.value === name) folderFilter.value = null;
+            await loadFolders();
+            toast(`Folder "${name}" removed`, 'success');
+          } catch (e) { toast('Delete failed: ' + e.message, 'error'); }
+        }
+
         async function sendMessage() {
           if (streaming.value) { stopStream(); return; }
           const content = inputText.value.trim();
@@ -1484,7 +1507,7 @@
           sessions, activeSessionId, messages, inputText, streaming, streamingText, healthy, activeSession, edition, engineName,
           selectSession, newSession, sendMessage, regenerateMessage, toggleFeedback, onKeydown,
           renamingSessionId, renameText, startRename, confirmRename, cancelRename, deleteSession, exportSession,
-          togglePin, folders, folderFilter, setFolderFilter, openFolderInput, showFolderInput, folderInputText, confirmFolder, cancelFolder,
+          togglePin, folders, folderFilter, setFolderFilter, openFolderInput, showFolderInput, folderInputText, confirmFolder, cancelFolder, renameFolder, deleteFolder,
           sessionFilter, filteredSessions, hasMore, nextCursor, loadingMore, loadMoreMessages,
           showSettings, settingsTab, modelInfo, providers, modelPickProvider, modelPickModel, modelSaving,
           connectors, connectorTypes, stats, healthFull,
@@ -1528,7 +1551,7 @@
             />
             <div v-if="folders.length > 0" class="folder-filter">
               <span class="folder-chip" :class="{ active: folderFilter === null }" @click="setFolderFilter(null)">All</span>
-              <span v-for="f in folders" :key="f" class="folder-chip" :class="{ active: folderFilter === f }" @click="setFolderFilter(f)">{{ f }}</span>
+              <span v-for="f in folders" :key="f" class="folder-chip" :class="{ active: folderFilter === f }" @click="setFolderFilter(f)" @dblclick.stop="renameFolder(f)" @contextmenu.prevent="deleteFolder(f)" :title="'Click: filter · Double-click: rename · Right-click: delete'">{{ f }}</span>
             </div>
             <div
               v-for="s in filteredSessions" :key="s.id"
