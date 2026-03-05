@@ -76,6 +76,8 @@ export interface AgentSession {
   agentId: string;
   userId: UserId;
   title: string;
+  pinned: boolean;
+  folder: string | null;
   createdAt: string;
   updatedAt: string;
   messages: Message[];

@@ -30,6 +30,8 @@ CREATE TABLE IF NOT EXISTS sessions (
   agent_id   TEXT NOT NULL REFERENCES agents(id),
   user_id    TEXT NOT NULL REFERENCES users(id),
   title      TEXT NOT NULL DEFAULT 'New session',
+  pinned     INTEGER NOT NULL DEFAULT 0,
+  folder     TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );

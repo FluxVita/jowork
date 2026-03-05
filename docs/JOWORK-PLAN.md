@@ -223,6 +223,7 @@
 | Phase 71：消息删除 UI（Message Delete） | ✅ 完成 | 2026-03-05 | deleteMessage()函数（DELETE API+列表移除+toast）；assistant消息操作栏🗑按钮；user消息hover🗑按钮；apps/jowork+apps/fluxvita均更新；pnpm lint全绿（纯前端，后端DELETE端点已有） |
 | Phase 72：Bun compile Gateway Sidecar | ✅ 完成 | 2026-03-05 | sidecar.ts入口点(bun:sqlite+setDb注入+CLI参数解析)；db.ts改用createRequire动态加载better-sqlite3(允许Bun跳过)；setDb()注入函数；build-sidecar.sh(TS编译+Bun --compile+平台检测)；59MB单文件二进制(bun:sqlite内置，无需native addon)；验证通过：health+sessions API；pnpm lint+test全绿（379/379） |
 | Phase 73：Tauri 2 Desktop Shell | ✅ 完成 | 2026-03-05 | Tauri 2项目结构(Cargo.toml+tauri.conf.json+lib.rs+main.rs)；sidecar启动逻辑(ShellExt+stdout监听"Gateway ready")；externalBin配置；CSP安全策略；图标生成(icns/ico/png全平台)；tauri:dev+tauri:build脚本；cargo check全绿 |
+| Phase 74：Session Pinning + Folder 组织 | ✅ 完成 | 2026-03-05 | 迁移006_session_pinned_folder(pinned+folder列)；PATCH支持pinned/folder/title多字段更新；GET按pinned DESC排序+?folder=过滤；GET /api/sessions/folders；前端📌pin+📂folder+folder chips过滤器；apps/jowork+apps/fluxvita均更新；10新测试；pnpm lint+test全绿（389/389） |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*
@@ -3413,6 +3414,20 @@ GET /health → {
 - [x] 使用 `npx @tauri-apps/cli icon` 生成全平台图标（icns/ico/png）
 - [x] `package.json` 新增 `tauri:dev` / `tauri:build` 脚本
 - [x] `cargo check` 全绿
+
+### Phase 74: Session Pinning + Folder 组织（0.5 天）
+
+- [x] 迁移 `006_session_pinned_folder`：sessions 表增加 `pinned INTEGER NOT NULL DEFAULT 0` + `folder TEXT` 列
+- [x] `init.ts` 同步更新 sessions 表 schema（含 pinned/folder）
+- [x] `types.ts` AgentSession 增加 `pinned: boolean` + `folder: string | null`
+- [x] `sessions.ts` PATCH 端点支持 `pinned`/`folder`/`title` 多字段更新（动态 SQL 构建）
+- [x] `sessions.ts` GET 列表按 `pinned DESC, updated_at DESC` 排序 + `?folder=` 过滤
+- [x] `sessions.ts` 新增 `GET /api/sessions/folders`（返回当前用户的 distinct folders）
+- [x] 前端 📌 pin 按钮（toggle + 客户端排序）+ 📂 folder 赋值（inline input + OK 按钮）
+- [x] 前端 folder filter chips（All + 各 folder；点击切换过滤）
+- [x] `apps/fluxvita/public/index.html`：同步上述功能（保留 FluxVita 蓝色品牌色）
+- [x] 10 个新测试（pin default/set/unset/sort + folder set/remove/filter/list/isolation + migrator）
+- [x] pnpm lint+test 全绿（389/389）
 
 **AI 辅助开发预计总工期：6-10 个工作日**（全程 AI 写代码，人工只做决策/审查/测试）
 

@@ -195,6 +195,19 @@ const MIGRATIONS: Migration[] = [
       `);
     },
   },
+  {
+    name: '006_session_pinned_folder',
+    up(db) {
+      const cols = db.prepare(`PRAGMA table_info(sessions)`).all() as Array<{ name: string }>;
+      const colNames = new Set(cols.map(c => c.name));
+      if (!colNames.has('pinned')) {
+        db.exec(`ALTER TABLE sessions ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0`);
+      }
+      if (!colNames.has('folder')) {
+        db.exec(`ALTER TABLE sessions ADD COLUMN folder TEXT`);
+      }
+    },
+  },
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

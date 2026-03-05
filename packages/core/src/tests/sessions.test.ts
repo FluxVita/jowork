@@ -32,10 +32,10 @@ function seedAgent(db: Database.Database, id = 'agent-1', ownerId = 'user-1'): v
     .run(id, 'Test Agent', ownerId, 'You are a test agent.', 'claude-3-haiku', now);
 }
 
-function seedSession(db: Database.Database, id = 'sess-1', userId = 'user-1', agentId = 'agent-1', title = 'Test Session'): void {
+function seedSession(db: Database.Database, id = 'sess-1', userId = 'user-1', agentId = 'agent-1', title = 'Test Session', opts: { pinned?: number; folder?: string | null } = {}): void {
   const now = new Date().toISOString();
-  db.prepare(`INSERT OR IGNORE INTO sessions (id, agent_id, user_id, title, created_at, updated_at) VALUES (?,?,?,?,?,?)`)
-    .run(id, agentId, userId, title, now, now);
+  db.prepare(`INSERT OR IGNORE INTO sessions (id, agent_id, user_id, title, pinned, folder, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?)`)
+    .run(id, agentId, userId, title, opts.pinned ?? 0, opts.folder ?? null, now, now);
 }
 
 function seedMessage(db: Database.Database, id = 'msg-1', sessionId = 'sess-1', role = 'user', content = 'Hello'): void {
@@ -424,5 +424,161 @@ describe('Message editing — DB layer', () => {
     // Simulate ownership check: user-2 tries to find session owned by user-1
     const session = db.prepare(`SELECT id FROM sessions WHERE id = ? AND user_id = ?`).get('sess-1', 'user-2');
     assert.equal(session, undefined, 'user-2 should not find user-1 session');
+  });
+});
+
+// ─── Session pinning (Phase 74) ──────────────────────────────────────────────
+
+describe('Session — pinning', () => {
+  beforeEach(() => { setupTestDb(); });
+  afterEach(() => { closeDb(); });
+
+  test('new session has pinned=0 by default', () => {
+    const db = openDb();
+    seedUser(db);
+    seedAgent(db);
+    seedSession(db);
+
+    const row = db.prepare(`SELECT pinned FROM sessions WHERE id = ?`).get('sess-1') as { pinned: number };
+    assert.equal(row.pinned, 0);
+  });
+
+  test('pin a session', () => {
+    const db = openDb();
+    seedUser(db);
+    seedAgent(db);
+    seedSession(db);
+
+    db.prepare(`UPDATE sessions SET pinned = 1 WHERE id = ?`).run('sess-1');
+    const row = db.prepare(`SELECT pinned FROM sessions WHERE id = ?`).get('sess-1') as { pinned: number };
+    assert.equal(row.pinned, 1);
+  });
+
+  test('unpin a session', () => {
+    const db = openDb();
+    seedUser(db);
+    seedAgent(db);
+    seedSession(db, 'sess-1', 'user-1', 'agent-1', 'Test', { pinned: 1 });
+
+    db.prepare(`UPDATE sessions SET pinned = 0 WHERE id = ?`).run('sess-1');
+    const row = db.prepare(`SELECT pinned FROM sessions WHERE id = ?`).get('sess-1') as { pinned: number };
+    assert.equal(row.pinned, 0);
+  });
+
+  test('pinned sessions sort before unpinned', () => {
+    const db = openDb();
+    seedUser(db);
+    seedAgent(db);
+
+    const now = new Date().toISOString();
+    db.prepare(`INSERT INTO sessions (id, agent_id, user_id, title, pinned, folder, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?)`)
+      .run('s-a', 'agent-1', 'user-1', 'Unpinned recent', 0, null, now, '2026-02-01T00:00:00.000Z');
+    db.prepare(`INSERT INTO sessions (id, agent_id, user_id, title, pinned, folder, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?)`)
+      .run('s-b', 'agent-1', 'user-1', 'Pinned old', 1, null, now, '2026-01-01T00:00:00.000Z');
+
+    const rows = db.prepare(
+      `SELECT id FROM sessions WHERE user_id = ? ORDER BY pinned DESC, updated_at DESC`,
+    ).all('user-1') as { id: string }[];
+
+    assert.equal(rows[0]!.id, 's-b', 'pinned session should come first even if older');
+    assert.equal(rows[1]!.id, 's-a');
+  });
+});
+
+// ─── Session folders (Phase 74) ──────────────────────────────────────────────
+
+describe('Session — folders', () => {
+  beforeEach(() => { setupTestDb(); });
+  afterEach(() => { closeDb(); });
+
+  test('new session has folder=null by default', () => {
+    const db = openDb();
+    seedUser(db);
+    seedAgent(db);
+    seedSession(db);
+
+    const row = db.prepare(`SELECT folder FROM sessions WHERE id = ?`).get('sess-1') as { folder: string | null };
+    assert.equal(row.folder, null);
+  });
+
+  test('assign a folder to a session', () => {
+    const db = openDb();
+    seedUser(db);
+    seedAgent(db);
+    seedSession(db);
+
+    db.prepare(`UPDATE sessions SET folder = ? WHERE id = ?`).run('Work', 'sess-1');
+    const row = db.prepare(`SELECT folder FROM sessions WHERE id = ?`).get('sess-1') as { folder: string };
+    assert.equal(row.folder, 'Work');
+  });
+
+  test('remove folder (set to null)', () => {
+    const db = openDb();
+    seedUser(db);
+    seedAgent(db);
+    seedSession(db, 'sess-1', 'user-1', 'agent-1', 'Test', { folder: 'Work' });
+
+    db.prepare(`UPDATE sessions SET folder = NULL WHERE id = ?`).run('sess-1');
+    const row = db.prepare(`SELECT folder FROM sessions WHERE id = ?`).get('sess-1') as { folder: string | null };
+    assert.equal(row.folder, null);
+  });
+
+  test('filter sessions by folder', () => {
+    const db = openDb();
+    seedUser(db);
+    seedAgent(db);
+
+    const now = new Date().toISOString();
+    db.prepare(`INSERT INTO sessions (id, agent_id, user_id, title, pinned, folder, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?)`)
+      .run('s-work', 'agent-1', 'user-1', 'Work item', 0, 'Work', now, now);
+    db.prepare(`INSERT INTO sessions (id, agent_id, user_id, title, pinned, folder, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?)`)
+      .run('s-personal', 'agent-1', 'user-1', 'Personal item', 0, 'Personal', now, now);
+    db.prepare(`INSERT INTO sessions (id, agent_id, user_id, title, pinned, folder, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?)`)
+      .run('s-none', 'agent-1', 'user-1', 'No folder', 0, null, now, now);
+
+    const workRows = db.prepare(
+      `SELECT id FROM sessions WHERE user_id = ? AND folder = ?`,
+    ).all('user-1', 'Work') as { id: string }[];
+    assert.equal(workRows.length, 1);
+    assert.equal(workRows[0]!.id, 's-work');
+  });
+
+  test('list distinct folders', () => {
+    const db = openDb();
+    seedUser(db);
+    seedAgent(db);
+
+    const now = new Date().toISOString();
+    db.prepare(`INSERT INTO sessions (id, agent_id, user_id, title, pinned, folder, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?)`)
+      .run('s-1', 'agent-1', 'user-1', 'A', 0, 'Work', now, now);
+    db.prepare(`INSERT INTO sessions (id, agent_id, user_id, title, pinned, folder, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?)`)
+      .run('s-2', 'agent-1', 'user-1', 'B', 0, 'Work', now, now);
+    db.prepare(`INSERT INTO sessions (id, agent_id, user_id, title, pinned, folder, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?)`)
+      .run('s-3', 'agent-1', 'user-1', 'C', 0, 'Personal', now, now);
+    db.prepare(`INSERT INTO sessions (id, agent_id, user_id, title, pinned, folder, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?)`)
+      .run('s-4', 'agent-1', 'user-1', 'D', 0, null, now, now);
+
+    const folders = db.prepare(
+      `SELECT DISTINCT folder FROM sessions WHERE user_id = ? AND folder IS NOT NULL ORDER BY folder`,
+    ).all('user-1') as Array<{ folder: string }>;
+    assert.equal(folders.length, 2);
+    assert.equal(folders[0]!.folder, 'Personal');
+    assert.equal(folders[1]!.folder, 'Work');
+  });
+
+  test('folders are user-isolated', () => {
+    const db = openDb();
+    seedUser(db, 'user-1');
+    seedUser(db, 'user-2');
+    seedAgent(db);
+
+    const now = new Date().toISOString();
+    db.prepare(`INSERT INTO sessions (id, agent_id, user_id, title, pinned, folder, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?)`)
+      .run('s-1', 'agent-1', 'user-1', 'A', 0, 'Secret', now, now);
+
+    const folders = db.prepare(
+      `SELECT DISTINCT folder FROM sessions WHERE user_id = ? AND folder IS NOT NULL`,
+    ).all('user-2') as Array<{ folder: string }>;
+    assert.equal(folders.length, 0, 'user-2 should not see user-1 folders');
   });
 });

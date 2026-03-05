@@ -24,6 +24,8 @@ interface SessionRow {
   agent_id: string;
   user_id: string;
   title: string;
+  pinned: number;
+  folder: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -42,6 +44,8 @@ function rowToSession(row: SessionRow, messages: MessageRow[] = []): AgentSessio
     agentId: row.agent_id,
     userId: row.user_id,
     title: row.title,
+    pinned: row.pinned === 1,
+    folder: row.folder ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     messages: messages.map(m => ({
@@ -57,15 +61,37 @@ function rowToSession(row: SessionRow, messages: MessageRow[] = []): AgentSessio
 export function sessionsRouter(): Router {
   const router = Router();
 
-  // List sessions for the authenticated user (most recently updated first)
+  // List sessions for the authenticated user (pinned first, then most recently updated)
+  // Optional query: ?folder=<name> to filter by folder
   router.get('/api/sessions', authenticate, (req, res, next) => {
     try {
       const db = getDb();
       const userId = req.auth!.userId;
-      const rows = db.prepare(
-        `SELECT id, agent_id, user_id, title, created_at, updated_at FROM sessions WHERE user_id = ? ORDER BY updated_at DESC`,
-      ).all(userId) as SessionRow[];
+      const folder = req.query['folder'] ? String(req.query['folder']) : null;
+
+      let rows: SessionRow[];
+      if (folder) {
+        rows = db.prepare(
+          `SELECT * FROM sessions WHERE user_id = ? AND folder = ? ORDER BY pinned DESC, updated_at DESC`,
+        ).all(userId, folder) as SessionRow[];
+      } else {
+        rows = db.prepare(
+          `SELECT * FROM sessions WHERE user_id = ? ORDER BY pinned DESC, updated_at DESC`,
+        ).all(userId) as SessionRow[];
+      }
       res.json(rows.map(r => rowToSession(r)));
+    } catch (err) { next(err); }
+  });
+
+  // List distinct folders for the authenticated user
+  router.get('/api/sessions/folders', authenticate, (req, res, next) => {
+    try {
+      const db = getDb();
+      const userId = req.auth!.userId;
+      const rows = db.prepare(
+        `SELECT DISTINCT folder FROM sessions WHERE user_id = ? AND folder IS NOT NULL ORDER BY folder`,
+      ).all(userId) as Array<{ folder: string }>;
+      res.json(rows.map(r => r.folder));
     } catch (err) { next(err); }
   });
 
@@ -87,11 +113,11 @@ export function sessionsRouter(): Router {
       }
 
       db.prepare(
-        `INSERT INTO sessions (id, agent_id, user_id, title, created_at, updated_at) VALUES (?,?,?,?,?,?)`,
+        `INSERT INTO sessions (id, agent_id, user_id, title, pinned, folder, created_at, updated_at) VALUES (?,?,?,?,0,NULL,?,?)`,
       ).run(id, aid, userId, title ?? 'New session', now, now);
 
       res.status(201).json(rowToSession(
-        { id, agent_id: aid, user_id: userId, title: title ?? 'New session', created_at: now, updated_at: now },
+        { id, agent_id: aid, user_id: userId, title: title ?? 'New session', pinned: 0, folder: null, created_at: now, updated_at: now },
       ));
     } catch (err) { next(err); }
   });
@@ -173,7 +199,7 @@ export function sessionsRouter(): Router {
     } catch (err) { next(err); }
   });
 
-  // Update session title — ownership enforced
+  // Update session title/pinned/folder — ownership enforced
   router.patch('/api/sessions/:id', authenticate, (req, res, next) => {
     try {
       const db      = getDb();
@@ -184,13 +210,42 @@ export function sessionsRouter(): Router {
 
       if (!session) { res.status(404).json({ error: 'NOT_FOUND' }); return; }
 
-      const { title } = req.body as { title?: string };
-      if (!title?.trim()) { res.status(400).json({ error: 'INVALID_INPUT', message: 'title is required' }); return; }
+      const { title, pinned, folder } = req.body as { title?: string; pinned?: boolean; folder?: string | null };
+
+      // At least one field must be provided
+      if (title === undefined && pinned === undefined && folder === undefined) {
+        res.status(400).json({ error: 'INVALID_INPUT', message: 'Provide at least one of: title, pinned, folder' });
+        return;
+      }
+
+      // Validate title if provided
+      if (title !== undefined && !title.trim()) {
+        res.status(400).json({ error: 'INVALID_INPUT', message: 'title cannot be empty' });
+        return;
+      }
 
       const now = nowISO();
-      db.prepare(`UPDATE sessions SET title = ?, updated_at = ? WHERE id = ?`).run(title.trim(), now, session.id);
+      const updates: string[] = ['updated_at = ?'];
+      const values: unknown[] = [now];
 
-      res.json({ ...rowToSession(session), title: title.trim(), updatedAt: now });
+      if (title !== undefined) {
+        updates.push('title = ?');
+        values.push(title.trim());
+      }
+      if (pinned !== undefined) {
+        updates.push('pinned = ?');
+        values.push(pinned ? 1 : 0);
+      }
+      if (folder !== undefined) {
+        updates.push('folder = ?');
+        values.push(folder || null);  // empty string → null
+      }
+
+      values.push(session.id);
+      db.prepare(`UPDATE sessions SET ${updates.join(', ')} WHERE id = ?`).run(...values);
+
+      const updated = db.prepare(`SELECT * FROM sessions WHERE id = ?`).get(session.id) as SessionRow;
+      res.json(rowToSession(updated));
     } catch (err) { next(err); }
   });
 
