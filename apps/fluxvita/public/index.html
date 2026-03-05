@@ -130,7 +130,7 @@
 
     /* ─── Input ───────────────────────────────────────────────────────── */
     #input-area { padding: 16px; border-top: 1px solid #1f2a3c; display: flex; gap: 8px; }
-    #msg-input { flex: 1; background: #111827; border: 1px solid #1f2a3c; border-radius: 8px; padding: 10px 14px; color: #e2e8f0; font-size: 14px; outline: none; resize: none; max-height: 120px; font-family: inherit; }
+    #msg-input { flex: 1; background: #111827; border: 1px solid #1f2a3c; border-radius: 8px; padding: 10px 14px; color: #e2e8f0; font-size: 14px; outline: none; resize: none; max-height: 120px; overflow-y: auto; font-family: inherit; }
     #msg-input:focus { border-color: #2563eb; }
     #send-btn { background: #2563eb; color: white; border: none; border-radius: 8px; padding: 10px 20px; cursor: pointer; font-weight: 500; font-size: 14px; align-self: flex-end; min-width: 72px; }
     #send-btn:hover:not(:disabled) { background: #3b82f6; }
@@ -794,6 +794,7 @@
           streaming.value = true;
           streamingText.value = '';
           inputText.value = '';
+          resetInputHeight();
 
           messages.value.push({ id: Date.now(), role: 'user', content, createdAt: new Date().toISOString() });
           await nextTick(); scrollToBottom();
@@ -1023,6 +1024,18 @@
 
         function onKeydown(e) {
           if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+        }
+
+        function autoResizeInput(e) {
+          const el = e?.target ?? document.getElementById('msg-input');
+          if (!el) return;
+          el.style.height = 'auto';
+          el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+        }
+
+        function resetInputHeight() {
+          const el = document.getElementById('msg-input');
+          if (el) el.style.height = 'auto';
         }
 
         // ─── Global keyboard shortcuts ────────────────────────────────
@@ -1505,7 +1518,7 @@
 
         return {
           sessions, activeSessionId, messages, inputText, streaming, streamingText, healthy, activeSession, edition, engineName,
-          selectSession, newSession, sendMessage, regenerateMessage, toggleFeedback, onKeydown,
+          selectSession, newSession, sendMessage, regenerateMessage, toggleFeedback, onKeydown, autoResizeInput,
           renamingSessionId, renameText, startRename, confirmRename, cancelRename, deleteSession, exportSession,
           togglePin, folders, folderFilter, setFolderFilter, openFolderInput, showFolderInput, folderInputText, confirmFolder, cancelFolder, renameFolder, deleteFolder,
           sessionFilter, filteredSessions, hasMore, nextCursor, loadingMore, loadMoreMessages,
@@ -1658,6 +1671,7 @@
               placeholder="Ask FluxVita anything... (Enter to send, Shift+Enter for newline)"
               rows="1"
               @keydown="onKeydown"
+              @input="autoResizeInput"
             ></textarea>
             <button
               id="send-btn"

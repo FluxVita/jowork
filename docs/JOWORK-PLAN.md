@@ -227,6 +227,7 @@
 | Phase 75：Session Fork（对话分叉） | ✅ 完成 | 2026-03-05 | 迁移007_session_forked_from(forked_from列)；POST /api/sessions/:id/fork(afterMessageId可选，复制消息+FTS索引)；前端🔀Fork按钮(assistant+user消息均可fork)；forkedFrom字段贯穿类型+API+前端；apps/jowork+apps/fluxvita均更新；4新测试；pnpm lint+test全绿（393/393） |
 | Phase 76：Connector 自动同步配置 UI | ✅ 完成 | 2026-03-05 | updateConnectorConfig函数(name/settings/syncSchedule更新)；PATCH /api/connectors/:id端点；前端Sync Schedule行(Auto-sync状态+lastSyncAt+Edit/Presets/cron输入/Save)；matchesCron测试+CRUD测试+路由测试；apps/jowork+apps/fluxvita均更新；12新测试；pnpm lint+test全绿（405/405） |
 | Phase 77：Session 文件夹管理增强 | ✅ 完成 | 2026-03-05 | PATCH /api/sessions/folders/:name(重命名，级联更新)；DELETE /api/sessions/folders/:name(删除，级联设NULL)；前端folder chips双击重命名+右键删除；用户隔离；apps/jowork+apps/fluxvita均更新；4新测试；pnpm lint+test全绿（409/409） |
+| Phase 78：自动展开输入框 | ✅ 完成 | 2026-03-05 | textarea autoResizeInput(@input自动调整高度，max-height:120px后滚动)；resetInputHeight(发送后重置)；overflow-y:auto；apps/jowork+apps/fluxvita均更新；pnpm lint全绿（纯前端） |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*
@@ -3466,6 +3467,15 @@ GET /health → {
 - [x] `apps/fluxvita/public/index.html`：同步上述全部改动
 - [x] `sessions.test.ts` 追加 4 个测试（rename 级联 + delete 级联设 NULL + 用户隔离 + 路由存在验证）
 - [x] pnpm lint+test 全绿（409/409）
+
+### Phase 78: 自动展开输入框（0.1 天）
+
+- [x] `autoResizeInput(e)` 函数：`@input` 事件触发，`el.style.height = 'auto'` → `Math.min(scrollHeight, 120) + 'px'`
+- [x] `resetInputHeight()` 函数：发送消息后重置 textarea 高度为 auto
+- [x] CSS `#msg-input` 添加 `overflow-y: auto`（超过 max-height 后可滚动）
+- [x] `apps/jowork/public/index.html`：textarea 添加 `@input="autoResizeInput"`，sendMessage 调用 `resetInputHeight()`
+- [x] `apps/fluxvita/public/index.html`：同步上述改动
+- [x] pnpm lint 全绿（纯前端改动，无新后端代码）
 
 **AI 辅助开发预计总工期：6-10 个工作日**（全程 AI 写代码，人工只做决策/审查/测试）
 

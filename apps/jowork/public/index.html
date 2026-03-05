@@ -129,7 +129,7 @@
 
     /* ─── Input ───────────────────────────────────────────────────────── */
     #input-area { padding: 16px; border-top: 1px solid var(--border); display: flex; gap: 8px; }
-    #msg-input { flex: 1; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; color: var(--text-primary); font-size: 14px; outline: none; resize: none; max-height: 120px; font-family: inherit; }
+    #msg-input { flex: 1; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; color: var(--text-primary); font-size: 14px; outline: none; resize: none; max-height: 120px; overflow-y: auto; font-family: inherit; }
     #msg-input:focus { border-color: var(--border-focus); }
     #send-btn { background: var(--accent); color: white; border: none; border-radius: 8px; padding: 10px 20px; cursor: pointer; font-weight: 500; font-size: 14px; align-self: flex-end; min-width: 72px; }
     #send-btn:hover:not(:disabled) { background: var(--accent-hover); }
@@ -838,6 +838,7 @@
           streaming.value = true;
           streamingText.value = '';
           inputText.value = '';
+          resetInputHeight();
 
           messages.value.push({ id: Date.now(), role: 'user', content, createdAt: new Date().toISOString() });
           await nextTick(); scrollToBottom();
@@ -1071,6 +1072,19 @@
 
         function onKeydown(e) {
           if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+        }
+
+        function autoResizeInput(e) {
+          const el = e?.target ?? document.getElementById('msg-input');
+          if (!el) return;
+          el.style.height = 'auto';
+          el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+        }
+
+        // Reset textarea height after message sent
+        function resetInputHeight() {
+          const el = document.getElementById('msg-input');
+          if (el) el.style.height = 'auto';
         }
 
         // ─── Global keyboard shortcuts ────────────────────────────────
@@ -1587,7 +1601,7 @@
 
         return {
           sessions, activeSessionId, messages, inputText, streaming, streamingText, healthy, activeSession,
-          selectSession, newSession, showNewSessionPicker, sendMessage, regenerateMessage, toggleFeedback, onKeydown,
+          selectSession, newSession, showNewSessionPicker, sendMessage, regenerateMessage, toggleFeedback, onKeydown, autoResizeInput,
           renamingSessionId, renameText, startRename, confirmRename, cancelRename, deleteSession, exportSession,
           togglePin, folders, folderFilter, setFolderFilter, openFolderInput, showFolderInput, folderInputText, confirmFolder, cancelFolder, renameFolder, deleteFolder,
           sessionFilter, filteredSessions, hasMore, nextCursor, loadingMore, loadMoreMessages,
@@ -1738,6 +1752,7 @@
               placeholder="Ask your AI coworker anything... (Enter to send, Shift+Enter for newline)"
               rows="1"
               @keydown="onKeydown"
+              @input="autoResizeInput"
             ></textarea>
             <button
               id="send-btn"
