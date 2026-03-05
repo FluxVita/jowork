@@ -1,7 +1,7 @@
 {
   "name": "@jowork/core",
   "version": "0.1.0",
-  "description": "Jowork core \u2014 open-source AI work partner platform",
+  "description": "Jowork core — open-source AI work partner platform",
   "type": "module",
   "license": "AGPL-3.0",
   "main": "dist/index.js",
@@ -31,16 +31,17 @@
     "jsonwebtoken": "^9.0.3",
     "mailparser": "^3.9.3",
     "node-pty": "^1.1.0",
+    "stripe": "^17.7.0",
     "ws": "^8.18.3"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
     "@types/express": "^5.0.3",
+    "@types/express-serve-static-core": "*",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/mailparser": "^3.4.6",
     "@types/node": "^25.3.2",
     "@types/ws": "^8.5.14",
-    "typescript": "^5.9.3",
-    "@types/express-serve-static-core": "*"
+    "typescript": "^5.9.3"
   }
 }

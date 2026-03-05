@@ -1,7 +1,51 @@
 import type { Request, Response, NextFunction } from 'express';
 import { verifyToken } from '../auth/jwt.js';
 import { getUserById } from '../auth/users.js';
+import { logWithContext } from '../utils/logger.js';
 import type { User } from '../types.js';
+
+/** 慢请求阈值（毫秒），超过则写 warn 日志 */
+const SLOW_REQUEST_MS = 3000;
+/** 需要记录耗时的路径前缀 */
+const TRACK_PATHS = ['/api/agent', '/api/models', '/api/datamap', '/api/connectors'];
+
+/** 请求日志中间件 — 记录慢请求 + 错误响应到持久化日志 */
+export function requestLogger(req: Request, res: Response, next: NextFunction) {
+  const start = Date.now();
+  const path = req.path;
+
+  // 只追踪 API 路径
+  const shouldTrack = TRACK_PATHS.some(p => path.startsWith(p));
+  if (!shouldTrack) { next(); return; }
+
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    const userId = (req as Request & { user?: User }).user?.user_id;
+    const status = res.statusCode;
+
+    // 慢请求写 warn
+    if (duration >= SLOW_REQUEST_MS) {
+      logWithContext('warn', 'http', `SLOW ${req.method} ${path} ${status} ${duration}ms`, {
+        user_id: userId,
+        request_path: `${req.method} ${path}`,
+        duration_ms: duration,
+        context: { status, query: req.query },
+      });
+      return;
+    }
+    // 服务端错误写 error
+    if (status >= 500) {
+      logWithContext('error', 'http', `ERROR ${req.method} ${path} ${status} ${duration}ms`, {
+        user_id: userId,
+        request_path: `${req.method} ${path}`,
+        duration_ms: duration,
+        context: { status },
+      });
+    }
+  });
+
+  next();
+}
 
 // 扩展 Express Request
 declare global {

@@ -5,6 +5,7 @@ import {
 } from '../../models/router.js';
 import { authMiddleware, requireFeishuAuth, requireRole } from '../middleware.js';
 import { getDb } from '../../datamap/db.js';
+import { getAllModelPricing } from '../../models/tokenizer.js';
 import type { TaskType } from '../../models/router.js';
 
 const router = Router();
@@ -135,6 +136,186 @@ router.get('/usage', authMiddleware, (req, res) => {
   }), { tokens_in: 0, tokens_out: 0, cost_usd: 0, requests: 0 });
 
   res.json({ days, since, rows, totals });
+});
+
+/**
+ * GET /api/models/usage/accounts?days=30
+ * Owner/Admin 专用：每个账户的 token 消耗 + 成本汇总（开发者视角）
+ */
+router.get('/usage/accounts', authMiddleware, requireRole('admin', 'owner'), (req, res) => {
+  const db = getDb();
+  const days = Math.min(parseInt(req.query['days'] as string ?? '30', 10), 365);
+  const since = new Date(Date.now() - days * 86400_000).toISOString().slice(0, 10);
+
+  type AccountRow = {
+    user_id: string; user_name: string | null; role: string | null;
+    tokens_in: number; tokens_out: number; cost_usd: number;
+    requests: number; active_days: number; last_active: string | null;
+  };
+
+  const accounts = db.prepare(`
+    SELECT mc.user_id,
+           u.name  AS user_name,
+           u.role  AS role,
+           SUM(mc.tokens_in)   AS tokens_in,
+           SUM(mc.tokens_out)  AS tokens_out,
+           SUM(mc.cost_usd)    AS cost_usd,
+           COUNT(*)            AS requests,
+           COUNT(DISTINCT mc.date) AS active_days,
+           MAX(mc.date)        AS last_active
+    FROM model_costs mc
+    LEFT JOIN users u ON u.user_id = mc.user_id
+    WHERE mc.date >= ?
+    GROUP BY mc.user_id
+    ORDER BY cost_usd DESC
+  `).all(since) as AccountRow[];
+
+  type TotalsRow = { tokens_in: number; tokens_out: number; cost_usd: number; requests: number; unique_users: number };
+  const totals = db.prepare(`
+    SELECT SUM(tokens_in) as tokens_in, SUM(tokens_out) as tokens_out,
+           SUM(cost_usd) as cost_usd, COUNT(*) as requests, COUNT(DISTINCT user_id) as unique_users
+    FROM model_costs WHERE date >= ?
+  `).get(since) as TotalsRow;
+
+  res.json({ days, since, accounts, totals });
+});
+
+/**
+ * GET /api/models/usage/hourly?date=YYYY-MM-DD&user_id=xxx
+ * 按小时粒度统计（当天/指定日期）
+ * Admin 可看全局或指定用户；普通用户只能看自己
+ */
+router.get('/usage/hourly', authMiddleware, (req, res) => {
+  const db = getDb();
+  const isAdmin = ['owner', 'admin'].includes(req.user!.role);
+  const date = (req.query['date'] as string) || new Date().toISOString().slice(0, 10);
+  const targetUserId = (isAdmin && req.query['user_id'])
+    ? (req.query['user_id'] as string)
+    : req.user!.user_id;
+
+  type HourRow = { hour: string; tokens_in: number; tokens_out: number; cost_usd: number; requests: number };
+
+  // model_costs 只有 date 字段，小时粒度需从 session_messages 获取
+  const byHour = (isAdmin && !req.query['user_id']
+    ? db.prepare(`
+        SELECT strftime('%H', sm.created_at) AS hour,
+               SUM(sm.tokens)   AS tokens_in,
+               0                AS tokens_out,
+               SUM(sm.cost_usd) AS cost_usd,
+               COUNT(*)         AS requests
+        FROM session_messages sm
+        JOIN sessions s ON s.session_id = sm.session_id
+        WHERE sm.role = 'assistant' AND date(sm.created_at) = ?
+        GROUP BY hour ORDER BY hour
+      `).all(date)
+    : db.prepare(`
+        SELECT strftime('%H', sm.created_at) AS hour,
+               SUM(sm.tokens)   AS tokens_in,
+               0                AS tokens_out,
+               SUM(sm.cost_usd) AS cost_usd,
+               COUNT(*)         AS requests
+        FROM session_messages sm
+        JOIN sessions s ON s.session_id = sm.session_id
+        WHERE sm.role = 'assistant' AND date(sm.created_at) = ? AND s.user_id = ?
+        GROUP BY hour ORDER BY hour
+      `).all(date, targetUserId)
+  ) as HourRow[];
+
+  // 补全 0-23 小时
+  const hourMap = new Map(byHour.map(r => [r.hour, r]));
+  const full = Array.from({ length: 24 }, (_, i) => {
+    const h = String(i).padStart(2, '0');
+    return hourMap.get(h) ?? { hour: h, tokens_in: 0, tokens_out: 0, cost_usd: 0, requests: 0 };
+  });
+
+  res.json({ date, user_id: targetUserId, hourly: full });
+});
+
+/**
+ * GET /api/models/pricing-engine?days=30
+ * Owner 专属定价引擎：按行为类型分析 token 成本，辅助定价决策
+ */
+router.get('/pricing-engine', authMiddleware, requireRole('owner'), (req, res) => {
+  const db = getDb();
+  const days = Math.min(parseInt(req.query['days'] as string ?? '30'), 365);
+  const since = new Date(Date.now() - days * 86400_000).toISOString().slice(0, 10);
+
+  type BehaviorRow = {
+    behavior: string;
+    tool_name: string | null;
+    model: string;
+    calls: number;
+    avg_tokens_in: number;
+    avg_tokens_out: number;
+    avg_cost_usd: number;
+    total_cost_usd: number;
+  };
+
+  const behaviors = db.prepare(`
+    SELECT
+      COALESCE(behavior, 'untagged') as behavior,
+      tool_name,
+      model,
+      COUNT(*) as calls,
+      AVG(tokens_in) as avg_tokens_in,
+      AVG(tokens_out) as avg_tokens_out,
+      AVG(cost_usd) as avg_cost_usd,
+      SUM(cost_usd) as total_cost_usd
+    FROM model_costs
+    WHERE date >= ?
+    GROUP BY behavior, tool_name, model
+    ORDER BY total_cost_usd DESC
+  `).all(since) as BehaviorRow[];
+
+  const behaviorsWithCredits = behaviors.map(row => ({
+    ...row,
+    avg_tokens_in: Math.round(row.avg_tokens_in),
+    avg_tokens_out: Math.round(row.avg_tokens_out),
+    total_cost_usd: Math.round(row.total_cost_usd * 1_000_000) / 1_000_000,
+    avg_cost_usd: Math.round(row.avg_cost_usd * 1_000_000) / 1_000_000,
+    // 每 1K 积分（= 1M tokens）的平均成本（USD）
+    cost_per_1k_credits: row.avg_tokens_in + row.avg_tokens_out > 0
+      ? Math.round((row.avg_cost_usd / ((row.avg_tokens_in + row.avg_tokens_out) / 1_000_000)) * 100) / 100
+      : 0,
+  }));
+
+  type TotalsRow = { calls: number; tokens_in: number; tokens_out: number; cost_usd: number; unique_users: number };
+  const totals = db.prepare(`
+    SELECT
+      COUNT(*) as calls,
+      SUM(tokens_in) as tokens_in,
+      SUM(tokens_out) as tokens_out,
+      SUM(cost_usd) as cost_usd,
+      COUNT(DISTINCT user_id) as unique_users
+    FROM model_costs
+    WHERE date >= ?
+  `).get(since) as TotalsRow;
+
+  const totalTokens = (totals.tokens_in ?? 0) + (totals.tokens_out ?? 0);
+  const avgTokensPerCall = totals.calls > 0 ? totalTokens / totals.calls : 0;
+  const avgCostPerCredit = avgTokensPerCall > 0
+    ? ((totals.cost_usd ?? 0) / totals.calls) / (avgTokensPerCall / 1000)
+    : 0;
+
+  res.json({
+    period_days: days,
+    since,
+    behaviors: behaviorsWithCredits,
+    model_pricing: getAllModelPricing(),
+    credit_analysis: {
+      tokens_per_credit: 1000,
+      avg_cost_per_credit_usd: Math.round(avgCostPerCredit * 1_000_000) / 1_000_000,
+      suggested_price_30pct_margin: Math.round(avgCostPerCredit / 0.7 * 100) / 100,
+      suggested_price_50pct_margin: Math.round(avgCostPerCredit / 0.5 * 100) / 100,
+    },
+    totals: {
+      calls: totals.calls ?? 0,
+      tokens_in: totals.tokens_in ?? 0,
+      tokens_out: totals.tokens_out ?? 0,
+      cost_usd: Math.round((totals.cost_usd ?? 0) * 1_000_000) / 1_000_000,
+      unique_users: totals.unique_users ?? 0,
+    },
+  });
 });
 
 export default router;

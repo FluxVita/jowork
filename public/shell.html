@@ -13,13 +13,13 @@
   --sh-bg:      #0f0f12;
   --sh-sidebar: #18181b;
   --sh-card:    #252528;
-  --sh-sep:     rgba(255,255,255,0.055);
+  --sh-sep:     rgba(255,255,255,0.09);
 }
 [data-theme="light"] {
   --sh-bg:      #f0f0ed;
   --sh-sidebar: #e8e8e4;
   --sh-card:    #ffffff;
-  --sh-sep:     rgba(0,0,0,0.07);
+  --sh-sep:     rgba(0,0,0,0.09);
 }
 
 html, body {
@@ -28,6 +28,8 @@ html, body {
   color: var(--text);
   font-family: var(--font, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif);
   overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* ═══════════════════════════════════════
@@ -45,8 +47,10 @@ html, body {
 }
 
 .login-box {
-  background: var(--sh-card);
-  border: 1px solid var(--sh-sep);
+  background: rgba(37, 37, 40, 0.88);
+  border: 1px solid rgba(255,255,255,0.07);
+  backdrop-filter: blur(24px) saturate(1.3);
+  -webkit-backdrop-filter: blur(24px) saturate(1.3);
   border-radius: var(--radius-lg, 14px);
   padding: 36px 32px 32px;
   width: 340px;
@@ -56,6 +60,10 @@ html, body {
   overflow: hidden;
 }
 [data-theme="light"] .login-box {
+  background: rgba(255, 255, 255, 0.86);
+  border: 1px solid rgba(0,0,0,0.07);
+  backdrop-filter: blur(24px) saturate(1.2);
+  -webkit-backdrop-filter: blur(24px) saturate(1.2);
   box-shadow: 0 8px 32px rgba(0,0,0,0.1), 0 1px 0 rgba(255,255,255,0.8) inset;
 }
 /* 顶部品牌色条 */
@@ -88,8 +96,14 @@ html, body {
   border-radius: var(--radius-sm, 7px); color: var(--text); font-size: 14px;
   outline: none; font-family: inherit; transition: border-color .15s;
 }
-.login-input:focus { border-color: var(--accent); }
+.login-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(157,216,74,0.18);
+}
 [data-theme="light"] .login-input { background: rgba(0,0,0,0.04); }
+[data-theme="light"] .login-input:focus {
+  box-shadow: 0 0 0 3px rgba(90,138,26,0.15);
+}
 
 .btn-primary {
   background: var(--accent, #9DD84A); color: #0a0a0b;
@@ -120,6 +134,8 @@ html, body {
   position: relative;
   transition: width .22s cubic-bezier(0.16, 1, 0.3, 1);
   z-index: 10;
+  -webkit-user-select: none;
+  user-select: none;
 }
 .sidebar.collapsed { width: 54px; }
 
@@ -191,14 +207,14 @@ html[data-platform="tauri"][data-theme="light"]:not(.fullscreen) .sidebar-brand 
 .nav-group { margin-bottom: 4px; }
 .nav-group-label {
   font-size: 10px; font-weight: 600; color: var(--text2); opacity: 0.5;
-  letter-spacing: 0.08em; text-transform: uppercase;
+  letter-spacing: 0.04em; text-transform: uppercase;
   padding: 8px 8px 4px; display: block;
 }
 .sidebar.collapsed .nav-group-label { display: none; }
 
 .nav-item {
   display: flex; align-items: center; gap: 8px;
-  padding: 0 9px; height: 32px;
+  padding: 0 9px; height: 30px;
   border-radius: 7px; border: none; background: transparent;
   color: var(--text2); font-size: 13px; font-weight: 500;
   cursor: pointer; font-family: inherit; width: 100%; text-align: left;
@@ -293,18 +309,31 @@ html[data-platform="tauri"][data-theme="light"]:not(.fullscreen) .sidebar-brand 
 /* Tooltip */
 .nav-tooltip {
   position: fixed; z-index: 9999;
-  background: var(--surface2, #3a3a3c); border: 1px solid var(--border, rgba(255,255,255,0.08));
+  background: rgba(52, 52, 56, 0.97);
+  border: none;
   color: var(--text); font-size: 12px; font-weight: 500;
-  padding: 5px 10px; border-radius: 6px;
+  padding: 4px 9px; border-radius: 5px;
   pointer-events: none; opacity: 0; transition: opacity .12s;
-  white-space: nowrap; box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.55), 0 0 0 0.5px rgba(255,255,255,0.07);
   transform: translateY(-50%);
 }
 .nav-tooltip.visible { opacity: 1; }
-[data-theme="light"] .nav-tooltip { background: #fff; border-color: rgba(0,0,0,0.1); color: rgba(0,0,0,0.85); box-shadow: 0 4px 12px rgba(0,0,0,0.12); }
+[data-theme="light"] .nav-tooltip {
+  background: rgba(248, 248, 248, 0.98);
+  border: none;
+  color: rgba(0,0,0,0.82);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.16), 0 0 0 0.5px rgba(0,0,0,0.08);
+}
 
-@keyframes panelFadeIn { from { opacity: 0; } to { opacity: 1; } }
-.panel-frame.fade-in { animation: panelFadeIn .18s ease-out; }
+@keyframes panelFadeIn {
+  from { opacity: 0; transform: scale(0.985); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.panel-frame.fade-in {
+  animation: panelFadeIn .22s cubic-bezier(0.16, 1, 0.3, 1);
+  transform-origin: center top;
+}
 
 /* File tree panel */
 #file-tree-panel {
@@ -326,6 +355,7 @@ html[data-platform="tauri"][data-theme="light"]:not(.fullscreen) .sidebar-brand 
   background: rgba(13,13,16,0.92);
   backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--sh-sep); -webkit-app-region: drag;
+  -webkit-user-select: none; user-select: none;
 }
 .panel-tabbar.visible { display: flex; }
 [data-theme="light"] .panel-tabbar { background: rgba(240,240,237,0.92); }
@@ -420,6 +450,168 @@ html[data-platform="tauri"][data-theme="light"]:not(.fullscreen) .sidebar-brand 
 .update-btn { padding: 5px 12px; background: var(--accent); color: #0a0a0b; border: none; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; }
 .update-dismiss { padding: 5px 8px; background: transparent; border: none; color: var(--text2); font-size: 12px; cursor: pointer; font-family: inherit; }
 @keyframes slideUp { from { opacity: 0; transform: translateX(-50%) translateY(10px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+
+/* ═══════════════════════════════════════
+   Onboarding overlay
+   ═══════════════════════════════════════ */
+.onboarding-overlay {
+  position: fixed; inset: 0; z-index: 10001;
+  background: var(--sh-bg);
+  background-image: radial-gradient(circle, rgba(255,255,255,0.025) 1px, transparent 1px);
+  background-size: 28px 28px;
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+  animation: fadeIn .28s ease-out;
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.onboarding-card {
+  background: var(--sh-card, #252528);
+  border: 1px solid var(--sh-sep);
+  border-radius: 18px;
+  padding: 40px 40px 36px;
+  width: 520px; max-width: 100%;
+  box-shadow: 0 32px 80px rgba(0,0,0,0.65), 0 1px 0 rgba(255,255,255,0.04) inset;
+  position: relative; overflow: hidden;
+}
+.onboarding-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: var(--gradient-brand, linear-gradient(90deg,#9DD84A,#5CC8D8,#C4B8E8,#E8A898));
+}
+[data-theme="light"] .onboarding-card {
+  background: #ffffff; border-color: rgba(0,0,0,0.08);
+  box-shadow: 0 8px 40px rgba(0,0,0,0.12), 0 1px 0 rgba(255,255,255,0.8) inset;
+}
+
+/* Progress dots */
+.onboarding-progress {
+  display: flex; gap: 6px; margin-bottom: 28px; justify-content: center;
+}
+.ob-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: rgba(255,255,255,0.12); transition: all .2s;
+}
+.ob-dot.active { background: var(--accent, #9DD84A); width: 20px; border-radius: 3px; }
+.ob-dot.done { background: rgba(157,216,74,0.35); }
+[data-theme="light"] .ob-dot { background: rgba(0,0,0,0.1); }
+[data-theme="light"] .ob-dot.active { background: var(--accent2, #5a8a1a); }
+[data-theme="light"] .ob-dot.done { background: rgba(90,138,26,0.3); }
+
+.onboarding-title {
+  font-size: 22px; font-weight: 700; color: var(--text);
+  margin: 0 0 8px; letter-spacing: -0.5px; text-align: center;
+}
+.onboarding-sub {
+  font-size: 14px; color: var(--text2); margin: 0 0 28px; text-align: center; line-height: 1.55;
+}
+
+/* Choice grid */
+.choice-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 8px;
+}
+.choice-card {
+  background: rgba(255,255,255,0.04); border: 1.5px solid var(--sh-sep);
+  border-radius: 12px; padding: 22px 16px 18px;
+  cursor: pointer; font-family: inherit; text-align: center;
+  transition: border-color .15s, background .15s, transform .1s;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+}
+.choice-card:hover {
+  background: rgba(255,255,255,0.07); border-color: rgba(157,216,74,0.35);
+  transform: translateY(-1px);
+}
+.choice-card:active { transform: translateY(0); }
+.choice-card.selected {
+  border-color: var(--accent, #9DD84A);
+  background: rgba(157,216,74,0.08);
+}
+[data-theme="light"] .choice-card { background: rgba(0,0,0,0.025); border-color: rgba(0,0,0,0.09); }
+[data-theme="light"] .choice-card:hover { background: rgba(90,138,26,0.05); border-color: rgba(90,138,26,0.3); }
+[data-theme="light"] .choice-card.selected { border-color: var(--accent2,#5a8a1a); background: rgba(90,138,26,0.07); }
+
+.choice-icon { font-size: 26px; line-height: 1; }
+.choice-label { font-size: 14px; font-weight: 600; color: var(--text); letter-spacing: -.2px; }
+.choice-desc { font-size: 12px; color: var(--text2); line-height: 1.4; }
+
+/* Key input step */
+.onboarding-input {
+  width: 100%; padding: 11px 14px; box-sizing: border-box;
+  background: rgba(255,255,255,0.04); border: 1px solid var(--sh-sep);
+  border-radius: 8px; color: var(--text); font-size: 14px;
+  outline: none; font-family: inherit; transition: border-color .15s;
+  margin-bottom: 16px;
+}
+.onboarding-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(157,216,74,0.18); }
+[data-theme="light"] .onboarding-input { background: rgba(0,0,0,0.04); }
+
+.onboarding-actions {
+  display: flex; gap: 8px; justify-content: flex-end;
+}
+.btn-secondary {
+  padding: 9px 16px; background: transparent; border: 1px solid var(--sh-sep);
+  border-radius: 7px; color: var(--text2); font-size: 13px; font-weight: 500;
+  cursor: pointer; font-family: inherit; transition: background .12s, color .12s;
+}
+.btn-secondary:hover { background: rgba(255,255,255,0.06); color: var(--text); }
+[data-theme="light"] .btn-secondary { border-color: rgba(0,0,0,0.1); }
+[data-theme="light"] .btn-secondary:hover { background: rgba(0,0,0,0.05); }
+
+/* ═══════════════════════════════════════
+   Settings modal
+   ═══════════════════════════════════════ */
+.settings-backdrop {
+  position: fixed; inset: 0; z-index: 10000;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px; animation: fadeIn .18s ease-out;
+}
+.settings-dialog {
+  background: var(--sh-card, #252528);
+  border: 1px solid var(--sh-sep);
+  border-radius: 14px;
+  width: 420px; max-width: 100%;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+  overflow: hidden;
+}
+[data-theme="light"] .settings-dialog { background: #ffffff; border-color: rgba(0,0,0,0.08); }
+
+.settings-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 20px 16px; border-bottom: 1px solid var(--sh-sep);
+}
+.settings-header h3 { margin: 0; font-size: 15px; font-weight: 600; color: var(--text); letter-spacing: -.2px; }
+.settings-close {
+  background: transparent; border: none; color: var(--text2); font-size: 18px;
+  cursor: pointer; padding: 2px 6px; border-radius: 5px; line-height: 1;
+  transition: color .12s, background .12s; font-family: inherit;
+}
+.settings-close:hover { color: var(--text); background: rgba(255,255,255,0.07); }
+
+.settings-body { padding: 16px 20px 20px; display: flex; flex-direction: column; gap: 14px; }
+
+.pref-row { display: flex; align-items: center; gap: 12px; }
+.pref-row label { font-size: 13px; color: var(--text2); width: 120px; flex-shrink: 0; }
+.pref-select {
+  flex: 1; padding: 7px 10px; background: rgba(255,255,255,0.05);
+  border: 1px solid var(--sh-sep); border-radius: 7px; color: var(--text);
+  font-size: 13px; font-family: inherit; cursor: pointer; outline: none;
+  transition: border-color .12s;
+}
+.pref-select:focus { border-color: var(--accent); }
+[data-theme="light"] .pref-select { background: rgba(0,0,0,0.04); border-color: rgba(0,0,0,0.1); }
+
+.pref-apikey {
+  flex: 1; display: flex; align-items: center; gap: 8px;
+  font-size: 13px; color: var(--text2);
+}
+.btn-small {
+  padding: 4px 10px; background: transparent; border: 1px solid var(--sh-sep);
+  border-radius: 5px; color: var(--text2); font-size: 12px; cursor: pointer;
+  font-family: inherit; transition: background .12s, color .12s;
+}
+.btn-small:hover { background: rgba(255,255,255,0.07); color: var(--text); }
+[data-theme="light"] .btn-small { border-color: rgba(0,0,0,0.1); }
 </style>
 </head>
 <body>
@@ -436,6 +628,124 @@ html[data-platform="tauri"][data-theme="light"]:not(.fullscreen) .sidebar-brand 
     <input class="login-input" id="login-displayname" v-model="loginForm.displayName" @keydown.enter="localLoginVue" type="text" placeholder="Display name (optional)" autocomplete="name">
     <button class="btn-primary" id="login-btn" @click="localLoginVue">Get Started</button>
     <div id="login-error" class="login-error"></div>
+  </div>
+</div>
+
+<!-- ── Onboarding overlay ── -->
+<div v-if="shellState.onboardingStep" class="onboarding-overlay">
+  <div class="onboarding-card">
+    <!-- 进度条 -->
+    <div class="onboarding-progress">
+      <div :class="['ob-dot', shellState.onboardingStep === 'use_case' ? 'active' : 'done']"></div>
+      <div :class="['ob-dot', shellState.onboardingStep === 'api_mode' ? 'active' : (shellState.onboardingStep === 'use_case' ? '' : 'done')]"></div>
+      <div :class="['ob-dot', shellState.onboardingStep === 'own_key_input' ? 'active' : (shellState.onboardingStep === 'deploy_mode' ? 'done' : '')]"></div>
+      <div :class="['ob-dot', shellState.onboardingStep === 'deploy_mode' ? 'active' : '']"></div>
+    </div>
+
+    <!-- Step: use_case -->
+    <div v-if="shellState.onboardingStep === 'use_case'">
+      <h2 class="onboarding-title">How will you use Jowork?</h2>
+      <p class="onboarding-sub">This helps us personalize your experience</p>
+      <div class="choice-grid">
+        <button class="choice-card" onclick="advanceOnboarding('use_case','personal')">
+          <div class="choice-icon">👤</div>
+          <div class="choice-label">Personal</div>
+          <div class="choice-desc">Just for yourself, side projects, freelance</div>
+        </button>
+        <button class="choice-card" onclick="advanceOnboarding('use_case','team')">
+          <div class="choice-icon">👥</div>
+          <div class="choice-label">Team</div>
+          <div class="choice-desc">For a team or organization with members</div>
+        </button>
+      </div>
+    </div>
+
+    <!-- Step: api_mode -->
+    <div v-if="shellState.onboardingStep === 'api_mode'">
+      <h2 class="onboarding-title">AI model setup</h2>
+      <p class="onboarding-sub">Either way, all features work the same</p>
+      <div class="choice-grid">
+        <button class="choice-card" onclick="advanceOnboarding('api_mode','own_key')">
+          <div class="choice-icon">🔑</div>
+          <div class="choice-label">My own API Key</div>
+          <div class="choice-desc">Use your Anthropic or OpenAI key directly</div>
+        </button>
+        <button class="choice-card" onclick="advanceOnboarding('api_mode','subscription')">
+          <div class="choice-icon">⚡</div>
+          <div class="choice-label">Jowork Plan</div>
+          <div class="choice-desc">Use Jowork's built-in model access</div>
+        </button>
+      </div>
+    </div>
+
+    <!-- Step: own_key_input -->
+    <div v-if="shellState.onboardingStep === 'own_key_input'">
+      <h2 class="onboarding-title">Enter your API Key</h2>
+      <p class="onboarding-sub">Stored encrypted on your server. Never shared.</p>
+      <input class="onboarding-input" v-model="shellState.onboardingChoice.ownApiKey" type="password" placeholder="sk-..." id="ob-api-key-input" @keydown.enter="advanceOnboarding('own_key_input', shellState.onboardingChoice.ownApiKey)">
+      <div class="onboarding-actions">
+        <button class="btn-secondary" onclick="advanceOnboarding('own_key_input','')">Skip for now</button>
+        <button class="btn-primary" style="width:auto;padding:9px 20px;" onclick="advanceOnboarding('own_key_input', shellState.onboardingChoice.ownApiKey)">Continue</button>
+      </div>
+    </div>
+
+    <!-- Step: deploy_mode -->
+    <div v-if="shellState.onboardingStep === 'deploy_mode'">
+      <h2 class="onboarding-title">How are you running Jowork?</h2>
+      <p class="onboarding-sub">This determines your setup recommendations</p>
+      <div class="choice-grid">
+        <button class="choice-card" onclick="advanceOnboarding('deploy_mode','desktop')">
+          <div class="choice-icon">🖥️</div>
+          <div class="choice-label">Desktop App</div>
+          <div class="choice-desc">Running as a local desktop application</div>
+        </button>
+        <button class="choice-card" onclick="advanceOnboarding('deploy_mode','server')">
+          <div class="choice-icon">🚀</div>
+          <div class="choice-label">Self-hosted</div>
+          <div class="choice-desc">Running on a server or in the cloud</div>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Settings modal ── -->
+<div v-if="shellState.showSettings" class="settings-backdrop" @click.self="shellState.showSettings = false">
+  <div class="settings-dialog">
+    <div class="settings-header">
+      <h3>Preferences</h3>
+      <button class="settings-close" @click="shellState.showSettings = false">×</button>
+    </div>
+    <div class="settings-body">
+      <div class="pref-row">
+        <label>Use case</label>
+        <select class="pref-select" @change="updatePref('use_case', $event.target.value)" :value="shellState.userPrefs.use_case || 'personal'">
+          <option value="personal">Personal</option>
+          <option value="team">Team</option>
+        </select>
+      </div>
+      <div class="pref-row">
+        <label>AI model access</label>
+        <select class="pref-select" @change="updatePref('api_mode', $event.target.value)" :value="shellState.userPrefs.api_mode || 'subscription'">
+          <option value="subscription">Jowork Plan</option>
+          <option value="own_key">My own API Key</option>
+        </select>
+      </div>
+      <div class="pref-row" v-if="shellState.userPrefs.api_mode === 'own_key'">
+        <label>API Key</label>
+        <div class="pref-apikey">
+          <span>{{ shellState.userPrefsApiKeyMasked || 'Not set' }}</span>
+          <button class="btn-small" onclick="doPromptChangeApiKey()">Change</button>
+        </div>
+      </div>
+      <div class="pref-row">
+        <label>Deploy mode</label>
+        <select class="pref-select" @change="updatePref('deploy_mode', $event.target.value)" :value="shellState.userPrefs.deploy_mode || 'desktop'">
+          <option value="desktop">Desktop App</option>
+          <option value="server">Self-hosted</option>
+        </select>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -488,6 +798,13 @@ html[data-platform="tauri"][data-theme="light"]:not(.fullscreen) .sidebar-brand 
             </svg>
           </span>Dashboard
         </button>
+        <button class="nav-item" :class="{ active: shellState.activePanel === 'logs' }" data-panel="logs" @click="onNavClick('logs')" title="My Logs">
+          <span class="nav-item-icon">
+            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M3 3h10M3 6.5h7M3 10h8M3 13h5"/>
+            </svg>
+          </span>My Logs
+        </button>
       </div>
 
       <div class="nav-group">
@@ -525,6 +842,15 @@ html[data-platform="tauri"][data-theme="light"]:not(.fullscreen) .sidebar-brand 
         <button class="action-btn" onclick="toggleTheme()" title="Toggle theme">
           <span class="action-btn-icon">◑</span>
           <span class="action-btn-label">Theme</span>
+        </button>
+        <button class="action-btn" onclick="shellState.showSettings = true" title="Preferences">
+          <span class="action-btn-icon">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true">
+              <circle cx="8" cy="8" r="2.2"/>
+              <path d="M8 1.5v1.3M8 13.2v1.3M1.5 8h1.3M13.2 8h1.3M3.4 3.4l.93.93M11.67 11.67l.93.93M11.67 4.33l.93-.93M3.4 12.6l.93-.93"/>
+            </svg>
+          </span>
+          <span class="action-btn-label">Settings</span>
         </button>
         <button class="action-btn" onclick="forceReload()" title="Reload">
           <span class="action-btn-icon">
@@ -588,6 +914,7 @@ html[data-platform="tauri"][data-theme="light"]:not(.fullscreen) .sidebar-brand 
       <iframe class="panel-frame active" id="frame-chat" data-src="/chat.html" src="about:blank"></iframe>
       <iframe class="panel-frame" id="frame-aiservices" data-src="/ai-services.html" src="about:blank" data-service="svc_page_ai_services"></iframe>
       <iframe class="panel-frame" id="frame-admin" data-src="/admin.html" src="about:blank" data-service="svc_page_admin"></iframe>
+      <iframe class="panel-frame" id="frame-logs" data-src="/logs.html" src="about:blank"></iframe>
       <iframe
         v-for="t in shellState.fileTabs"
         :key="t.id"
@@ -628,6 +955,14 @@ const shellState = window.Vue
       gatewayOnline: false,
       gatewayChecked: false,
       fileTabs: [],
+      // Onboarding
+      onboardingStep: null,          // 'use_case' | 'api_mode' | 'own_key_input' | 'deploy_mode' | null
+      onboardingChoice: { useCase: null, apiMode: null, ownApiKey: '', deployMode: null },
+      // Settings
+      showSettings: false,
+      userPrefs: {},
+      userPrefsApiKeySet: false,
+      userPrefsApiKeyMasked: null,
     })
   : {
       token: localStorage.getItem(TOKEN_KEY),
@@ -637,6 +972,12 @@ const shellState = window.Vue
       gatewayOnline: false,
       gatewayChecked: false,
       fileTabs: [],
+      onboardingStep: null,
+      onboardingChoice: { useCase: null, apiMode: null, ownApiKey: '', deployMode: null },
+      showSettings: false,
+      userPrefs: {},
+      userPrefsApiKeySet: false,
+      userPrefsApiKeyMasked: null,
     };
 const loginForm = window.Vue
   ? Vue.reactive({ username: '', displayName: '' })
@@ -750,6 +1091,18 @@ function toggleTheme() { ThemeManager.toggle(); updateThemeBtn(); }
 
 // ── Init: verify token ──
 (async function init() {
+  // Setup Wizard 检查：若 gateway 在线且 setup 未完成，跳转到 setup.html
+  try {
+    const setupResp = await fetch(API + '/api/system/setup-status', { signal: AbortSignal.timeout(3000) });
+    if (setupResp.ok) {
+      const setupData = await setupResp.json();
+      if (!setupData.done) {
+        location.href = '/setup.html';
+        return;
+      }
+    }
+  } catch { /* gateway 离线时跳过检查，不阻断正常流程 */ }
+
   if (!shellState.token) {
     const result = await autoLocalLogin();
     if (result !== true) {
@@ -868,6 +1221,98 @@ function forceReload() {
   }
 }
 
+// ── Preferences / Onboarding ──
+async function loadUserPrefs() {
+  if (!shellState.token) return;
+  try {
+    const resp = await fetch(API + '/api/preferences', {
+      headers: { Authorization: 'Bearer ' + shellState.token },
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!resp.ok) return;
+    const data = await resp.json();
+    shellState.userPrefs = data.preferences || {};
+    shellState.userPrefsApiKeySet = !!data.api_key_set;
+    shellState.userPrefsApiKeyMasked = data.api_key_masked || null;
+    // 如果 use_case 未设置，启动 onboarding 引导
+    if (!shellState.userPrefs.use_case) {
+      shellState.onboardingStep = 'use_case';
+    }
+  } catch { /* 忽略：不影响主流程 */ }
+}
+
+function advanceOnboarding(step, choice) {
+  if (step === 'use_case') {
+    shellState.onboardingChoice.useCase = choice;
+    shellState.onboardingStep = 'api_mode';
+  } else if (step === 'api_mode') {
+    shellState.onboardingChoice.apiMode = choice;
+    shellState.onboardingStep = choice === 'own_key' ? 'own_key_input' : 'deploy_mode';
+  } else if (step === 'own_key_input') {
+    shellState.onboardingChoice.ownApiKey = choice;
+    shellState.onboardingStep = 'deploy_mode';
+  } else if (step === 'deploy_mode') {
+    shellState.onboardingChoice.deployMode = choice;
+    shellState.onboardingStep = null;
+    saveOnboardingChoices();
+  }
+}
+
+async function saveOnboardingChoices() {
+  if (!shellState.token) return;
+  try {
+    const body = {
+      use_case: shellState.onboardingChoice.useCase,
+      api_mode: shellState.onboardingChoice.apiMode,
+      deploy_mode: shellState.onboardingChoice.deployMode,
+    };
+    if (shellState.onboardingChoice.ownApiKey) {
+      body.api_key = shellState.onboardingChoice.ownApiKey;
+    }
+    const resp = await fetch(API + '/api/preferences', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + shellState.token },
+      body: JSON.stringify(body),
+    });
+    if (resp.ok) {
+      const data = await resp.json();
+      shellState.userPrefs = data.preferences || {};
+      shellState.userPrefsApiKeySet = !!data.api_key_set;
+      shellState.userPrefsApiKeyMasked = data.api_key_masked || null;
+    }
+  } catch { /* ignore */ }
+}
+
+async function updatePref(key, value) {
+  if (!shellState.token) return;
+  try {
+    const resp = await fetch(API + '/api/preferences', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + shellState.token },
+      body: JSON.stringify({ [key]: value }),
+    });
+    if (resp.ok) {
+      const data = await resp.json();
+      shellState.userPrefs = data.preferences || {};
+      shellState.userPrefsApiKeySet = !!data.api_key_set;
+      shellState.userPrefsApiKeyMasked = data.api_key_masked || null;
+    }
+  } catch { /* ignore */ }
+}
+
+function doPromptChangeApiKey() {
+  const key = prompt('Enter your new API key (leave blank to cancel):');
+  if (!key || !key.trim()) return;
+  fetch(API + '/api/preferences', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + shellState.token },
+    body: JSON.stringify({ api_key: key.trim() }),
+  }).then(r => r.json()).then(data => {
+    shellState.userPrefsApiKeySet = !!data.api_key_set;
+    shellState.userPrefsApiKeyMasked = data.api_key_masked || null;
+  }).catch(() => {});
+}
+
 // ── Enter app ──
 async function enterApp() {
   document.getElementById('login-screen').style.display = 'none';
@@ -879,6 +1324,9 @@ async function enterApp() {
     const svcId = el.getAttribute('data-service');
     if (svcId && !ServicesGuard.hasService(svcId)) el.style.display = 'none';
   });
+
+  // 加载偏好设置（若 use_case 未设置则自动触发 onboarding）
+  await loadUserPrefs();
 
   switchPanel('chat');
   updateThemeBtn();
@@ -1046,7 +1494,7 @@ if (window.Vue) {
       return {
         shellState, loginForm, localLoginVue, onNavClick, onToggleFileTree,
         userDisplayName, userInitial, onFileTabClick, onFileFrameLoad, fileTabIcon, fileTabSrc,
-        doCheckGateway,
+        doCheckGateway, advanceOnboarding, updatePref,
       };
     },
     data() { return { bootedAt: Date.now() }; },

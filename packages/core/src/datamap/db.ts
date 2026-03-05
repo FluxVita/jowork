@@ -541,6 +541,119 @@ export function initSchema() {
     )
   `);
 
+  // ── model_costs behavior/tool_name 字段迁移 ──
+  try {
+    db.exec(`ALTER TABLE model_costs ADD COLUMN behavior TEXT DEFAULT 'untagged'`);
+  } catch { /* 列已存在 */ }
+  try {
+    db.exec(`ALTER TABLE model_costs ADD COLUMN tool_name TEXT`);
+  } catch { /* 列已存在 */ }
+
+  // ── 积分追踪表 ──
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS user_credits (
+      user_id        TEXT NOT NULL,
+      billing_month  TEXT NOT NULL,
+      credits_total  INTEGER NOT NULL DEFAULT 0,
+      credits_used   INTEGER NOT NULL DEFAULT 0,
+      extra_credits  INTEGER NOT NULL DEFAULT 0,
+      updated_at     TEXT DEFAULT (datetime('now')),
+      PRIMARY KEY (user_id, billing_month)
+    )
+  `);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS credit_transactions (
+      id            INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id       TEXT NOT NULL,
+      billing_month TEXT NOT NULL,
+      credits       INTEGER NOT NULL,
+      source        TEXT NOT NULL,
+      model_cost_id INTEGER,
+      created_at    TEXT DEFAULT (datetime('now'))
+    )
+  `);
+
+  // ── Stripe 订阅表 ──
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS user_subscriptions (
+      user_id              TEXT PRIMARY KEY,
+      stripe_customer_id   TEXT UNIQUE,
+      stripe_subscription_id TEXT,
+      plan                 TEXT NOT NULL DEFAULT 'free',
+      seat_level           TEXT NOT NULL DEFAULT 'basic',
+      status               TEXT NOT NULL DEFAULT 'active',
+      current_period_start TEXT,
+      current_period_end   TEXT,
+      cancel_at_period_end INTEGER NOT NULL DEFAULT 0,
+      created_at           TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at           TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS billing_prices (
+      id              TEXT PRIMARY KEY,
+      plan            TEXT NOT NULL,
+      seat_level      TEXT,
+      billing_cycle   TEXT NOT NULL DEFAULT 'monthly',
+      stripe_price_id TEXT,
+      amount_cents    INTEGER NOT NULL DEFAULT 0,
+      currency        TEXT NOT NULL DEFAULT 'usd',
+      active          INTEGER NOT NULL DEFAULT 1,
+      updated_at      TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `);
+
+  // 初始化默认价格（仅当表为空时填充，金额 TBD）
+  const priceCount = (db.prepare('SELECT COUNT(*) as n FROM billing_prices').get() as { n: number }).n;
+  if (priceCount === 0) {
+    const insertPrice = db.prepare(`
+      INSERT OR IGNORE INTO billing_prices (id, plan, seat_level, billing_cycle, amount_cents)
+      VALUES (?, ?, ?, ?, ?)
+    `);
+    // 个人版月付价格（TBD，定价引擎跑完后填入）
+    insertPrice.run('price_free',              'free',           null,    'monthly', 0);
+    insertPrice.run('price_basic_m',           'personal_basic', null,    'monthly', 900);   // $9/月
+    insertPrice.run('price_pro_m',             'personal_pro',   null,    'monthly', 1900);  // $19/月
+    insertPrice.run('price_max_m',             'personal_max',   null,    'monthly', 4900);  // $49/月
+    // 年付 = 月付 × 12 × 70%（四舍五入）
+    insertPrice.run('price_basic_y',           'personal_basic', null,    'annual',  7560);  // $75.6/年
+    insertPrice.run('price_pro_y',             'personal_pro',   null,    'annual',  15960); // $159.6/年
+    insertPrice.run('price_max_y',             'personal_max',   null,    'annual',  41160); // $411.6/年
+    // Team 版席位月付
+    insertPrice.run('price_team_starter_basic_m', 'team_starter', 'basic', 'monthly', 800);
+    insertPrice.run('price_team_starter_pro_m',   'team_starter', 'pro',   'monthly', 1500);
+    insertPrice.run('price_team_starter_max_m',   'team_starter', 'max',   'monthly', 3000);
+    insertPrice.run('price_team_pro_basic_m',     'team_pro',     'basic', 'monthly', 1200);
+    insertPrice.run('price_team_pro_pro_m',       'team_pro',     'pro',   'monthly', 2500);
+    insertPrice.run('price_team_pro_max_m',       'team_pro',     'max',   'monthly', 5000);
+    insertPrice.run('price_team_biz_basic_m',     'team_business','basic', 'monthly', 2000);
+    insertPrice.run('price_team_biz_pro_m',       'team_business','pro',   'monthly', 4000);
+    insertPrice.run('price_team_biz_max_m',       'team_business','max',   'monthly', 8000);
+    log.info('Billing prices seeded');
+  }
+
+  // ── 持久化应用日志（warn/error 自动落库，重启不丢失）──
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS app_logs (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      ts           TEXT NOT NULL DEFAULT (datetime('now')),
+      level        TEXT NOT NULL,
+      component    TEXT NOT NULL,
+      message      TEXT NOT NULL,
+      user_id      TEXT,
+      session_id   TEXT,
+      request_path TEXT,
+      duration_ms  INTEGER,
+      context_json TEXT
+    )
+  `);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_app_logs_ts        ON app_logs(ts)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_app_logs_level     ON app_logs(level)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_app_logs_user      ON app_logs(user_id)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_app_logs_component ON app_logs(component)`);
+
   log.info('Schema initialized');
   seedDefaultPolicies(db);
 }

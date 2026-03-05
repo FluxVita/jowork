@@ -9,6 +9,7 @@ import { logAudit } from '../../audit/logger.js';
 import { getObjectByUri, getObject } from '../../datamap/objects.js';
 import { createLogger } from '../../utils/logger.js';
 import { config } from '../../config.js';
+import { getGatewayPublicUrl } from '../../utils/gateway-url.js';
 import { checkConnectorQuota, getConnectorEntitlements } from '../../billing/entitlements.js';
 import { setScopedValue } from '../../auth/settings.js';
 import type { Role } from '../../types.js';
@@ -76,13 +77,14 @@ router.get('/entitlements', authMiddleware, requireRole('admin', 'owner'), (_req
 /** PUT /api/connectors/entitlements — 设置当前组织套餐（owner/admin） */
 router.put('/entitlements', authMiddleware, requireRole('admin', 'owner'), (req, res) => {
   const plan = String((req.body as { plan?: string })?.plan || '').trim().toLowerCase();
-  if (!['free', 'pro', 'team', 'business'].includes(plan)) {
-    res.status(400).json({ error: 'Invalid plan, expected one of: free, pro, team, business' });
+  const validPlans = ['free', 'personal_basic', 'personal_pro', 'personal_max', 'team_starter', 'team_pro', 'team_business', 'pro', 'team', 'business'];
+  if (!validPlans.includes(plan)) {
+    res.status(400).json({ error: `Invalid plan. Valid values: ${validPlans.join(', ')}` });
     return;
   }
 
   setScopedValue('org', 'default', 'subscription_plan', plan);
-  const ent = getConnectorEntitlements({ plan: plan as 'free' | 'pro' | 'team' | 'business' });
+  const ent = getConnectorEntitlements();
   res.json({
     ok: true,
     message: `Subscription plan set to ${plan}`,
@@ -397,7 +399,7 @@ router.get('/:id/oauth/url', authMiddleware, (req, res) => {
     return;
   }
 
-  const baseUrl = config.gateway_public_url || `http://localhost:${config.port}`;
+  const baseUrl = getGatewayPublicUrl();
   const redirectUri = `${baseUrl}/api/connectors/${id}/oauth/callback`;
   const state = issueOAuthState(id, req.user!.user_id);
   const url = connector.buildOAuthUrl(state, redirectUri);
@@ -435,7 +437,7 @@ router.get('/:id/oauth/callback', async (req, res) => {
       return;
     }
 
-    const baseUrl = config.gateway_public_url || `http://localhost:${config.port}`;
+    const baseUrl = getGatewayPublicUrl();
     const redirectUri = `${baseUrl}/api/connectors/${id}/oauth/callback`;
     await connector.exchangeToken(code, redirectUri, oauthCredentialUserId(id, stateData.userId));
 

@@ -9,6 +9,8 @@ import {
   type ToolUseRequest,
   type StreamDelta,
 } from '../../models/router.js';
+import { checkCreditSufficient, deductCredits, getCreditsBalance, getUpgradeTo } from '../../billing/credits.js';
+import { hasFeature, featureGateMessage, checkFeatureAccess, type FeatureKey } from '../../billing/features.js';
 import { createSession, getSession, appendMessage, getMessages, updateSessionTitle } from '../session.js';
 import { buildContextWindow, maybeArchiveAndSummarize } from '../context.js';
 import { getTool, getToolDefinitions, getBuiltinTool, initTools } from '../tools/registry.js';
@@ -328,10 +330,23 @@ export class BuiltinEngine implements AgentEngine {
     let totalTokensOut = 0;
     let totalCostUsd = 0;
 
+    // 追踪上一轮工具调用名称（用于 behavior 标签）
+    let prevRoundToolNames: string[] = [];
+
     for (let round = 1; round <= MAX_TOOL_ROUNDS; round++) {
       // 检查中断
       if (signal?.aborted) {
         yield { event: 'stopped', data: {} };
+        return;
+      }
+
+      // 积分预检（仅云托管）
+      if (!checkCreditSufficient(userId, 2000)) {
+        const balance = getCreditsBalance(userId);
+        yield {
+          event: 'credits_exhausted',
+          data: { used: balance.used, total: balance.total, upgrade_to: getUpgradeTo(userId) },
+        };
         return;
       }
 
@@ -404,8 +419,15 @@ export class BuiltinEngine implements AgentEngine {
       totalTokensOut += tokensOut;
       totalCostUsd += roundCost;
 
+      // behavior 标签：首轮为对话轮次，后续轮次为工具调用
+      const behavior = round === 1 ? 'agent_chat_turn' : 'tool_call';
+      const toolNameForCost = round > 1 && prevRoundToolNames.length > 0
+        ? prevRoundToolNames[0]
+        : undefined;
+
+      let costRecordId: number | undefined;
       if (klaudeInfo) {
-        recordModelCost({
+        costRecordId = recordModelCost({
           user_id: userId,
           provider: klaudeInfo.provider,
           model: klaudeInfo.model,
@@ -414,8 +436,19 @@ export class BuiltinEngine implements AgentEngine {
           tokens_out: tokensOut,
           cost_usd: roundCost,
           date: new Date().toISOString().slice(0, 10),
+          behavior,
+          tool_name: toolNameForCost,
         });
       }
+
+      // 积分扣减
+      const totalRoundTokens = tokensIn + tokensOut;
+      if (totalRoundTokens > 0) {
+        deductCredits(userId, totalRoundTokens, costRecordId);
+      }
+
+      // 更新上一轮工具名称（供下一轮使用）
+      prevRoundToolNames = toolCalls.map(tc => tc.name);
 
       yield {
         event: 'usage',
@@ -474,8 +507,26 @@ export class BuiltinEngine implements AgentEngine {
           yield { event: 'activity', data: { message: `正在执行 ${parsedCalls[0].name}...` } };
         }
 
+        // Feature Gate：受限工具对应的 FeatureKey
+        const TOOL_FEATURE_MAP: Record<string, FeatureKey> = {
+          run_command:      'run_command',
+          manage_workspace: 'manage_workspace',
+          create_gitlab_mr: 'create_gitlab_mr',
+        };
+
         const executeOne = async (tc: typeof parsedCalls[0]): Promise<{ result: string; duration_ms: number; structured?: StructuredResult }> => {
           const startMs = Date.now();
+
+          // Feature Gate 检查（cloud 托管 + 非 owner 用户）
+          const featureKey = TOOL_FEATURE_MAP[tc.name];
+          if (featureKey && user) {
+            const gateResult = checkFeatureAccess(user.user_id, featureKey, user.role);
+            if (!gateResult.allowed) {
+              const msg = featureGateMessage(featureKey, gateResult.current_plan, gateResult.required_plan);
+              return { result: `[feature_gate] ${msg}`, duration_ms: 0 };
+            }
+          }
+
           const builtinTool = getBuiltinTool(tc.name);
           let result: string;
           let structured: StructuredResult | undefined;

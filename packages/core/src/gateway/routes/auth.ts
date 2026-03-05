@@ -8,6 +8,7 @@ import { config } from '../../config.js';
 import { httpRequest } from '../../utils/http.js';
 import { createLogger } from '../../utils/logger.js';
 import { syncUserGroups } from '../../services/feishu-groups.js';
+import { getGatewayPublicUrl } from '../../utils/gateway-url.js';
 import { createAuthChallenge, verifyAuthChallenge } from '../../auth/challenges.js';
 import { setUserSetting, getUserSetting } from '../../auth/settings.js';
 import type { Role } from '../../types.js';
@@ -173,7 +174,7 @@ router.get('/oauth/url', (_req, res) => {
     return;
   }
 
-  const baseUrl = config.gateway_public_url ?? `http://localhost:${config.port}`;
+  const baseUrl = getGatewayPublicUrl();
   const redirectUri = _req.query['redirect_uri'] as string || `${baseUrl}/api/auth/oauth/callback`;
   const state = issueOAuthState();
   const url = `https://open.feishu.cn/open-apis/authen/v1/authorize?app_id=${app_id}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}`;
@@ -237,10 +238,11 @@ router.get('/oauth/callback', async (req, res) => {
     const userName = feishuUser.name || tokenData.name || '未知用户';
     const openId = feishuUser.open_id || tokenData.open_id;
 
+    const isNewUser = !getUserByFeishuId(openId);
     const user = findOrCreateByFeishu(openId, userName, { email: feishuUser.email });
     const token = signToken(user, '24h', { feishu_verified: true });
 
-    log.info('User logged in via OAuth (redirect)', { user_id: user.user_id, name: user.name });
+    log.info('User logged in via OAuth (redirect)', { user_id: user.user_id, name: user.name, isNew: isNewUser });
 
     // 存储用户飞书 token 供 Agent 内置飞书工具使用
     try {
@@ -260,10 +262,11 @@ router.get('/oauth/callback', async (req, res) => {
       <script>
         localStorage.setItem(${JSON.stringify(config.token_storage_key)}, ${JSON.stringify(token)});
         localStorage.setItem(${JSON.stringify(config.token_storage_key + '_user')}, ${JSON.stringify(JSON.stringify(user))});
-        if (localStorage.getItem('jw_onboarding_done') !== '1') {
+        if (${isNewUser}) {
           localStorage.setItem('jw_oauth_just_done', '1');
           location.href = '/onboarding.html';
         } else {
+          localStorage.setItem('jw_onboarding_done', '1');
           location.href = '/shell.html';
         }
       </script>

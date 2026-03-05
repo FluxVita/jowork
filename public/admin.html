@@ -224,6 +224,8 @@ select {
     <button class="tab" data-tab="services">服务管理</button>
     <button class="tab" data-tab="usage">Token 用量</button>
     <button class="tab" data-tab="toolstats">工具统计</button>
+    <button class="tab owner-only hidden" data-tab="pricing-engine">定价引擎</button>
+    <button class="tab owner-only hidden" data-tab="billing">订阅管理</button>
     <button class="tab admin-only hidden" data-tab="aimodels">AI 模型</button>
     <button class="tab" data-tab="groups">群组管理</button>
     <button class="tab" data-tab="logs">系统日志</button>
@@ -414,40 +416,97 @@ select {
 
     <!-- Token 用量 Tab -->
     <div id="tab-usage" class="tab-content hidden">
-      <div class="toolbar">
-        <h3 style="font-size:15px">Token 用量</h3>
-        <div class="actions">
-          <select id="usage-days" onchange="loadUsage()">
-            <option value="7">近 7 天</option>
-            <option value="30" selected>近 30 天</option>
-            <option value="90">近 90 天</option>
-            <option value="365">近 365 天</option>
-          </select>
-          <input id="usage-user-filter" class="search-input" placeholder="按用户 ID 过滤（管理员）" style="width:200px">
-          <button class="btn" onclick="loadUsage()">刷新</button>
+      <!-- 子视图切换 -->
+      <div style="display:flex;gap:6px;margin-bottom:14px">
+        <button class="btn" id="usage-subtab-detail" onclick="switchUsageSubtab('detail')"
+          style="background:var(--accent);color:var(--text-inverse)">用量明细</button>
+        <button class="btn" id="usage-subtab-accounts" onclick="switchUsageSubtab('accounts')"
+          style="background:var(--surface2)">账户成本</button>
+        <button class="btn" id="usage-subtab-hourly" onclick="switchUsageSubtab('hourly')"
+          style="background:var(--surface2)">小时分布</button>
+      </div>
+
+      <!-- 用量明细子视图 -->
+      <div id="usage-sub-detail">
+        <div class="toolbar" style="margin-bottom:10px">
+          <div class="actions">
+            <select id="usage-days" onchange="loadUsage()">
+              <option value="7">近 7 天</option>
+              <option value="30" selected>近 30 天</option>
+              <option value="90">近 90 天</option>
+              <option value="365">近 365 天</option>
+            </select>
+            <input id="usage-user-filter" class="search-input" placeholder="按用户 ID 过滤（管理员）" style="width:200px">
+            <button class="btn" onclick="loadUsage()">刷新</button>
+          </div>
+        </div>
+        <div id="usage-stats" class="stat-grid" style="margin-bottom:16px"></div>
+        <div class="card">
+          <table>
+            <thead><tr>
+              <th>用户</th><th>Provider</th><th>模型</th>
+              <th>输入 Token</th><th>输出 Token</th><th>费用 (USD)</th>
+              <th>请求数</th><th>日期</th>
+            </tr></thead>
+            <tbody id="usage-body"></tbody>
+          </table>
         </div>
       </div>
 
-      <!-- 汇总卡片 -->
-      <div id="usage-stats" class="stat-grid" style="margin-bottom:16px"></div>
+      <!-- 账户成本子视图 -->
+      <div id="usage-sub-accounts" style="display:none">
+        <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center">
+          <select id="accounts-days" onchange="loadAccounts()" style="height:32px;padding:0 8px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:4px">
+            <option value="7">近 7 天</option>
+            <option value="30" selected>近 30 天</option>
+            <option value="90">近 90 天</option>
+          </select>
+          <button class="btn" onclick="loadAccounts()">刷新</button>
+        </div>
+        <div id="accounts-stats" class="stat-grid" style="margin-bottom:16px"></div>
+        <div class="card">
+          <table>
+            <thead><tr>
+              <th>账户</th><th>角色</th>
+              <th style="text-align:right">输入 Token</th>
+              <th style="text-align:right">输出 Token</th>
+              <th style="text-align:right">总费用 (USD)</th>
+              <th style="text-align:right">请求数</th>
+              <th style="text-align:right">活跃天数</th>
+              <th>最近活跃</th>
+            </tr></thead>
+            <tbody id="accounts-body"></tbody>
+          </table>
+        </div>
+      </div>
 
-      <!-- 明细表格 -->
-      <div class="card">
-        <table>
-          <thead>
-            <tr>
-              <th>用户</th>
-              <th>Provider</th>
-              <th>模型</th>
-              <th>输入 Token</th>
-              <th>输出 Token</th>
-              <th>费用 (USD)</th>
-              <th>请求数</th>
-              <th>日期</th>
-            </tr>
-          </thead>
-          <tbody id="usage-body"></tbody>
-        </table>
+      <!-- 小时分布子视图 -->
+      <div id="usage-sub-hourly" style="display:none">
+        <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center">
+          <input id="hourly-date" type="date" style="height:32px;padding:0 8px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:4px">
+          <input id="hourly-user" class="search-input" placeholder="用户 ID（留空=全局）" style="width:200px">
+          <button class="btn" onclick="loadHourly()">查询</button>
+        </div>
+        <div id="hourly-stats" class="stat-grid" style="margin-bottom:16px"></div>
+        <!-- 简单条形图 -->
+        <div class="card">
+          <h3 style="margin-bottom:12px">Token 消耗 / 小时</h3>
+          <div id="hourly-chart" style="display:flex;align-items:flex-end;gap:4px;height:160px;padding:0 4px"></div>
+          <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text2);margin-top:4px;padding:0 4px">
+            <span>0:00</span><span>6:00</span><span>12:00</span><span>18:00</span><span>23:00</span>
+          </div>
+        </div>
+        <div class="card" style="margin-top:16px">
+          <table>
+            <thead><tr>
+              <th>小时</th>
+              <th style="text-align:right">Token 消耗</th>
+              <th style="text-align:right">费用 (USD)</th>
+              <th style="text-align:right">请求数</th>
+            </tr></thead>
+            <tbody id="hourly-body"></tbody>
+          </table>
+        </div>
       </div>
     </div>
 
@@ -501,6 +560,100 @@ select {
       </div>
     </div>
 
+    <!-- 定价引擎 Tab（仅 Owner） -->
+    <div id="tab-pricing-engine" class="tab-content hidden">
+      <div class="toolbar">
+        <h3 style="font-size:15px">定价引擎</h3>
+        <div class="actions">
+          <select id="pe-days" onchange="loadPricingEngine()">
+            <option value="7">近 7 天</option>
+            <option value="30" selected>近 30 天</option>
+            <option value="90">近 90 天</option>
+          </select>
+          <button class="btn" onclick="loadPricingEngine()">刷新</button>
+        </div>
+      </div>
+
+      <!-- 积分定价计算器 -->
+      <div class="stat-grid" id="pe-credit-analysis" style="margin-bottom:16px"></div>
+
+      <!-- 行为成本表 -->
+      <div class="card" style="margin-bottom:16px">
+        <h3>按行为类型成本分析</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>行为类型</th>
+              <th>工具名</th>
+              <th>模型</th>
+              <th>调用次数</th>
+              <th>平均输入 Token</th>
+              <th>平均输出 Token</th>
+              <th>平均成本 (USD)</th>
+              <th>总成本 (USD)</th>
+              <th>每 1K 积分成本 (USD)</th>
+            </tr>
+          </thead>
+          <tbody id="pe-behavior-body"></tbody>
+        </table>
+      </div>
+
+      <!-- 模型官方定价参考 -->
+      <div class="card">
+        <h3>模型定价参考（USD / 1M tokens）</h3>
+        <table>
+          <thead>
+            <tr><th>模型</th><th>输入 $/M</th><th>输出 $/M</th></tr>
+          </thead>
+          <tbody id="pe-pricing-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 订阅管理 Tab（仅 Owner） -->
+    <div id="tab-billing" class="tab-content hidden">
+      <div class="toolbar">
+        <h3 style="font-size:15px">订阅管理</h3>
+        <button class="btn" onclick="loadBillingAdmin()">刷新</button>
+      </div>
+
+      <!-- Stripe 状态 -->
+      <div id="billing-stripe-status" style="padding:10px 0 16px;font-size:13px;color:var(--text2)"></div>
+
+      <!-- 用户订阅列表 -->
+      <h4 style="font-size:13px;margin:0 0 8px;font-weight:600">用户订阅</h4>
+      <div style="overflow-x:auto">
+        <table class="data-table" style="font-size:12px">
+          <thead>
+            <tr>
+              <th>用户</th>
+              <th>邮箱</th>
+              <th>计划</th>
+              <th>席位等级</th>
+              <th>状态</th>
+              <th>到期时间</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="billing-subs-body"></tbody>
+        </table>
+      </div>
+
+      <!-- 价格配置 -->
+      <h4 style="font-size:13px;margin:24px 0 8px;font-weight:600">价格配置（Stripe Price ID）</h4>
+      <p style="font-size:11px;color:var(--text2);margin:0 0 12px">
+        在 <a href="https://dashboard.stripe.com/products" target="_blank" style="color:var(--accent)">Stripe Dashboard</a> 创建价格后，将 Price ID（price_xxx）填入下方对应行，再点击保存。
+      </p>
+      <div style="overflow-x:auto">
+        <table class="data-table" style="font-size:12px">
+          <thead>
+            <tr><th>ID</th><th>计划</th><th>席位</th><th>周期</th><th>金额(¢)</th><th>Stripe Price ID</th><th>状态</th><th>保存</th></tr>
+          </thead>
+          <tbody id="billing-prices-body"></tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- AI 模型 Tab（仅管理员） -->
     <div id="tab-aimodels" class="tab-content hidden">
       <div class="toolbar">
@@ -515,31 +668,84 @@ select {
 
     <!-- 系统日志 Tab -->
     <div id="tab-logs" class="tab-content hidden">
-      <div class="toolbar">
-        <h3 style="font-size:15px">系统日志</h3>
-        <div class="actions" style="gap:8px;display:flex;align-items:center;flex-wrap:wrap">
-          <select id="logs-level" onchange="loadLogs(true)" style="height:32px;padding:0 8px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:4px">
+      <!-- 子视图切换 -->
+      <div style="display:flex;gap:6px;margin-bottom:14px">
+        <button class="btn" id="logs-subtab-live" onclick="switchLogsSubtab('live')"
+          style="background:var(--accent);color:var(--text-inverse)">实时流</button>
+        <button class="btn" id="logs-subtab-db" onclick="switchLogsSubtab('db')"
+          style="background:var(--surface2)">持久化查询</button>
+      </div>
+
+      <!-- 实时流子视图 -->
+      <div id="logs-sub-live">
+        <div class="toolbar" style="margin-bottom:10px">
+          <h3 style="font-size:14px;color:var(--text2)">实时日志缓冲区（内存，最多 1000 条）</h3>
+          <div class="actions" style="gap:8px;display:flex;align-items:center;flex-wrap:wrap">
+            <select id="logs-level" onchange="loadLogs(true)" style="height:32px;padding:0 8px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:4px">
+              <option value="all">全部级别</option>
+              <option value="error">ERROR</option>
+              <option value="warn">WARN</option>
+              <option value="info">INFO</option>
+            </select>
+            <input id="logs-search" class="search-input" placeholder="搜索关键词..." style="width:180px"
+              oninput="clearTimeout(window._logSearchTimer);window._logSearchTimer=setTimeout(()=>loadLogs(true),400)">
+            <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer">
+              <input type="checkbox" id="logs-auto" checked onchange="toggleLogsAuto()"> 自动刷新
+            </label>
+            <button class="btn" onclick="loadLogs(true)">刷新</button>
+            <button class="btn" onclick="clearLogsDisplay()" style="background:var(--surface2)">清屏</button>
+          </div>
+        </div>
+        <div id="logs-box" style="
+          font-family:monospace;font-size:12px;line-height:1.6;
+          background:var(--surface);border:1px solid var(--border);border-radius:6px;
+          padding:12px;height:calc(100vh - 280px);overflow-y:auto;
+          color:var(--text-muted);white-space:pre-wrap;word-break:break-all;
+        "></div>
+        <div id="logs-status" style="font-size:12px;color:var(--text-muted);padding:6px 0;text-align:right"></div>
+      </div>
+
+      <!-- 持久化查询子视图 -->
+      <div id="logs-sub-db" style="display:none">
+        <!-- 概览卡片 -->
+        <div id="db-logs-stats" class="stat-grid" style="margin-bottom:14px"></div>
+        <!-- 过滤栏 -->
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center">
+          <select id="dbl-level" style="height:32px;padding:0 8px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:4px">
             <option value="all">全部级别</option>
             <option value="error">ERROR</option>
             <option value="warn">WARN</option>
+            <option value="warn+">WARN+ERROR</option>
             <option value="info">INFO</option>
           </select>
-          <input id="logs-search" class="search-input" placeholder="搜索关键词..." style="width:180px"
-            oninput="clearTimeout(window._logSearchTimer);window._logSearchTimer=setTimeout(()=>loadLogs(true),400)">
-          <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer">
-            <input type="checkbox" id="logs-auto" checked onchange="toggleLogsAuto()"> 自动刷新
-          </label>
-          <button class="btn" onclick="loadLogs(true)">刷新</button>
-          <button class="btn" onclick="clearLogsDisplay()" style="background:var(--surface2)">清屏</button>
+          <input id="dbl-component" class="search-input" placeholder="组件过滤" style="width:130px">
+          <input id="dbl-user"      class="search-input" placeholder="用户 ID" style="width:130px">
+          <input id="dbl-q"         class="search-input" placeholder="关键词搜索" style="width:160px">
+          <input id="dbl-from" type="date" style="height:32px;padding:0 8px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:4px">
+          <input id="dbl-to"   type="date" style="height:32px;padding:0 8px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:4px">
+          <button class="btn" onclick="loadDbLogs(0)">查询</button>
+        </div>
+        <div class="card">
+          <table>
+            <thead><tr>
+              <th style="width:150px">时间</th>
+              <th style="width:60px">级别</th>
+              <th style="width:110px">组件</th>
+              <th>日志内容</th>
+              <th style="width:110px">用户</th>
+              <th style="width:80px">耗时</th>
+            </tr></thead>
+            <tbody id="dbl-tbody"></tbody>
+          </table>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;font-size:12px;color:var(--text2)">
+          <span id="dbl-info"></span>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-sm" id="dbl-prev" onclick="dbLogPage(-1)" style="background:var(--surface2)">上一页</button>
+            <button class="btn btn-sm" id="dbl-next" onclick="dbLogPage(1)"  style="background:var(--surface2)">下一页</button>
+          </div>
         </div>
       </div>
-      <div id="logs-box" style="
-        font-family:monospace;font-size:12px;line-height:1.6;
-        background:var(--surface);border:1px solid var(--border);border-radius:6px;
-        padding:12px;height:calc(100vh - 220px);overflow-y:auto;
-        color:var(--text-muted);white-space:pre-wrap;word-break:break-all;
-      "></div>
-      <div id="logs-status" style="font-size:12px;color:var(--text-muted);padding:6px 0;text-align:right"></div>
     </div>
 
     <!-- Context Tab -->
@@ -812,6 +1018,10 @@ async function showApp() {
   if (['admin', 'owner'].includes(currentUser?.role)) {
     document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('hidden'));
   }
+  // Owner 才显示 owner-only tabs
+  if (currentUser?.role === 'owner') {
+    document.querySelectorAll('.owner-only').forEach(el => el.classList.remove('hidden'));
+  }
   dbgStatus('已进入管理后台', token, currentUser?.name);
   loadUsers();
 }
@@ -907,7 +1117,7 @@ document.querySelectorAll('.tab').forEach(tab => {
       clearInterval(_logsAutoTimer);
       _logsAutoTimer = null;
     }
-    const loaders = { users: loadUsers, groups: loadGroups, cron: loadCronTasks, system: loadSystem, services: loadServices, usage: loadUsage, toolstats: loadToolStats, aimodels: loadAiModels, logs: () => { loadLogs(true); if (_logsAutoEnabled) startLogsAuto(); }, context: loadContextDocs };
+    const loaders = { users: loadUsers, groups: loadGroups, cron: loadCronTasks, system: loadSystem, services: loadServices, usage: loadUsage, toolstats: loadToolStats, 'pricing-engine': loadPricingEngine, billing: loadBillingAdmin, aimodels: loadAiModels, logs: () => { loadLogs(true); if (_logsAutoEnabled) startLogsAuto(); }, context: loadContextDocs };
     if (loaders[target]) loaders[target]();
   });
 });
@@ -1634,6 +1844,55 @@ async function loadToolStats() {
   }
 }
 
+// ─── 定价引擎 ───
+
+async function loadPricingEngine() {
+  const days = document.getElementById('pe-days')?.value || 30;
+  try {
+    const data = await apiFetch(`/api/models/pricing-engine?days=${days}`);
+    const { behaviors, model_pricing, credit_analysis, totals } = data;
+
+    // 积分定价卡片
+    document.getElementById('pe-credit-analysis').innerHTML = `
+      <div class="stat-card"><div class="value">${totals.calls || 0}</div><div class="label">总调用次数</div></div>
+      <div class="stat-card"><div class="value">$${(totals.cost_usd || 0).toFixed(4)}</div><div class="label">总成本 (USD)</div></div>
+      <div class="stat-card"><div class="value">$${(credit_analysis.avg_cost_per_credit_usd || 0).toFixed(6)}</div><div class="label">每积分平均成本</div></div>
+      <div class="stat-card"><div class="value">${credit_analysis.suggested_price_30pct_margin}¢</div><div class="label">建议售价 (30% 利润)</div></div>
+      <div class="stat-card"><div class="value">${credit_analysis.suggested_price_50pct_margin}¢</div><div class="label">建议售价 (50% 利润)</div></div>
+      <div class="stat-card"><div class="value">${totals.unique_users || 0}</div><div class="label">活跃用户数</div></div>
+    `;
+
+    // 行为成本表
+    const behaviorLabels = { agent_chat_turn: '用户对话轮次', tool_call: '工具调用', context_build: '上下文构建', memory_op: '记忆库操作', connector_sync: '后台同步', embedding: '向量计算', untagged: '未分类' };
+    const tbody = document.getElementById('pe-behavior-body');
+    if (!behaviors.length) {
+      tbody.innerHTML = '<tr><td colspan="9" class="empty">暂无数据（需要发几条 Agent 消息后刷新）</td></tr>';
+    } else {
+      tbody.innerHTML = behaviors.map(r => `<tr>
+        <td>${behaviorLabels[r.behavior] || r.behavior}</td>
+        <td>${r.tool_name || '—'}</td>
+        <td style="font-size:12px">${r.model}</td>
+        <td>${r.calls}</td>
+        <td>${r.avg_tokens_in.toLocaleString()}</td>
+        <td>${r.avg_tokens_out.toLocaleString()}</td>
+        <td>$${r.avg_cost_usd.toFixed(6)}</td>
+        <td>$${r.total_cost_usd.toFixed(4)}</td>
+        <td>$${r.cost_per_1k_credits.toFixed(3)}</td>
+      </tr>`).join('');
+    }
+
+    // 模型定价参考表
+    const pricingBody = document.getElementById('pe-pricing-body');
+    pricingBody.innerHTML = Object.entries(model_pricing).map(([model, p]) => `<tr>
+      <td style="font-size:12px">${model}</td>
+      <td>$${p.input}</td>
+      <td>$${p.output}</td>
+    </tr>`).join('');
+  } catch (err) {
+    document.getElementById('pe-credit-analysis').innerHTML = `<div class="empty">加载失败: ${err}</div>`;
+  }
+}
+
 // ─── 系统日志 ───
 
 let _logsLastId = 0;
@@ -1719,6 +1978,178 @@ async function loadLogs(reset = false) {
 
 function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ─── 子视图切换：Token 用量 ───
+
+function switchUsageSubtab(sub) {
+  ['detail','accounts','hourly'].forEach(s => {
+    document.getElementById(`usage-sub-${s}`).style.display = s === sub ? '' : 'none';
+    const btn = document.getElementById(`usage-subtab-${s}`);
+    if (btn) {
+      btn.style.background = s === sub ? 'var(--accent)' : 'var(--surface2)';
+      btn.style.color      = s === sub ? 'var(--text-inverse)' : '';
+    }
+  });
+  if (sub === 'accounts') loadAccounts();
+  if (sub === 'hourly')   initHourlyDate();
+}
+
+// ─── 账户成本视图 ───
+
+async function loadAccounts() {
+  const days = document.getElementById('accounts-days')?.value || 30;
+  try {
+    const data = await apiFetch(`/api/models/usage/accounts?days=${days}`);
+    const { totals = {}, accounts = [] } = data;
+    const fmt = n => n >= 1e6 ? (n/1e6).toFixed(1)+'M' : n >= 1000 ? (n/1000).toFixed(1)+'K' : String(n||0);
+    document.getElementById('accounts-stats').innerHTML = `
+      <div class="stat-card"><div class="stat-value">${accounts.length}</div><div class="stat-label">活跃账户</div></div>
+      <div class="stat-card"><div class="stat-value">${fmt((totals.tokens_in||0)+(totals.tokens_out||0))}</div><div class="stat-label">总 Token</div></div>
+      <div class="stat-card"><div class="stat-value" style="color:var(--green)">$${(totals.cost_usd||0).toFixed(4)}</div><div class="stat-label">总费用 (USD)</div></div>
+      <div class="stat-card"><div class="stat-value">${totals.requests||0}</div><div class="stat-label">总请求数</div></div>
+    `;
+    const ROLE_COLOR = { owner:'var(--accent)', admin:'var(--blue)', member:'var(--text2)', guest:'#666' };
+    document.getElementById('accounts-body').innerHTML = !accounts.length
+      ? '<tr><td colspan="8" class="empty">暂无数据</td></tr>'
+      : accounts.map(a => `<tr>
+          <td><b>${escHtml(a.user_name || a.user_id)}</b><br><span style="font-size:10px;color:var(--text2)">${a.user_id}</span></td>
+          <td><span style="color:${ROLE_COLOR[a.role]||'var(--text2)'}; font-size:11px">${a.role||'-'}</span></td>
+          <td style="text-align:right">${fmt(a.tokens_in||0)}</td>
+          <td style="text-align:right">${fmt(a.tokens_out||0)}</td>
+          <td style="text-align:right;color:var(--green);font-weight:600">$${(a.cost_usd||0).toFixed(4)}</td>
+          <td style="text-align:right">${a.requests||0}</td>
+          <td style="text-align:right">${a.active_days||0} 天</td>
+          <td style="color:var(--text2);font-size:11px">${a.last_active||'-'}</td>
+        </tr>`).join('');
+  } catch(err) {
+    document.getElementById('accounts-body').innerHTML = `<tr><td colspan="8" class="empty">加载失败: ${err}</td></tr>`;
+  }
+}
+
+// ─── 小时分布视图 ───
+
+function initHourlyDate() {
+  const el = document.getElementById('hourly-date');
+  if (el && !el.value) el.value = new Date().toISOString().slice(0,10);
+}
+
+async function loadHourly() {
+  const date    = document.getElementById('hourly-date')?.value || new Date().toISOString().slice(0,10);
+  const userId  = document.getElementById('hourly-user')?.value.trim() || '';
+  let url = `/api/models/usage/hourly?date=${date}`;
+  if (userId) url += `&user_id=${encodeURIComponent(userId)}`;
+  try {
+    const data = await apiFetch(url);
+    const { hourly = [] } = data;
+    const maxTokens = Math.max(...hourly.map(h => h.tokens_in||0), 1);
+    const totalTokens = hourly.reduce((s, h) => s+(h.tokens_in||0), 0);
+    const totalCost   = hourly.reduce((s, h) => s+(h.cost_usd||0), 0);
+    const totalReq    = hourly.reduce((s, h) => s+(h.requests||0), 0);
+    const fmt = n => n >= 1000 ? (n/1000).toFixed(1)+'K' : String(n||0);
+
+    document.getElementById('hourly-stats').innerHTML = `
+      <div class="stat-card"><div class="stat-value">${fmt(totalTokens)}</div><div class="stat-label">总 Token</div></div>
+      <div class="stat-card"><div class="stat-value" style="color:var(--green)">$${totalCost.toFixed(4)}</div><div class="stat-label">总费用</div></div>
+      <div class="stat-card"><div class="stat-value">${totalReq}</div><div class="stat-label">请求次数</div></div>
+    `;
+
+    // 条形图
+    document.getElementById('hourly-chart').innerHTML = hourly.map(h => {
+      const pct = Math.round(((h.tokens_in||0) / maxTokens) * 100);
+      const color = (h.tokens_in||0) > 0 ? 'var(--accent)' : 'var(--surface2)';
+      return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px" title="${h.hour}:00 — ${fmt(h.tokens_in||0)} tokens">
+        <div style="width:100%;background:${color};height:${pct}%;min-height:${(h.tokens_in||0)>0?'2px':'0'};border-radius:2px 2px 0 0;transition:height .2s"></div>
+        <span style="font-size:9px;color:var(--text2)">${parseInt(h.hour)%6===0?h.hour:''}</span>
+      </div>`;
+    }).join('');
+
+    // 表格
+    document.getElementById('hourly-body').innerHTML = hourly
+      .filter(h => (h.tokens_in||0) > 0 || (h.requests||0) > 0)
+      .map(h => `<tr>
+        <td>${h.hour}:00</td>
+        <td style="text-align:right">${fmt(h.tokens_in||0)}</td>
+        <td style="text-align:right;color:var(--green)">$${(h.cost_usd||0).toFixed(5)}</td>
+        <td style="text-align:right">${h.requests||0}</td>
+      </tr>`).join('') || '<tr><td colspan="4" class="empty">该日无数据</td></tr>';
+  } catch(err) {
+    document.getElementById('hourly-body').innerHTML = `<tr><td colspan="4" class="empty">加载失败: ${err}</td></tr>`;
+  }
+}
+
+// ─── 子视图切换：系统日志 ───
+
+function switchLogsSubtab(sub) {
+  document.getElementById('logs-sub-live').style.display = sub === 'live' ? '' : 'none';
+  document.getElementById('logs-sub-db').style.display   = sub === 'db'   ? '' : 'none';
+  const livBtn = document.getElementById('logs-subtab-live');
+  const dbBtn  = document.getElementById('logs-subtab-db');
+  if (livBtn) { livBtn.style.background = sub==='live'?'var(--accent)':'var(--surface2)'; livBtn.style.color=sub==='live'?'var(--text-inverse)':''; }
+  if (dbBtn)  { dbBtn.style.background  = sub==='db'  ?'var(--accent)':'var(--surface2)'; dbBtn.style.color =sub==='db'  ?'var(--text-inverse)':''; }
+  if (sub === 'db') { loadDbLogs(0); loadDbLogsStats(); }
+}
+
+// ─── 持久化日志查询 ───
+
+let _dblPage = 0;
+const _dblPageSize = 100;
+
+async function loadDbLogsStats() {
+  try {
+    const data = await apiFetch('/api/admin/logs/stats');
+    const { levelCounts = [], topComponents = [] } = data;
+    const counts = Object.fromEntries(levelCounts.map(r => [r.level, r.n]));
+    document.getElementById('db-logs-stats').innerHTML = `
+      <div class="stat-card"><div class="stat-value" style="color:var(--red)">${counts.error||0}</div><div class="stat-label">ERROR（24h）</div></div>
+      <div class="stat-card"><div class="stat-value" style="color:var(--orange)">${counts.warn||0}</div><div class="stat-label">WARN（24h）</div></div>
+      <div class="stat-card"><div class="stat-value">${counts.info||0}</div><div class="stat-label">INFO（24h）</div></div>
+      <div class="stat-card"><div class="stat-value" style="font-size:12px">${topComponents.slice(0,1).map(c=>c.component+' ('+c.n+')').join('')||'-'}</div><div class="stat-label">最活跃组件</div></div>
+    `;
+  } catch { /* 非关键 */ }
+}
+
+async function loadDbLogs(page) {
+  _dblPage = page ?? 0;
+  const level     = document.getElementById('dbl-level')?.value || 'all';
+  const component = document.getElementById('dbl-component')?.value.trim() || '';
+  const user_id   = document.getElementById('dbl-user')?.value.trim() || '';
+  const q         = document.getElementById('dbl-q')?.value.trim() || '';
+  const from      = document.getElementById('dbl-from')?.value || '';
+  const to        = document.getElementById('dbl-to')?.value || '';
+  const params = new URLSearchParams({ limit: String(_dblPageSize), offset: String(_dblPage * _dblPageSize) });
+  if (level && level !== 'all') params.set('level', level);
+  if (component) params.set('component', component);
+  if (user_id)   params.set('user_id', user_id);
+  if (q)         params.set('q', q);
+  if (from)      params.set('from', from);
+  if (to)        params.set('to', to + 'T23:59:59');
+
+  const LEVEL_COLOR = { error:'var(--red)', warn:'var(--orange)', info:'var(--text2)', debug:'#555' };
+  try {
+    const data = await apiFetch(`/api/admin/logs?${params}`);
+    const { rows = [], total = 0 } = data;
+    document.getElementById('dbl-info').textContent = `共 ${total} 条，第 ${_dblPage+1} 页（每页 ${_dblPageSize} 条）`;
+    document.getElementById('dbl-prev').disabled = _dblPage === 0;
+    document.getElementById('dbl-next').disabled = (_dblPage+1) * _dblPageSize >= total;
+
+    document.getElementById('dbl-tbody').innerHTML = !rows.length
+      ? '<tr><td colspan="6" class="empty">暂无匹配日志</td></tr>'
+      : rows.map(r => `<tr>
+          <td style="font-size:11px;color:var(--text2);white-space:nowrap">${r.ts?.replace('T',' ').slice(0,19)||'-'}</td>
+          <td><span style="color:${LEVEL_COLOR[r.level]||'#888'};font-weight:600;font-size:11px">${(r.level||'').toUpperCase()}</span></td>
+          <td style="font-family:var(--font-mono);font-size:11px;color:var(--blue)">${escHtml(r.component||'')}</td>
+          <td style="font-size:12px;word-break:break-all">${escHtml(r.message||'')}</td>
+          <td style="font-size:11px;color:var(--text2)">${r.user_id?escHtml(r.user_id):''}</td>
+          <td style="text-align:right;font-size:11px;color:var(--text2)">${r.duration_ms!=null?r.duration_ms+'ms':''}</td>
+        </tr>`).join('');
+  } catch(err) {
+    document.getElementById('dbl-tbody').innerHTML = `<tr><td colspan="6" class="empty">加载失败: ${err}</td></tr>`;
+  }
+}
+
+function dbLogPage(dir) {
+  loadDbLogs(_dblPage + dir);
 }
 
 // ─── Init ───
@@ -1995,6 +2426,109 @@ async function saveCtxDoc() {
 function escHtml(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
+
+// ─── 订阅管理 Tab ───
+
+async function loadBillingAdmin() {
+  // Stripe 状态
+  try {
+    const prices = await apiFetch('/billing/prices');
+    const statusEl = document.getElementById('billing-stripe-status');
+    if (prices.stripe_enabled) {
+      statusEl.innerHTML = '<span style="color:#4caf50">● Stripe 已配置</span>  — Webhook 地址：<code>' + escHtml(location.origin + '/api/billing/webhook') + '</code>';
+    } else {
+      statusEl.innerHTML = '<span style="color:#f59e0b">● Stripe 未配置</span>  — 请在 <code>.env</code> 中设置 <code>STRIPE_SECRET_KEY</code>、<code>STRIPE_WEBHOOK_SECRET</code>、<code>STRIPE_PUBLISHABLE_KEY</code>';
+    }
+  } catch (e) {
+    document.getElementById('billing-stripe-status').textContent = '获取 Stripe 状态失败';
+  }
+
+  // 用户订阅列表
+  try {
+    const data = await apiFetch('/billing/admin/subscriptions?limit=100');
+    const tbody = document.getElementById('billing-subs-body');
+    const planLabels = { free: 'Free', personal_basic: 'Basic', personal_pro: 'Pro', personal_max: 'Max', team_starter: 'Team Starter', team_pro: 'Team Pro', team_business: 'Team Business' };
+    tbody.innerHTML = (data.rows || []).map(r => `
+      <tr>
+        <td>${escHtml(r.name)}</td>
+        <td>${escHtml(r.email || '-')}</td>
+        <td>
+          <select onchange="updateUserPlan('${escHtml(r.user_id)}', this.value, document.getElementById('seat-${escHtml(r.user_id)}').value)"
+                  style="font-size:11px;padding:2px 4px">
+            ${Object.entries(planLabels).map(([v,l]) => `<option value="${v}" ${r.plan===v?'selected':''}>${l}</option>`).join('')}
+          </select>
+        </td>
+        <td>
+          <select id="seat-${escHtml(r.user_id)}" onchange="updateUserPlan('${escHtml(r.user_id)}', document.querySelector('[onchange*=\\'${escHtml(r.user_id)}\\']:not(#seat-${escHtml(r.user_id)})').value, this.value)"
+                  style="font-size:11px;padding:2px 4px">
+            ${['basic','pro','max'].map(s => `<option value="${s}" ${(r.seat_level||'basic')===s?'selected':''}>${s}</option>`).join('')}
+          </select>
+        </td>
+        <td><span style="color:${r.status==='active'?'#4caf50':'#f44336'}">${escHtml(r.status||'-')}</span></td>
+        <td style="font-size:11px">${r.current_period_end ? r.current_period_end.slice(0,10) : '-'}</td>
+        <td>
+          <button class="btn btn-sm" onclick="updateUserPlan('${escHtml(r.user_id)}', document.querySelectorAll('[onchange*=\\'${escHtml(r.user_id)}\\']')[0].value, document.querySelectorAll('[onchange*=\\'${escHtml(r.user_id)}\\']')[1].value)" style="font-size:11px;padding:3px 8px">保存</button>
+        </td>
+      </tr>
+    `).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--text2)">暂无订阅记录</td></tr>';
+  } catch (e) {
+    document.getElementById('billing-subs-body').innerHTML = '<tr><td colspan="7">加载失败</td></tr>';
+  }
+
+  // 价格配置列表
+  try {
+    const rows = await apiFetch('/billing/admin/prices');
+    const tbody = document.getElementById('billing-prices-body');
+    tbody.innerHTML = rows.map(r => `
+      <tr id="price-row-${escHtml(r.id)}">
+        <td style="font-size:11px">${escHtml(r.id)}</td>
+        <td>${escHtml(r.plan)}</td>
+        <td>${escHtml(r.seat_level || '-')}</td>
+        <td>${escHtml(r.billing_cycle)}</td>
+        <td><input id="price-cents-${escHtml(r.id)}" type="number" value="${r.amount_cents}" style="width:70px;font-size:11px;padding:2px 4px" /></td>
+        <td><input id="price-sid-${escHtml(r.id)}" type="text" placeholder="price_xxx" value="${escHtml(r.stripe_price_id||'')}" style="width:160px;font-size:11px;padding:2px 4px" /></td>
+        <td>
+          <label style="font-size:11px;cursor:pointer">
+            <input type="checkbox" id="price-active-${escHtml(r.id)}" ${r.active?'checked':''} style="margin-right:4px">启用
+          </label>
+        </td>
+        <td>
+          <button class="btn btn-sm" onclick="saveBillingPrice('${escHtml(r.id)}')" style="font-size:11px;padding:3px 8px">保存</button>
+        </td>
+      </tr>
+    `).join('');
+  } catch (e) {
+    document.getElementById('billing-prices-body').innerHTML = '<tr><td colspan="8">加载失败</td></tr>';
+  }
+}
+
+async function updateUserPlan(userId, plan, seatLevel) {
+  try {
+    await apiFetch('/billing/admin/user/' + userId + '/plan', {
+      method: 'PUT',
+      body: JSON.stringify({ plan, seat_level: seatLevel })
+    });
+    showToast('计划已更新');
+  } catch (e) {
+    showToast('更新失败: ' + e.message, true);
+  }
+}
+
+async function saveBillingPrice(id) {
+  const stripeId = document.getElementById('price-sid-' + id).value.trim();
+  const amountCents = parseInt(document.getElementById('price-cents-' + id).value || '0');
+  const active = document.getElementById('price-active-' + id).checked;
+  try {
+    await apiFetch('/billing/admin/prices/' + id, {
+      method: 'PUT',
+      body: JSON.stringify({ stripe_price_id: stripeId || null, amount_cents: amountCents, active })
+    });
+    showToast('价格配置已保存');
+  } catch (e) {
+    showToast('保存失败: ' + e.message, true);
+  }
+}
+
 </script>
 <script src="/services-guard.js"></script>
 </body>

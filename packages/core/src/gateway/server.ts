@@ -42,7 +42,11 @@ import groupsRoutes from './routes/groups.js';
 import klaudeProxyRoutes from './routes/klaude-proxy.js';
 import filesRoutes from './routes/files.js';
 import logsRoutes from './routes/logs.js';
+import adminLogsRoutes from './routes/admin-logs.js';
+import { requestLogger } from './middleware.js';
 import contextRoutes from './routes/context.js';
+import systemRoutes from './routes/system.js';
+import billingRoutes from './routes/billing.js';
 import { seedDefaultServices } from '../services/seed.js';
 
 const log = createLogger('gateway');
@@ -60,7 +64,17 @@ export function startGateway(opts: GatewayOptions = {}) {
   seedDefaultServices();
 
   const app = express();
+
+  // Stripe webhook 需要 raw body 验证签名，必须在 express.json() 之前注册
+  app.use('/api/billing/webhook', express.raw({ type: 'application/json' }), (req, _res, next) => {
+    (req as typeof req & { rawBody?: Buffer }).rawBody = req.body as Buffer;
+    next();
+  });
+
   app.use(express.json());
+
+  // 请求耗时监控（慢请求/5xx 自动写持久化日志）
+  app.use(requestLogger);
 
   // CORS — 白名单模式
   const CORS_ORIGINS = (process.env['CORS_ORIGINS'] ?? '').split(',').filter(Boolean);
@@ -134,8 +148,14 @@ export function startGateway(opts: GatewayOptions = {}) {
   app.use('/api/files', filesRoutes);
   // 实时日志（admin only）
   app.use('/api/logs', logsRoutes);
+  // 持久化日志（admin only）
+  app.use('/api/admin/logs', adminLogsRoutes);
   // 三层上下文文档管理
   app.use('/api/context', contextRoutes);
+  // 系统初始化配置（Setup Wizard）
+  app.use('/api/system', systemRoutes);
+  // 订阅计划与积分
+  app.use('/api/billing', billingRoutes);
 
   // 静态文件（看板 Web UI）
   const resolvedPublicDir = opts.publicDir ?? join(process.cwd(), 'public');

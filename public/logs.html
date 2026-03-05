@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>我的活动日志</title>
+<link rel="stylesheet" href="/styles/tokens.css">
+<script src="/theme.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: var(--font, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif);
+  background: var(--bg); color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+.page { max-width: 960px; margin: 0 auto; padding: 24px 20px; }
+h1 { font-size: 20px; font-weight: 700; margin-bottom: 4px; letter-spacing: -0.4px; }
+.subtitle { font-size: 13px; color: var(--text2); margin-bottom: 20px; }
+
+/* Tab bar */
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+.tab  { padding: 8px 14px; border: none; background: transparent; color: var(--text2);
+        font-size: 13px; cursor: pointer; font-family: inherit; border-bottom: 2px solid transparent;
+        margin-bottom: -1px; transition: color .15s, border-color .15s; }
+.tab:hover  { color: var(--text); }
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+
+/* Stat cards */
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px,1fr)); gap: 10px; margin-bottom: 16px; }
+.stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; }
+.stat-card .value { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+.stat-card .label { font-size: 11px; color: var(--text2); margin-top: 2px; }
+
+/* Day filter */
+.toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+.toolbar select { height: 32px; padding: 0 8px; background: var(--surface2);
+                  border: 1px solid var(--border); color: var(--text); border-radius: 6px;
+                  font-size: 13px; font-family: inherit; cursor: pointer; }
+
+/* Table */
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin-bottom: 16px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; padding: 8px 12px; color: var(--text2); border-bottom: 1px solid var(--border); font-weight: 500; font-size: 12px; }
+td { padding: 8px 12px; border-bottom: 1px solid var(--border); }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--surface-hover, rgba(255,255,255,0.03)); }
+.empty { text-align: center; color: var(--text2); padding: 24px; }
+
+/* Badge */
+.badge { display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+.badge-green { background: rgba(157,216,74,0.12); color: #9DD84A; }
+.badge-red   { background: rgba(255,77,106,0.12); color: #ff4d6a; }
+.badge-blue  { background: rgba(88,166,255,0.12); color: #58a6ff; }
+.badge-gray  { background: var(--surface2); color: var(--text2); }
+
+/* Mini bar chart */
+.bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.bar-label { width: 32px; text-align: right; font-size: 11px; color: var(--text2); flex-shrink: 0; }
+.bar-track { flex: 1; height: 8px; background: var(--surface2); border-radius: 4px; overflow: hidden; }
+.bar-fill  { height: 100%; background: var(--accent); border-radius: 4px; transition: width .3s; }
+.bar-val   { width: 60px; font-size: 11px; color: var(--text2); }
+
+/* Error log */
+.log-line { font-family: var(--font-mono, monospace); font-size: 12px; line-height: 1.6;
+            padding: 4px 0; border-bottom: 1px solid var(--border); }
+.log-line:last-child { border-bottom: none; }
+.lev-warn  { color: #ffa726; }
+.lev-error { color: #ff4d6a; }
+
+/* Pagination */
+.pagination { display: flex; gap: 6px; justify-content: flex-end; margin-top: 8px; }
+.btn { padding: 6px 12px; border: 1px solid var(--border); background: var(--surface2);
+       color: var(--text); border-radius: 6px; font-size: 13px; cursor: pointer; font-family: inherit; }
+.btn:hover { background: var(--surface); }
+.btn:disabled { opacity: .4; cursor: default; }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>我的活动日志</h1>
+  <p class="subtitle">查看您的对话历史、工具调用记录和错误日志</p>
+
+  <div class="toolbar">
+    <select id="days-sel" onchange="loadAll()">
+      <option value="7">近 7 天</option>
+      <option value="30" selected>近 30 天</option>
+      <option value="90">近 90 天</option>
+    </select>
+    <span id="user-info" style="font-size:12px;color:var(--text2)"></span>
+  </div>
+
+  <!-- 汇总卡片 -->
+  <div id="summary-cards" class="stat-grid"></div>
+
+  <!-- Tab 切换 -->
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('sessions')">对话历史</button>
+    <button class="tab" onclick="switchTab('tools')">工具调用</button>
+    <button class="tab" onclick="switchTab('chart')">消耗趋势</button>
+    <button class="tab" onclick="switchTab('errors')">错误日志</button>
+  </div>
+
+  <!-- 对话历史 -->
+  <div id="tab-sessions">
+    <div class="card">
+      <table>
+        <thead><tr>
+          <th>对话标题</th><th>引擎</th>
+          <th style="text-align:right">消息数</th>
+          <th style="text-align:right">Token</th>
+          <th style="text-align:right">费用</th>
+          <th>最近活跃</th>
+        </tr></thead>
+        <tbody id="sessions-body"><tr><td colspan="6" class="empty">加载中...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 工具调用 -->
+  <div id="tab-tools" style="display:none">
+    <div class="card">
+      <table>
+        <thead><tr>
+          <th>工具名</th><th>状态</th>
+          <th style="text-align:right">耗时</th>
+          <th style="text-align:right">Token</th>
+          <th>所属对话</th>
+          <th>时间</th>
+        </tr></thead>
+        <tbody id="tools-body"><tr><td colspan="6" class="empty">加载中...</td></tr></tbody>
+      </table>
+    </div>
+    <div class="pagination">
+      <button class="btn" id="tools-prev" onclick="toolsPage(-1)" disabled>上一页</button>
+      <span id="tools-pager" style="font-size:12px;color:var(--text2);line-height:32px"></span>
+      <button class="btn" id="tools-next" onclick="toolsPage(1)" disabled>下一页</button>
+    </div>
+  </div>
+
+  <!-- 消耗趋势图 -->
+  <div id="tab-chart" style="display:none">
+    <div class="card" style="padding:16px">
+      <h3 style="font-size:13px;color:var(--text2);margin-bottom:14px">Token / 天</h3>
+      <div id="chart-bars"></div>
+    </div>
+    <div class="card" style="margin-top:12px">
+      <table>
+        <thead><tr>
+          <th>日期</th>
+          <th style="text-align:right">Token 消耗</th>
+          <th style="text-align:right">费用 (USD)</th>
+          <th style="text-align:right">请求次数</th>
+        </tr></thead>
+        <tbody id="chart-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 错误日志 -->
+  <div id="tab-errors" style="display:none">
+    <div class="card" style="padding:12px">
+      <div id="errors-box"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const TOKEN_KEY = 'fv_token';
+let token = localStorage.getItem(TOKEN_KEY);
+let _toolsPage = 0;
+let _toolsAll  = [];
+const PAGE_SIZE = 20;
+
+// 尝试从父页面 token 继承
+if (!token && window.parent !== window) {
+  try { token = window.parent.localStorage.getItem(TOKEN_KEY); } catch {}
+}
+// URL hash token
+const hashMatch = location.hash.match(/token=([^&]+)/);
+if (hashMatch) { token = decodeURIComponent(hashMatch[1]); }
+
+async function apiFetch(url) {
+  const r = await fetch(url, { headers: token ? { Authorization: 'Bearer ' + token } : {} });
+  if (!r.ok) throw new Error(r.status + ' ' + r.statusText);
+  return r.json();
+}
+
+// ── Tab 切换 ──
+function switchTab(name) {
+  ['sessions','tools','chart','errors'].forEach(t => {
+    document.getElementById(`tab-${t}`).style.display = t === name ? '' : 'none';
+  });
+  document.querySelectorAll('.tab').forEach((b, i) => {
+    b.classList.toggle('active', ['sessions','tools','chart','errors'][i] === name);
+  });
+}
+
+// ── 数字格式化 ──
+function fmt(n) {
+  return n >= 1e6 ? (n/1e6).toFixed(1)+'M' : n >= 1000 ? (n/1000).toFixed(1)+'K' : String(n||0);
+}
+
+// ── 主加载 ──
+async function loadAll() {
+  const days = document.getElementById('days-sel').value || 30;
+  try {
+    const data = await apiFetch(`/api/logs/mine?days=${days}`);
+    const { sessions = [], toolCalls = [], errorLogs = [], tokenByDay = [] } = data;
+
+    // 汇总卡片
+    const totalTokens = tokenByDay.reduce((s, d) => s + (d.tokens||0), 0);
+    const totalCost   = tokenByDay.reduce((s, d) => s + (d.cost_usd||0), 0);
+    const totalReq    = tokenByDay.reduce((s, d) => s + (d.calls||0), 0);
+    document.getElementById('summary-cards').innerHTML = `
+      <div class="stat-card"><div class="value">${sessions.length}</div><div class="label">对话数</div></div>
+      <div class="stat-card"><div class="value">${fmt(totalTokens)}</div><div class="label">Token 消耗</div></div>
+      <div class="stat-card"><div class="value" style="color:var(--accent)">$${totalCost.toFixed(4)}</div><div class="label">费用 (USD)</div></div>
+      <div class="stat-card"><div class="value">${toolCalls.length}</div><div class="label">工具调用</div></div>
+      <div class="stat-card"><div class="value" style="color:${errorLogs.length>0?'var(--red)':'var(--text)'}">${errorLogs.length}</div><div class="label">错误/警告</div></div>
+    `;
+
+    // 对话历史
+    document.getElementById('sessions-body').innerHTML = !sessions.length
+      ? '<tr><td colspan="6" class="empty">该时段无对话记录</td></tr>'
+      : sessions.map(s => `<tr>
+          <td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+            <span title="${escHtml(s.title||'')}">${escHtml(s.title||'新对话')}</span>
+          </td>
+          <td><span class="badge badge-gray">${s.engine||'builtin'}</span></td>
+          <td style="text-align:right">${s.message_count||0}</td>
+          <td style="text-align:right">${fmt(s.total_tokens||0)}</td>
+          <td style="text-align:right;color:var(--accent)">$${(s.total_cost||0).toFixed(4)}</td>
+          <td style="font-size:11px;color:var(--text2)">${(s.updated_at||'').slice(0,16).replace('T',' ')}</td>
+        </tr>`).join('');
+
+    // 工具调用（分页）
+    _toolsAll  = toolCalls;
+    _toolsPage = 0;
+    renderToolsPage();
+
+    // 趋势图
+    const maxTokens = Math.max(...tokenByDay.map(d => d.tokens||0), 1);
+    document.getElementById('chart-bars').innerHTML = tokenByDay.length
+      ? tokenByDay.map(d => `
+          <div class="bar-row">
+            <span class="bar-label">${(d.day||'').slice(5)}</span>
+            <div class="bar-track"><div class="bar-fill" style="width:${Math.round(((d.tokens||0)/maxTokens)*100)}%"></div></div>
+            <span class="bar-val">${fmt(d.tokens||0)}</span>
+          </div>`).join('')
+      : '<p style="color:var(--text2);font-size:13px">该时段无数据</p>';
+
+    document.getElementById('chart-body').innerHTML = tokenByDay.length
+      ? tokenByDay.map(d => `<tr>
+          <td>${d.day||'-'}</td>
+          <td style="text-align:right">${fmt(d.tokens||0)}</td>
+          <td style="text-align:right;color:var(--accent)">$${(d.cost_usd||0).toFixed(5)}</td>
+          <td style="text-align:right">${d.calls||0}</td>
+        </tr>`).join('')
+      : '<tr><td colspan="4" class="empty">无数据</td></tr>';
+
+    // 错误日志
+    const errBox = document.getElementById('errors-box');
+    if (!errorLogs.length) {
+      errBox.innerHTML = '<p style="text-align:center;color:var(--text2);padding:16px">该时段无错误/警告日志 🎉</p>';
+    } else {
+      errBox.innerHTML = errorLogs.map(e => `
+        <div class="log-line">
+          <span style="color:var(--text2);font-size:10px">${(e.ts||'').replace('T',' ').slice(0,19)}</span>
+          <span class="lev-${e.level}" style="font-weight:600;margin:0 6px">[${(e.level||'').toUpperCase()}]</span>
+          <span style="color:var(--blue)">[${escHtml(e.component||'')}]</span>
+          <span style="margin-left:6px">${escHtml(e.message||'')}</span>
+          ${e.duration_ms!=null?`<span style="color:var(--text2);margin-left:6px">${e.duration_ms}ms</span>`:''}
+        </div>`).join('');
+    }
+
+  } catch(err) {
+    document.getElementById('summary-cards').innerHTML =
+      `<div style="color:var(--red);padding:8px;font-size:13px">加载失败: ${err.message || err}</div>`;
+  }
+}
+
+function renderToolsPage() {
+  const start  = _toolsPage * PAGE_SIZE;
+  const page   = _toolsAll.slice(start, start + PAGE_SIZE);
+  const total  = _toolsAll.length;
+  document.getElementById('tools-pager').textContent =
+    `${start+1}–${Math.min(start+PAGE_SIZE,total)} / ${total}`;
+  document.getElementById('tools-prev').disabled = _toolsPage === 0;
+  document.getElementById('tools-next').disabled = start + PAGE_SIZE >= total;
+
+  document.getElementById('tools-body').innerHTML = !page.length
+    ? '<tr><td colspan="6" class="empty">该时段无工具调用记录</td></tr>'
+    : page.map(t => `<tr>
+        <td style="font-family:var(--font-mono,monospace);font-size:11px;color:var(--blue)">${escHtml(t.tool_name||'-')}</td>
+        <td><span class="badge ${t.tool_status==='success'?'badge-green':t.tool_status==='error'?'badge-red':'badge-gray'}">${t.tool_status||'-'}</span></td>
+        <td style="text-align:right;font-size:11px;color:var(--text2)">${t.duration_ms!=null?t.duration_ms+'ms':'-'}</td>
+        <td style="text-align:right">${fmt(t.tokens||0)}</td>
+        <td style="font-size:11px;color:var(--text2);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+            title="${escHtml(t.session_title||'')}">${escHtml(t.session_title||'-')}</td>
+        <td style="font-size:11px;color:var(--text2)">${(t.created_at||'').slice(0,16).replace('T',' ')}</td>
+      </tr>`).join('');
+}
+
+function toolsPage(dir) {
+  _toolsPage += dir;
+  renderToolsPage();
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Init ──
+(async () => {
+  if (!token) {
+    document.body.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text2)">请先登录</div>';
+    return;
+  }
+  try {
+    const me = await apiFetch('/api/auth/me');
+    document.getElementById('user-info').textContent = `${me.name || me.user_id} · ${me.role}`;
+  } catch { /* ignore */ }
+  await loadAll();
+})();
+</script>
+</body>
+</html>

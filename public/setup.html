@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jowork — Setup</title>
+<link rel="stylesheet" href="/styles/tokens.css">
+<script src="/theme.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; }
+html, body {
+  height: 100%; margin: 0; padding: 0;
+  background: var(--bg, #0f0f12);
+  color: var(--text, #e8e8e0);
+  font-family: var(--font, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif);
+  -webkit-font-smoothing: antialiased;
+}
+
+.page {
+  min-height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg, #0f0f12);
+  background-image: radial-gradient(circle, rgba(255,255,255,0.025) 1px, transparent 1px);
+  background-size: 28px 28px;
+  padding: 24px 16px;
+}
+
+.card {
+  width: 100%; max-width: 580px;
+  background: rgba(37,37,40,0.9);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 16px;
+  padding: 40px 36px 36px;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+  position: relative; overflow: hidden;
+}
+.card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, #9DD84A, #5CC8D8, #C4B8E8, #E8A898);
+}
+[data-theme="light"] .card {
+  background: rgba(255,255,255,0.92);
+  border: 1px solid rgba(0,0,0,0.07);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+}
+
+/* Progress steps */
+.steps {
+  display: flex; gap: 8px; margin-bottom: 32px; align-items: center;
+}
+.step {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12px; color: var(--text2, #888); font-weight: 500;
+}
+.step-num {
+  width: 24px; height: 24px; border-radius: 50%;
+  background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.12);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 600;
+  transition: background .2s, border-color .2s;
+}
+.step.active .step-num {
+  background: var(--accent, #9DD84A); border-color: var(--accent, #9DD84A);
+  color: #000;
+}
+.step.done .step-num {
+  background: rgba(157,216,74,0.2); border-color: rgba(157,216,74,0.4);
+  color: var(--accent, #9DD84A);
+}
+.step-sep { flex: 1; height: 1px; background: rgba(255,255,255,0.08); }
+[data-theme="light"] .step-sep { background: rgba(0,0,0,0.1); }
+
+/* Headers */
+.step-title { font-size: 20px; font-weight: 700; letter-spacing: -0.4px; margin: 0 0 6px; }
+.step-desc { font-size: 13px; color: var(--text2, #888); margin: 0 0 28px; line-height: 1.55; }
+
+/* Form elements */
+.field { margin-bottom: 16px; }
+.field label {
+  display: block; font-size: 12px; font-weight: 600; color: var(--text2, #888);
+  text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;
+}
+.field input {
+  width: 100%; padding: 10px 12px;
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px; color: var(--text, #e8e8e0); font-size: 14px;
+  outline: none; font-family: inherit; transition: border-color .15s, box-shadow .15s;
+}
+.field input:focus {
+  border-color: var(--accent, #9DD84A);
+  box-shadow: 0 0 0 3px rgba(157,216,74,0.15);
+}
+[data-theme="light"] .field input {
+  background: rgba(0,0,0,0.04); border-color: rgba(0,0,0,0.12); color: #111;
+}
+
+/* Callback URL list */
+.callback-list {
+  background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 10px; padding: 14px 16px; margin-top: 4px;
+}
+[data-theme="light"] .callback-list {
+  background: rgba(0,0,0,0.03); border-color: rgba(0,0,0,0.08);
+}
+.callback-list-title {
+  font-size: 11px; font-weight: 600; color: var(--text2, #888);
+  text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px;
+}
+.callback-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.callback-item:last-child { border-bottom: none; }
+[data-theme="light"] .callback-item { border-color: rgba(0,0,0,0.06); }
+.callback-badge {
+  font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 4px;
+  background: rgba(92,200,216,0.15); color: #5CC8D8;
+  min-width: 60px; text-align: center; white-space: nowrap;
+}
+.callback-url {
+  font-family: 'SF Mono', 'Fira Code', monospace; font-size: 11px;
+  color: var(--text, #e8e8e0); flex: 1; word-break: break-all;
+}
+[data-theme="light"] .callback-url { color: #222; }
+.copy-btn {
+  background: none; border: 1px solid rgba(255,255,255,0.1); border-radius: 5px;
+  color: var(--text2, #888); font-size: 11px; padding: 3px 7px; cursor: pointer;
+  transition: background .15s, color .15s; white-space: nowrap;
+}
+.copy-btn:hover { background: rgba(255,255,255,0.07); color: var(--text, #e8e8e0); }
+[data-theme="light"] .copy-btn { border-color: rgba(0,0,0,0.12); }
+
+/* Connector accordion */
+.connector-section {
+  border: 1px solid rgba(255,255,255,0.07); border-radius: 10px;
+  margin-bottom: 10px; overflow: hidden;
+}
+[data-theme="light"] .connector-section { border-color: rgba(0,0,0,0.1); }
+.connector-header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 14px; cursor: pointer;
+  background: rgba(255,255,255,0.03);
+  transition: background .15s;
+}
+.connector-header:hover { background: rgba(255,255,255,0.06); }
+[data-theme="light"] .connector-header { background: rgba(0,0,0,0.03); }
+[data-theme="light"] .connector-header:hover { background: rgba(0,0,0,0.05); }
+.connector-name { font-size: 13px; font-weight: 600; flex: 1; }
+.connector-optional { font-size: 11px; color: var(--text2, #888); }
+.connector-chevron {
+  font-size: 10px; color: var(--text2, #888); transition: transform .2s;
+}
+.connector-section.open .connector-chevron { transform: rotate(90deg); }
+.connector-body { padding: 14px; display: none; border-top: 1px solid rgba(255,255,255,0.07); }
+.connector-section.open .connector-body { display: block; }
+[data-theme="light"] .connector-body { border-color: rgba(0,0,0,0.08); }
+.connector-body .field { margin-bottom: 10px; }
+.connector-body .field:last-child { margin-bottom: 0; }
+
+/* Buttons */
+.btn-row { display: flex; gap: 10px; justify-content: flex-end; margin-top: 28px; }
+.btn {
+  padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: 600;
+  cursor: pointer; border: none; font-family: inherit; transition: opacity .15s;
+}
+.btn:active { opacity: .75; }
+.btn:disabled { opacity: .35; cursor: not-allowed; }
+.btn-primary {
+  background: var(--accent, #9DD84A); color: #000;
+  box-shadow: 0 2px 8px rgba(157,216,74,0.25);
+}
+.btn-secondary {
+  background: rgba(255,255,255,0.07); color: var(--text, #e8e8e0);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+[data-theme="light"] .btn-secondary {
+  background: rgba(0,0,0,0.06); border-color: rgba(0,0,0,0.1); color: #111;
+}
+
+/* Success step */
+.success-icon {
+  width: 56px; height: 56px; border-radius: 50%;
+  background: rgba(157,216,74,0.15); border: 2px solid rgba(157,216,74,0.4);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px; margin-bottom: 20px;
+}
+.success-title { font-size: 22px; font-weight: 700; margin: 0 0 8px; }
+.success-desc { font-size: 14px; color: var(--text2, #888); margin: 0 0 28px; line-height: 1.6; }
+
+/* Error */
+.error-msg {
+  padding: 10px 14px; border-radius: 8px;
+  background: rgba(255,59,48,0.1); border: 1px solid rgba(255,59,48,0.2);
+  color: #ff6b6b; font-size: 13px; margin-top: 12px; display: none;
+}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="card" id="card">
+
+    <!-- Progress steps -->
+    <div class="steps" id="steps-bar">
+      <div class="step active" id="step-indicator-1">
+        <div class="step-num">1</div>
+        <span>Gateway URL</span>
+      </div>
+      <div class="step-sep"></div>
+      <div class="step" id="step-indicator-2">
+        <div class="step-num">2</div>
+        <span>OAuth Apps</span>
+      </div>
+      <div class="step-sep"></div>
+      <div class="step" id="step-indicator-3">
+        <div class="step-num">3</div>
+        <span>Done</span>
+      </div>
+    </div>
+
+    <!-- Step 1: Gateway URL -->
+    <div id="step-1">
+      <div class="step-title">Set Gateway URL</div>
+      <div class="step-desc">
+        Enter the public URL where this Jowork gateway is accessible. This URL will be used as the OAuth redirect base for all connectors.
+      </div>
+      <div class="field">
+        <label>Gateway Public URL</label>
+        <input type="url" id="gateway-url" placeholder="https://your-domain.com" autocomplete="off">
+      </div>
+      <div class="callback-list" id="callback-preview" style="display:none;">
+        <div class="callback-list-title">OAuth Callback URLs — add these to your OAuth apps</div>
+        <div id="callback-items"></div>
+      </div>
+      <div class="error-msg" id="error-1"></div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="goStep2()">Next →</button>
+      </div>
+    </div>
+
+    <!-- Step 2: OAuth App Credentials -->
+    <div id="step-2" style="display:none;">
+      <div class="step-title">Configure OAuth Apps</div>
+      <div class="step-desc">
+        Optionally add OAuth credentials for each connector. You can also configure these later via environment variables or the admin panel. Skip any you don't need.
+      </div>
+
+      <div class="connector-section" id="cs-linear">
+        <div class="connector-header" onclick="toggleConnector('cs-linear')">
+          <span class="connector-name">Linear</span>
+          <span class="connector-optional">optional</span>
+          <span class="connector-chevron">▶</span>
+        </div>
+        <div class="connector-body">
+          <div class="field">
+            <label>Client ID</label>
+            <input type="text" id="linear_client_id" placeholder="LINEAR_CLIENT_ID" autocomplete="off">
+          </div>
+          <div class="field">
+            <label>Client Secret</label>
+            <input type="password" id="linear_client_secret" placeholder="LINEAR_CLIENT_SECRET" autocomplete="off">
+          </div>
+        </div>
+      </div>
+
+      <div class="connector-section" id="cs-github">
+        <div class="connector-header" onclick="toggleConnector('cs-github')">
+          <span class="connector-name">GitHub</span>
+          <span class="connector-optional">optional</span>
+          <span class="connector-chevron">▶</span>
+        </div>
+        <div class="connector-body">
+          <div class="field">
+            <label>Client ID</label>
+            <input type="text" id="github_client_id" placeholder="GITHUB_CLIENT_ID" autocomplete="off">
+          </div>
+          <div class="field">
+            <label>Client Secret</label>
+            <input type="password" id="github_client_secret" placeholder="GITHUB_CLIENT_SECRET" autocomplete="off">
+          </div>
+        </div>
+      </div>
+
+      <div class="connector-section" id="cs-google">
+        <div class="connector-header" onclick="toggleConnector('cs-google')">
+          <span class="connector-name">Google (Gmail / Calendar / Drive)</span>
+          <span class="connector-optional">optional</span>
+          <span class="connector-chevron">▶</span>
+        </div>
+        <div class="connector-body">
+          <div class="field">
+            <label>Client ID</label>
+            <input type="text" id="google_client_id" placeholder="GOOGLE_CLIENT_ID" autocomplete="off">
+          </div>
+          <div class="field">
+            <label>Client Secret</label>
+            <input type="password" id="google_client_secret" placeholder="GOOGLE_CLIENT_SECRET" autocomplete="off">
+          </div>
+        </div>
+      </div>
+
+      <div class="connector-section" id="cs-gitlab">
+        <div class="connector-header" onclick="toggleConnector('cs-gitlab')">
+          <span class="connector-name">GitLab</span>
+          <span class="connector-optional">optional</span>
+          <span class="connector-chevron">▶</span>
+        </div>
+        <div class="connector-body">
+          <div class="field">
+            <label>Client ID</label>
+            <input type="text" id="gitlab_client_id" placeholder="GITLAB_CLIENT_ID" autocomplete="off">
+          </div>
+          <div class="field">
+            <label>Client Secret</label>
+            <input type="password" id="gitlab_client_secret" placeholder="GITLAB_CLIENT_SECRET" autocomplete="off">
+          </div>
+        </div>
+      </div>
+
+      <div class="connector-section" id="cs-figma">
+        <div class="connector-header" onclick="toggleConnector('cs-figma')">
+          <span class="connector-name">Figma</span>
+          <span class="connector-optional">optional</span>
+          <span class="connector-chevron">▶</span>
+        </div>
+        <div class="connector-body">
+          <div class="field">
+            <label>Client ID</label>
+            <input type="text" id="figma_client_id" placeholder="FIGMA_CLIENT_ID" autocomplete="off">
+          </div>
+          <div class="field">
+            <label>Client Secret</label>
+            <input type="password" id="figma_client_secret" placeholder="FIGMA_CLIENT_SECRET" autocomplete="off">
+          </div>
+        </div>
+      </div>
+
+      <div class="connector-section" id="cs-slack">
+        <div class="connector-header" onclick="toggleConnector('cs-slack')">
+          <span class="connector-name">Slack</span>
+          <span class="connector-optional">optional</span>
+          <span class="connector-chevron">▶</span>
+        </div>
+        <div class="connector-body">
+          <div class="field">
+            <label>Client ID</label>
+            <input type="text" id="slack_client_id" placeholder="SLACK_CLIENT_ID" autocomplete="off">
+          </div>
+          <div class="field">
+            <label>Client Secret</label>
+            <input type="password" id="slack_client_secret" placeholder="SLACK_CLIENT_SECRET" autocomplete="off">
+          </div>
+        </div>
+      </div>
+
+      <div class="connector-section" id="cs-notion">
+        <div class="connector-header" onclick="toggleConnector('cs-notion')">
+          <span class="connector-name">Notion</span>
+          <span class="connector-optional">optional</span>
+          <span class="connector-chevron">▶</span>
+        </div>
+        <div class="connector-body">
+          <div class="field">
+            <label>Client ID</label>
+            <input type="text" id="notion_client_id" placeholder="NOTION_CLIENT_ID" autocomplete="off">
+          </div>
+          <div class="field">
+            <label>Client Secret</label>
+            <input type="password" id="notion_client_secret" placeholder="NOTION_CLIENT_SECRET" autocomplete="off">
+          </div>
+        </div>
+      </div>
+
+      <div class="error-msg" id="error-2"></div>
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="showStep(1)">← Back</button>
+        <button class="btn btn-primary" id="save-btn" onclick="saveSetup()">Save & Finish</button>
+      </div>
+    </div>
+
+    <!-- Step 3: Done -->
+    <div id="step-3" style="display:none; text-align:center;">
+      <div style="display:flex; justify-content:center; margin-bottom:16px;">
+        <div class="success-icon">✓</div>
+      </div>
+      <div class="success-title">Setup Complete!</div>
+      <div class="success-desc">
+        Your Jowork gateway is configured and ready. Add your team members and connect your tools from the admin panel.
+      </div>
+      <button class="btn btn-primary" onclick="location.href='/shell.html'">Open Jowork →</button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const API = '';
+let gatewayUrl = '';
+let oauthCallbacks = {};
+
+// ── Step navigation ──
+function showStep(n) {
+  [1, 2, 3].forEach(i => {
+    document.getElementById('step-' + i).style.display = i === n ? 'block' : 'none';
+    const ind = document.getElementById('step-indicator-' + i);
+    ind.className = 'step' + (i === n ? ' active' : i < n ? ' done' : '');
+    const num = ind.querySelector('.step-num');
+    num.textContent = i < n ? '✓' : String(i);
+  });
+  document.getElementById('steps-bar').style.display = n === 3 ? 'none' : 'flex';
+}
+
+// ── Step 1: gateway URL & callback preview ──
+function updateCallbackPreview() {
+  const url = (document.getElementById('gateway-url').value || '').trim().replace(/\/$/, '');
+  if (!url) { document.getElementById('callback-preview').style.display = 'none'; return; }
+  gatewayUrl = url;
+
+  const callbacks = {
+    Feishu: `${url}/api/auth/oauth/callback`,
+    Google: `${url}/api/connectors/google/oauth/callback`,
+    Linear: `${url}/api/connectors/linear_v1/oauth/callback`,
+    GitHub: `${url}/api/connectors/github_v1/oauth/callback`,
+    GitLab: `${url}/api/connectors/gitlab_v1/oauth/callback`,
+    Figma:  `${url}/api/connectors/figma_v1/oauth/callback`,
+    Slack:  `${url}/api/connectors/slack_v1/oauth/callback`,
+    Notion: `${url}/api/connectors/notion_v1/oauth/callback`,
+    Microsoft: `${url}/api/connectors/outlook_v1/oauth/callback`,
+  };
+  oauthCallbacks = callbacks;
+
+  const items = Object.entries(callbacks).map(([label, cbUrl]) => `
+    <div class="callback-item">
+      <span class="callback-badge">${label}</span>
+      <span class="callback-url">${cbUrl}</span>
+      <button class="copy-btn" onclick="copyUrl(this, '${cbUrl}')">Copy</button>
+    </div>
+  `).join('');
+  document.getElementById('callback-items').innerHTML = items;
+  document.getElementById('callback-preview').style.display = 'block';
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('gateway-url').addEventListener('input', updateCallbackPreview);
+});
+
+function copyUrl(btn, url) {
+  navigator.clipboard.writeText(url).then(() => {
+    btn.textContent = 'Copied!';
+    setTimeout(() => { btn.textContent = 'Copy'; }, 1500);
+  });
+}
+
+function goStep2() {
+  const url = (document.getElementById('gateway-url').value || '').trim().replace(/\/$/, '');
+  if (!url) { showError('error-1', 'Please enter the Gateway URL'); return; }
+  try { new URL(url); } catch { showError('error-1', 'Please enter a valid URL (must start with http:// or https://)'); return; }
+  gatewayUrl = url;
+  updateCallbackPreview();
+  showStep(2);
+}
+
+// ── Connector accordion ──
+function toggleConnector(id) {
+  document.getElementById(id).classList.toggle('open');
+}
+
+// ── Step 2: save ──
+async function saveSetup() {
+  const btn = document.getElementById('save-btn');
+  btn.disabled = true; btn.textContent = 'Saving...';
+
+  const body = {
+    gateway_url: gatewayUrl,
+    linear_client_id: val('linear_client_id'),
+    linear_client_secret: val('linear_client_secret'),
+    github_client_id: val('github_client_id'),
+    github_client_secret: val('github_client_secret'),
+    google_client_id: val('google_client_id'),
+    google_client_secret: val('google_client_secret'),
+    gitlab_client_id: val('gitlab_client_id'),
+    gitlab_client_secret: val('gitlab_client_secret'),
+    figma_client_id: val('figma_client_id'),
+    figma_client_secret: val('figma_client_secret'),
+    slack_client_id: val('slack_client_id'),
+    slack_client_secret: val('slack_client_secret'),
+    notion_client_id: val('notion_client_id'),
+    notion_client_secret: val('notion_client_secret'),
+  };
+
+  try {
+    // Try with auth token first, fallback to no-auth (bootstrap mode)
+    const token = localStorage.getItem('jowork_token') || localStorage.getItem('jw_token') || '';
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = 'Bearer ' + token;
+
+    const resp = await fetch(API + '/api/system/setup', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body),
+    });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err.error || 'Save failed');
+    }
+    showStep(3);
+  } catch (e) {
+    showError('error-2', e.message || 'Failed to save setup');
+    btn.disabled = false; btn.textContent = 'Save & Finish';
+  }
+}
+
+function val(id) {
+  return (document.getElementById(id)?.value || '').trim();
+}
+
+function showError(id, msg) {
+  const el = document.getElementById(id);
+  el.textContent = msg; el.style.display = 'block';
+  setTimeout(() => { el.style.display = 'none'; }, 6000);
+}
+
+// Init: 检查 setup 是否已完成（避免重复配置）
+(async function init() {
+  try {
+    const r = await fetch(API + '/api/system/setup-status', { signal: AbortSignal.timeout(3000) });
+    if (r.ok) {
+      const d = await r.json();
+      if (d.done) {
+        // setup 已完成，跳转回 shell
+        location.href = '/shell.html';
+        return;
+      }
+      // 用 API 返回的 gateway_url 预填（非 localhost 默认值才预填）
+      const gwUrl = d.gateway_url || '';
+      const isLocalhost = gwUrl.includes('localhost') || gwUrl.includes('127.0.0.1');
+      const origin = location.origin;
+      const urlToFill = (!isLocalhost && gwUrl) ? gwUrl : (origin !== 'null' ? origin : '');
+      if (urlToFill) {
+        document.getElementById('gateway-url').value = urlToFill;
+        updateCallbackPreview();
+      }
+    }
+  } catch { /* gateway 离线，继续显示向导 */ }
+  showStep(1);
+})();
+</script>
+</body>
+</html>

@@ -128,7 +128,8 @@ export type AgentEvent =
   | { event: 'engine_info'; data: { engine: EngineType; model?: string } }
   | { event: 'stopped'; data: Record<string, never> }
   | { event: 'error'; data: { message: string } }
-  | { event: 'learn_suggestion'; data: { title: string; content: string; user_id: string } };
+  | { event: 'learn_suggestion'; data: { title: string; content: string; user_id: string } }
+  | { event: 'credits_exhausted'; data: { used: number; total: number; upgrade_to: string | null } };
 
 // ─── Anthropic API Types (tool_use) ───
 

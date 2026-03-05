@@ -217,7 +217,7 @@ function getProviderApiKey(provider: ModelProvider): string | null {
 
 // ─── 成本追踪 ───
 
-interface CostRecord {
+export interface CostRecord {
   user_id: string;
   provider: string;
   model: string;
@@ -226,9 +226,11 @@ interface CostRecord {
   tokens_out: number;
   cost_usd: number;
   date: string;
+  behavior?: string;   // BehaviorType（可选，旧记录兜底为 'untagged'）
+  tool_name?: string;  // behavior='tool_call' 时记录具体工具名
 }
 
-/** 确保 model_costs 表存在 */
+/** 确保 model_costs 表存在（含新字段） */
 function ensureCostTable() {
   const db = getDb();
   db.exec(`
@@ -245,24 +247,28 @@ function ensureCostTable() {
       created_at TEXT DEFAULT (datetime('now'))
     )
   `);
-  // 安全添加 task_type 列（已有表）
-  try {
-    db.exec(`ALTER TABLE model_costs ADD COLUMN task_type TEXT DEFAULT 'chat'`);
-  } catch { /* column already exists */ }
+  // 安全添加列（已有表时不报错）
+  try { db.exec(`ALTER TABLE model_costs ADD COLUMN task_type TEXT DEFAULT 'chat'`); } catch { /* exists */ }
+  try { db.exec(`ALTER TABLE model_costs ADD COLUMN behavior TEXT DEFAULT 'untagged'`); } catch { /* exists */ }
+  try { db.exec(`ALTER TABLE model_costs ADD COLUMN tool_name TEXT`); } catch { /* exists */ }
 }
 
-function recordCost(record: CostRecord) {
-  // 异步写入：成本记录不影响当前对话，延后到下一个事件循环执行
-  setImmediate(() => {
-    try {
-      ensureCostTable();
-      const db = getDb();
-      db.prepare(`
-        INSERT INTO model_costs (user_id, provider, model, task_type, tokens_in, tokens_out, cost_usd, date)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      `).run(record.user_id, record.provider, record.model, record.task_type, record.tokens_in, record.tokens_out, record.cost_usd, record.date);
-    } catch { /* 成本记录失败不影响主流程 */ }
-  });
+function recordCost(record: CostRecord): number | undefined {
+  // 同步写入以便返回 last insert rowid（积分扣减需要关联 id）
+  try {
+    ensureCostTable();
+    const db = getDb();
+    const result = db.prepare(`
+      INSERT INTO model_costs (user_id, provider, model, task_type, tokens_in, tokens_out, cost_usd, date, behavior, tool_name)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      record.user_id, record.provider, record.model, record.task_type,
+      record.tokens_in, record.tokens_out, record.cost_usd, record.date,
+      record.behavior ?? 'untagged', record.tool_name ?? null,
+    );
+    return result.lastInsertRowid as number;
+  } catch { /* 成本记录失败不影响主流程 */ }
+  return undefined;
 }
 
 /** 获取某用户今日成本 */
@@ -540,8 +546,8 @@ export async function routeModel(req: ModelRequest): Promise<ModelResponse> {
 
 // ─── 公开成本记录（供流式场景外部调用） ───
 
-export function recordModelCost(record: CostRecord) {
-  recordCost(record);
+export function recordModelCost(record: CostRecord): number | undefined {
+  return recordCost(record);
 }
 
 export function getKlaudeInfo(): { provider: string; model: string; costPer1kToken: number } | null {

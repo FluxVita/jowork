@@ -248,6 +248,12 @@ export interface GatewayConfig {
   posthog: {
     api_key: string;
   };
+  stripe?: {
+    secret_key: string;
+    webhook_secret: string;
+    /** 客户端 publishable key（可在前端使用） */
+    publishable_key: string;
+  };
   tailscale: {
     enabled: boolean;
   };

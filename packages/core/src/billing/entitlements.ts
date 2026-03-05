@@ -1,25 +1,76 @@
 import { listAuthorizedConnectorIdsAllUsers } from '../connectors/oauth-store.js';
 import { getOrgSetting } from '../auth/settings.js';
 
-export type SubscriptionPlan = 'free' | 'pro' | 'team' | 'business';
+// ─── 计划类型 ───
 
-const CONNECTOR_LIMITS: Record<SubscriptionPlan, number | null> = {
+// 个人版：仅积分差异，无功能门槛（云托管有效，自托管无积分限制）
+export type PersonalPlan = 'free' | 'personal_basic' | 'personal_pro' | 'personal_max';
+
+// Team 版：功能门槛差异
+export type TeamTier = 'team_starter' | 'team_pro' | 'team_business';
+
+// Team 席位等级：在某 TeamTier 下，不同席位有不同积分配额
+export type SeatLevel = 'basic' | 'pro' | 'max';
+
+export type SubscriptionPlan = PersonalPlan | TeamTier;
+
+// 月度积分配额（1 积分 = 1K tokens）；null = 无限制（自托管 / owner）
+export const PERSONAL_MONTHLY_CREDITS: Record<PersonalPlan, number | null> = {
+  free: 100,            // 10 万 tokens（TBD — 定价引擎跑完后调整）
+  personal_basic: 500,  // 50 万 tokens（TBD）
+  personal_pro: 2000,   // 200 万 tokens（TBD）
+  personal_max: 8000,   // 800 万 tokens（TBD）
+};
+
+// Team 席位积分（per person per month）
+export const TEAM_SEAT_CREDITS: Record<TeamTier, Record<SeatLevel, number>> = {
+  team_starter: { basic: 300,  pro: 800,   max: 2000  },
+  team_pro:     { basic: 500,  pro: 1500,  max: 5000  },
+  team_business: { basic: 1000, pro: 3000,  max: 10000 },
+};
+
+// Team 人数上限（云托管限制）
+export const TEAM_MAX_USERS = 100;
+
+// Connector 数量限制（null = 无限）
+export const CONNECTOR_LIMITS: Record<SubscriptionPlan, number | null> = {
   free: 3,
-  pro: 10,
-  team: null,
-  business: null,
+  personal_basic: 5,
+  personal_pro: null,
+  personal_max: null,
+  team_starter: 10,
+  team_pro: null,
+  team_business: null,
 };
 
-const PLAN_UPGRADE_TARGET: Record<SubscriptionPlan, SubscriptionPlan | null> = {
-  free: 'pro',
-  pro: 'team',
-  team: 'business',
-  business: null,
+// 升级路径
+export const PLAN_UPGRADE_TARGET: Record<SubscriptionPlan, SubscriptionPlan | null> = {
+  free: 'personal_basic',
+  personal_basic: 'personal_pro',
+  personal_pro: 'personal_max',
+  personal_max: 'team_starter',
+  team_starter: 'team_pro',
+  team_pro: 'team_business',
+  team_business: null,
 };
+
+// ─── 计划规范化（含旧值向后兼容） ───
+
+export function normalizePlanPublic(input: string | null | undefined): SubscriptionPlan {
+  return normalizePlan(input);
+}
 
 function normalizePlan(input: string | null | undefined): SubscriptionPlan {
   const v = String(input ?? '').trim().toLowerCase();
-  if (v === 'free' || v === 'pro' || v === 'team' || v === 'business') return v;
+  const valid: SubscriptionPlan[] = [
+    'free', 'personal_basic', 'personal_pro', 'personal_max',
+    'team_starter', 'team_pro', 'team_business',
+  ];
+  if (valid.includes(v as SubscriptionPlan)) return v as SubscriptionPlan;
+  // 旧值向后兼容
+  if (v === 'pro') return 'personal_pro';
+  if (v === 'team') return 'team_starter';
+  if (v === 'business') return 'team_business';
   return 'free';
 }
 
@@ -43,7 +94,6 @@ export function getSubscriptionPlan(): SubscriptionPlan {
   } catch {
     scopedPlan = null;
   }
-  // 组织级设置优先，环境变量仅作为默认值兜底
   return normalizePlan(scopedPlan ?? process.env['JOWORK_PLAN'] ?? process.env['JOWORK_TIER']);
 }
 
@@ -76,7 +126,7 @@ function getConnectedConnectorIds(): string[] {
 }
 
 export function getConnectorEntitlements(opts?: ConnectorQuotaOptions): ConnectorEntitlementSummary {
-  const plan = opts?.plan ?? getSubscriptionPlan();
+  const plan = opts?.plan ? normalizePlan(opts.plan) : getSubscriptionPlan();
   const connector_limit = getConnectorLimit(plan);
   const connected = new Set(opts?.connectedConnectorIds ?? getConnectedConnectorIds()).size;
   const remaining = connector_limit === null ? null : Math.max(connector_limit - connected, 0);
@@ -91,8 +141,9 @@ export function getConnectorEntitlements(opts?: ConnectorQuotaOptions): Connecto
 
 export function checkConnectorQuota(connectorId: string, opts?: ConnectorQuotaOptions): ConnectorQuotaDecision {
   const connectedIds = new Set(opts?.connectedConnectorIds ?? getConnectedConnectorIds());
+  const normalizedPlan = opts?.plan ? normalizePlan(opts.plan) : undefined;
   const summary = getConnectorEntitlements({
-    plan: opts?.plan,
+    plan: normalizedPlan,
     connectedConnectorIds: [...connectedIds],
   });
 

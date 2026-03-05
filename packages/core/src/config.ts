@@ -90,6 +90,13 @@ export const config: GatewayConfig = {
   posthog: {
     api_key: env('POSTHOG_API_KEY', ''),
   },
+  ...(process.env['STRIPE_SECRET_KEY'] ? {
+    stripe: {
+      secret_key: env('STRIPE_SECRET_KEY'),
+      webhook_secret: env('STRIPE_WEBHOOK_SECRET', ''),
+      publishable_key: env('STRIPE_PUBLISHABLE_KEY', ''),
+    },
+  } : {}),
   tailscale: {
     enabled: env('TAILSCALE_ENABLED', 'true') === 'true',
   },
