@@ -232,6 +232,7 @@
 | Phase 80：Custom Model Provider 管理 | ✅ 完成 | 2026-03-05 | 迁移008_model_providers表；store.ts(CRUD+loadCustomProviders启动加载)；POST/PATCH/DELETE /api/models/providers端点；两app启动时调loadCustomProviders()；15新测试（迁移2+CRUD7+API5+loader1）；pnpm lint+test全绿（434/434） |
 | Phase 81：Custom Provider UI | ✅ 完成 | 2026-03-05 | Models标签新增Custom Providers区域（+Add表单：id/name/apiFormat/endpoint/models；列表展示+×删除按钮；空状态提示）；apps/jowork+apps/fluxvita均更新；pnpm lint全绿（纯前端） |
 | Phase 82：Audit Logging 审计日志 | ✅ 完成 | 2026-03-05 | audit/index.ts(recordAudit+queryAuditLog+purgeAuditBefore+inferResourceType)；迁移009_audit_log；auditMiddleware自动记录非GET请求；auditRouter(GET /api/audit+DELETE /api/audit/purge)；两app均挂载；14新测试（迁移2+CRUD6+infer2+API4）；pnpm lint+test全绿（448/448） |
+| Phase 83：API Versioning（/api/v1/*） | ✅ 完成 | 2026-03-05 | apiVersionMiddleware(/api/v1/*→/api/*重写+/api/* Deprecation/Sunset/Link header)；createApp自动挂载(JSON解析后第一层)；7新测试（v1路由3+deprecation header 4）；pnpm lint+test全绿（455/455） |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*
@@ -3519,6 +3520,17 @@ GET /health → {
 - [x] migrator.test.ts 更新（新增 009 到断言数组）
 - [x] 14 个新测试（迁移 2 + CRUD 6 + inferResourceType 2 + API 路由 4）
 - [x] pnpm lint+test 全绿（448/448）
+
+### Phase 83: API Versioning — /api/v1/* 双路由（0.1 天）
+
+- [x] `packages/core/src/gateway/middleware/api-version.ts`：apiVersionMiddleware
+  - `/api/v1/*` 请求 → 重写 URL 到 `/api/*`（现有路由无需改动即可匹配）
+  - `/api/*`（非 v1）请求 → 添加 `Deprecation: true` + `Sunset: 2027-01-01` + `Link: <v1 URL>; rel="successor-version"`
+  - `/health`、`/metrics` 等非 API 路径不受影响
+- [x] `createApp()` 自动挂载（JSON 解析后、metrics/audit 前）
+- [x] gateway/index.ts 导出 `apiVersionMiddleware`
+- [x] 7 个新测试（v1 路由正确匹配 3 + deprecation header 设置 4）
+- [x] pnpm lint+test 全绿（455/455）
 
 **AI 辅助开发预计总工期：6-10 个工作日**（全程 AI 写代码，人工只做决策/审查/测试）
 

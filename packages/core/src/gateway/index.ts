@@ -28,3 +28,4 @@ export { metricsRouter } from './routes/metrics.js';
 export { metricsMiddleware } from './middleware/metrics.js';
 export { auditRouter } from './routes/audit.js';
 export { auditMiddleware } from './middleware/audit.js';
+export { apiVersionMiddleware } from './middleware/api-version.js';
