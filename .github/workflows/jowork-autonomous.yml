@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   develop:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, macOS, jowork]
     timeout-minutes: 480
 
     steps:
@@ -19,89 +19,6 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
-
-      - name: setup-node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-
-      - name: install-claude
-        run: npm install -g @anthropic-ai/claude-code
-
-      - name: setup-oauth-credentials
-        env:
-          CLAUDE_ACCESS_TOKEN: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
-          CLAUDE_REFRESH_TOKEN: ${{ secrets.CLAUDE_REFRESH_TOKEN }}
-          CLAUDE_EXPIRES_AT: ${{ secrets.CLAUDE_EXPIRES_AT }}
-          SECRETS_ADMIN_PAT: ${{ secrets.SECRETS_ADMIN_PAT }}
-          GH_REPO: ${{ github.repository }}
-        run: |
-          python3 << 'PYEOF'
-          import os, json, urllib.request, time, subprocess
-
-          access_token  = os.environ['CLAUDE_ACCESS_TOKEN']
-          refresh_token = os.environ['CLAUDE_REFRESH_TOKEN']
-          expires_at    = int(os.environ['CLAUDE_EXPIRES_AT'])
-          admin_pat     = os.environ.get('SECRETS_ADMIN_PAT', '')
-          gh_repo       = os.environ.get('GH_REPO', '')
-
-          # 如果 token 在 60 分钟内过期，先刷新
-          buffer_ms = 60 * 60 * 1000
-          if int(time.time() * 1000) >= (expires_at - buffer_ms):
-              print('Token expiring soon, refreshing...')
-              body = json.dumps({
-                  'grant_type': 'refresh_token',
-                  'refresh_token': refresh_token,
-                  'client_id': '9d1c250a-e61b-44d9-88ed-5944d1962f5e',
-              }).encode()
-              req = urllib.request.Request(
-                  'https://console.anthropic.com/v1/oauth/token',
-                  data=body,
-                  headers={'Content-Type': 'application/json'},
-                  method='POST'
-              )
-              try:
-                  with urllib.request.urlopen(req) as resp:
-                      data = json.loads(resp.read())
-                  access_token  = data['access_token']
-                  refresh_token = data['refresh_token']
-                  expires_at    = (int(time.time()) + data['expires_in']) * 1000
-                  print('Token refreshed successfully')
-                  # 更新 GitHub Secrets
-                  if admin_pat and gh_repo:
-                      for name, val in [
-                          ('CLAUDE_ACCESS_TOKEN',  access_token),
-                          ('CLAUDE_REFRESH_TOKEN', refresh_token),
-                          ('CLAUDE_EXPIRES_AT',    str(expires_at)),
-                      ]:
-                          subprocess.run(
-                              ['gh', 'secret', 'set', name, '--body', val,
-                               '--repo', gh_repo],
-                              env={**os.environ, 'GH_TOKEN': admin_pat},
-                              check=False
-                          )
-                      print('GitHub Secrets updated')
-              except Exception as e:
-                  print(f'Refresh failed: {e}, using existing token')
-          else:
-              mins = (expires_at - int(time.time()*1000)) // 60000
-              print(f'Token valid, expires in {mins} minutes')
-
-          # 写入 credentials 文件（格式与 grll/claude-code-base-action 完全一致）
-          os.makedirs(os.path.expanduser('~/.claude'), exist_ok=True)
-          creds = {
-              'claudeAiOauth': {
-                  'accessToken':  access_token,
-                  'refreshToken': refresh_token,
-                  'expiresAt':    expires_at,
-                  'scopes':       ['user:inference', 'user:profile'],
-              }
-          }
-          path = os.path.expanduser('~/.claude/.credentials.json')
-          with open(path, 'w') as f:
-              json.dump(creds, f, indent=2)
-          print(f'Credentials written to {path}')
-          PYEOF
 
       - name: setup-git
         run: |
