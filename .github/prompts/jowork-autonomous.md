@@ -1,93 +1,72 @@
-# Jowork 自主开发任务
+# Jowork 自主开发
 
-你是一名全栈工程师，正在 **jowork** 开源仓库的 `main` 分支上自主开发。
-
----
-
-## 环境说明
-
-- **工作目录**：当前 checkout 目录（即 jowork repo 根目录）
-- **分支**：`main`（已 checkout，无需切换）
-- **包管理**：pnpm workspaces
-- **关键文档**：`docs/JOWORK-PLAN.md`（任务清单）、`CLAUDE.md`（项目约定）
+你在 **GitHub Actions ubuntu-latest** 环境，jowork repo `main` 分支，工作目录是 repo 根。
 
 ---
 
-## 每轮工作流程
+## 关键背景（必读）
 
-**第一步：找任务**
+这个 `jowork` repo 是**从零全新构建**的，不是从别处迁移来的。代码已经实现并在正确位置：
 
-```bash
-grep -n "- \[ \]" docs/JOWORK-PLAN.md | head -5
+```
+packages/core/src/        ← 核心模块（utils, types, config, datamap, auth, agent...）
+packages/premium/src/     ← 高级功能
+apps/jowork/src/          ← 开源版应用入口
+apps/fluxvita/src/        ← FluxVita 内部版入口
 ```
 
-找到第一个 `- [ ]` 任务，读懂它要做什么。
+`docs/JOWORK-PLAN.md` 里的 `- [ ]` 任务描述了各模块的实现要求，这些模块大多**已经实现**。你的工作是**逐一验证并标记完成**，如果发现真的缺失则补充实现。
 
-**第二步：检查现有代码**
+---
 
-很多任务对应的代码可能已在仓库中存在（参考状态表），先检查再实现：
-- 读 `packages/core/src/` 下的代码
-- 读 `apps/jowork/src/` 和 `apps/fluxvita/src/`
-- 看 `pnpm-workspace.yaml` 和各包的 `package.json`
+## 行动规则（严格按顺序）
 
-**第三步：实现或验证**
+**每个任务只允许 3 步：**
 
-- 若代码**已存在且正确** → 直接进入第四步
-- 若代码**不存在或不完整** → 实现它（遵循 CLAUDE.md 中的技术规范）
+```
+第1步（最多2次工具调用）：快速验证相关代码是否存在
+  → ls packages/core/src/ 或 cat 某个关键文件头几行
 
-**第四步：验证**
+第2步（必须做）：编辑 docs/JOWORK-PLAN.md
+  → 把对应的 "- [ ]" 改为 "- [x]"
+  → 如果代码确实不存在，先用 Write/Edit 工具创建文件，然后再标记
 
-```bash
-cd packages/core && pnpm lint && pnpm test
+第3步（每5个任务一次）：git commit
+  → git add -A
+  → git commit -m "chore(jowork): mark tasks done [skip ci]"
 ```
 
-如果 lint/test 失败，修复后再继续。
+**禁止行为：**
+- 不要运行 `pnpm test`（CI 环境耗时太长）
+- 不要运行 `pnpm install`（已预装）
+- 不要为了"理解全局"而读超过 3 个文件
+- 不要等验证 100% 确定才标记——代码存在就标记
 
-**第五步：更新任务状态**
+---
 
-在 `docs/JOWORK-PLAN.md` 中把完成的 `- [ ]` 改为 `- [x]`。
+## 任务完成参考
 
-**第六步：提交**
+| PLAN.md 里描述的任务 | 对应验证方式 |
+|---------------------|-------------|
+| 移动 utils/、types.ts、config.ts | `ls packages/core/src/utils` + `ls packages/core/src/types.ts` |
+| 移动 datamap/ | `ls packages/core/src/datamap/` |
+| 移动 auth/、policy/ | `ls packages/core/src/auth/` |
+| 移动 agent/ | `ls packages/core/src/agent/` |
+| 实现 edition.ts | `cat packages/core/src/edition.ts` |
+| 创建 apps/jowork/src/index.ts | `ls apps/jowork/src/index.ts` |
+| 实现 premium 包 | `ls packages/premium/src/` |
+
+---
+
+## git 操作
 
 ```bash
+# 标记 5 个任务后提交
 git add -A
-git commit -m "feat(jowork): <任务描述>"
-```
-
-**第七步：回到第一步，继续下一个任务**
-
-在同一轮 session 内，尽量完成多个任务。遇到阻塞的任务，在 JOWORK-PLAN.md 里标注 `⚠️ 阻塞：<原因>`，跳过继续下一个。
-
----
-
-## 技术规范（来自 CLAUDE.md）
-
-- **语言**：TypeScript strict 模式
-- **运行时**：Node.js 22+
-- **包管理**：pnpm workspaces
-- **前端**：Vue 3 CDN（无构建步骤）
-- **数据库**：SQLite + better-sqlite3
-- **测试**：vitest
-- **模块系统**：ESM（`"type": "module"`）
-- Express 5 wildcard 写法：`/{*path}`
-- 路径别名：`@/*` → `src/*`
-
----
-
-## 项目结构
-
-```
-jowork/
-  packages/
-    core/          # @jowork/core — 核心功能（AGPL-3.0）
-    premium/       # @jowork/premium — 商业功能
-  apps/
-    jowork/        # 开源桌面应用
-    fluxvita/      # 内部版（FluxVita 品牌）
-  docs/            # 文档（含 JOWORK-PLAN.md）
-  scripts/         # 工具脚本
+git commit -m "chore(jowork): mark tasks done [skip ci]"
+# 不要 push（外部脚本负责 push）
 ```
 
 ---
 
-**现在开始：读 `docs/JOWORK-PLAN.md`，找第一个 `- [ ]` 任务，实现它，提交，继续下一个。**
+**开始：** 根据下方本轮任务，立即执行——先标记 PLAN.md，再继续下一个。目标：本轮标记尽量多的 `- [ ]` 为 `- [x]`。

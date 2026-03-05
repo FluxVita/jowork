@@ -49,7 +49,7 @@ jobs:
           unset CLAUDECODE
           ROUND=0
           MAX_ROUNDS=25
-          PROMPT=$(cat .github/prompts/jowork-autonomous.md)
+          BASE_PROMPT=$(cat .github/prompts/jowork-autonomous.md)
 
           while [ "$ROUND" -lt "$MAX_ROUNDS" ]; do
             PENDING=$(python3 -c "
@@ -63,9 +63,29 @@ jobs:
               break
             fi
 
+            # 动态提取第一个待做任务及行号，注入到 prompt
+            TASK_INFO=$(python3 -c "
+          import re
+          text = open('docs/JOWORK-PLAN.md').read()
+          lines = text.splitlines()
+          for i, line in enumerate(lines):
+              if '- [ ]' in line:
+                  print(f'第 {i+1} 行: {line.strip()}')
+                  break
+          ")
+            echo "当前任务: ${TASK_INFO}"
+
+            PROMPT="${BASE_PROMPT}
+
+---
+## 本轮任务（Round ${ROUND}）
+${TASK_INFO}
+
+立即开始：先编辑 docs/JOWORK-PLAN.md 把这个 [ ] 改为 [x]，再验证，再继续下一个。"
+
             claude \
               --dangerously-skip-permissions \
-              --max-turns 30 \
+              --max-turns 80 \
               -p "$PROMPT"
 
             git add -A
