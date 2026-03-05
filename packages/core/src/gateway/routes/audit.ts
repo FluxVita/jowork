@@ -12,18 +12,18 @@ export function auditRouter(): Router {
   const router = Router();
 
   /** Query audit log with optional filters */
-  router.get('/api/audit', authenticate, requireRole('owner', 'admin'), (req, res, next) => {
+  router.get('/api/audit', authenticate, requireRole('admin'), (req, res, next) => {
     try {
       const { userId, action, resourceType, since, until, limit, offset } = req.query as Record<string, string | undefined>;
-      const result = queryAuditLog({
-        userId: userId || undefined,
-        action: action || undefined,
-        resourceType: resourceType || undefined,
-        since: since || undefined,
-        until: until || undefined,
-        limit: limit ? parseInt(limit, 10) : undefined,
-        offset: offset ? parseInt(offset, 10) : undefined,
-      });
+      const q: Record<string, unknown> = {};
+      if (userId) q['userId'] = userId;
+      if (action) q['action'] = action;
+      if (resourceType) q['resourceType'] = resourceType;
+      if (since) q['since'] = since;
+      if (until) q['until'] = until;
+      if (limit) q['limit'] = parseInt(limit, 10);
+      if (offset) q['offset'] = parseInt(offset, 10);
+      const result = queryAuditLog(q as import('../../audit/index.js').AuditQuery);
       res.json(result);
     } catch (err) { next(err); }
   });

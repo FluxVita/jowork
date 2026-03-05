@@ -27,7 +27,7 @@ export function auditMiddleware(req: Request, res: Response, next: NextFunction)
 
   // Record audit after response is sent (so we have status code)
   res.on('finish', () => {
-    const userId = (req as Record<string, unknown>)['userId'] as string | undefined;
+    const userId = (req as unknown as Record<string, unknown>)['userId'] as string | undefined;
     if (!userId) return; // unauthenticated request, skip
 
     try {
