@@ -499,13 +499,14 @@
     Jowork
   </a>
   <div class="nav-links">
-    <a href="#features">Features</a>
-    <a href="#pricing">Pricing</a>
+    <a href="#features" data-i18n="navFeatures">Features</a>
+    <a href="#pricing" data-i18n="navPricing">Pricing</a>
     <a href="https://github.com/fluxvita/jowork" target="_blank" class="nav-gh">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 21.795 24 17.295 24 12c0-6.63-5.37-12-12-12"/></svg>
       <span>GitHub</span>
     </a>
-    <a href="https://github.com/fluxvita/jowork/releases/latest" target="_blank" class="nav-cta">Download</a>
+    <button id="lang-toggle" onclick="toggleLang()" style="background:transparent;border:1px solid var(--border);color:var(--text-muted);padding:7px 14px;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--F-mono);transition:border-color 0.25s,color 0.25s;" onmouseover="this.style.borderColor='rgba(255,255,255,0.2)';this.style.color='var(--text)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'">EN</button>
+    <a href="https://github.com/fluxvita/jowork/releases/latest" target="_blank" class="nav-cta" data-i18n="navDownload">Download</a>
   </div>
 </nav>
 
@@ -515,25 +516,25 @@
     <div class="hero-inner">
       <div class="fade-up">
         <div class="hero-eyebrow">
-          <span class="hero-eyebrow-badge">Open Source</span>
+          <span class="hero-eyebrow-badge" data-i18n="heroEyebrowBadge">Open Source</span>
           <span class="hero-eyebrow-sep">·</span>
-          <span class="hero-eyebrow-text">AGPL-3.0 · Free Forever for Personal Use</span>
+          <span class="hero-eyebrow-text" data-i18n="heroEyebrowText">AGPL-3.0 · Free Forever for Personal Use</span>
         </div>
-        <h1 class="hero-h1">Your AI coworker that <em>actually knows</em> your business.</h1>
-        <p class="hero-sub">Connect your codebase, docs, project management, analytics, and calendar — and let Jowork work alongside your team 24/7. Self-hosted. No data leaves your server.</p>
+        <h1 class="hero-h1" data-i18n="heroH1">Your AI coworker that <em>actually knows</em> your business.</h1>
+        <p class="hero-sub" data-i18n="heroSub">Connect your codebase, docs, project management, analytics, and calendar — and let Jowork work alongside your team 24/7. Self-hosted. No data leaves your server.</p>
         <div class="hero-actions">
-          <a href="https://github.com/fluxvita/jowork/releases/latest" class="btn-primary">
+          <a href="https://github.com/fluxvita/jowork/releases/latest" class="btn-primary" data-i18n="heroDownload">
             ⬇ Download App
           </a>
-          <a href="https://github.com/fluxvita/jowork" target="_blank" class="btn-ghost">
+          <a href="https://github.com/fluxvita/jowork" target="_blank" class="btn-ghost" data-i18n="heroGithub">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 21.795 24 17.295 24 12c0-6.63-5.37-12-12-12"/></svg>
             View on GitHub
           </a>
         </div>
         <div class="hero-trust">
-          <span class="trust-item">No data leaves your server</span>
-          <span class="trust-item">Works with Anthropic, OpenAI, local models</span>
-          <span class="trust-item">macOS · Windows · Docker</span>
+          <span class="trust-item" data-i18n="trust1">No data leaves your server</span>
+          <span class="trust-item" data-i18n="trust2">Works with Anthropic, OpenAI, local models</span>
+          <span class="trust-item" data-i18n="trust3">macOS · Windows · Docker</span>
         </div>
       </div>
       <div class="hero-visual fade-up d2">
@@ -568,19 +569,19 @@
     <div class="stats-bar fade-up">
       <div class="stat-item">
         <div class="stat-num"><em>7</em></div>
-        <div class="stat-label">Data Connectors</div>
+        <div class="stat-label" data-i18n="stat1Label">Data Connectors</div>
       </div>
       <div class="stat-item">
         <div class="stat-num"><em>15</em>+</div>
-        <div class="stat-label">Built-in Agent Tools</div>
+        <div class="stat-label" data-i18n="stat2Label">Built-in Agent Tools</div>
       </div>
       <div class="stat-item">
         <div class="stat-num"><em>100K</em></div>
-        <div class="stat-label">Token Context Window</div>
+        <div class="stat-label" data-i18n="stat3Label">Token Context Window</div>
       </div>
       <div class="stat-item">
         <div class="stat-num"><em>0</em></div>
-        <div class="stat-label">Data Sent to Vendor</div>
+        <div class="stat-label" data-i18n="stat4Label">Data Sent to Vendor</div>
       </div>
     </div>
   </div>
@@ -590,31 +591,31 @@
 <section class="section">
   <div class="wrap">
     <div class="sec-header fade-up">
-      <div class="tag">01 / The Problem</div>
-      <div class="sec-title">Every AI tool lacks one thing: <em>your context.</em></div>
-      <p class="sec-desc">ChatGPT doesn't know your codebase. Notion AI can't see your Linear tickets. Slack AI doesn't understand your deployment pipeline. You're left copy-pasting context all day.</p>
+      <div class="tag" data-i18n="problemTag">01 / The Problem</div>
+      <div class="sec-title" data-i18n="problemTitle">Every AI tool lacks one thing: <em>your context.</em></div>
+      <p class="sec-desc" data-i18n="problemDesc">ChatGPT doesn't know your codebase. Notion AI can't see your Linear tickets. Slack AI doesn't understand your deployment pipeline. You're left copy-pasting context all day.</p>
     </div>
 
     <div class="problem-grid">
       <div class="problem-card fade-up d1" style="border-left: 3px solid var(--coral);">
-        <div class="problem-num" style="color:var(--coral);">Gap 01</div>
-        <div class="problem-title">No real business context</div>
-        <p class="problem-desc">Generic AI knows the internet, not your company. Every conversation starts from zero. You spend more time explaining than getting work done.</p>
+        <div class="problem-num" style="color:var(--coral);" data-i18n="gap1Num">Gap 01</div>
+        <div class="problem-title" data-i18n="gap1Title">No real business context</div>
+        <p class="problem-desc" data-i18n="gap1Desc">Generic AI knows the internet, not your company. Every conversation starts from zero. You spend more time explaining than getting work done.</p>
       </div>
       <div class="problem-card fade-up d2" style="border-left: 3px solid var(--yellow);">
-        <div class="problem-num" style="color:var(--yellow);">Gap 02</div>
-        <div class="problem-title">Answers, but no action</div>
-        <p class="problem-desc">Existing tools are read-only assistants. They can't create a PR, send a message, run a check, or schedule a follow-up. You still do all the work.</p>
+        <div class="problem-num" style="color:var(--yellow);" data-i18n="gap2Num">Gap 02</div>
+        <div class="problem-title" data-i18n="gap2Title">Answers, but no action</div>
+        <p class="problem-desc" data-i18n="gap2Desc">Existing tools are read-only assistants. They can't create a PR, send a message, run a check, or schedule a follow-up. You still do all the work.</p>
       </div>
       <div class="problem-card fade-up d3" style="border-left: 3px solid var(--purple);">
-        <div class="problem-num" style="color:var(--purple);">Gap 03</div>
-        <div class="problem-title">Your data on their servers</div>
-        <p class="problem-desc">SaaS AI tools ingest your codebase, customer data, and internal docs. GDPR, IP risk, vendor lock-in. You lose control the moment you sign up.</p>
+        <div class="problem-num" style="color:var(--purple);" data-i18n="gap3Num">Gap 03</div>
+        <div class="problem-title" data-i18n="gap3Title">Your data on their servers</div>
+        <p class="problem-desc" data-i18n="gap3Desc">SaaS AI tools ingest your codebase, customer data, and internal docs. GDPR, IP risk, vendor lock-in. You lose control the moment you sign up.</p>
       </div>
     </div>
 
     <div class="callout fade-up">
-      <p class="callout-text">Jowork is different. It runs <strong>on your server</strong>, connects to <strong>all your tools natively</strong>, and takes <strong>real action</strong> — not just gives suggestions.</p>
+      <p class="callout-text" data-i18n="problemCallout">Jowork is different. It runs <strong>on your server</strong>, connects to <strong>all your tools natively</strong>, and takes <strong>real action</strong> — not just gives suggestions.</p>
     </div>
   </div>
 </section>
@@ -623,77 +624,77 @@
 <section class="section" id="features" style="background: rgba(255,255,255,0.015); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);">
   <div class="wrap">
     <div class="sec-header fade-up">
-      <div class="tag">02 / Features</div>
-      <div class="sec-title">Everything your team needs, <em>deeply integrated.</em></div>
-      <p class="sec-desc">Jowork isn't a chatbot wrapper. It's a full agent infrastructure built for real business work.</p>
+      <div class="tag" data-i18n="featTag">02 / Features</div>
+      <div class="sec-title" data-i18n="featTitle">Everything your team needs, <em>deeply integrated.</em></div>
+      <p class="sec-desc" data-i18n="featDesc">Jowork isn't a chatbot wrapper. It's a full agent infrastructure built for real business work.</p>
     </div>
 
     <div class="features-grid">
       <div class="feature-card fade-up d1" style="border-top: 2px solid var(--cyan);">
         <div class="feature-icon">🔌</div>
-        <div class="feature-title">Connect Everything</div>
-        <p class="feature-desc">7 native connectors. Jowork reads your full business context in real time.</p>
+        <div class="feature-title" data-i18n="feat1Title">Connect Everything</div>
+        <p class="feature-desc" data-i18n="feat1Desc">7 native connectors. Jowork reads your full business context in real time.</p>
         <div class="feature-list">
-          <div class="feature-list-item">GitHub & GitLab — code, PRs, issues</div>
-          <div class="feature-list-item">Linear — projects, sprints, bugs</div>
-          <div class="feature-list-item">Feishu / Slack — messages, calendar</div>
-          <div class="feature-list-item">PostHog — analytics & user behavior</div>
-          <div class="feature-list-item">Figma, Email + custom REST APIs</div>
+          <div class="feature-list-item" data-i18n="feat1L1">GitHub &amp; GitLab — code, PRs, issues</div>
+          <div class="feature-list-item" data-i18n="feat1L2">Linear — projects, sprints, bugs</div>
+          <div class="feature-list-item" data-i18n="feat1L3">Feishu / Slack — messages, calendar</div>
+          <div class="feature-list-item" data-i18n="feat1L4">PostHog — analytics &amp; user behavior</div>
+          <div class="feature-list-item" data-i18n="feat1L5">Figma, Email + custom REST APIs</div>
         </div>
       </div>
       <div class="feature-card fade-up d2" style="border-top: 2px solid var(--lime);">
         <div class="feature-icon">🤖</div>
-        <div class="feature-title">Autonomous Agent</div>
-        <p class="feature-desc">Don't just ask — let Jowork act. Schedule tasks, react to events, pursue goals.</p>
+        <div class="feature-title" data-i18n="feat2Title">Autonomous Agent</div>
+        <p class="feature-desc" data-i18n="feat2Desc">Don't just ask — let Jowork act. Schedule tasks, react to events, pursue goals.</p>
         <div class="feature-list">
-          <div class="feature-list-item">Scheduled tasks with cron expressions</div>
-          <div class="feature-list-item">Event-triggered workflows</div>
-          <div class="feature-list-item">Create PRs, send messages, run queries</div>
-          <div class="feature-list-item">25-turn tool-calling loop, built-in</div>
+          <div class="feature-list-item" data-i18n="feat2L1">Scheduled tasks with cron expressions</div>
+          <div class="feature-list-item" data-i18n="feat2L2">Event-triggered workflows</div>
+          <div class="feature-list-item" data-i18n="feat2L3">Create PRs, send messages, run queries</div>
+          <div class="feature-list-item" data-i18n="feat2L4">25-turn tool-calling loop, built-in</div>
         </div>
       </div>
       <div class="feature-card fade-up d3" style="border-top: 2px solid var(--coral);">
         <div class="feature-icon">📚</div>
-        <div class="feature-title">Deep Context Memory</div>
-        <p class="feature-desc">Three-layer context architecture ensures Jowork always knows the right thing.</p>
+        <div class="feature-title" data-i18n="feat3Title">Deep Context Memory</div>
+        <p class="feature-desc" data-i18n="feat3Desc">Three-layer context architecture ensures Jowork always knows the right thing.</p>
         <div class="feature-list">
-          <div class="feature-list-item">Company layer — mission, glossary, ADRs</div>
-          <div class="feature-list-item">Team layer — processes, OKRs, style guides</div>
-          <div class="feature-list-item">Personal layer — your preferences & history</div>
-          <div class="feature-list-item">Semantic vector memory, auto-updated</div>
+          <div class="feature-list-item" data-i18n="feat3L1">Company layer — mission, glossary, ADRs</div>
+          <div class="feature-list-item" data-i18n="feat3L2">Team layer — processes, OKRs, style guides</div>
+          <div class="feature-list-item" data-i18n="feat3L3">Personal layer — your preferences &amp; history</div>
+          <div class="feature-list-item" data-i18n="feat3L4">Semantic vector memory, auto-updated</div>
         </div>
       </div>
       <div class="feature-card fade-up d4" style="border-top: 2px solid var(--yellow);">
         <div class="feature-icon">💻</div>
-        <div class="feature-title">Geek Mode</div>
-        <p class="feature-desc">Full developer power, no restrictions. Your agent, your rules.</p>
+        <div class="feature-title" data-i18n="feat4Title">Geek Mode</div>
+        <p class="feature-desc" data-i18n="feat4Desc">Full developer power, no restrictions. Your agent, your rules.</p>
         <div class="feature-list">
-          <div class="feature-list-item">Integrated terminal in the UI</div>
-          <div class="feature-list-item">Sandboxed shell execution</div>
-          <div class="feature-list-item">MCP protocol — connect any tool</div>
-          <div class="feature-list-item">Custom Skills in JavaScript</div>
+          <div class="feature-list-item" data-i18n="feat4L1">Integrated terminal in the UI</div>
+          <div class="feature-list-item" data-i18n="feat4L2">Sandboxed shell execution</div>
+          <div class="feature-list-item" data-i18n="feat4L3">MCP protocol — connect any tool</div>
+          <div class="feature-list-item" data-i18n="feat4L4">Custom Skills in JavaScript</div>
         </div>
       </div>
       <div class="feature-card fade-up d5" style="border-top: 2px solid var(--purple);">
         <div class="feature-icon">🔒</div>
-        <div class="feature-title">Truly Self-Hosted</div>
-        <p class="feature-desc">Your server, your data, your infrastructure. Zero vendor lock-in.</p>
+        <div class="feature-title" data-i18n="feat5Title">Truly Self-Hosted</div>
+        <p class="feature-desc" data-i18n="feat5Desc">Your server, your data, your infrastructure. Zero vendor lock-in.</p>
         <div class="feature-list">
-          <div class="feature-list-item">SQLite — no external database needed</div>
-          <div class="feature-list-item">Works with any Anthropic-compatible API</div>
-          <div class="feature-list-item">Local LLMs supported via custom providers</div>
-          <div class="feature-list-item">Docker one-liner or desktop app</div>
+          <div class="feature-list-item" data-i18n="feat5L1">SQLite — no external database needed</div>
+          <div class="feature-list-item" data-i18n="feat5L2">Works with any Anthropic-compatible API</div>
+          <div class="feature-list-item" data-i18n="feat5L3">Local LLMs supported via custom providers</div>
+          <div class="feature-list-item" data-i18n="feat5L4">Docker one-liner or desktop app</div>
         </div>
       </div>
       <div class="feature-card fade-up d6" style="border-top: 2px solid var(--amber);">
         <div class="feature-icon">🌐</div>
-        <div class="feature-title">Team + Personal Modes</div>
-        <p class="feature-desc">Solo use or full team deployment — both work out of the box.</p>
+        <div class="feature-title" data-i18n="feat6Title">Team + Personal Modes</div>
+        <p class="feature-desc" data-i18n="feat6Desc">Solo use or full team deployment — both work out of the box.</p>
         <div class="feature-list">
-          <div class="feature-list-item">Personal mode — no login required</div>
-          <div class="feature-list-item">Team mode — RBAC, 7 roles, ACL</div>
-          <div class="feature-list-item">Desktop app (macOS + Windows)</div>
-          <div class="feature-list-item">Browser-based + mobile-ready</div>
+          <div class="feature-list-item" data-i18n="feat6L1">Personal mode — no login required</div>
+          <div class="feature-list-item" data-i18n="feat6L2">Team mode — RBAC, 7 roles, ACL</div>
+          <div class="feature-list-item" data-i18n="feat6L3">Desktop app (macOS + Windows)</div>
+          <div class="feature-list-item" data-i18n="feat6L4">Browser-based + mobile-ready</div>
         </div>
       </div>
     </div>
@@ -704,52 +705,52 @@
 <section class="section">
   <div class="wrap">
     <div class="sec-header fade-up">
-      <div class="tag">03 / Comparison</div>
-      <div class="sec-title">Why not just use <em>existing AI tools?</em></div>
+      <div class="tag" data-i18n="cmpTag">03 / Comparison</div>
+      <div class="sec-title" data-i18n="cmpTitle">Why not just use <em>existing AI tools?</em></div>
     </div>
     <div class="fade-up" style="overflow-x: auto;">
       <table class="compare-table">
         <thead>
           <tr>
-            <th>Capability</th>
-            <th>ChatGPT / Notion AI</th>
-            <th>Dust.tt / Glean</th>
+            <th data-i18n="cmpH1">Capability</th>
+            <th data-i18n="cmpH2">ChatGPT / Notion AI</th>
+            <th data-i18n="cmpH3">Dust.tt / Glean</th>
             <th class="highlight">Jowork</th>
           </tr>
         </thead>
         <tbody>
           <tr>
-            <td class="feature-name">Knows your codebase</td>
+            <td class="feature-name" data-i18n="cmpR1">Knows your codebase</td>
             <td><span class="icon-no">✗ No context</span></td>
             <td><span class="icon-partial">~ Read-only</span></td>
             <td class="highlight"><span class="icon-yes">✓ Deep + writable</span></td>
           </tr>
           <tr>
-            <td class="feature-name">Runs autonomously</td>
+            <td class="feature-name" data-i18n="cmpR2">Runs autonomously</td>
             <td><span class="icon-no">✗ Chat only</span></td>
             <td><span class="icon-no">✗ Search only</span></td>
             <td class="highlight"><span class="icon-yes">✓ Event-driven + scheduled</span></td>
           </tr>
           <tr>
-            <td class="feature-name">Self-hosted</td>
+            <td class="feature-name" data-i18n="cmpR3">Self-hosted</td>
             <td><span class="icon-no">✗ SaaS only</span></td>
             <td><span class="icon-no">✗ SaaS only</span></td>
             <td class="highlight"><span class="icon-yes">✓ Your server, your data</span></td>
           </tr>
           <tr>
-            <td class="feature-name">Takes real action</td>
+            <td class="feature-name" data-i18n="cmpR4">Takes real action</td>
             <td><span class="icon-no">✗ Suggestions only</span></td>
             <td><span class="icon-no">✗ Search only</span></td>
             <td class="highlight"><span class="icon-yes">✓ Creates PRs, sends msgs</span></td>
           </tr>
           <tr>
-            <td class="feature-name">Works without internet</td>
+            <td class="feature-name" data-i18n="cmpR5">Works without internet</td>
             <td><span class="icon-no">✗</span></td>
             <td><span class="icon-no">✗</span></td>
             <td class="highlight"><span class="icon-yes">✓ Local models supported</span></td>
           </tr>
           <tr>
-            <td class="feature-name">Personal use cost</td>
+            <td class="feature-name" data-i18n="cmpR6">Personal use cost</td>
             <td><span class="icon-partial">$20/month</span></td>
             <td><span class="icon-no">$$$</span></td>
             <td class="highlight"><span class="icon-yes">✓ Free forever</span></td>
@@ -764,24 +765,24 @@
 <section class="section" style="background: rgba(255,255,255,0.015); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);">
   <div class="wrap">
     <div class="sec-header fade-up">
-      <div class="tag">04 / How It Works</div>
-      <div class="sec-title">Up and running in <em>under 2 minutes.</em></div>
+      <div class="tag" data-i18n="howTag">04 / How It Works</div>
+      <div class="sec-title" data-i18n="howTitle">Up and running in <em>under 2 minutes.</em></div>
     </div>
     <div class="howto-grid">
       <div class="step-card fade-up d1">
-        <div class="step-num">STEP 01</div>
-        <div class="step-title">Install &amp; Launch</div>
-        <p class="step-desc">Download the desktop app or run the Docker one-liner. Jowork starts a local Gateway on port 18800. No external accounts or signups needed.</p>
+        <div class="step-num" data-i18n="step1Num">STEP 01</div>
+        <div class="step-title" data-i18n="step1Title">Install &amp; Launch</div>
+        <p class="step-desc" data-i18n="step1Desc">Download the desktop app or run the Docker one-liner. Jowork starts a local Gateway on port 18800. No external accounts or signups needed.</p>
       </div>
       <div class="step-card fade-up d2">
-        <div class="step-num">STEP 02</div>
-        <div class="step-title">Connect Your Tools</div>
-        <p class="step-desc">Add your API tokens for GitHub, Linear, Slack, etc. Jowork discovers your data automatically and builds an index in the background.</p>
+        <div class="step-num" data-i18n="step2Num">STEP 02</div>
+        <div class="step-title" data-i18n="step2Title">Connect Your Tools</div>
+        <p class="step-desc" data-i18n="step2Desc">Add your API tokens for GitHub, Linear, Slack, etc. Jowork discovers your data automatically and builds an index in the background.</p>
       </div>
       <div class="step-card fade-up d3">
-        <div class="step-num">STEP 03</div>
-        <div class="step-title">Start Working</div>
-        <p class="step-desc">Ask questions, delegate tasks, set up scheduled jobs. Jowork knows your context and can take real action — create PRs, send messages, run analysis.</p>
+        <div class="step-num" data-i18n="step3Num">STEP 03</div>
+        <div class="step-title" data-i18n="step3Title">Start Working</div>
+        <p class="step-desc" data-i18n="step3Desc">Ask questions, delegate tasks, set up scheduled jobs. Jowork knows your context and can take real action — create PRs, send messages, run analysis.</p>
       </div>
     </div>
 
@@ -852,44 +853,44 @@
 <section class="section" id="pricing">
   <div class="wrap">
     <div class="sec-header fade-up">
-      <div class="tag">05 / Pricing</div>
-      <div class="sec-title">Free for personal use. <em>Scales with your team.</em></div>
-      <p class="sec-desc">The core is open-source and free forever. Premium features are available for teams that need more power.</p>
+      <div class="tag" data-i18n="priceTag">05 / Pricing</div>
+      <div class="sec-title" data-i18n="priceTitle">Free for personal use. <em>Scales with your team.</em></div>
+      <p class="sec-desc" data-i18n="priceDesc">The core is open-source and free forever. Premium features are available for teams that need more power.</p>
     </div>
 
     <div class="pricing-grid">
       <div class="plan-card fade-up d1">
         <div class="plan-name">Free</div>
         <div class="plan-price">$<em>0</em></div>
-        <div class="plan-period">forever, personal use</div>
-        <div class="plan-desc">Everything you need to get started. No credit card, no expiry.</div>
+        <div class="plan-period" data-i18n="price1Period">forever, personal use</div>
+        <div class="plan-desc" data-i18n="price1Desc">Everything you need to get started. No credit card, no expiry.</div>
         <div class="plan-features">
-          <div class="plan-feat">1 user (personal mode)</div>
-          <div class="plan-feat">3 data source connectors</div>
-          <div class="plan-feat">32K token context window</div>
-          <div class="plan-feat">5 scheduled tasks</div>
-          <div class="plan-feat">Basic terminal (Geek Mode)</div>
-          <div class="plan-feat">MCP protocol support</div>
-          <div class="plan-feat dim">Sub-agent orchestration</div>
-          <div class="plan-feat dim">Event triggers</div>
+          <div class="plan-feat" data-i18n="p1f1">1 user (personal mode)</div>
+          <div class="plan-feat" data-i18n="p1f2">3 data source connectors</div>
+          <div class="plan-feat" data-i18n="p1f3">32K token context window</div>
+          <div class="plan-feat" data-i18n="p1f4">5 scheduled tasks</div>
+          <div class="plan-feat" data-i18n="p1f5">Basic terminal (Geek Mode)</div>
+          <div class="plan-feat" data-i18n="p1f6">MCP protocol support</div>
+          <div class="plan-feat dim" data-i18n="p1f7">Sub-agent orchestration</div>
+          <div class="plan-feat dim" data-i18n="p1f8">Event triggers</div>
         </div>
-        <a href="https://github.com/fluxvita/jowork/releases/latest" class="plan-btn plan-btn-ghost">Get Started Free</a>
+        <a href="https://github.com/fluxvita/jowork/releases/latest" class="plan-btn plan-btn-ghost" data-i18n="price1Btn">Get Started Free</a>
       </div>
 
       <div class="plan-card popular fade-up d2">
         <div class="plan-name">Pro</div>
         <div class="plan-price">$<em>12</em></div>
-        <div class="plan-period">per month, billed monthly</div>
-        <div class="plan-desc">Power user features. More connectors, larger context, priority support.</div>
+        <div class="plan-period" data-i18n="price2Period">per month, billed monthly</div>
+        <div class="plan-desc" data-i18n="price2Desc">Power user features. More connectors, larger context, priority support.</div>
         <div class="plan-features">
-          <div class="plan-feat">1 user</div>
-          <div class="plan-feat">10 data source connectors</div>
-          <div class="plan-feat">100K token context window</div>
-          <div class="plan-feat">20 scheduled tasks</div>
-          <div class="plan-feat">Full terminal + code exec</div>
-          <div class="plan-feat">Priority issue support</div>
-          <div class="plan-feat dim">Sub-agent orchestration</div>
-          <div class="plan-feat dim">Event triggers</div>
+          <div class="plan-feat" data-i18n="p2f1">1 user</div>
+          <div class="plan-feat" data-i18n="p2f2">10 data source connectors</div>
+          <div class="plan-feat" data-i18n="p2f3">100K token context window</div>
+          <div class="plan-feat" data-i18n="p2f4">20 scheduled tasks</div>
+          <div class="plan-feat" data-i18n="p2f5">Full terminal + code exec</div>
+          <div class="plan-feat" data-i18n="p2f6">Priority issue support</div>
+          <div class="plan-feat dim" data-i18n="p2f7">Sub-agent orchestration</div>
+          <div class="plan-feat dim" data-i18n="p2f8">Event triggers</div>
         </div>
         <a href="https://jowork.work/pricing" class="plan-btn plan-btn-primary">Start Pro →</a>
       </div>
@@ -897,17 +898,17 @@
       <div class="plan-card fade-up d3">
         <div class="plan-name">Team</div>
         <div class="plan-price">$<em>49</em></div>
-        <div class="plan-period">per month, up to 10 users</div>
-        <div class="plan-desc">For engineering teams. Shared context, collaborative agent, event workflows.</div>
+        <div class="plan-period" data-i18n="price3Period">per month, up to 10 users</div>
+        <div class="plan-desc" data-i18n="price3Desc">For engineering teams. Shared context, collaborative agent, event workflows.</div>
         <div class="plan-features">
-          <div class="plan-feat">Up to 10 users + RBAC</div>
-          <div class="plan-feat">Unlimited connectors</div>
-          <div class="plan-feat">100K token context window</div>
-          <div class="plan-feat">Unlimited scheduled tasks</div>
-          <div class="plan-feat">Sub-agent orchestration</div>
-          <div class="plan-feat">Event-triggered workflows</div>
-          <div class="plan-feat">Email support</div>
-          <div class="plan-feat dim">Audit log &amp; SSO</div>
+          <div class="plan-feat" data-i18n="p3f1">Up to 10 users + RBAC</div>
+          <div class="plan-feat" data-i18n="p3f2">Unlimited connectors</div>
+          <div class="plan-feat" data-i18n="p3f3">100K token context window</div>
+          <div class="plan-feat" data-i18n="p3f4">Unlimited scheduled tasks</div>
+          <div class="plan-feat" data-i18n="p3f5">Sub-agent orchestration</div>
+          <div class="plan-feat" data-i18n="p3f6">Event-triggered workflows</div>
+          <div class="plan-feat" data-i18n="p3f7">Email support</div>
+          <div class="plan-feat dim" data-i18n="p3f8">Audit log &amp; SSO</div>
         </div>
         <a href="https://jowork.work/pricing" class="plan-btn plan-btn-ghost">Start Team →</a>
       </div>
@@ -915,24 +916,24 @@
       <div class="plan-card fade-up d4">
         <div class="plan-name">Business</div>
         <div class="plan-price">$<em>199</em></div>
-        <div class="plan-period">per month, unlimited users</div>
-        <div class="plan-desc">Enterprise-grade. Unlimited scale, SSO, audit logs, dedicated support.</div>
+        <div class="plan-period" data-i18n="price4Period">per month, unlimited users</div>
+        <div class="plan-desc" data-i18n="price4Desc">Enterprise-grade. Unlimited scale, SSO, audit logs, dedicated support.</div>
         <div class="plan-features">
-          <div class="plan-feat">Unlimited users</div>
-          <div class="plan-feat">Unlimited connectors</div>
-          <div class="plan-feat">200K token context window</div>
-          <div class="plan-feat">Goal-driven autonomous mode</div>
-          <div class="plan-feat">Audit log</div>
-          <div class="plan-feat">SSO / SAML</div>
-          <div class="plan-feat">Dedicated support</div>
-          <div class="plan-feat">Custom contract available</div>
+          <div class="plan-feat" data-i18n="p4f1">Unlimited users</div>
+          <div class="plan-feat" data-i18n="p4f2">Unlimited connectors</div>
+          <div class="plan-feat" data-i18n="p4f3">200K token context window</div>
+          <div class="plan-feat" data-i18n="p4f4">Goal-driven autonomous mode</div>
+          <div class="plan-feat" data-i18n="p4f5">Audit log</div>
+          <div class="plan-feat" data-i18n="p4f6">SSO / SAML</div>
+          <div class="plan-feat" data-i18n="p4f7">Dedicated support</div>
+          <div class="plan-feat" data-i18n="p4f8">Custom contract available</div>
         </div>
         <a href="mailto:hello@jowork.work" class="plan-btn plan-btn-ghost">Contact Sales →</a>
       </div>
     </div>
 
     <div class="callout fade-up" style="margin-top:32px;">
-      <p class="callout-text">Running Jowork internally at your company? <strong>No subscription needed.</strong> AGPL-3.0 allows free internal use — even commercial — as long as you don't distribute modifications without sharing them.</p>
+      <p class="callout-text" data-i18n="priceCallout">Running Jowork internally at your company? <strong>No subscription needed.</strong> AGPL-3.0 allows free internal use — even commercial — as long as you don't distribute modifications without sharing them.</p>
     </div>
   </div>
 </section>
@@ -942,9 +943,9 @@
   <div class="wrap">
     <div class="oss-inner fade-up">
       <div>
-        <div class="tag">Open Source</div>
-        <div class="oss-title">Built in public. <em>For the community.</em></div>
-        <p class="oss-desc">Jowork core is AGPL-3.0. You can inspect every line, contribute features, build connectors, and self-host without restrictions. The premium layer is optional.</p>
+        <div class="tag" data-i18n="ossTag">Open Source</div>
+        <div class="oss-title" data-i18n="ossTitle">Built in public. <em>For the community.</em></div>
+        <p class="oss-desc" data-i18n="ossDesc">Jowork core is AGPL-3.0. You can inspect every line, contribute features, build connectors, and self-host without restrictions. The premium layer is optional.</p>
         <div class="oss-badges">
           <span class="oss-badge" style="background:var(--lime-subtle); color:var(--lime); border:1px solid var(--lime-border);">AGPL-3.0</span>
           <span class="oss-badge" style="background:rgba(92,200,216,0.1); color:var(--cyan); border:1px solid rgba(92,200,216,0.2);">TypeScript</span>
@@ -958,10 +959,10 @@
         <a href="https://github.com/fluxvita/jowork" target="_blank" class="btn-primary" style="justify-content:center; text-align:center;">
           ⭐ Star on GitHub
         </a>
-        <a href="https://github.com/fluxvita/jowork/issues" target="_blank" class="btn-ghost" style="justify-content:center; text-align:center;">
+        <a href="https://github.com/fluxvita/jowork/issues" target="_blank" class="btn-ghost" style="justify-content:center; text-align:center;" data-i18n="ossIssue">
           Open an Issue
         </a>
-        <a href="https://discord.gg/jowork" target="_blank" class="btn-ghost" style="justify-content:center; text-align:center;">
+        <a href="https://discord.gg/jowork" target="_blank" class="btn-ghost" style="justify-content:center; text-align:center;" data-i18n="ossDiscord">
           Join Discord
         </a>
       </div>
@@ -974,13 +975,13 @@
   <div class="wrap">
     <div class="fade-up">
       <div class="grad-line"></div>
-      <h2 class="cta-title">Your AI coworker is<br/><em>one command away.</em></h2>
-      <p class="cta-sub">Self-hosted, open-source, zero vendor lock-in. Free forever for personal use.</p>
+      <h2 class="cta-title" data-i18n="ctaTitle">Your AI coworker is<br/><em>one command away.</em></h2>
+      <p class="cta-sub" data-i18n="ctaSub">Self-hosted, open-source, zero vendor lock-in. Free forever for personal use.</p>
       <div class="cta-actions">
-        <a href="https://github.com/fluxvita/jowork/releases/latest" class="btn-primary" style="font-size:16px; padding:15px 32px;">
+        <a href="https://github.com/fluxvita/jowork/releases/latest" class="btn-primary" style="font-size:16px; padding:15px 32px;" data-i18n="ctaDownload">
           ⬇ Download Jowork
         </a>
-        <a href="https://github.com/fluxvita/jowork" target="_blank" class="btn-ghost" style="font-size:15px; padding:14px 28px;">
+        <a href="https://github.com/fluxvita/jowork" target="_blank" class="btn-ghost" style="font-size:15px; padding:14px 28px;" data-i18n="ctaSource">
           View Source →
         </a>
       </div>
@@ -998,11 +999,11 @@
           <div class="nav-logo-dot"></div>
           Jowork
         </div>
-        <p>Open-source AI coworker that deeply connects to your company data. Self-hosted, autonomous, and free forever for personal use.</p>
+        <p data-i18n="footerDesc">Open-source AI coworker that deeply connects to your company data. Self-hosted, autonomous, and free forever for personal use.</p>
         <p style="margin-top:12px; font-family:var(--F-mono); font-size:11px; color:var(--text-dim);">By FluxVita · AGPL-3.0</p>
       </div>
       <div>
-        <div class="footer-col-title">Product</div>
+        <div class="footer-col-title" data-i18n="footerProduct">Product</div>
         <div class="footer-links">
           <a href="#features">Features</a>
           <a href="#pricing">Pricing</a>
@@ -1011,7 +1012,7 @@
         </div>
       </div>
       <div>
-        <div class="footer-col-title">Developers</div>
+        <div class="footer-col-title" data-i18n="footerDev">Developers</div>
         <div class="footer-links">
           <a href="https://github.com/fluxvita/jowork" target="_blank">GitHub</a>
           <a href="https://github.com/fluxvita/jowork/blob/main/docs/quick-start.md">Quick Start</a>
@@ -1020,7 +1021,7 @@
         </div>
       </div>
       <div>
-        <div class="footer-col-title">Company</div>
+        <div class="footer-col-title" data-i18n="footerCompany">Company</div>
         <div class="footer-links">
           <a href="https://fluxvita.com" target="_blank">FluxVita</a>
           <a href="mailto:hello@jowork.work">hello@jowork.work</a>
@@ -1030,7 +1031,7 @@
       </div>
     </div>
     <div class="footer-bottom">
-      <span class="footer-bottom-text">© 2025 FluxVita · Jowork is open-source under AGPL-3.0</span>
+      <span class="footer-bottom-text" data-i18n="footerCopy">© 2025 FluxVita · Jowork is open-source under AGPL-3.0</span>
       <span class="footer-bottom-text" style="display:flex;gap:16px;">
         <a href="https://github.com/fluxvita/jowork" target="_blank" style="color:var(--text-dim); transition:color 0.2s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-dim)'">GitHub</a>
         <a href="https://discord.gg/jowork" target="_blank" style="color:var(--text-dim); transition:color 0.2s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-dim)'">Discord</a>
@@ -1060,6 +1061,297 @@
     event.target.classList.add('active');
     document.getElementById('tab-' + name).classList.add('active');
   }
+
+  // ─── i18n ────────────────────────────────────────────────────────
+  const LANG = {
+    en: {
+      navFeatures: 'Features',
+      navPricing: 'Pricing',
+      navDownload: 'Download',
+      heroEyebrowBadge: 'Open Source',
+      heroEyebrowText: 'AGPL-3.0 · Free Forever for Personal Use',
+      heroH1: 'Your AI coworker that <em>actually knows</em> your business.',
+      heroSub: 'Connect your codebase, docs, project management, analytics, and calendar — and let Jowork work alongside your team 24/7. Self-hosted. No data leaves your server.',
+      heroDownload: '⬇ Download App',
+      heroGithub: 'View on GitHub',
+      trust1: 'No data leaves your server',
+      trust2: 'Works with Anthropic, OpenAI, local models',
+      trust3: 'macOS · Windows · Docker',
+      stat1Label: 'Data Connectors',
+      stat2Label: 'Built-in Agent Tools',
+      stat3Label: 'Token Context Window',
+      stat4Label: 'Data Sent to Vendor',
+      problemTag: '01 / The Problem',
+      problemTitle: 'Every AI tool lacks one thing: <em>your context.</em>',
+      problemDesc: "ChatGPT doesn't know your codebase. Notion AI can't see your Linear tickets. Slack AI doesn't understand your deployment pipeline. You're left copy-pasting context all day.",
+      gap1Num: 'Gap 01',
+      gap1Title: 'No real business context',
+      gap1Desc: 'Generic AI knows the internet, not your company. Every conversation starts from zero. You spend more time explaining than getting work done.',
+      gap2Num: 'Gap 02',
+      gap2Title: 'Answers, but no action',
+      gap2Desc: "Existing tools are read-only assistants. They can't create a PR, send a message, run a check, or schedule a follow-up. You still do all the work.",
+      gap3Num: 'Gap 03',
+      gap3Title: 'Your data on their servers',
+      gap3Desc: 'SaaS AI tools ingest your codebase, customer data, and internal docs. GDPR, IP risk, vendor lock-in. You lose control the moment you sign up.',
+      problemCallout: 'Jowork is different. It runs <strong>on your server</strong>, connects to <strong>all your tools natively</strong>, and takes <strong>real action</strong> — not just gives suggestions.',
+      featTag: '02 / Features',
+      featTitle: 'Everything your team needs, <em>deeply integrated.</em>',
+      featDesc: "Jowork isn't a chatbot wrapper. It's a full agent infrastructure built for real business work.",
+      feat1Title: 'Connect Everything',
+      feat1Desc: '7 native connectors. Jowork reads your full business context in real time.',
+      feat1L1: 'GitHub &amp; GitLab — code, PRs, issues',
+      feat1L2: 'Linear — projects, sprints, bugs',
+      feat1L3: 'Feishu / Slack — messages, calendar',
+      feat1L4: 'PostHog — analytics &amp; user behavior',
+      feat1L5: 'Figma, Email + custom REST APIs',
+      feat2Title: 'Autonomous Agent',
+      feat2Desc: "Don't just ask — let Jowork act. Schedule tasks, react to events, pursue goals.",
+      feat2L1: 'Scheduled tasks with cron expressions',
+      feat2L2: 'Event-triggered workflows',
+      feat2L3: 'Create PRs, send messages, run queries',
+      feat2L4: '25-turn tool-calling loop, built-in',
+      feat3Title: 'Deep Context Memory',
+      feat3Desc: 'Three-layer context architecture ensures Jowork always knows the right thing.',
+      feat3L1: 'Company layer — mission, glossary, ADRs',
+      feat3L2: 'Team layer — processes, OKRs, style guides',
+      feat3L3: 'Personal layer — your preferences &amp; history',
+      feat3L4: 'Semantic vector memory, auto-updated',
+      feat4Title: 'Geek Mode',
+      feat4Desc: 'Full developer power, no restrictions. Your agent, your rules.',
+      feat4L1: 'Integrated terminal in the UI',
+      feat4L2: 'Sandboxed shell execution',
+      feat4L3: 'MCP protocol — connect any tool',
+      feat4L4: 'Custom Skills in JavaScript',
+      feat5Title: 'Truly Self-Hosted',
+      feat5Desc: 'Your server, your data, your infrastructure. Zero vendor lock-in.',
+      feat5L1: 'SQLite — no external database needed',
+      feat5L2: 'Works with any Anthropic-compatible API',
+      feat5L3: 'Local LLMs supported via custom providers',
+      feat5L4: 'Docker one-liner or desktop app',
+      feat6Title: 'Team + Personal Modes',
+      feat6Desc: 'Solo use or full team deployment — both work out of the box.',
+      feat6L1: 'Personal mode — no login required',
+      feat6L2: 'Team mode — RBAC, 7 roles, ACL',
+      feat6L3: 'Desktop app (macOS + Windows)',
+      feat6L4: 'Browser-based + mobile-ready',
+      cmpTag: '03 / Comparison',
+      cmpTitle: 'Why not just use <em>existing AI tools?</em>',
+      cmpH1: 'Capability',
+      cmpH2: 'ChatGPT / Notion AI',
+      cmpH3: 'Dust.tt / Glean',
+      cmpR1: 'Knows your codebase',
+      cmpR2: 'Runs autonomously',
+      cmpR3: 'Self-hosted',
+      cmpR4: 'Takes real action',
+      cmpR5: 'Works without internet',
+      cmpR6: 'Personal use cost',
+      howTag: '04 / How It Works',
+      howTitle: 'Up and running in <em>under 2 minutes.</em>',
+      step1Num: 'STEP 01',
+      step1Title: 'Install &amp; Launch',
+      step1Desc: 'Download the desktop app or run the Docker one-liner. Jowork starts a local Gateway on port 18800. No external accounts or signups needed.',
+      step2Num: 'STEP 02',
+      step2Title: 'Connect Your Tools',
+      step2Desc: 'Add your API tokens for GitHub, Linear, Slack, etc. Jowork discovers your data automatically and builds an index in the background.',
+      step3Num: 'STEP 03',
+      step3Title: 'Start Working',
+      step3Desc: "Ask questions, delegate tasks, set up scheduled jobs. Jowork knows your context and can take real action — create PRs, send messages, run analysis.",
+      priceTag: '05 / Pricing',
+      priceTitle: 'Free for personal use. <em>Scales with your team.</em>',
+      priceDesc: 'The core is open-source and free forever. Premium features are available for teams that need more power.',
+      price1Period: 'forever, personal use',
+      price2Period: 'per month, billed monthly',
+      price3Period: 'per month, up to 10 users',
+      price4Period: 'per month, unlimited users',
+      price1Desc: 'Everything you need to get started. No credit card, no expiry.',
+      price2Desc: 'Power user features. More connectors, larger context, priority support.',
+      price3Desc: 'For engineering teams. Shared context, collaborative agent, event workflows.',
+      price4Desc: 'Enterprise-grade. Unlimited scale, SSO, audit logs, dedicated support.',
+      p1f1: '1 user (personal mode)', p1f2: '3 data source connectors', p1f3: '32K token context window',
+      p1f4: '5 scheduled tasks', p1f5: 'Basic terminal (Geek Mode)', p1f6: 'MCP protocol support',
+      p1f7: 'Sub-agent orchestration', p1f8: 'Event triggers',
+      p2f1: '1 user', p2f2: '10 data source connectors', p2f3: '100K token context window',
+      p2f4: '20 scheduled tasks', p2f5: 'Full terminal + code exec', p2f6: 'Priority issue support',
+      p2f7: 'Sub-agent orchestration', p2f8: 'Event triggers',
+      p3f1: 'Up to 10 users + RBAC', p3f2: 'Unlimited connectors', p3f3: '100K token context window',
+      p3f4: 'Unlimited scheduled tasks', p3f5: 'Sub-agent orchestration', p3f6: 'Event-triggered workflows',
+      p3f7: 'Email support', p3f8: 'Audit log &amp; SSO',
+      p4f1: 'Unlimited users', p4f2: 'Unlimited connectors', p4f3: '200K token context window',
+      p4f4: 'Goal-driven autonomous mode', p4f5: 'Audit log', p4f6: 'SSO / SAML',
+      p4f7: 'Dedicated support', p4f8: 'Custom contract available',
+      price1Btn: 'Get Started Free',
+      priceCallout: "Running Jowork internally at your company? <strong>No subscription needed.</strong> AGPL-3.0 allows free internal use — even commercial — as long as you don't distribute modifications without sharing them.",
+      ossTag: 'Open Source',
+      ossTitle: 'Built in public. <em>For the community.</em>',
+      ossDesc: 'Jowork core is AGPL-3.0. You can inspect every line, contribute features, build connectors, and self-host without restrictions. The premium layer is optional.',
+      ossIssue: 'Open an Issue',
+      ossDiscord: 'Join Discord',
+      ctaTitle: 'Your AI coworker is<br/><em>one command away.</em>',
+      ctaSub: 'Self-hosted, open-source, zero vendor lock-in. Free forever for personal use.',
+      ctaDownload: '⬇ Download Jowork',
+      ctaSource: 'View Source →',
+      footerDesc: 'Open-source AI coworker that deeply connects to your company data. Self-hosted, autonomous, and free forever for personal use.',
+      footerProduct: 'Product',
+      footerDev: 'Developers',
+      footerCompany: 'Company',
+      footerCopy: '© 2025 FluxVita · Jowork is open-source under AGPL-3.0',
+    },
+    zh: {
+      navFeatures: '功能',
+      navPricing: '定价',
+      navDownload: '下载',
+      heroEyebrowBadge: '开源',
+      heroEyebrowText: 'AGPL-3.0 · 个人使用永久免费',
+      heroH1: '真正<em>懂你业务</em>的 AI 工作伙伴。',
+      heroSub: '连接你的代码仓库、文档、项目管理、数据分析和日历——让 Jowork 24/7 与你的团队协同工作。自托管，数据不离开你的服务器。',
+      heroDownload: '⬇ 下载应用',
+      heroGithub: '查看源码',
+      trust1: '数据不离开你的服务器',
+      trust2: '支持 Anthropic、OpenAI 及本地模型',
+      trust3: 'macOS · Windows · Docker',
+      stat1Label: '数据连接器',
+      stat2Label: '内置 Agent 工具',
+      stat3Label: 'Token 上下文窗口',
+      stat4Label: '数据外泄量',
+      problemTag: '01 / 痛点',
+      problemTitle: '所有 AI 工具都缺少一样东西：<em>你的上下文。</em>',
+      problemDesc: 'ChatGPT 不了解你的代码库。Notion AI 看不到你的 Linear 工单。Slack AI 不懂你的部署流程。你每天花大量时间手动复制粘贴上下文。',
+      gap1Num: '痛点 01',
+      gap1Title: '没有真实的业务上下文',
+      gap1Desc: '通用 AI 了解互联网，但不了解你的公司。每次对话都从零开始，你花在解释上的时间比做事的时间还多。',
+      gap2Num: '痛点 02',
+      gap2Title: '只能回答，无法行动',
+      gap2Desc: '现有工具是只读助手。它们不能创建 PR、发送消息、运行检查或安排跟进事项——还是得你自己来。',
+      gap3Num: '痛点 03',
+      gap3Title: '数据存在别人的服务器上',
+      gap3Desc: 'SaaS AI 工具会摄取你的代码库、客户数据和内部文档。GDPR 合规、IP 泄露、厂商锁定——注册的那一刻你就失去了控制权。',
+      problemCallout: 'Jowork 不同。它运行在<strong>你自己的服务器上</strong>，<strong>原生连接所有工具</strong>，并执行<strong>真实操作</strong>——而不只是给建议。',
+      featTag: '02 / 功能',
+      featTitle: '团队所需的一切，<em>深度集成。</em>',
+      featDesc: 'Jowork 不是聊天机器人包装器，而是为真实业务工作构建的完整 Agent 基础设施。',
+      feat1Title: '连接一切',
+      feat1Desc: '7 个原生连接器，Jowork 实时读取你的完整业务上下文。',
+      feat1L1: 'GitHub &amp; GitLab — 代码、PR、Issue',
+      feat1L2: 'Linear — 项目、迭代、Bug',
+      feat1L3: '飞书 / Slack — 消息、日历',
+      feat1L4: 'PostHog — 数据分析与用户行为',
+      feat1L5: 'Figma、邮件 + 自定义 REST API',
+      feat2Title: '自主 Agent',
+      feat2Desc: '不只是问答——让 Jowork 行动。定时执行任务、响应事件、追求目标。',
+      feat2L1: '支持 cron 表达式的定时任务',
+      feat2L2: '事件触发工作流',
+      feat2L3: '创建 PR、发送消息、执行查询',
+      feat2L4: '内置 25 轮工具调用循环',
+      feat3Title: '深度上下文记忆',
+      feat3Desc: '三层上下文架构确保 Jowork 始终知道该知道的事。',
+      feat3L1: '公司层 — 使命、术语表、架构决策',
+      feat3L2: '团队层 — 流程、OKR、风格指南',
+      feat3L3: '个人层 — 你的偏好与历史记录',
+      feat3L4: '语义向量记忆，自动更新',
+      feat4Title: '极客模式',
+      feat4Desc: '完整的开发者能力，无任何限制。你的 Agent，你的规则。',
+      feat4L1: 'UI 内置终端',
+      feat4L2: '沙盒 Shell 执行',
+      feat4L3: 'MCP 协议——连接任意工具',
+      feat4L4: '用 JavaScript 编写自定义 Skill',
+      feat5Title: '真正的自托管',
+      feat5Desc: '你的服务器、你的数据、你的基础设施。零厂商锁定。',
+      feat5L1: 'SQLite — 无需外部数据库',
+      feat5L2: '兼容任何 Anthropic 格式 API',
+      feat5L3: '通过自定义 Provider 支持本地大模型',
+      feat5L4: 'Docker 一键部署或桌面应用',
+      feat6Title: '团队 + 个人模式',
+      feat6Desc: '个人独用或团队部署——开箱即用，两种模式均完整支持。',
+      feat6L1: '个人模式 — 无需登录',
+      feat6L2: '团队模式 — RBAC 权限，7 个角色，ACL',
+      feat6L3: '桌面应用（macOS + Windows）',
+      feat6L4: '浏览器 + 移动端兼容',
+      cmpTag: '03 / 对比',
+      cmpTitle: '为什么不用<em>现有的 AI 工具？</em>',
+      cmpH1: '能力',
+      cmpH2: 'ChatGPT / Notion AI',
+      cmpH3: 'Dust.tt / Glean',
+      cmpR1: '了解你的代码库',
+      cmpR2: '自主运行',
+      cmpR3: '自托管',
+      cmpR4: '执行真实操作',
+      cmpR5: '离线可用',
+      cmpR6: '个人使用费用',
+      howTag: '04 / 使用流程',
+      howTitle: '<em>2 分钟内</em>启动运行。',
+      step1Num: '第一步',
+      step1Title: '安装并启动',
+      step1Desc: '下载桌面应用或运行 Docker 一键命令。Jowork 在本地 18800 端口启动 Gateway，无需注册外部账号。',
+      step2Num: '第二步',
+      step2Title: '连接你的工具',
+      step2Desc: '添加 GitHub、Linear、Slack 等的 API Token。Jowork 自动发现数据并在后台建立索引。',
+      step3Num: '第三步',
+      step3Title: '开始工作',
+      step3Desc: '提问、委派任务、设置定时作业。Jowork 了解你的上下文，可以执行真实操作——创建 PR、发送消息、运行分析。',
+      priceTag: '05 / 定价',
+      priceTitle: '个人使用免费。<em>随团队规模扩展。</em>',
+      priceDesc: '核心版本开源且永久免费。高级功能面向需要更强能力的团队提供。',
+      price1Period: '永久免费，个人使用',
+      price2Period: '每月，按月计费',
+      price3Period: '每月，最多 10 用户',
+      price4Period: '每月，无限用户',
+      price1Desc: '入门所需的一切。无需信用卡，无过期限制。',
+      price2Desc: '高级用户功能。更多连接器、更大上下文窗口、优先支持。',
+      price3Desc: '面向工程团队。共享上下文、协作 Agent、事件工作流。',
+      price4Desc: '企业级。无限规模、SSO、审计日志、专属支持。',
+      p1f1: '1 用户（个人模式）', p1f2: '3 个数据连接器', p1f3: '32K Token 上下文窗口',
+      p1f4: '5 个定时任务', p1f5: '基础终端（极客模式）', p1f6: 'MCP 协议支持',
+      p1f7: '子 Agent 编排', p1f8: '事件触发',
+      p2f1: '1 用户', p2f2: '10 个数据连接器', p2f3: '100K Token 上下文窗口',
+      p2f4: '20 个定时任务', p2f5: '完整终端 + 代码执行', p2f6: '优先 Issue 支持',
+      p2f7: '子 Agent 编排', p2f8: '事件触发',
+      p3f1: '最多 10 用户 + RBAC', p3f2: '无限连接器', p3f3: '100K Token 上下文窗口',
+      p3f4: '无限定时任务', p3f5: '子 Agent 编排', p3f6: '事件触发工作流',
+      p3f7: '邮件支持', p3f8: '审计日志 &amp; SSO',
+      p4f1: '无限用户', p4f2: '无限连接器', p4f3: '200K Token 上下文窗口',
+      p4f4: '目标驱动自主模式', p4f5: '审计日志', p4f6: 'SSO / SAML',
+      p4f7: '专属支持', p4f8: '支持定制合同',
+      price1Btn: '免费开始',
+      priceCallout: '在公司内部使用 Jowork？<strong>无需订阅。</strong>AGPL-3.0 允许免费的内部使用——即使是商业用途——只要你不在未共享修改内容的情况下分发修改版本。',
+      ossTag: '开源',
+      ossTitle: '公开构建。<em>为社区而生。</em>',
+      ossDesc: 'Jowork 核心采用 AGPL-3.0 协议。你可以审查每一行代码、贡献功能、构建连接器，并无限制地自托管。高级功能层是可选的。',
+      ossIssue: '提交 Issue',
+      ossDiscord: '加入 Discord',
+      ctaTitle: '你的 AI 工作伙伴<br/><em>一条命令即可启动。</em>',
+      ctaSub: '自托管、开源、零厂商锁定。个人使用永久免费。',
+      ctaDownload: '⬇ 下载 Jowork',
+      ctaSource: '查看源码 →',
+      footerDesc: '深度连接公司数据的开源 AI 工作伙伴。自托管、自主运行，个人使用永久免费。',
+      footerProduct: '产品',
+      footerDev: '开发者',
+      footerCompany: '公司',
+      footerCopy: '© 2025 FluxVita · Jowork 采用 AGPL-3.0 开源协议',
+    },
+  };
+
+  let currentLang = localStorage.getItem('jowork-site-lang') ||
+    (navigator.language.startsWith('zh') ? 'zh' : 'en');
+
+  function applyLang(lang) {
+    currentLang = lang;
+    localStorage.setItem('jowork-site-lang', lang);
+    document.documentElement.lang = lang;
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      const key = el.getAttribute('data-i18n');
+      const val = LANG[lang][key];
+      if (val !== undefined) el.innerHTML = val;
+    });
+    const btn = document.getElementById('lang-toggle');
+    if (btn) btn.textContent = lang === 'zh' ? 'EN' : '中';
+  }
+
+  function toggleLang() {
+    applyLang(currentLang === 'zh' ? 'en' : 'zh');
+  }
+
+  // Apply on load
+  applyLang(currentLang);
 </script>
 </body>
 </html>
