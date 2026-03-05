@@ -905,7 +905,7 @@ CREATE VIRTUAL TABLE context_docs_fts USING fts5(
 
 **目标**：当前项目成为内部版，加载 core + premium
 
-- [ ] 创建 `apps/fluxvita/src/index.ts`（完整启动，加载 Premium）
+- [x] 创建 `apps/fluxvita/src/index.ts`（完整启动，加载 Premium）
 - [ ] 迁移 FluxVita 品牌前端
 - [ ] 确保飞书 OAuth、Mac mini 部署等 FluxVita 专属逻辑正常
 - [ ] 全部测试通过（以当前总用例数为准）
