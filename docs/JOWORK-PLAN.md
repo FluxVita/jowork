@@ -930,12 +930,12 @@ CREATE VIRTUAL TABLE context_docs_fts USING fts5(
 
 **目标**：移除所有敏感信息，确保开源代码零泄露
 
-- [ ] 执行完整敏感信息扫描（见第十二节清单）
-- [ ] 替换所有硬编码凭证为环境变量
-- [ ] 替换所有品牌字符串为可配置项
-- [ ] 创建 `.env.example` 模板
-- [ ] 创建 `.gitignore`（排除 .env、data/、logs/）
-- [ ] 运行 `git-secrets` 或 `trufflehog` 做最终扫描
+- [x] 执行完整敏感信息扫描（见第十二节清单）
+- [x] 替换所有硬编码凭证为环境变量
+- [x] 替换所有品牌字符串为可配置项
+- [x] 创建 `.env.example` 模板
+- [x] 创建 `.gitignore`（排除 .env、data/、logs/）
+- [x] 运行 `git-secrets` 或 `trufflehog` 做最终扫描
 
 ### Phase 8: 扩展性重构（3-4 天）
 
