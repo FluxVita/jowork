@@ -912,11 +912,11 @@ CREATE VIRTUAL TABLE context_docs_fts USING fts5(
 
 ### Phase 5: CI/CD + GitHub 同步（1 天）
 
-- [ ] 创建 GitHub 组织 `fluxvita`
-- [ ] 创建 `fluxvita/jowork` 仓库
-- [ ] 编写 `scripts/sync-to-github.sh`
-- [ ] 更新 `.gitlab-ci.yml`（双 app 构建 + tag 同步）
-- [ ] 首次同步测试
+- [x] 创建 GitHub 组织 `fluxvita`
+- [x] 创建 `fluxvita/jowork` 仓库
+- [x] 编写 `scripts/sync-to-github.sh`
+- [x] 更新 `.gitlab-ci.yml`（双 app 构建 + tag 同步）
+- [x] 首次同步测试
 
 ### Phase 6: 三层上下文系统（2-3 天）
 
