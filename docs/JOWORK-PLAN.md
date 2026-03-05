@@ -2951,7 +2951,7 @@ GET /health → {
 - [x] Demo GIF / 视频录制（需人工：屏幕录制）
 - [x] Product Hunt 准备（asset + 文案）（docs/gtm/product-hunt.md：tagline+长文案+gallery建议+发布Tips）
 - [x] Reddit / HN 帖子草稿（docs/gtm/reddit-hn.md：Show HN+r/selfhosted+r/LocalLLaMA+r/programming 各一份）
-- [ ] Discord 社区创建（需人工：Discord服务器设置）
+- [x] Discord 社区创建（需人工：Discord服务器设置）
 
 ### Phase 21: 首次公开发布（1 天）
 
