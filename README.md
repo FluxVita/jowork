@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://raw.githubusercontent.com/fluxvita/jowork/main/docs/assets/jowork-logo.svg" alt="Jowork" width="80" />
+<img src="https://raw.githubusercontent.com/fluxvita/jowork/main/docs/assets/jowork-logo.png" alt="Jowork" width="80" />
 
 # Jowork
 
@@ -18,7 +18,6 @@
 
 <br/>
 
-![Jowork Demo](https://raw.githubusercontent.com/fluxvita/jowork/main/docs/assets/demo.gif)
 
 </div>
 
