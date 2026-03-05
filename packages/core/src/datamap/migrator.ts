@@ -218,6 +218,24 @@ const MIGRATIONS: Migration[] = [
       }
     },
   },
+  {
+    name: '008_model_providers',
+    up(db) {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS model_providers (
+          id          TEXT PRIMARY KEY,
+          name        TEXT NOT NULL,
+          api_format  TEXT NOT NULL CHECK(api_format IN ('anthropic','openai')),
+          endpoint    TEXT NOT NULL,
+          models      TEXT NOT NULL DEFAULT '[]',
+          api_key_env TEXT,
+          is_builtin  INTEGER NOT NULL DEFAULT 0,
+          created_at  TEXT NOT NULL,
+          updated_at  TEXT NOT NULL
+        );
+      `);
+    },
+  },
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

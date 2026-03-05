@@ -13,6 +13,7 @@ import {
   getEdition,
   getOnboardingState,
   advertiseMdns,
+  loadCustomProviders,
   networkRouter,
   adminRouter,
   channelsRouter,
@@ -50,7 +51,10 @@ async function main(): Promise<void> {
     port: config.port,
   });
 
-  // 2. Ensure default user + agent exist in personal mode
+  // 2. Load custom model providers from DB into in-memory registry
+  loadCustomProviders();
+
+  // 3. Ensure default user + agent exist in personal mode
   if (config.personalMode) {
     const existing = db.prepare(`SELECT id FROM users WHERE id = 'personal'`).get();
     if (!existing) {

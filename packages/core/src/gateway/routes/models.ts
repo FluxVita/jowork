@@ -1,14 +1,24 @@
 // @jowork/core/gateway/routes/models — Model provider discovery + configuration
 //
 // Routes:
-//   GET  /api/models/providers           — list all registered providers
-//   GET  /api/models/ollama/discover     — auto-discover running Ollama models
-//   GET  /api/models/active              — active provider + model from env
-//   PUT  /api/models/active              — switch active provider + model (runtime)
+//   GET    /api/models/providers             — list all registered providers
+//   POST   /api/models/providers             — add a custom provider
+//   PATCH  /api/models/providers/:id         — update a custom provider
+//   DELETE /api/models/providers/:id         — delete a custom provider
+//   GET    /api/models/ollama/discover       — auto-discover running Ollama models
+//   GET    /api/models/active                — active provider + model from env
+//   PUT    /api/models/active                — switch active provider + model (runtime)
 
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
 import { listModelProviders, discoverOllamaModels, getModelProvider } from '../../models/index.js';
+import {
+  createCustomProvider,
+  updateCustomProvider,
+  deleteCustomProvider,
+  type CreateProviderInput,
+  type UpdateProviderInput,
+} from '../../models/store.js';
 
 export function modelsRouter(): Router {
   const router = Router();
@@ -23,6 +33,52 @@ export function modelsRouter(): Router {
       models: p.models,
     }));
     res.json({ providers });
+  });
+
+  /** Add a custom model provider */
+  router.post('/api/models/providers', authenticate, (req, res, next) => {
+    try {
+      const body = req.body as Partial<CreateProviderInput>;
+      if (!body.id || !body.name || !body.apiFormat || !body.endpoint) {
+        res.status(400).json({ message: 'id, name, apiFormat, and endpoint are required' });
+        return;
+      }
+      if (body.apiFormat !== 'anthropic' && body.apiFormat !== 'openai') {
+        res.status(400).json({ message: 'apiFormat must be "anthropic" or "openai"' });
+        return;
+      }
+      const provider = createCustomProvider(body as CreateProviderInput);
+      res.status(201).json(provider);
+    } catch (err) { next(err); }
+  });
+
+  /** Update a custom model provider */
+  router.patch('/api/models/providers/:id', authenticate, (req, res, next) => {
+    try {
+      const body = req.body as UpdateProviderInput;
+      if (body.apiFormat && body.apiFormat !== 'anthropic' && body.apiFormat !== 'openai') {
+        res.status(400).json({ message: 'apiFormat must be "anthropic" or "openai"' });
+        return;
+      }
+      const provider = updateCustomProvider(String(req.params['id']), body);
+      if (!provider) {
+        res.status(404).json({ message: 'Provider not found' });
+        return;
+      }
+      res.json(provider);
+    } catch (err) { next(err); }
+  });
+
+  /** Delete a custom model provider */
+  router.delete('/api/models/providers/:id', authenticate, (req, res, next) => {
+    try {
+      const deleted = deleteCustomProvider(String(req.params['id']));
+      if (!deleted) {
+        res.status(404).json({ message: 'Provider not found' });
+        return;
+      }
+      res.json({ deleted: true });
+    } catch (err) { next(err); }
   });
 
   /** Auto-discover locally running Ollama models */

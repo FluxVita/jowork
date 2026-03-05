@@ -16,7 +16,7 @@ describe('migrate — fresh installation', () => {
   test('applies all migrations on a brand-new DB', async () => {
     const db = freshDb();
     const result = await migrate(db);
-    assert.deepEqual(result.applied, ['001_initial', '002_messages_fts', '003_connector_items', '004_connector_sync_schedule', '005_message_feedback', '006_session_pinned_folder', '007_session_forked_from']);
+    assert.deepEqual(result.applied, ['001_initial', '002_messages_fts', '003_connector_items', '004_connector_sync_schedule', '005_message_feedback', '006_session_pinned_folder', '007_session_forked_from', '008_model_providers']);
   });
 
   test('creates schema_migrations table', async () => {
@@ -67,7 +67,7 @@ describe('migrate — bootstrap for existing DB', () => {
     const result = await migrate(db);
     // Should NOT try to apply 001_initial again (tables already exist)
     // 002_messages_fts runs (idempotent: CREATE IF NOT EXISTS + backfill empty table)
-    assert.deepEqual(result.applied, ['002_messages_fts', '003_connector_items', '004_connector_sync_schedule', '005_message_feedback', '006_session_pinned_folder', '007_session_forked_from']);
+    assert.deepEqual(result.applied, ['002_messages_fts', '003_connector_items', '004_connector_sync_schedule', '005_message_feedback', '006_session_pinned_folder', '007_session_forked_from', '008_model_providers']);
     // 001_initial should be recorded as applied
     const row = db
       .prepare(`SELECT COUNT(*) AS cnt FROM schema_migrations WHERE name = '001_initial'`)

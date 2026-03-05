@@ -2,6 +2,8 @@
 // Advanced routing (circuit-breaker, Klaude) is in @jowork/premium
 
 export * from './provider.js';
+export { createCustomProvider, updateCustomProvider, deleteCustomProvider, listCustomProviders, getCustomProvider, loadCustomProviders } from './store.js';
+export type { CreateProviderInput, UpdateProviderInput } from './store.js';
 import { resolveProviderFromEnv, type ModelProvider } from './provider.js';
 import type { ModelConfig } from '../types.js';
 

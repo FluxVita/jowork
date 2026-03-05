@@ -13,6 +13,7 @@ import {
   getEdition,
   getOnboardingState,
   advertiseMdns,
+  loadCustomProviders,
   networkRouter,
   adminRouter,
   channelsRouter,
@@ -63,6 +64,9 @@ async function main(): Promise<void> {
     engines: edition.agentEngines,
     geekMode: edition.hasGeekMode,
   });
+
+  // Load custom model providers from DB into in-memory registry
+  loadCustomProviders();
 
   // Ensure default user + agent exist in personal mode
   if (config.personalMode) {

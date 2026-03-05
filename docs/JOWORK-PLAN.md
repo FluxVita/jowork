@@ -229,6 +229,7 @@
 | Phase 77：Session 文件夹管理增强 | ✅ 完成 | 2026-03-05 | PATCH /api/sessions/folders/:name(重命名，级联更新)；DELETE /api/sessions/folders/:name(删除，级联设NULL)；前端folder chips双击重命名+右键删除；用户隔离；apps/jowork+apps/fluxvita均更新；4新测试；pnpm lint+test全绿（409/409） |
 | Phase 78：自动展开输入框 | ✅ 完成 | 2026-03-05 | textarea autoResizeInput(@input自动调整高度，max-height:120px后滚动)；resetInputHeight(发送后重置)；overflow-y:auto；apps/jowork+apps/fluxvita均更新；pnpm lint全绿（纯前端） |
 | Phase 79：Prometheus Metrics + 系统指标采集 | ✅ 完成 | 2026-03-05 | MetricsCollector(recordRequest+collectSnapshot+renderPrometheus)；metricsMiddleware(请求计数/延迟/直方图)；GET /metrics Prometheus text exposition format；createApp自动挂载；10新测试；pnpm lint+test全绿（419/419） |
+| Phase 80：Custom Model Provider 管理 | ✅ 完成 | 2026-03-05 | 迁移008_model_providers表；store.ts(CRUD+loadCustomProviders启动加载)；POST/PATCH/DELETE /api/models/providers端点；两app启动时调loadCustomProviders()；15新测试（迁移2+CRUD7+API5+loader1）；pnpm lint+test全绿（434/434） |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*
@@ -3490,6 +3491,19 @@ GET /health → {
 - [x] `jowork_info` 标签包含 version/mode/node_version
 - [x] 10 个新测试（collector 6 + renderPrometheus 2 + middleware 1 + route 1）
 - [x] pnpm lint+test 全绿（419/419）
+
+### Phase 80: Custom Model Provider 管理（0.25 天）
+
+- [x] 迁移 `008_model_providers`：`model_providers` 表（id/name/api_format/endpoint/models JSON/api_key_env/is_builtin）
+- [x] `packages/core/src/models/store.ts`：`createCustomProvider()` / `updateCustomProvider()` / `deleteCustomProvider()` / `listCustomProviders()` / `getCustomProvider()`
+- [x] `loadCustomProviders()`：启动时从 DB 加载自定义 provider 到内存注册器
+- [x] `POST /api/models/providers`：创建自定义 provider（id/name/apiFormat/endpoint/models/apiKeyEnv）
+- [x] `PATCH /api/models/providers/:id`：更新自定义 provider（部分更新）
+- [x] `DELETE /api/models/providers/:id`：删除自定义 provider（内置不可删）
+- [x] 两 app 入口 `loadCustomProviders()` 调用（DB init 后、路由注册前）
+- [x] migrator.test.ts 更新（新增 008 到断言数组）
+- [x] 15 个新测试（迁移 2 + CRUD 7 + API 5 + loader 1）
+- [x] pnpm lint+test 全绿（434/434）
 
 **AI 辅助开发预计总工期：6-10 个工作日**（全程 AI 写代码，人工只做决策/审查/测试）
 
