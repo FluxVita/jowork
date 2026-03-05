@@ -1400,6 +1400,44 @@
             .map(([key, v]) => ({ key, label: v.title ?? key, placeholder: v.description ?? '' }));
         }
 
+        // ─── Connector detail editing ────────────────────────────────
+        const editingConnector = ref(null);
+        const editConnForm = ref({ name: '', apiKey: '', extra: {} });
+        const connEditSaving = ref(false);
+
+        function startEditConnector(c) {
+          if (editingConnector.value === c.id) { editingConnector.value = null; return; }
+          editingConnector.value = c.id;
+          const s = c.settings ?? {};
+          const extra = { ...s };
+          delete extra.apiKey;
+          editConnForm.value = { name: c.name ?? '', apiKey: '', extra };
+        }
+
+        function cancelEditConnector() {
+          editingConnector.value = null;
+        }
+
+        async function saveConnectorSettings() {
+          const id = editingConnector.value;
+          if (!id) return;
+          connEditSaving.value = true;
+          try {
+            const conn = connectors.value.find(c => c.id === id);
+            const currentApiKey = conn?.settings?.apiKey ?? '';
+            const settings = { ...editConnForm.value.extra, apiKey: editConnForm.value.apiKey.trim() || currentApiKey };
+            const updates = { name: editConnForm.value.name.trim(), settings };
+            await api('PATCH', `/api/connectors/${id}`, updates);
+            toast('Connector updated', 'success');
+            editingConnector.value = null;
+            await loadConnectors();
+          } catch (e) {
+            toast('Update failed: ' + (e.message ?? String(e)), 'error');
+          } finally {
+            connEditSaving.value = false;
+          }
+        }
+
         const editingSyncSchedule = ref({});
         const syncScheduleInput = ref({});
 
@@ -1534,6 +1572,7 @@
           terminalInput, terminalOutput, terminalCwd, terminalBusy, terminalHistory, terminalHistoryIdx, terminalOutputEl,
           runTerminalCommand, terminalReset, terminalHistoryUp, terminalHistoryDown,
           openSettings, applyModel, addConnector, removeConnector, testConnector, connectorTesting, syncConnector, connectorSyncing, extraFields, connIcon, renderMd,
+          editingConnector, editConnForm, connEditSaving, startEditConnector, cancelEditConnector, saveConnectorSettings,
           editingSyncSchedule, syncScheduleInput, startEditSync, cancelEditSync, saveSyncSchedule, applySyncPreset, formatSyncSchedule, formatLastSync,
           saveAgent, loadMemories, deleteMemoryItem, addMemory,
           submitTask, toggleTaskEnabled, deleteTaskItem,

@@ -1483,6 +1483,45 @@
             .map(([key, v]) => ({ key, label: v.title ?? key, placeholder: v.description ?? '' }));
         }
 
+        // ─── Connector detail editing ────────────────────────────────
+        const editingConnector = ref(null); // connector id being edited, or null
+        const editConnForm = ref({ name: '', apiKey: '', extra: {} });
+        const connEditSaving = ref(false);
+
+        function startEditConnector(c) {
+          if (editingConnector.value === c.id) { editingConnector.value = null; return; } // toggle
+          editingConnector.value = c.id;
+          const s = c.settings ?? {};
+          const extra = { ...s };
+          delete extra.apiKey;
+          editConnForm.value = { name: c.name ?? '', apiKey: '', extra };
+          // apiKey left empty — user must re-enter to change it
+        }
+
+        function cancelEditConnector() {
+          editingConnector.value = null;
+        }
+
+        async function saveConnectorSettings() {
+          const id = editingConnector.value;
+          if (!id) return;
+          connEditSaving.value = true;
+          try {
+            const conn = connectors.value.find(c => c.id === id);
+            const currentApiKey = conn?.settings?.apiKey ?? '';
+            const settings = { ...editConnForm.value.extra, apiKey: editConnForm.value.apiKey.trim() || currentApiKey };
+            const updates = { name: editConnForm.value.name.trim(), settings };
+            await api('PATCH', `/api/connectors/${id}`, updates);
+            toast('Connector updated', 'success');
+            editingConnector.value = null;
+            await loadConnectors();
+          } catch (e) {
+            toast('Update failed: ' + (e.message ?? String(e)), 'error');
+          } finally {
+            connEditSaving.value = false;
+          }
+        }
+
         const editingSyncSchedule = ref({});
         const syncScheduleInput = ref({});
 
@@ -1617,6 +1656,7 @@
           terminalInput, terminalOutput, terminalCwd, terminalBusy, terminalHistory, terminalHistoryIdx, terminalOutputEl,
           runTerminalCommand, terminalReset, terminalHistoryUp, terminalHistoryDown,
           openSettings, applyModel, addConnector, removeConnector, testConnector, connectorTesting, syncConnector, connectorSyncing, extraFields, connIcon, renderMd,
+          editingConnector, editConnForm, connEditSaving, startEditConnector, cancelEditConnector, saveConnectorSettings,
           editingSyncSchedule, syncScheduleInput, startEditSync, cancelEditSync, saveSyncSchedule, applySyncPreset, formatSyncSchedule, formatLastSync,
           saveAgent, createAgent, deleteAgent, loadMemories, deleteMemoryItem, addMemory,
           submitTask, toggleTaskEnabled, deleteTaskItem,
@@ -1976,6 +2016,7 @@
                     <button class="btn-sm" @click="testConnector(c.id)" :disabled="connectorTesting[c.id]">
                       {{ connectorTesting[c.id] ? '…' : 'Test' }}
                     </button>
+                    <button class="btn-sm" @click="startEditConnector(c)">Settings</button>
                     <button class="connector-delete" @click="removeConnector(c.id)">Remove</button>
                     <!-- Sync schedule row -->
                     <div style="width:100%;margin-top:6px;padding-left:38px;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-muted)">
@@ -1994,6 +2035,29 @@
                         <button class="btn-sm" style="font-size:11px;padding:1px 6px" @click="saveSyncSchedule(c.id)">Save</button>
                         <button class="btn-sm" style="font-size:11px;padding:1px 6px" @click="cancelEditSync(c.id)">✕</button>
                       </template>
+                    </div>
+                    <!-- Connector settings edit panel -->
+                    <div v-if="editingConnector === c.id" style="width:100%;margin-top:8px;padding:12px 12px 12px 38px;background:var(--bg-primary);border-radius:8px;border:1px solid var(--border)">
+                      <div class="form-row">
+                        <label>Name</label>
+                        <input v-model="editConnForm.name" type="text" />
+                      </div>
+                      <div class="form-row">
+                        <label>API Key / Token</label>
+                        <input v-model="editConnForm.apiKey" type="password" placeholder="Leave empty to keep current" />
+                      </div>
+                      <template v-for="f in extraFields(c.kind)" :key="f.key">
+                        <div class="form-row">
+                          <label>{{ f.label }}</label>
+                          <input v-model="editConnForm.extra[f.key]" :placeholder="f.placeholder" type="text" />
+                        </div>
+                      </template>
+                      <div style="display:flex;gap:8px;margin-top:8px">
+                        <button class="btn-primary" :disabled="connEditSaving" @click="saveConnectorSettings">
+                          {{ connEditSaving ? 'Saving…' : 'Save Changes' }}
+                        </button>
+                        <button class="btn-sm" @click="cancelEditConnector">Cancel</button>
+                      </div>
                     </div>
                   </div>
                 </div>
