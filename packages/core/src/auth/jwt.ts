@@ -1,58 +1,31 @@
-// @jowork/core/auth — minimal JWT using node:crypto (no external dependency)
-
-import { createHmac, timingSafeEqual } from 'node:crypto';
-import type { UserId, Role } from '../types.js';
+import jwt from 'jsonwebtoken';
 import { config } from '../config.js';
-import { UnauthorizedError } from '../types.js';
+import type { User, Role } from '../types.js';
 
-export interface JwtPayload {
-  sub: UserId;
+export interface TokenPayload {
+  user_id: string;
   role: Role;
-  iat: number;
-  exp: number;
+  feishu_open_id: string;
+  /** 是否通过飞书 OAuth 真实认证（dev 直接登录时为 false） */
+  feishu_verified?: boolean;
 }
 
-function b64url(buf: Buffer): string {
-  return buf.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+/** 签发 JWT */
+export function signToken(user: User, expiresIn = '24h', opts?: { feishu_verified?: boolean }): string {
+  const payload: TokenPayload = {
+    user_id: user.user_id,
+    role: user.role,
+    feishu_open_id: user.feishu_open_id,
+    feishu_verified: opts?.feishu_verified ?? false,
+  };
+  return jwt.sign(payload, config.jwt_secret, { expiresIn: expiresIn as unknown as number });
 }
 
-function b64urlEncode(str: string): string {
-  return b64url(Buffer.from(str, 'utf8'));
-}
-
-function sign(data: string): string {
-  return b64url(createHmac('sha256', config.jwtSecret).update(data).digest());
-}
-
-export function signToken(userId: UserId, role: Role, ttlSeconds = 86_400 * 30): string {
-  const now = Math.floor(Date.now() / 1000);
-  const header = b64urlEncode(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
-  const payload = b64urlEncode(JSON.stringify({ sub: userId, role, iat: now, exp: now + ttlSeconds }));
-  const sig = sign(`${header}.${payload}`);
-  return `${header}.${payload}.${sig}`;
-}
-
-export function verifyToken(token: string): JwtPayload {
-  const parts = token.split('.');
-  if (parts.length !== 3) throw new UnauthorizedError();
-  const [header, payload, sig] = parts as [string, string, string];
-
-  const expected = Buffer.from(sign(`${header}.${payload}`));
-  const actual = Buffer.from(sig);
-  if (expected.length !== actual.length || !timingSafeEqual(expected, actual)) {
-    throw new UnauthorizedError();
-  }
-
-  let decoded: JwtPayload;
+/** 验证 JWT */
+export function verifyToken(token: string): TokenPayload | null {
   try {
-    decoded = JSON.parse(Buffer.from(payload, 'base64').toString('utf8')) as JwtPayload;
+    return jwt.verify(token, config.jwt_secret) as TokenPayload;
   } catch {
-    throw new UnauthorizedError();
+    return null;
   }
-
-  if (decoded.exp < Math.floor(Date.now() / 1000)) {
-    throw new UnauthorizedError();
-  }
-
-  return decoded;
 }

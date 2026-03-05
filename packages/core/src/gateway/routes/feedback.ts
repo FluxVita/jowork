@@ -1,150 +1,161 @@
-// @jowork/core/gateway/routes/feedback — message feedback (thumbs up/down)
-//
-// Routes:
-//   GET    /api/sessions/:id/feedback                   — get all feedback for a session
-//   POST   /api/sessions/:id/messages/:msgId/feedback   — submit/update feedback
-//   GET    /api/sessions/:id/messages/:msgId/feedback    — get feedback for a message
-//   DELETE /api/sessions/:id/messages/:msgId/feedback    — remove feedback
-
 import { Router } from 'express';
-import { authenticate } from '../middleware/auth.js';
-import { getDb } from '../../datamap/index.js';
-import { generateId, nowISO } from '../../utils/index.js';
+import { writeFileSync, readFileSync, existsSync, mkdirSync, readdirSync, appendFileSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+import { authMiddleware } from '../middleware.js';
 
-export function feedbackRouter(): Router {
-  const router = Router();
+const router = Router();
+const PUBLIC_FEEDBACK_ENABLED = process.env['PUBLIC_FEEDBACK_ENABLED'] === 'true';
 
-  // Get all feedback for a session (batch endpoint to avoid N+1 queries)
-  router.get('/api/sessions/:id/feedback', authenticate, (req, res, next) => {
-    try {
-      const db = getDb();
-      const userId = req.auth!.userId;
-      const sessionId = String(req.params['id']);
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const FEEDBACK_DIR = join(__dirname, '../../../data');
+const FEEDBACK_SUBDIR = join(FEEDBACK_DIR, 'feedback');
+const AGENT_FEEDBACK_FILE = join(FEEDBACK_SUBDIR, 'agent_feedback.md');
 
-      const session = db.prepare(
-        `SELECT id FROM sessions WHERE id = ? AND user_id = ?`,
-      ).get(sessionId, userId) as { id: string } | undefined;
-      if (!session) { res.status(404).json({ error: 'NOT_FOUND' }); return; }
-
-      const rows = db.prepare(
-        `SELECT mf.message_id, mf.rating FROM message_feedback mf
-         JOIN messages m ON m.id = mf.message_id
-         WHERE m.session_id = ? AND mf.user_id = ?`,
-      ).all(sessionId, userId) as Array<{ message_id: string; rating: string }>;
-
-      // Return as a map: { messageId: rating }
-      const feedbackMap: Record<string, string> = {};
-      for (const row of rows) {
-        feedbackMap[row.message_id] = row.rating;
-      }
-      res.json(feedbackMap);
-    } catch (err) { next(err); }
-  });
-
-  // Submit or update feedback for a message
-  router.post('/api/sessions/:id/messages/:msgId/feedback', authenticate, (req, res, next) => {
-    try {
-      const db = getDb();
-      const userId = req.auth!.userId;
-      const sessionId = String(req.params['id']);
-      const msgId = String(req.params['msgId']);
-
-      // Verify session ownership
-      const session = db.prepare(
-        `SELECT id FROM sessions WHERE id = ? AND user_id = ?`,
-      ).get(sessionId, userId) as { id: string } | undefined;
-      if (!session) { res.status(404).json({ error: 'NOT_FOUND' }); return; }
-
-      // Verify message belongs to session
-      const msg = db.prepare(
-        `SELECT id, role FROM messages WHERE id = ? AND session_id = ?`,
-      ).get(msgId, sessionId) as { id: string; role: string } | undefined;
-      if (!msg) { res.status(404).json({ error: 'NOT_FOUND' }); return; }
-
-      if (msg.role !== 'assistant') {
-        res.status(400).json({ error: 'INVALID_INPUT', message: 'can only rate assistant messages' });
-        return;
-      }
-
-      const { rating, comment } = req.body as { rating: string; comment?: string };
-      if (rating !== 'positive' && rating !== 'negative') {
-        res.status(400).json({ error: 'INVALID_INPUT', message: 'rating must be positive or negative' });
-        return;
-      }
-
-      const now = nowISO();
-
-      // Upsert: try INSERT, on conflict UPDATE
-      const existing = db.prepare(
-        `SELECT id FROM message_feedback WHERE message_id = ? AND user_id = ?`,
-      ).get(msgId, userId) as { id: string } | undefined;
-
-      if (existing) {
-        db.prepare(
-          `UPDATE message_feedback SET rating = ?, comment = ?, created_at = ? WHERE id = ?`,
-        ).run(rating, comment ?? null, now, existing.id);
-        res.json({ id: existing.id, messageId: msgId, rating, comment: comment ?? null, createdAt: now });
-      } else {
-        const id = generateId();
-        db.prepare(
-          `INSERT INTO message_feedback (id, message_id, user_id, rating, comment, created_at) VALUES (?,?,?,?,?,?)`,
-        ).run(id, msgId, userId, rating, comment ?? null, now);
-        res.status(201).json({ id, messageId: msgId, rating, comment: comment ?? null, createdAt: now });
-      }
-    } catch (err) { next(err); }
-  });
-
-  // Get feedback for a message
-  router.get('/api/sessions/:id/messages/:msgId/feedback', authenticate, (req, res, next) => {
-    try {
-      const db = getDb();
-      const userId = req.auth!.userId;
-      const sessionId = String(req.params['id']);
-      const msgId = String(req.params['msgId']);
-
-      // Verify session ownership
-      const session = db.prepare(
-        `SELECT id FROM sessions WHERE id = ? AND user_id = ?`,
-      ).get(sessionId, userId) as { id: string } | undefined;
-      if (!session) { res.status(404).json({ error: 'NOT_FOUND' }); return; }
-
-      const feedback = db.prepare(
-        `SELECT id, message_id, rating, comment, created_at FROM message_feedback WHERE message_id = ? AND user_id = ?`,
-      ).get(msgId, userId) as { id: string; message_id: string; rating: string; comment: string | null; created_at: string } | undefined;
-
-      if (!feedback) { res.json(null); return; }
-
-      res.json({
-        id: feedback.id,
-        messageId: feedback.message_id,
-        rating: feedback.rating,
-        comment: feedback.comment,
-        createdAt: feedback.created_at,
-      });
-    } catch (err) { next(err); }
-  });
-
-  // Delete feedback for a message
-  router.delete('/api/sessions/:id/messages/:msgId/feedback', authenticate, (req, res, next) => {
-    try {
-      const db = getDb();
-      const userId = req.auth!.userId;
-      const sessionId = String(req.params['id']);
-      const msgId = String(req.params['msgId']);
-
-      // Verify session ownership
-      const session = db.prepare(
-        `SELECT id FROM sessions WHERE id = ? AND user_id = ?`,
-      ).get(sessionId, userId) as { id: string } | undefined;
-      if (!session) { res.status(404).json({ error: 'NOT_FOUND' }); return; }
-
-      db.prepare(
-        `DELETE FROM message_feedback WHERE message_id = ? AND user_id = ?`,
-      ).run(msgId, userId);
-
-      res.status(204).end();
-    } catch (err) { next(err); }
-  });
-
-  return router;
+function ensureDir() {
+  if (!existsSync(FEEDBACK_DIR)) mkdirSync(FEEDBACK_DIR, { recursive: true });
 }
+
+function ensureFeedbackSubdir() {
+  if (!existsSync(FEEDBACK_SUBDIR)) mkdirSync(FEEDBACK_SUBDIR, { recursive: true });
+}
+
+function formatEntry(item: { page?: string; tab?: string; url?: string; content?: string; viewport?: string; time?: string }): string {
+  const ts = item.time || new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false });
+  const pageName = item.page || 'unknown';
+  return [
+    `### [${pageName}] ${ts}`,
+    '',
+    `- **页面**: ${pageName}`,
+    `- **URL**: ${item.url || '-'}`,
+    `- **时间**: ${ts}`,
+    item.viewport ? `- **视口**: ${item.viewport}` : null,
+    '',
+    '**反馈内容**:',
+    '',
+    (item.content || '').trim(),
+    '',
+    '---',
+    '',
+  ].filter(l => l !== null).join('\n');
+}
+
+function formatAgentBlock(
+  item: { page?: string; tab?: string; url?: string; content?: string; time?: string },
+  index: number,
+  batchTs: string
+): string {
+  const ts = item.time || batchTs;
+  const id = `${batchTs}-${index}`;
+  const pagePath = item.url ? new URL(item.url, 'http://localhost').pathname : (item.page || 'unknown');
+  const tab = item.tab || '';
+  return [
+    `## Feedback ${id}`,
+    `- time: ${ts}`,
+    `- page_path: ${pagePath}`,
+    tab ? `- tab_or_section: ${tab}` : null,
+    `- url: ${item.url || '-'}`,
+    '',
+    '### User Feedback',
+    (item.content || '').trim(),
+    '',
+    '### Agent-Friendly Task',
+    '请基于以上上下文完成产品改进，要求：',
+    '1) 先复述用户在该页面遇到的真实问题或诉求。',
+    '2) 给出最小可执行改动（优先前端可见行为）。',
+    '3) 若涉及后端接口，说明影响范围与回归点。',
+    '4) 输出验收标准（用户在同页面可复现通过）。',
+    '',
+    '---',
+    '',
+  ].filter(l => l !== null).join('\n');
+}
+
+/** POST /api/feedback — 单条反馈（兼容保留，写到 data/feedback/legacy.md） */
+router.post('/', (req, res, next) => {
+  if (PUBLIC_FEEDBACK_ENABLED) return next();
+  return authMiddleware(req, res, next);
+}, (req, res) => {
+  const { page, url, content, viewport, time } = req.body as {
+    page: string;
+    url: string;
+    content: string;
+    viewport?: string;
+    time?: string;
+  };
+
+  if (!content?.trim()) {
+    res.status(400).json({ error: 'content is required' });
+    return;
+  }
+
+  ensureDir();
+  ensureFeedbackSubdir();
+
+  const legacyFile = join(FEEDBACK_SUBDIR, 'legacy.md');
+  const entry = formatEntry({ page, url, content, viewport, time });
+  const existing = existsSync(legacyFile)
+    ? readFileSync(legacyFile, 'utf-8')
+    : '# Jowork 测试反馈（单条）\n\n---\n\n';
+  writeFileSync(legacyFile, existing + entry, 'utf-8');
+
+  res.json({ ok: true, message: '反馈已记录' });
+});
+
+/** POST /api/feedback/batch — 批量保存到带时间戳的独立文件 */
+router.post('/batch', (req, res, next) => {
+  if (PUBLIC_FEEDBACK_ENABLED) return next();
+  return authMiddleware(req, res, next);
+}, (req, res) => {
+  const { items, timestamp } = req.body as {
+    items: Array<{ page?: string; tab?: string; url?: string; content?: string; viewport?: string; time?: string }>;
+    timestamp?: string;
+  };
+
+  if (!Array.isArray(items) || items.length === 0) {
+    res.status(400).json({ error: 'items must be a non-empty array' });
+    return;
+  }
+
+  ensureFeedbackSubdir();
+
+  const ts = timestamp || new Date().toLocaleString('zh-CN', {
+    timeZone: 'Asia/Shanghai', hour12: false,
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+  }).replace(/[/:\s]/g, '').replace(/,/, '_');
+
+  const filename = `${ts}.md`;
+  const filepath = join(FEEDBACK_SUBDIR, filename);
+  const relativePath = `data/feedback/${filename}`;
+
+  const header = `# Jowork 测试反馈 — ${ts}\n\n> 保存时间：${ts}，共 ${items.length} 条\n\n---\n\n`;
+  const body = items.map(item => formatEntry(item)).join('');
+  writeFileSync(filepath, header + body, 'utf-8');
+
+  // 同时追加到 agent_feedback.md（长期累积，Agent 可直接引用）
+  const agentBlocks = items.map((item, idx) => formatAgentBlock(item, idx + 1, ts)).join('');
+  if (!existsSync(AGENT_FEEDBACK_FILE)) {
+    writeFileSync(AGENT_FEEDBACK_FILE, '# Jowork Agent 反馈任务库\n\n> 此文件由系统自动维护，供 AI Agent 直接引用执行产品改进任务。\n\n---\n\n', 'utf-8');
+  }
+  appendFileSync(AGENT_FEEDBACK_FILE, agentBlocks, 'utf-8');
+
+  res.json({ ok: true, filename, path: relativePath, agent_feedback: 'data/feedback/agent_feedback.md' });
+});
+
+/** GET /api/feedback — 查看最新反馈文件 */
+router.get('/', (req, res, next) => {
+  if (PUBLIC_FEEDBACK_ENABLED) return next();
+  return authMiddleware(req, res, next);
+}, (_req, res) => {
+  ensureFeedbackSubdir();
+  let raw = '';
+  try {
+    const files = readdirSync(FEEDBACK_SUBDIR).filter(f => f.endsWith('.md')).sort();
+    const latest = files[files.length - 1];
+    if (latest) raw = readFileSync(join(FEEDBACK_SUBDIR, latest), 'utf-8');
+  } catch { /* ignore */ }
+  res.json({ raw });
+});
+
+export default router;

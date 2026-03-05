@@ -1,130 +1,117 @@
-// @jowork/core/gateway/routes/context — Three-layer context system REST API
-//
-// Routes:
-//   GET    /api/context               — list context docs (filter by layer/scopeId/docType)
-//   GET    /api/context/:id           — get single context doc
-//   POST   /api/context               — create a context doc
-//   PUT    /api/context/:id           — update a context doc
-//   DELETE /api/context/:id           — delete a context doc
-//   PUT    /api/context/workstyle     — upsert personal workstyle doc shortcut
-//   POST   /api/context/assemble      — assemble context for agent use
+/**
+ * routes/context.ts — 三层上下文文档管理 API
+ *
+ * GET    /api/context/docs          — 列出所有文档（可按 layer/scope_id 过滤）
+ * GET    /api/context/docs/:id      — 获取单个文档
+ * POST   /api/context/docs          — 创建文档
+ * PUT    /api/context/docs/:id      — 更新文档
+ * DELETE /api/context/docs/:id      — 删除文档
+ * GET    /api/context/search        — FTS 搜索文档
+ */
 
 import { Router } from 'express';
-import { authenticate } from '../middleware/auth.js';
-import { assertRole } from '../../policy/index.js';
+import { authMiddleware, requireRole } from '../middleware.js';
 import {
-  assembleContext,
-  createContextDoc,
-  deleteContextDoc,
-  getContextDoc,
-  listContextDocs,
-  saveWorkstyleDoc,
-  updateContextDoc,
-} from '../../context/index.js';
-import type { ListContextDocsOptions } from '../../context/index.js';
-import type { ContextDocType, ContextLayer } from '../../types.js';
+  listContextDocs, getContextDoc, createContextDoc,
+  updateContextDoc, deleteContextDoc, searchContextDocs,
+} from '../../context/docs.js';
+import type { ContextLayer, DocType } from '../../context/docs.js';
+import { createLogger } from '../../utils/logger.js';
 
-export function contextRouter(): Router {
-  const router = Router();
+const log = createLogger('context-route');
+const router = Router();
 
-  router.get('/api/context', authenticate, (req, res, next) => {
-    try {
-      const q = req.query as Record<string, string>;
-      const opts: ListContextDocsOptions = {};
-      if (q['layer'])   opts.layer   = q['layer'] as ContextLayer;
-      if (q['scopeId']) opts.scopeId = q['scopeId'];
-      if (q['docType']) opts.docType = q['docType'] as ContextDocType;
-      res.json(listContextDocs(opts));
-    } catch (err) { next(err); }
-  });
+/** 列出文档 */
+router.get('/docs', authMiddleware, (req, res) => {
+  const layer = req.query['layer'] as ContextLayer | undefined;
+  const scopeId = req.query['scope_id'] as string | undefined;
+  res.json(listContextDocs(layer, scopeId));
+});
 
-  router.get('/api/context/:id', authenticate, (req, res, next) => {
-    try {
-      const doc = getContextDoc(String(req.params['id']));
-      if (!doc) { res.status(404).json({ error: 'NOT_FOUND' }); return; }
-      res.json(doc);
-    } catch (err) { next(err); }
-  });
+/** 获取单个文档 */
+router.get('/docs/:id', authMiddleware, (req, res) => {
+  const doc = getContextDoc(req.params['id'] as string);
+  if (!doc) { res.status(404).json({ error: 'Not found' }); return; }
+  res.json(doc);
+});
 
-  router.post('/api/context', authenticate, (req, res, next) => {
-    try {
-      const body = req.body as {
-        layer?: unknown; scopeId?: unknown; title?: unknown;
-        content?: unknown; docType?: unknown; isForced?: unknown;
-      };
+/** 创建文档（member+ 可创建 personal，admin+ 可创建 team/company） */
+router.post('/docs', authMiddleware, (req, res) => {
+  const user = req.user!;
+  const { layer, scope_id, title, content, doc_type, is_forced } = req.body as {
+    layer: ContextLayer;
+    scope_id: string;
+    title: string;
+    content: string;
+    doc_type: DocType;
+    is_forced?: boolean;
+  };
 
-      const layer   = body.layer   as ContextLayer | undefined;
-      const scopeId = body.scopeId as string | undefined;
-      const title   = body.title   as string | undefined;
-      const content = body.content as string | undefined;
+  if (!layer || !scope_id || !title || !content || !doc_type) {
+    res.status(400).json({ error: 'layer, scope_id, title, content, doc_type 均为必填' });
+    return;
+  }
 
-      if (!layer || !scopeId || !title?.trim() || !content?.trim()) {
-        res.status(400).json({ error: 'INVALID_INPUT' }); return;
-      }
+  // 权限检查：非 admin 只能操作 personal 层
+  if (layer !== 'personal' && !['owner', 'admin'].includes(user.role)) {
+    res.status(403).json({ error: '只有 admin/owner 可以管理公司/团队层文档' });
+    return;
+  }
 
-      const isForced = Boolean(body.isForced);
-      if (layer !== 'personal' || isForced) {
-        assertRole(req.auth!.role, 'admin');
-      }
+  try {
+    const doc = createContextDoc({
+      layer, scope_id, title, content, doc_type,
+      is_forced: is_forced ?? false,
+      created_by: user.user_id,
+    });
+    res.status(201).json(doc);
+  } catch (err) {
+    log.error('Create context doc failed', err);
+    res.status(500).json({ error: String(err) });
+  }
+});
 
-      const input: Parameters<typeof createContextDoc>[0] = {
-        layer, scopeId, title, content, createdBy: req.auth!.userId,
-      };
-      if (body.docType) input.docType = body.docType as ContextDocType;
-      if (isForced) input.isForced = true;
+/** 更新文档 */
+router.put('/docs/:id', authMiddleware, (req, res) => {
+  const user = req.user!;
+  const id = req.params['id'] as string;
+  const existing = getContextDoc(id);
 
-      res.status(201).json(createContextDoc(input));
-    } catch (err) { next(err); }
-  });
+  if (!existing) { res.status(404).json({ error: 'Not found' }); return; }
+  if (existing.layer !== 'personal' && !['owner', 'admin'].includes(user.role)) {
+    res.status(403).json({ error: '无权修改公司/团队层文档' });
+    return;
+  }
 
-  router.put('/api/context/workstyle', authenticate, (req, res, next) => {
-    try {
-      const { content } = req.body as { content?: string };
-      if (!content?.trim()) { res.status(400).json({ error: 'INVALID_INPUT' }); return; }
-      res.json(saveWorkstyleDoc(req.auth!.userId, content));
-    } catch (err) { next(err); }
-  });
+  const { title, content, doc_type, is_forced } = req.body as Partial<{
+    title: string; content: string; doc_type: DocType; is_forced: boolean;
+  }>;
 
-  router.put('/api/context/:id', authenticate, (req, res, next) => {
-    try {
-      const doc = getContextDoc(String(req.params['id']));
-      if (!doc) { res.status(404).json({ error: 'NOT_FOUND' }); return; }
+  const updated = updateContextDoc(id, { title, content, doc_type, is_forced });
+  res.json(updated);
+});
 
-      if (doc.layer !== 'personal' || doc.scopeId !== req.auth!.userId) {
-        assertRole(req.auth!.role, 'admin');
-      }
+/** 删除文档 */
+router.delete('/docs/:id', authMiddleware, (req, res) => {
+  const user = req.user!;
+  const id = req.params['id'] as string;
+  const existing = getContextDoc(id);
 
-      const body = req.body as { title?: string; content?: string; isForced?: boolean };
-      const patch: Parameters<typeof updateContextDoc>[1] = {};
-      if (body.title   !== undefined) patch.title    = body.title;
-      if (body.content !== undefined) patch.content  = body.content;
-      if (body.isForced !== undefined) patch.isForced = body.isForced;
+  if (!existing) { res.status(404).json({ error: 'Not found' }); return; }
+  if (existing.layer !== 'personal' && !['owner', 'admin'].includes(user.role)) {
+    res.status(403).json({ error: '无权删除公司/团队层文档' });
+    return;
+  }
 
-      res.json(updateContextDoc(doc.id, patch));
-    } catch (err) { next(err); }
-  });
+  deleteContextDoc(id);
+  res.json({ ok: true });
+});
 
-  router.delete('/api/context/:id', authenticate, (req, res, next) => {
-    try {
-      const doc = getContextDoc(String(req.params['id']));
-      if (!doc) { res.status(404).json({ error: 'NOT_FOUND' }); return; }
+/** FTS 搜索 */
+router.get('/search', authMiddleware, (req, res) => {
+  const q = (req.query['q'] as string) ?? '';
+  if (!q) { res.json([]); return; }
+  res.json(searchContextDocs(q, 10));
+});
 
-      if (doc.layer !== 'personal' || doc.scopeId !== req.auth!.userId) {
-        assertRole(req.auth!.role, 'admin');
-      }
-
-      deleteContextDoc(doc.id);
-      res.status(204).end();
-    } catch (err) { next(err); }
-  });
-
-  router.post('/api/context/assemble', authenticate, (req, res, next) => {
-    try {
-      const { query } = req.body as { query?: string };
-      if (query === undefined) { res.status(400).json({ error: 'INVALID_INPUT' }); return; }
-      res.json(assembleContext({ userId: req.auth!.userId, query }));
-    } catch (err) { next(err); }
-  });
-
-  return router;
-}
+export default router;

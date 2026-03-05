@@ -1,45 +1,26 @@
-// @jowork/core — public API surface
+/**
+ * @jowork/core — Jowork 开源核心包
+ *
+ * 统一导出所有核心模块。迁移按 Phase 1 依赖顺序进行：
+ * 1. utils, types, config（零依赖）
+ * 2. datamap（依赖 utils）
+ * 3. auth, policy（依赖 datamap）
+ * ... 后续 Phase 继续补充
+ */
 
-export * from './edition.js';
-export * from './i18n.js';
 export * from './types.js';
 export * from './config.js';
-export * from './platform.js';
-export * from './utils/index.js';
-export * from './datamap/index.js';
-export * from './auth/index.js';
-export * from './policy/index.js';
-export * from './gateway/index.js';
-export * from './memory/index.js';
-export * from './models/index.js';
-export * from './agent/index.js';
-export * from './scheduler/index.js';
-export * from './connectors/index.js';
-export * from './connectors/protocol.js';
-export * from './connectors/github.js';
-export * from './connectors/notion.js';
-export * from './connectors/slack.js';
-export * from './connectors/linear.js';
-export * from './connectors/gitlab.js';
-export * from './connectors/figma.js';
-export * from './connectors/jira.js';
-export * from './connectors/confluence.js';
-export * from './channels/index.js';
-export * from './channels/protocol.js';
-export * from './channels/telegram.js';
-export * from './channels/discord.js';
-export * from './channels/webhook.js';
-export * from './channels/router.js';
-export * from './services/index.js';
-export * from './onboarding/index.js';
-export * from './context/index.js';
-export * from './network/index.js';
-export * from './terminal/index.js';
-export { recordRequest, collectSnapshot, renderPrometheus, resetMetrics } from './metrics/collector.js';
-export type { MetricsSnapshot } from './metrics/collector.js';
-export { recordAudit, queryAuditLog, purgeAuditBefore, inferResourceType } from './audit/index.js';
-export type { AuditEntry, AuditQuery, AuditQueryResult } from './audit/index.js';
-export { createTemplate, listTemplates, getTemplate, updateTemplate, deleteTemplate, seedBuiltinTemplates } from './templates/index.js';
-export type { ConversationTemplate, CreateTemplateInput, UpdateTemplateInput } from './templates/index.js';
-export { createWebhook, listWebhooks, getWebhook, toggleWebhook, deleteWebhook, emitWebhookEvent } from './webhooks/index.js';
-export type { WebhookSubscription, WebhookEventType, WebhookEvent } from './webhooks/index.js';
+export * from './utils/id.js';
+export * from './utils/logger.js';
+export * from './utils/log-buffer.js';
+export * from './utils/http.js';
+export * from './datamap/db.js';
+export * from './datamap/objects.js';
+export * from './datamap/content-store.js';
+export * from './auth/jwt.js';
+export * from './auth/users.js';
+export * from './auth/challenges.js';
+export * from './auth/settings.js';
+export * from './policy/engine.js';
+export * from './policy/context-pep.js';
+export * from './edition.js';

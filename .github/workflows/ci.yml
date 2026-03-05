@@ -2,147 +2,40 @@ name: CI
 
 on:
   push:
-    branches: [main]
-    tags: ['v*.*.*']   # semver tags trigger Docker publish
+    branches: [master, monorepo-migration]
   pull_request:
-    branches: [main]
-
-concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+    branches: [master, monorepo-migration]
 
 jobs:
-  lint-test-build:
-    name: Lint · Test · Build
-    runs-on: ubuntu-latest
-
+  lint-and-unit:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js 22
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: 22
+          cache: npm
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: '10'
-          run_install: false
+      - name: Install deps
+        run: npm ci
 
-      - name: Get pnpm store path
-        id: pnpm-cache
-        run: echo "path=$(pnpm store path --silent)" >> $GITHUB_OUTPUT
+      - name: Lint
+        run: npm run lint
 
-      - name: Cache pnpm store
-        uses: actions/cache@v4
-        with:
-          path: ${{ steps.pnpm-cache.outputs.path }}
-          key: pnpm-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: pnpm-${{ runner.os }}-
+      - name: Unit & P0 tests
+        run: npm test
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Lint (TypeScript type-check)
-        run: pnpm lint
-
-      - name: Test
-        run: pnpm test
-
-      - name: Build
-        run: pnpm build
-
-      - name: Upload build artifacts (core)
-        uses: actions/upload-artifact@v4
-        if: github.ref == 'refs/heads/main'
-        with:
-          name: core-dist
-          path: packages/core/dist/
-          retention-days: 7
-
-      - name: Upload build artifacts (apps/jowork)
-        uses: actions/upload-artifact@v4
-        if: github.ref == 'refs/heads/main'
-        with:
-          name: app-jowork-dist
-          path: apps/jowork/dist/
-          retention-days: 7
-
-  # ── Secret scanning (Phase 7) ─────────────────────────────────────────────
-  secret-scan:
-    name: Secret Scan
+  docker-build:
     runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: TruffleHog scan
-        uses: trufflesecurity/trufflehog@main
-        with:
-          path: ./
-          base: ${{ github.event.repository.default_branch }}
-          head: HEAD
-          extra_args: --only-verified
-        continue-on-error: true  # non-blocking until false positives are tuned
-
-  # ── Docker publish (Phase 56) ─────────────────────────────────────────────
-  # Builds multi-arch image and pushes to ghcr.io on:
-  #   - push to main  → ghcr.io/fluxvita/jowork:latest
-  #   - semver tag    → ghcr.io/fluxvita/jowork:{version} + :latest
-  docker-publish:
-    name: Docker · Build & Publish
-    runs-on: ubuntu-latest
-    needs: lint-test-build
-    # Only publish on push to main or semver tag; skip on PRs
-    if: github.event_name == 'push'
-    permissions:
-      contents: read
-      packages: write
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up QEMU (multi-arch)
-        uses: docker/setup-qemu-action@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract Docker metadata (tags & labels)
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/fluxvita/jowork
-          tags: |
-            # branch main → :latest
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
-            # semver tags → :1.2.3 + :1.2 + :1
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
-            # short SHA for traceability
-            type=sha,prefix=sha-,format=short
-
-      - name: Build and push
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          push: true
-          platforms: linux/amd64,linux/arm64
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+      - name: Build Docker image
+        run: docker build -t jowork-ci:latest .

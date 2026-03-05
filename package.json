@@ -1,20 +1,26 @@
 {
-  "name": "jowork-monorepo",
-  "private": true,
+  "name": "@jowork/app",
   "version": "0.1.0",
-  "description": "Jowork — open-source AI coworker platform (monorepo root)",
+  "description": "Jowork — open-source AI work partner (community edition)",
+  "type": "module",
+  "license": "AGPL-3.0",
+  "main": "dist/index.js",
+  "private": true,
   "scripts": {
-    "build": "pnpm --filter @jowork/core build && pnpm --filter @jowork/premium build && pnpm --filter @jowork/app build && pnpm --filter @jowork/app-fluxvita build",
-    "test": "pnpm -r test",
-    "lint": "pnpm --filter @jowork/core lint && pnpm --filter @jowork/core build && pnpm --filter @jowork/premium lint && pnpm --filter @jowork/premium build && pnpm --filter @jowork/app lint && pnpm --filter @jowork/app-fluxvita lint",
-    "clean": "pnpm -r clean"
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "lint": "tsc --noEmit",
+    "tauri:dev": "tauri dev -c src-tauri/tauri.conf.json",
+    "tauri:build": "tauri build -c src-tauri/tauri.conf.json"
   },
   "engines": {
-    "node": ">=22",
-    "pnpm": ">=10"
+    "node": ">=22.0.0"
   },
-  "packageManager": "pnpm@10.17.1",
-  "pnpm": {
-    "onlyBuiltDependencies": ["better-sqlite3"]
+  "dependencies": {
+    "@jowork/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.10.0"
   }
 }

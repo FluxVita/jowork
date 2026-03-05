@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FluxVita 设置</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #1a1a1a;
+      color: #e0e0e0;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .card {
+      background: #242424;
+      border: 1px solid #333;
+      border-radius: 12px;
+      padding: 32px;
+      width: 100%;
+      max-width: 460px;
+    }
+
+    .logo {
+      font-size: 20px;
+      font-weight: 700;
+      color: #c6f135;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      font-size: 13px;
+      color: #888;
+      margin-bottom: 28px;
+    }
+
+    label {
+      display: block;
+      font-size: 13px;
+      color: #aaa;
+      margin-bottom: 8px;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px 14px;
+      background: #1a1a1a;
+      border: 1px solid #444;
+      border-radius: 8px;
+      color: #e0e0e0;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input:focus { border-color: #c6f135; }
+
+    .hint {
+      font-size: 12px;
+      color: #666;
+      margin-top: 8px;
+      line-height: 1.5;
+    }
+
+    .hint code {
+      color: #c6f135;
+      background: #1a1a1a;
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-size: 11px;
+    }
+
+    .status {
+      margin-top: 12px;
+      font-size: 12px;
+      min-height: 18px;
+    }
+
+    .status.checking { color: #888; }
+    .status.ok { color: #4ade80; }
+    .status.err { color: #f87171; }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 24px;
+    }
+
+    button {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+
+    button:hover { opacity: 0.85; }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .btn-check {
+      background: #2a2a2a;
+      color: #ccc;
+      border: 1px solid #444;
+      flex: 0 0 auto;
+      padding: 10px 16px;
+    }
+
+    .btn-save {
+      background: #c6f135;
+      color: #111;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">FluxVita</div>
+    <div class="subtitle">配置 Gateway 连接地址</div>
+
+    <label for="url">Gateway URL</label>
+    <input
+      id="url"
+      type="text"
+      placeholder="https://fluxvita-gateway.cfargotunnel.com"
+      autocomplete="off"
+      spellcheck="false"
+    />
+    <div class="hint">
+      远程服务器填写公网地址，例如 <code>https://fluxvita-gateway.cfargotunnel.com</code><br>
+      本地开发填写 <code>http://localhost:18800</code>
+    </div>
+    <div class="status" id="status"></div>
+
+    <div class="actions">
+      <button class="btn-check" id="btnCheck" onclick="checkConn()">检测连接</button>
+      <button class="btn-save" id="btnSave" onclick="saveAndClose()">保存并连接</button>
+    </div>
+  </div>
+
+  <script>
+    const { invoke } = window.__TAURI__?.core ?? {};
+    const { getCurrentWindow } = window.__TAURI__?.window ?? {};
+
+    // 加载已保存的 URL
+    async function init() {
+      try {
+        const settings = await invoke('get_settings');
+        const url = document.getElementById('url');
+        url.value = settings.gateway_url.replace('/shell.html', '');
+      } catch (_) {}
+    }
+
+    function setStatus(msg, type) {
+      const el = document.getElementById('status');
+      el.textContent = msg;
+      el.className = 'status ' + type;
+    }
+
+    async function checkConn() {
+      const url = document.getElementById('url').value.trim();
+      if (!url) { setStatus('请先填写地址', 'err'); return; }
+
+      setStatus('正在检测...', 'checking');
+      document.getElementById('btnCheck').disabled = true;
+
+      try {
+        const healthUrl = url.replace(/\/$/, '') + '/health';
+        const resp = await fetch(healthUrl, { signal: AbortSignal.timeout(5000) });
+        if (resp.ok) {
+          setStatus('✓ 连接正常', 'ok');
+        } else {
+          setStatus(`HTTP ${resp.status}`, 'err');
+        }
+      } catch (e) {
+        setStatus('连接失败：' + e.message, 'err');
+      } finally {
+        document.getElementById('btnCheck').disabled = false;
+      }
+    }
+
+    async function saveAndClose() {
+      const raw = document.getElementById('url').value.trim();
+      if (!raw) { setStatus('请填写 Gateway 地址', 'err'); return; }
+
+      const url = raw.replace(/\/shell\.html$/, '').replace(/\/$/, '') + '/shell.html';
+
+      document.getElementById('btnSave').disabled = true;
+      setStatus('保存中...', 'checking');
+
+      try {
+        await invoke('save_settings', { url });
+        setStatus('✓ 已保存', 'ok');
+        setTimeout(() => getCurrentWindow?.()?.close(), 600);
+      } catch (e) {
+        setStatus('保存失败：' + e, 'err');
+        document.getElementById('btnSave').disabled = false;
+      }
+    }
+
+    // 回车触发保存
+    document.getElementById('url').addEventListener('keydown', e => {
+      if (e.key === 'Enter') saveAndClose();
+    });
+
+    init();
+  </script>
+</body>
+</html>

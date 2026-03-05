@@ -1,96 +1,200 @@
-// @jowork/core/gateway/routes/scheduler — CRUD REST API for scheduler tasks
-//
-// Routes (authenticated user sees only their own tasks):
-//   GET    /api/tasks            — list tasks for current user
-//   POST   /api/tasks            — create a new task
-//   PATCH  /api/tasks/:id        — toggle enabled (body: { enabled: boolean })
-//   DELETE /api/tasks/:id        — delete a task
-
 import { Router } from 'express';
-import { authenticate } from '../middleware/auth.js';
 import {
-  createTask,
-  listTasks,
-  toggleTask,
-  deleteTask,
+  createCronTask, listCronTasks, getCronTask, updateCronTask, deleteCronTask,
 } from '../../scheduler/index.js';
+import { parseNaturalLanguageCron, cronToHuman } from '../../scheduler/nl-parser.js';
+import { authMiddleware, requireRole } from '../middleware.js';
 
-export function schedulerRouter(): Router {
-  const router = Router();
+const router = Router();
 
-  // List all tasks for the authenticated user
-  router.get('/api/tasks', authenticate, (req, res, next) => {
-    try {
-      const userId = req.auth!.userId;
-      res.json(listTasks(userId));
-    } catch (err) { next(err); }
+/** GET /api/scheduler/tasks — 列出所有 Cron 任务 */
+router.get('/tasks', authMiddleware, (_req, res) => {
+  const tasks = listCronTasks();
+  const isAdmin = ['admin', 'owner'].includes(_req.user!.role);
+  const visible = isAdmin ? tasks : tasks.filter(t => t.created_by === _req.user!.user_id);
+  res.json({ tasks: visible });
+});
+
+/** GET /api/scheduler/tasks/:id — 获取单个任务 */
+router.get('/tasks/:id', authMiddleware, (req, res) => {
+  const task = getCronTask(String(req.params['id']));
+  if (!task) {
+    res.status(404).json({ error: 'Task not found' });
+    return;
+  }
+
+  const isAdmin = ['admin', 'owner'].includes(req.user!.role);
+  if (!isAdmin && task.created_by !== req.user!.user_id) {
+    res.status(403).json({ error: 'Access denied' });
+    return;
+  }
+  res.json({ task });
+});
+
+/**
+ * POST /api/scheduler/parse-nl — 自然语言解析预览（不创建）
+ * Body: { text: "每天早上10点推送用户反馈摘要到产品群" }
+ */
+router.post('/parse-nl', authMiddleware, (req, res) => {
+  const { text } = req.body as { text: string };
+  if (!text) {
+    res.status(400).json({ error: 'text is required' });
+    return;
+  }
+
+  const parsed = parseNaturalLanguageCron(text);
+  if (!parsed) {
+    res.status(422).json({
+      error: 'Could not parse the time description',
+      hint: '请使用类似「每天早上10点推送用户反馈摘要到产品群」的格式',
+    });
+    return;
+  }
+
+  res.json({
+    parsed,
+    human_readable: parsed.human_readable,
+    hint: 'Use POST /api/scheduler/tasks-nl with the same text to create the task, or confirm with confirm=true',
+  });
+});
+
+/**
+ * POST /api/scheduler/tasks-nl — 通过自然语言创建 Cron 任务
+ * Body: { text: "每天早上10点推送用户反馈摘要到产品群", confirm?: boolean }
+ */
+router.post('/tasks-nl', authMiddleware, (req, res) => {
+  const { text, confirm } = req.body as { text: string; confirm?: boolean };
+  if (!text) {
+    res.status(400).json({ error: 'text is required' });
+    return;
+  }
+
+  const parsed = parseNaturalLanguageCron(text);
+  if (!parsed) {
+    res.status(422).json({
+      error: 'Could not parse the time description',
+      hint: '请使用类似「每天早上10点推送用户反馈摘要到产品群」的格式',
+    });
+    return;
+  }
+
+  // 低信心度且未确认，先返回预览让用户确认
+  if (parsed.confidence < 0.7 && !confirm) {
+    res.json({
+      status: 'preview',
+      message: '解析结果信心度偏低，请确认是否正确',
+      parsed,
+      human_readable: parsed.human_readable,
+      hint: 'Add confirm=true to create the task',
+    });
+    return;
+  }
+
+  // owner 和 admin 免审批
+  const autoApprove = ['owner', 'admin'].includes(req.user!.role);
+
+  const taskId = createCronTask({
+    name: parsed.name,
+    cron_expr: parsed.cron_expr,
+    action_type: parsed.action_type,
+    action_config: parsed.action_config,
+    created_by: req.user!.user_id,
+    approved: autoApprove,
+    enabled: autoApprove,
   });
 
-  // Create a new scheduled task
-  router.post('/api/tasks', authenticate, (req, res, next) => {
-    try {
-      const userId = req.auth!.userId;
-      const { agentId, name, cronExpr, action, params, enabled } =
-        req.body as {
-          agentId?: string;
-          name: string;
-          cronExpr: string;
-          action: string;
-          params?: Record<string, unknown>;
-          enabled?: boolean;
-        };
+  res.json({
+    status: 'created',
+    task_id: taskId,
+    cron_expr: parsed.cron_expr,
+    human_readable: parsed.human_readable,
+    approved: autoApprove,
+    message: autoApprove ? '任务已创建并启用' : '任务已创建，等待审批',
+  });
+});
 
-      if (!name || typeof name !== 'string') {
-        res.status(400).json({ error: 'name is required' });
-        return;
-      }
-      if (!cronExpr || typeof cronExpr !== 'string') {
-        res.status(400).json({ error: 'cronExpr is required (5-part cron string)' });
-        return;
-      }
-      if (!action || typeof action !== 'string') {
-        res.status(400).json({ error: 'action is required' });
-        return;
-      }
+/** POST /api/scheduler/tasks — 创建 Cron 任务（直接 cron 表达式） */
+router.post('/tasks', authMiddleware, (req, res) => {
+  const { name, cron_expr, action_type, action_config } = req.body as {
+    name: string;
+    cron_expr: string;
+    action_type: string;
+    action_config: Record<string, unknown>;
+  };
 
-      const task = createTask({
-        userId,
-        agentId: agentId ?? 'default',
-        name,
-        cronExpr,
-        action,
-        params: params ?? {},
-        enabled: enabled !== false,
-      });
+  if (!name || !cron_expr || !action_type) {
+    res.status(400).json({ error: 'name, cron_expr, action_type are required' });
+    return;
+  }
 
-      res.status(201).json(task);
-    } catch (err) { next(err); }
+  // owner 和 admin 免审批
+  const autoApprove = ['owner', 'admin'].includes(req.user!.role);
+
+  const taskId = createCronTask({
+    name,
+    cron_expr,
+    action_type: action_type as 'message' | 'report' | 'sync' | 'custom',
+    action_config: action_config || {},
+    created_by: req.user!.user_id,
+    approved: autoApprove,
+    enabled: autoApprove,
   });
 
-  // Toggle enabled flag
-  router.patch('/api/tasks/:id', authenticate, (req, res, next) => {
-    try {
-      const id = String(req.params['id']);
-      const { enabled } = req.body as { enabled?: boolean };
-
-      if (typeof enabled !== 'boolean') {
-        res.status(400).json({ error: 'enabled (boolean) is required' });
-        return;
-      }
-
-      toggleTask(id, enabled);
-      res.json({ id, enabled });
-    } catch (err) { next(err); }
+  res.json({
+    task_id: taskId,
+    approved: autoApprove,
+    message: autoApprove ? 'Task created and enabled' : 'Task created, pending approval',
   });
+});
 
-  // Delete a task
-  router.delete('/api/tasks/:id', authenticate, (req, res, next) => {
-    try {
-      const id = String(req.params['id']);
-      deleteTask(id);
-      res.status(204).end();
-    } catch (err) { next(err); }
-  });
+/** PUT /api/scheduler/tasks/:id/approve — 审批任务 */
+router.put('/tasks/:id/approve', authMiddleware, requireRole('admin', 'owner'), (req, res) => {
+  const taskId = String(req.params['id']);
+  const task = getCronTask(taskId);
+  if (!task) {
+    res.status(404).json({ error: 'Task not found' });
+    return;
+  }
 
-  return router;
-}
+  updateCronTask(taskId, { approved: true, enabled: true });
+  res.json({ message: 'Task approved and enabled' });
+});
+
+/** PUT /api/scheduler/tasks/:id/toggle — 启用/禁用任务 */
+router.put('/tasks/:id/toggle', authMiddleware, (req, res) => {
+  const taskId = String(req.params['id']);
+  const task = getCronTask(taskId);
+  if (!task) {
+    res.status(404).json({ error: 'Task not found' });
+    return;
+  }
+
+  // 仅任务创建者或管理员可操作
+  if (task.created_by !== req.user!.user_id && !['admin', 'owner'].includes(req.user!.role)) {
+    res.status(403).json({ error: 'Access denied' });
+    return;
+  }
+
+  updateCronTask(taskId, { enabled: !task.enabled });
+  res.json({ enabled: !task.enabled });
+});
+
+/** DELETE /api/scheduler/tasks/:id — 删除任务 */
+router.delete('/tasks/:id', authMiddleware, (req, res) => {
+  const taskId = String(req.params['id']);
+  const task = getCronTask(taskId);
+  if (!task) {
+    res.status(404).json({ error: 'Task not found' });
+    return;
+  }
+
+  if (task.created_by !== req.user!.user_id && !['admin', 'owner'].includes(req.user!.role)) {
+    res.status(403).json({ error: 'Access denied' });
+    return;
+  }
+
+  deleteCronTask(taskId);
+  res.json({ message: 'Task deleted' });
+});
+
+export default router;

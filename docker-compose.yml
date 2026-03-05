@@ -1,40 +1,46 @@
-# Jowork — one-command Docker deployment
+# Jowork — docker-compose 一键部署
 #
-# Usage:
-#   cp .env.example .env
-#   # Edit .env — set ANTHROPIC_API_KEY
-#   docker compose up -d
+# 快速启动：
+#   cp .env.example .env   # 填写必要配置
+#   docker-compose up -d
 #
-# Data is persisted in ./jowork-data/
-# Access Jowork at http://localhost:18800
+# 访问：http://localhost:9800
+#
+# 数据持久化：
+#   ./data/     — SQLite 数据库 + 上传文件
+#   ./logs/     — 运行日志（可选）
+#
+# 更新：
+#   docker-compose pull && docker-compose up -d
 
 services:
   jowork:
-    image: ghcr.io/fluxvita/jowork:latest
-    # Or build locally:
-    # build: .
-    container_name: jowork
-    restart: unless-stopped
+    image: ${JOWORK_IMAGE:-ghcr.io/fluxvita/jowork:latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
     ports:
-      - "18800:18800"
+      - "${JOWORK_PORT:-9800}:9800"
     volumes:
-      - ./jowork-data:/app/data        # SQLite DB + uploads
-      - ./jowork-logs:/app/logs        # Application logs
-      - ./.env:/app/.env:ro            # Environment variables (read-only)
+      - ./data:/app/data        # SQLite + 配置持久化
+      - ./logs:/app/logs        # 日志（可选，删除此行则不持久化）
+      - ./.env:/app/.env:ro     # 环境变量（只读挂载）
     environment:
-      - NODE_ENV=production
-      - JOWORK_IN_DOCKER=1
-      - JOWORK_DATA_DIR=/app/data
-      - JOWORK_LOG_DIR=/app/logs
+      NODE_ENV: production
+      GATEWAY_PORT: 9800
+      JOWORK_EDITION: ${JOWORK_EDITION:-free}
+      DATA_DIR: /app/data
+      LOG_DIR: /app/logs
+      # 覆盖 .env 中同名变量（优先级更高）
+      JOWORK_SECRET: ${JOWORK_SECRET:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    restart: unless-stopped
+    init: true
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:18800/health"]
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:9800/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 30s
-      timeout: 5s
+      timeout: 10s
       retries: 3
-      start_period: 15s
-    # Optional: resource limits
-    # deploy:
-    #   resources:
-    #     limits:
-    #       memory: 512M
-    #       cpus: '1.0'
+      start_period: 20s

@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>极客模式 — FluxVita</title>
+<link rel="stylesheet" href="/lib/xterm.css">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 100%; height: 100%; background: #0d0d0d; overflow: hidden; }
+
+/* ── 顶部操作栏 ── */
+#topbar {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 36px;
+  padding: 0 10px;
+  background: #111;
+  border-bottom: 1px solid #1e1e1e;
+  font-family: 'SF Mono', 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 12px;
+  color: #666;
+  user-select: none;
+}
+
+.topbar-title {
+  color: #444;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+}
+
+.topbar-sep { flex: 1; }
+
+.btn-sm {
+  padding: 3px 10px;
+  border-radius: 4px;
+  border: 1px solid #2a2a2a;
+  background: #1a1a1a;
+  color: #888;
+  cursor: pointer;
+  font-size: 11px;
+  font-family: inherit;
+  transition: all .2s;
+}
+.btn-sm:hover { border-color: #444; color: #ccc; }
+
+/* ── 终端容器 ── */
+#terminal-container {
+  width: 100%;
+  height: calc(100% - 36px);
+  padding: 4px 0 0 4px;
+}
+#terminal-container .xterm { width: 100%; height: 100%; }
+#terminal-container .xterm-viewport { overflow-y: auto !important; }
+</style>
+</head>
+<body>
+
+<!-- 顶部操作栏 -->
+<div id="topbar">
+  <span class="topbar-title">local shell</span>
+  <div class="topbar-sep"></div>
+  <button class="btn-sm" onclick="clearTerminal()">清屏</button>
+  <button class="btn-sm" onclick="newSession()">重启</button>
+  <button class="btn-sm" onclick="goBack()">← 返回</button>
+</div>
+
+<!-- 终端 -->
+<div id="terminal-container"></div>
+
+<script src="/lib/xterm.js"></script>
+<script src="/lib/xterm-addon-fit.js"></script>
+<script src="/lib/xterm-addon-web-links.js"></script>
+
+<script>
+// ─── xterm.js 初始化 ───
+const term = new Terminal({
+  cursorBlink: true,
+  fontSize: 14,
+  fontFamily: '"JetBrains Mono", "SF Mono", "Fira Code", "Cascadia Code", monospace',
+  theme: {
+    background: '#0d0d0d',
+    foreground: '#d4d4d4',
+    cursor: '#c8ff00',
+    cursorAccent: '#0d0d0d',
+    selectionBackground: '#264f78',
+    black: '#1e1e1e', red: '#f44747', green: '#6a9955',
+    yellow: '#d7ba7d', blue: '#569cd6', magenta: '#c586c0',
+    cyan: '#4ec9b0', white: '#d4d4d4',
+    brightBlack: '#808080', brightRed: '#f44747', brightGreen: '#c8ff00',
+    brightYellow: '#dcdcaa', brightBlue: '#569cd6', brightMagenta: '#c586c0',
+    brightCyan: '#4ec9b0', brightWhite: '#ffffff',
+  },
+  allowProposedApi: true,
+  scrollback: 5000,
+});
+
+const fitAddon = new FitAddon.FitAddon();
+const webLinksAddon = new WebLinksAddon.WebLinksAddon();
+term.loadAddon(fitAddon);
+term.loadAddon(webLinksAddon);
+term.open(document.getElementById('terminal-container'));
+fitAddon.fit();
+
+// ─── 状态 ───
+let sessionId = null;
+let unlistenOutput = null;
+let unlistenExit = null;
+let termWs = null;  // WebSocket 回退模式
+
+// ─── 本地即时回显（消除网络往返带来的输入延迟）───
+// 原理：可打印字符先在本地显示，同时发给服务器；
+//      服务器把字符 echo 回来时，我们过滤掉重复部分。
+let _echoQueue = '';
+
+function localEchoFilter(serverData) {
+  if (!_echoQueue) return serverData;
+  let out = serverData;
+  // 逐字符对比 echoQueue，相同则跳过（是服务器 echo 回来的我们已显示的字符）
+  while (_echoQueue.length > 0 && out.length > 0) {
+    if (out[0] === _echoQueue[0]) {
+      out = out.slice(1);
+      _echoQueue = _echoQueue.slice(1);
+    } else {
+      // 不匹配（服务器改变了字符，如密码 * 遮掩，或 tab 补全），清空队列信任服务器
+      _echoQueue = '';
+      break;
+    }
+  }
+  return out;
+}
+
+// ─── Token 获取（URL hash / localStorage / postMessage）───
+let authToken = (() => {
+  const hash = location.hash.slice(1);
+  const params = new URLSearchParams(hash);
+  return params.get('token') || localStorage.getItem('jowork_token') || '';
+})();
+window.addEventListener('message', (e) => {
+  if (e.data?.type === 'SHELL_TOKEN' && e.data.token) authToken = e.data.token;
+});
+
+// ─── Tauri API ───
+function getTauri() {
+  return window.__TAURI__;
+}
+
+// ─── PTY 模式（Tauri 原生）───
+async function connectPty() {
+  const tauri = getTauri();
+  const { invoke } = tauri.core;
+  const { listen } = tauri.event;
+  const { cols, rows } = term;
+
+  try {
+    sessionId = await invoke('pty_create', { cols, rows });
+
+    unlistenOutput = await listen(`pty_output_${sessionId}`, (event) => {
+      term.write(event.payload);
+    });
+
+    unlistenExit = await listen(`pty_exit_${sessionId}`, () => {
+      term.writeln('\r\n\x1b[33m[进程已退出，点击"重启"开新会话]\x1b[0m');
+      sessionId = null;
+    });
+
+    term.writeln('\x1b[32m[PTY 已连接]\x1b[0m');
+  } catch (e) {
+    term.writeln(`\x1b[31m[PTY 错误] ${e}\x1b[0m`);
+  }
+}
+
+// ─── WS 公共事件绑定（onmessage / onclose / onerror）───
+function bindWsHandlers(ws, label) {
+  ws.onmessage = (e) => {
+    const raw = e.data instanceof ArrayBuffer ? new TextDecoder().decode(e.data) : e.data;
+    const filtered = localEchoFilter(raw);
+    if (filtered) term.write(filtered);
+  };
+  ws.onclose = () => {
+    term.writeln(`\r\n\x1b[33m[${label}已断开，点击"重启"重连]\x1b[0m`);
+    termWs = null;
+  };
+  ws.onerror = () => term.writeln(`\x1b[31m[${label}连接错误]\x1b[0m`);
+}
+
+// ─── 本地 PTY-WS（Tauri 内嵌，127.0.0.1:19802，零网络延迟）───
+function connectLocalPtyWs() {
+  return new Promise((resolve) => {
+    let done = false;
+    const ws = new WebSocket('ws://127.0.0.1:19802');
+    ws.binaryType = 'arraybuffer';
+
+    const timer = setTimeout(() => {
+      if (!done) { done = true; ws.close(); resolve(false); }
+    }, 1500);
+
+    ws.onopen = () => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      termWs = ws;
+      const { cols, rows } = term;
+      ws.send(JSON.stringify({ type: 'init', cols, rows }));
+      term.writeln('\x1b[32m[本地终端已连接]\x1b[0m');
+      bindWsHandlers(ws, '本地终端');
+      resolve(true);
+    };
+
+    ws.onerror = () => {
+      if (!done) { done = true; clearTimeout(timer); resolve(false); }
+    };
+  });
+}
+
+// ─── 远端 WebSocket 回退（浏览器 / 非 Tauri 环境）───
+function connectWs() {
+  if (termWs) { termWs.close(); termWs = null; }
+
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const host = location.hostname + (location.port ? ':' + location.port : '');
+  const url = `${proto}//${host}/ws/terminal`;
+
+  term.writeln('\x1b[90m[WS] 正在连接远端终端...\x1b[0m');
+
+  try {
+    const ws = new WebSocket(url, authToken ? [authToken] : []);
+    ws.binaryType = 'arraybuffer';
+    termWs = ws;
+    ws.onopen = () => {
+      term.writeln('\x1b[32m[远端终端已连接]\x1b[0m');
+      const { cols, rows } = term;
+      ws.send(JSON.stringify({ type: 'init', mode: 'shell', cols, rows }));
+    };
+    bindWsHandlers(ws, '远端终端');
+  } catch (e) {
+    term.writeln(`\x1b[31m[WS] 连接失败: ${e}\x1b[0m`);
+  }
+}
+
+// ─── 入口：优先 Tauri PTY → 本地 PTY-WS → 远端 WS ───
+async function connect() {
+  if (getTauri()) {
+    // tauri:// 页面：使用 Tauri 原生 PTY 命令
+    await connectPty();
+    return;
+  }
+  // HTTP 代理加载的页面：先试本地 PTY-WS 服务器（Tauri 内嵌，零延迟）
+  const ok = await connectLocalPtyWs();
+  if (!ok) {
+    // 非 Tauri 环境（纯浏览器调试）：走远端 WS
+    connectWs();
+  }
+}
+
+// ─── 键盘输入路由 ───
+term.onData(async (data) => {
+  if (getTauri() && sessionId !== null) {
+    // PTY 模式：本地进程，无需回显优化
+    await getTauri().core.invoke('pty_write', { id: sessionId, data });
+  } else if (termWs && termWs.readyState === WebSocket.OPEN) {
+    // WebSocket 模式：可打印字符先本地显示，消除网络往返延迟
+    if (data.length === 1 && data.charCodeAt(0) >= 32) {
+      term.write(data);       // 立即显示
+      _echoQueue += data;     // 登记待过滤的 server echo
+    }
+    termWs.send(data);
+  }
+});
+
+// ─── 窗口大小变化 ───
+const resizeObserver = new ResizeObserver(() => {
+  fitAddon.fit();
+  const { cols, rows } = term;
+  if (getTauri() && sessionId !== null) {
+    getTauri().core.invoke('pty_resize', { id: sessionId, cols, rows });
+  } else if (termWs && termWs.readyState === WebSocket.OPEN) {
+    termWs.send(JSON.stringify({ type: 'resize', cols, rows }));
+  }
+});
+resizeObserver.observe(document.getElementById('terminal-container'));
+
+// ─── 工具函数 ───
+function clearTerminal() { term.clear(); }
+
+async function killSession() {
+  if (unlistenOutput) { unlistenOutput(); unlistenOutput = null; }
+  if (unlistenExit)   { unlistenExit();   unlistenExit   = null; }
+  if (getTauri() && sessionId !== null) {
+    await getTauri().core.invoke('pty_kill', { id: sessionId });
+    sessionId = null;
+  }
+  if (termWs) { termWs.close(); termWs = null; }
+}
+
+async function newSession() {
+  await killSession();
+  term.clear();
+  await connect();
+}
+
+function goBack() {
+  killSession();
+  if (window.parent !== window) {
+    window.parent.postMessage({ type: 'NAVIGATE', path: '/chat' }, '*');
+  } else {
+    location.href = '/';
+  }
+}
+
+// ─── 自动连接 ───
+window.addEventListener('load', () => {
+  requestAnimationFrame(() => {
+    fitAddon.fit();
+    connect();
+  });
+});
+
+window.addEventListener('beforeunload', () => killSession());
+</script>
+</body>
+</html>

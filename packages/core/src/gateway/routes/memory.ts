@@ -1,44 +1,85 @@
-// @jowork/core/gateway/routes/memory — Memory management REST API
-//
-// Routes:
-//   GET    /api/memories       — list/search memories for authenticated user
-//   POST   /api/memories       — save a new memory
-//   DELETE /api/memories/:id   — delete a memory
-
+/**
+ * gateway/routes/memory.ts
+ * 个人记忆库 API
+ */
 import { Router } from 'express';
-import { authenticate } from '../middleware/auth.js';
-import { saveMemory, searchMemory, deleteMemory } from '../../memory/index.js';
+import { authMiddleware } from '../middleware.js';
+import {
+  createMemory, listUserMemories, getMemoryById,
+  updateMemory, deleteMemory
+} from '../../memory/user-memory.js';
 
-export function memoryRouter(): Router {
-  const router = Router();
+const router = Router();
+router.use(authMiddleware);
 
-  router.get('/api/memories', authenticate, (req, res, next) => {
-    try {
-      const q = req.query['q'];
-      const opts = q ? { query: String(q), userId: req.auth!.userId } : { userId: req.auth!.userId };
-      const results = searchMemory(opts);
-      res.json(results);
-    } catch (err) { next(err); }
+/** GET /api/memory — 列出当前用户的记忆 */
+router.get('/', (req, res) => {
+  const user = req.user!;
+  const { q, tags, scope, pinned_only, limit, offset } = req.query as Record<string, string>;
+
+  const memories = listUserMemories({
+    user_id: user.user_id,
+    query: q,
+    tags: tags ? tags.split(',').filter(Boolean) : undefined,
+    scope: scope as 'personal' | 'team' | undefined,
+    pinned_only: pinned_only === 'true',
+    limit: limit ? parseInt(limit) : 20,
+    offset: offset ? parseInt(offset) : 0,
   });
 
-  router.post('/api/memories', authenticate, (req, res, next) => {
-    try {
-      const { content, tags, source } = req.body as { content: string; tags?: string[]; source?: string };
-      if (!content?.trim()) { res.status(400).json({ error: 'INVALID_INPUT' }); return; }
-      const saveOpts: { tags?: string[]; source?: string } = {};
-      if (tags) saveOpts.tags = tags;
-      if (source) saveOpts.source = source;
-      const entry = saveMemory(req.auth!.userId, content, saveOpts);
-      res.status(201).json(entry);
-    } catch (err) { next(err); }
-  });
+  res.json({ memories, total: memories.length });
+});
 
-  router.delete('/api/memories/:id', authenticate, (req, res, next) => {
-    try {
-      deleteMemory(String(req.params['id']));
-      res.status(204).end();
-    } catch (err) { next(err); }
-  });
+/** POST /api/memory — 新建记忆 */
+router.post('/', (req, res) => {
+  const user = req.user!;
+  const { title, content, tags, scope, pinned } = req.body as {
+    title: string; content: string; tags?: string[]; scope?: 'personal' | 'team'; pinned?: boolean;
+  };
 
-  return router;
-}
+  if (!title?.trim() || !content?.trim()) {
+    res.status(400).json({ error: 'title and content are required' });
+    return;
+  }
+
+  const memory = createMemory({ user_id: user.user_id, title, content, tags, scope, pinned });
+  res.status(201).json({ memory });
+});
+
+/** GET /api/memory/:id — 获取单条记忆 */
+router.get('/:id', (req, res) => {
+  const user = req.user!;
+  const memory_id = req.params['id'] as string;
+  const memory = getMemoryById(memory_id, user.user_id);
+  if (!memory) {
+    res.status(404).json({ error: 'Memory not found' });
+    return;
+  }
+  res.json({ memory });
+});
+
+/** PUT /api/memory/:id — 更新记忆 */
+router.put('/:id', (req, res) => {
+  const user = req.user!;
+  const memory_id = req.params['id'] as string;
+  const updated = updateMemory(memory_id, user.user_id, req.body);
+  if (!updated) {
+    res.status(404).json({ error: 'Memory not found' });
+    return;
+  }
+  res.json({ memory: updated });
+});
+
+/** DELETE /api/memory/:id — 删除记忆 */
+router.delete('/:id', (req, res) => {
+  const user = req.user!;
+  const memory_id = req.params['id'] as string;
+  const ok = deleteMemory(memory_id, user.user_id);
+  if (!ok) {
+    res.status(404).json({ error: 'Memory not found' });
+    return;
+  }
+  res.json({ ok: true });
+});
+
+export default router;

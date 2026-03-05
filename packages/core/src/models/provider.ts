@@ -1,111 +1,118 @@
-// @jowork/core/models/provider — Model Provider dynamic registration (§14.1)
-//
-// Replaces hardcoded provider list with a registry that users can extend
-// through the Admin UI or programmatically.
+/**
+ * Model Provider 注册中心
+ *
+ * 解耦 router.ts 中的硬编码 Provider 数组，支持动态注册。
+ * 内置 Provider（Klaude/MiniMax/Moonshot）在 router.ts 中注册；
+ * 第三方 Provider 通过 registerModelProvider() 动态添加。
+ */
 
-export type ApiFormat = 'anthropic' | 'openai';
+import type { TaskType } from './router.js';
 
-export interface ModelInfo {
+export interface ModelProviderDef {
   id: string;
   name: string;
-  contextWindow: number;
-  /** Approximate cost per 1M input tokens in USD */
-  costPer1MInput?: number;
-  /** Approximate cost per 1M output tokens in USD */
-  costPer1MOutput?: number;
-}
-
-export interface ModelProvider {
-  /** Stable unique ID, e.g. "anthropic", "openai", "ollama" */
-  id: string;
-  name: string;
-  apiFormat: ApiFormat;
+  /** 请求端点 */
   endpoint: string;
-  models: ModelInfo[];
-  /** Returns true if the key is valid (optional — some providers skip this) */
-  authenticate?(apiKey: string): Promise<boolean>;
+  /** API Key（直接传入，或通过 apiKeyEnv 从环境变量读取） */
+  apiKey?: string;
+  /** API Key 环境变量名 */
+  apiKeyEnv?: string;
+  /** 模型名映射（任务类型 → 模型名） */
+  models: Partial<Record<TaskType, string>>;
+  /** 每 1K token 的美元成本估算 */
+  costPer1kToken: number;
+  /** 是否为安全 provider（可处理敏感数据，如本地/私有部署） */
+  isSecure?: boolean;
+  /** API 格式：'openai'（默认）或 'anthropic' */
+  apiFormat?: 'openai' | 'anthropic';
+  /** 是否已启用 */
+  enabled?: boolean;
 }
 
-// ─── Built-in providers ───────────────────────────────────────────────────────
+// ─── 全局注册表 ───────────────────────────────────────────────────────────────
 
-export const ANTHROPIC_PROVIDER: ModelProvider = {
-  id: 'anthropic',
-  name: 'Anthropic',
-  apiFormat: 'anthropic',
-  endpoint: 'https://api.anthropic.com',
-  models: [
-    { id: 'claude-opus-4-6',             name: 'Claude Opus 4.6',     contextWindow: 200_000 },
-    { id: 'claude-sonnet-4-6',           name: 'Claude Sonnet 4.6',   contextWindow: 200_000 },
-    { id: 'claude-3-5-sonnet-latest',    name: 'Claude 3.5 Sonnet',   contextWindow: 200_000 },
-    { id: 'claude-3-5-haiku-latest',     name: 'Claude 3.5 Haiku',    contextWindow: 200_000 },
-  ],
-};
+const _providers = new Map<string, ModelProviderDef>();
 
-export const OPENAI_PROVIDER: ModelProvider = {
-  id: 'openai',
-  name: 'OpenAI',
-  apiFormat: 'openai',
-  endpoint: 'https://api.openai.com/v1',
-  models: [
-    { id: 'gpt-4o',         name: 'GPT-4o',      contextWindow: 128_000 },
-    { id: 'gpt-4o-mini',    name: 'GPT-4o Mini', contextWindow: 128_000 },
-    { id: 'gpt-4.1',        name: 'GPT-4.1',     contextWindow: 1_000_000 },
-  ],
-};
-
-export const OLLAMA_PROVIDER: ModelProvider = {
-  id: 'ollama',
-  name: 'Ollama (local)',
-  apiFormat: 'openai',
-  endpoint: 'http://localhost:11434/v1',
-  models: [
-    { id: 'llama3.2',   name: 'Llama 3.2',   contextWindow: 128_000 },
-    { id: 'qwen2.5',    name: 'Qwen 2.5',    contextWindow: 128_000 },
-    { id: 'mistral',    name: 'Mistral',      contextWindow: 32_000 },
-  ],
-};
-
-// ─── Registry ────────────────────────────────────────────────────────────────
-
-const providerRegistry = new Map<string, ModelProvider>();
-
-// Register built-ins
-[ANTHROPIC_PROVIDER, OPENAI_PROVIDER, OLLAMA_PROVIDER].forEach(p => providerRegistry.set(p.id, p));
-
-export function registerModelProvider(provider: ModelProvider): void {
-  providerRegistry.set(provider.id, provider);
+/** 注册一个 Model Provider */
+export function registerModelProvider(def: ModelProviderDef): void {
+  _providers.set(def.id, { enabled: true, ...def });
 }
 
-export function getModelProvider(id: string): ModelProvider | undefined {
-  return providerRegistry.get(id);
+/** 注销一个 Model Provider */
+export function unregisterModelProvider(id: string): boolean {
+  return _providers.delete(id);
 }
 
-export function listModelProviders(): ModelProvider[] {
-  return Array.from(providerRegistry.values());
+/** 获取所有已注册的 Provider */
+export function getModelProviders(): ModelProviderDef[] {
+  return Array.from(_providers.values());
 }
 
-/** Resolve provider + model from env vars — used by core chat() function */
-export function resolveProviderFromEnv(): { provider: ModelProvider; model: string; apiKey: string } {
-  const providerId = process.env['MODEL_PROVIDER'] ?? 'anthropic';
-  const modelId    = process.env['MODEL_NAME']     ?? 'claude-3-5-sonnet-latest';
-
-  const provider = getModelProvider(providerId);
-  if (!provider) {
-    throw new Error(`Unknown model provider: ${providerId}. Register it with registerModelProvider() first.`);
-  }
-
-  const apiKeyEnv = providerId === 'anthropic' ? 'ANTHROPIC_API_KEY'
-    : providerId === 'openai'     ? 'OPENAI_API_KEY'
-    : 'API_KEY';
-
-  const apiKey = process.env[apiKeyEnv] ?? process.env['API_KEY'] ?? '';
-  if (!apiKey && providerId !== 'ollama') {
-    throw new Error(`${apiKeyEnv} is not set`);
-  }
-
-  // Allow custom endpoint override
-  const customEndpoint = process.env['MODEL_BASE_URL'];
-  if (customEndpoint) provider.endpoint = customEndpoint;
-
-  return { provider, model: modelId, apiKey };
+/** 获取单个 Provider */
+export function getModelProvider(id: string): ModelProviderDef | undefined {
+  return _providers.get(id);
 }
+
+/** 更新 Provider 的启用状态 */
+export function setModelProviderEnabled(id: string, enabled: boolean): void {
+  const p = _providers.get(id);
+  if (p) p.enabled = enabled;
+}
+
+// ─── 内置 Provider 常量（OpenAI 兼容端点供用户自配置） ─────────────────────────
+
+/**
+ * 常见 Provider 的端点模板，供用户在 UI 中快速填入。
+ * Jowork 不内置这些 Provider 的 API Key，需用户自己填。
+ */
+export const BUILTIN_PROVIDER_TEMPLATES: Array<Pick<ModelProviderDef, 'id' | 'name' | 'endpoint' | 'apiFormat' | 'models' | 'costPer1kToken'>> = [
+  {
+    id: 'openai',
+    name: 'OpenAI',
+    endpoint: 'https://api.openai.com/v1/chat/completions',
+    apiFormat: 'openai',
+    models: {
+      chat: 'gpt-4o-mini',
+      code: 'gpt-4o',
+      analysis: 'gpt-4o',
+      writing: 'gpt-4o-mini',
+    },
+    costPer1kToken: 0.002,
+  },
+  {
+    id: 'anthropic',
+    name: 'Anthropic (Claude)',
+    endpoint: 'https://api.anthropic.com/v1/messages',
+    apiFormat: 'anthropic',
+    models: {
+      chat: 'claude-haiku-4-5-20251001',
+      code: 'claude-sonnet-4-6',
+      analysis: 'claude-sonnet-4-6',
+      writing: 'claude-haiku-4-5-20251001',
+    },
+    costPer1kToken: 0.003,
+  },
+  {
+    id: 'ollama',
+    name: 'Ollama (Local)',
+    endpoint: 'http://localhost:11434/v1/chat/completions',
+    apiFormat: 'openai',
+    models: {
+      chat: 'llama3.2',
+      code: 'codellama',
+    },
+    costPer1kToken: 0,
+  },
+  {
+    id: 'openrouter',
+    name: 'OpenRouter',
+    endpoint: 'https://openrouter.ai/api/v1/chat/completions',
+    apiFormat: 'openai',
+    models: {
+      chat: 'google/gemini-flash-1.5',
+      code: 'anthropic/claude-3.5-sonnet',
+      analysis: 'anthropic/claude-3.5-sonnet',
+    },
+    costPer1kToken: 0.001,
+  },
+];

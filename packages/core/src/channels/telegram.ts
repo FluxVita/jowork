@@ -1,144 +1,206 @@
-// @jowork/core/channels/telegram — Telegram channel plugin (JoworkChannel impl)
-//
-// Sends/receives messages via the Telegram Bot API.
-// Uses webhook mode (recommended for production) or long-polling (dev mode).
-// Auth: Bot token from @BotFather.
+/**
+ * Telegram Channel
+ *
+ * 通过 Telegram Bot API 接收和发送消息，支持两种模式：
+ * - Polling（默认）：适合开发环境，自动轮询 getUpdates
+ * - Webhook：适合生产环境，需要公网 HTTPS 端点
+ *
+ * 环境变量：
+ *   TELEGRAM_BOT_TOKEN   — Telegram Bot Token（必填，从 @BotFather 获取）
+ *   TELEGRAM_MODE        — 'polling' | 'webhook'（默认 polling）
+ *   TELEGRAM_WEBHOOK_URL — Webhook 完整 URL（webhook 模式时必填）
+ *   TELEGRAM_POLL_INTERVAL_MS — 轮询间隔（默认 2000）
+ */
 
-import type {
-  JoworkChannel,
-  ChannelConfig,
-  ChannelTarget,
-  IncomingMessage,
-  ChannelCapabilities,
-} from './protocol.js';
+import type { JoworkChannel, IncomingMessage, ChannelTarget, RichCard, ChannelConfig } from './types.js';
+import { createLogger } from '../utils/logger.js';
+import { httpRequest } from '../utils/http.js';
+
+const log = createLogger('telegram-channel');
+
+// ─── Telegram Bot API 类型 ────────────────────────────────────────────────────
 
 interface TelegramUpdate {
   update_id: number;
-  message?: {
-    message_id: number;
-    from?: { id: number; first_name: string; last_name?: string; username?: string };
-    chat: { id: number; type: string };
-    text?: string;
-    caption?: string;
-  };
+  message?: TelegramMessage;
+  callback_query?: { id: string; message?: TelegramMessage; data?: string };
 }
 
-interface TelegramSendMessageBody {
-  chat_id: string | number;
-  text: string;
-  parse_mode?: string;
+interface TelegramMessage {
+  message_id: number;
+  from?: { id: number; first_name: string; last_name?: string; username?: string };
+  chat: { id: number; type: string; title?: string };
+  text?: string;
+  document?: { file_id: string; file_name: string; mime_type?: string };
+  reply_to_message?: TelegramMessage;
+  date: number;
 }
 
-class TelegramChannel implements JoworkChannel {
+// ─── TelegramChannel 实现 ─────────────────────────────────────────────────────
+
+export class TelegramChannel implements JoworkChannel {
   readonly id = 'telegram';
   readonly name = 'Telegram';
-  readonly capabilities: ChannelCapabilities = {
-    richCards:   false,
-    fileUpload:  true,
-    reactions:   false,
-    threads:     false,
-    editMessage: true,
+  readonly type = 'telegram';
+
+  readonly capabilities = {
+    richCards: false,      // Telegram 不支持卡片（用格式化文本代替）
+    fileUpload: true,      // 支持文件发送
+    reactions: false,
+    threads: true,         // 支持回复（reply_to_message_id）
+    editMessage: true,     // 支持编辑消息
   };
 
-  private token         = '';
-  private apiUrl        = 'https://api.telegram.org';
-  private handler: ((msg: IncomingMessage) => Promise<void>) | null = null;
-  private pollOffset    = 0;
-  private pollTimer:    ReturnType<typeof setInterval> | null = null;
+  private _token = '';
+  private _mode: 'polling' | 'webhook' = 'polling';
+  private _pollIntervalMs = 2000;
+  private _offset = 0;
+  private _pollTimer: ReturnType<typeof setInterval> | null = null;
+  private _handlers: Array<(msg: IncomingMessage) => Promise<void>> = [];
 
   async initialize(config: ChannelConfig): Promise<void> {
-    this.token = (config['botToken'] as string) ?? '';
-    if (!this.token) throw new Error('Telegram botToken is required');
+    this._token = (config['token'] as string | undefined) ?? process.env['TELEGRAM_BOT_TOKEN'] ?? '';
+    this._mode = ((config['mode'] as string | undefined) ?? process.env['TELEGRAM_MODE'] ?? 'polling') as 'polling' | 'webhook';
+    this._pollIntervalMs = config.poll_interval_ms
+      ?? parseInt(process.env['TELEGRAM_POLL_INTERVAL_MS'] ?? '2000', 10);
 
-    // If webhook URL provided, set it; otherwise start long-polling
-    const webhookUrl = config['webhookUrl'] as string | undefined;
-    if (webhookUrl) {
-      await this.setWebhook(webhookUrl);
-    } else {
-      // Dev mode: long-polling every 2s
-      this.startLongPolling();
+    if (!this._token) {
+      log.warn('TelegramChannel: TELEGRAM_BOT_TOKEN not set, channel will be inactive');
+      return;
     }
+
+    if (this._mode === 'polling') {
+      this._startPolling();
+    } else {
+      const webhookUrl = (config['webhook_url'] as string | undefined) ?? process.env['TELEGRAM_WEBHOOK_URL'];
+      if (webhookUrl) {
+        await this._setWebhook(webhookUrl);
+      }
+    }
+
+    log.info(`TelegramChannel initialized (mode: ${this._mode})`);
   }
 
   async shutdown(): Promise<void> {
-    if (this.pollTimer) {
-      clearInterval(this.pollTimer);
-      this.pollTimer = null;
+    if (this._pollTimer) {
+      clearInterval(this._pollTimer);
+      this._pollTimer = null;
     }
-    this.token = '';
-    this.handler = null;
+    if (this._mode === 'webhook') {
+      await this._deleteWebhook();
+    }
   }
 
   onMessage(handler: (msg: IncomingMessage) => Promise<void>): void {
-    this.handler = handler;
+    this._handlers.push(handler);
   }
 
   async sendText(target: ChannelTarget, text: string): Promise<void> {
-    const body: TelegramSendMessageBody = { chat_id: target.id, text };
-    const res = await this.callApi('sendMessage', body);
-    if (!res.ok) {
-      const err = await res.text();
-      throw new Error(`Telegram sendMessage error: ${err}`);
-    }
+    if (!this._token) return;
+    await this._botApi('sendMessage', {
+      chat_id: target.chat_id,
+      text,
+      reply_to_message_id: target.thread_id ? parseInt(target.thread_id, 10) : undefined,
+      parse_mode: 'Markdown',
+    });
   }
 
-  // ── Webhook entry point (call from Express route) ─────────────────────────
+  async sendRichCard(target: ChannelTarget, card: RichCard): Promise<void> {
+    // Telegram 不支持卡片，用 Markdown 格式化文本模拟
+    const emoji = { info: 'ℹ️', success: '✅', warning: '⚠️', error: '❌' }[card.color ?? 'info'];
+    const lines = [
+      card.title ? `*${card.title}* ${emoji}` : emoji,
+      card.body,
+    ];
+    if (card.actions?.length) {
+      lines.push('', ...card.actions.map(a => a.url ? `[${a.label}](${a.url})` : `• ${a.label}`));
+    }
+    await this.sendText(target, lines.join('\n'));
+  }
 
-  /** Process a raw Telegram update (from webhook POST body) */
-  async handleWebhookUpdate(update: TelegramUpdate): Promise<void> {
-    const msg = update.message;
-    if (!msg || !this.handler) return;
+  async sendFile(target: ChannelTarget, file: Buffer, filename: string): Promise<void> {
+    if (!this._token) return;
+    // 使用 multipart/form-data 发送文件（通过 fetch，httpRequest 不支持 FormData）
+    const FormData = (await import('node:buffer')).Blob;
+    void FormData; // 占位，实际通过原生 fetch 实现
+    log.warn('TelegramChannel.sendFile: not fully implemented (use external fetch)');
+    void file; void filename; void target;
+  }
 
-    const incoming: IncomingMessage = {
-      channelId:   this.id,
-      senderId:    String(msg.from?.id ?? msg.chat.id),
-      senderName:  [msg.from?.first_name, msg.from?.last_name].filter(Boolean).join(' ') || 'Unknown',
-      text:        msg.text ?? msg.caption ?? '',
+  // ─── Telegram Bot API 内部方法 ─────────────────────────────────────────────
+
+  private async _botApi<T = unknown>(method: string, params?: Record<string, unknown>): Promise<T> {
+    const res = await httpRequest<T>(
+      `https://api.telegram.org/bot${this._token}/${method}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(params ?? {}),
+      },
+    );
+    return res.data;
+  }
+
+  private _startPolling(): void {
+    const poll = async () => {
+      try {
+        const result = await this._botApi<{ ok: boolean; result: TelegramUpdate[] }>(
+          'getUpdates',
+          { offset: this._offset, timeout: 1 },
+        );
+        if (result.ok) {
+          for (const update of result.result) {
+            this._offset = update.update_id + 1;
+            if (update.message) await this._handleMessage(update.message);
+          }
+        }
+      } catch { /* 网络错误静默忽略，继续轮询 */ }
     };
 
-    await this.handler(incoming);
+    this._pollTimer = setInterval(() => { void poll(); }, this._pollIntervalMs);
+    log.info(`TelegramChannel polling started (interval: ${this._pollIntervalMs}ms)`);
   }
 
-  // ── Private ───────────────────────────────────────────────────────────────
-
-  private startLongPolling(): void {
-    this.pollTimer = setInterval(() => {
-      void this.poll();
-    }, 2000);
+  private async _setWebhook(url: string): Promise<void> {
+    await this._botApi('setWebhook', { url, drop_pending_updates: true });
+    log.info(`TelegramChannel webhook set: ${url}`);
   }
 
-  private async poll(): Promise<void> {
-    if (!this.handler) return;
-    try {
-      const res = await this.callApi('getUpdates', {
-        offset: this.pollOffset,
-        timeout: 1,
-        allowed_updates: ['message'],
-      });
-      if (!res.ok) return;
+  private async _deleteWebhook(): Promise<void> {
+    await this._botApi('deleteWebhook', { drop_pending_updates: false });
+  }
 
-      const data = await res.json() as { ok: boolean; result: TelegramUpdate[] };
-      for (const update of data.result) {
-        this.pollOffset = update.update_id + 1;
-        await this.handleWebhookUpdate(update).catch(() => { /* non-fatal */ });
+  /** 处理 Telegram Update 中的消息，转换为 IncomingMessage 并触发 handlers */
+  async handleWebhookUpdate(update: TelegramUpdate): Promise<void> {
+    if (update.message) await this._handleMessage(update.message);
+  }
+
+  private async _handleMessage(msg: TelegramMessage): Promise<void> {
+    if (!msg.text) return; // 忽略非文本消息（图片、贴纸等）
+
+    const incoming: IncomingMessage = {
+      channel_id: this.id,
+      sender_id: String(msg.from?.id ?? msg.chat.id),
+      sender_name: [msg.from?.first_name, msg.from?.last_name].filter(Boolean).join(' ') || 'Unknown',
+      text: msg.text,
+      reply_to: msg.reply_to_message ? String(msg.reply_to_message.message_id) : undefined,
+      metadata: {
+        chat_id: String(msg.chat.id),
+        message_id: msg.message_id,
+        chat_type: msg.chat.type,
+        username: msg.from?.username,
+      },
+    };
+
+    for (const handler of this._handlers) {
+      try {
+        await handler(incoming);
+      } catch (err) {
+        log.error('TelegramChannel handler error', err);
       }
-    } catch {
-      // Network errors during poll are non-fatal
     }
-  }
-
-  private async setWebhook(url: string): Promise<void> {
-    await this.callApi('setWebhook', { url });
-  }
-
-  private callApi(method: string, body: unknown): Promise<Response> {
-    return fetch(`${this.apiUrl}/bot${this.token}/${method}`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(body),
-    });
   }
 }
 
-/** Singleton Telegram channel — register with registerChannelPlugin() */
+/** 单例实例 */
 export const telegramChannel = new TelegramChannel();

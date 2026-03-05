@@ -1,18 +1,14 @@
 node_modules/
 dist/
 data/
+logs/
+log/
+.env
+.env.*
+!.env.example
 *.db
 *.db-shm
 *.db-wal
-.env
-.env.local
-.env.production
-target/
+cache/
+test_data/
 .DS_Store
-logs/
-*.log
-*.tgz
-.pnpm-store/
-# Bun sidecar binaries (built by scripts/build-sidecar.sh)
-apps/jowork/src-tauri/binaries/
-*.exe

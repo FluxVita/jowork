@@ -1,130 +1,60 @@
 # Contributing to Jowork
 
-Thank you for your interest in contributing to Jowork! This document explains how to get involved.
+Thank you for your interest in contributing to Jowork!
 
-## Ways to Contribute
+## Repository Structure
 
-- **Bug reports** — Open a GitHub Issue with steps to reproduce
-- **Feature requests** — Start a GitHub Discussion before opening a PR
-- **Code** — See the development guide below
-- **Documentation** — Fix typos, improve examples, translate content
-- **Connectors** — Build new connectors using the [JCP protocol](docs/JOWORK-PLAN.md)
-- **Locales** — Add translations for your language
+This is a pnpm monorepo:
+
+```
+packages/
+  core/       — Open-source core (AGPL-3.0)
+  premium/    — Premium features (AGPL-3.0, source-available)
+apps/
+  jowork/     — Community edition app (AGPL-3.0)
+  fluxvita/   — Internal enterprise edition (UNLICENSED)
+public/       — Shared Web UI assets
+src/          — Legacy root entry (bridges to packages/core)
+```
 
 ## Development Setup
 
-### Prerequisites
-
-- Node.js 22+
-- pnpm 10+ (`npm install -g pnpm`)
-- Git
-
-### Getting Started
-
 ```bash
-git clone https://github.com/fluxvita/jowork
-cd jowork
+# Install dependencies
 pnpm install
 
-# Build the core package
+# Build core package (required first)
 pnpm --filter @jowork/core build
 
-# Run tests
-pnpm test
-
-# Run lint
-pnpm lint
-
-# Start the open-source app (dev mode)
-pnpm --filter @jowork/app build
-node apps/jowork/dist/index.js
-# → http://localhost:18800
+# Start Jowork in dev mode
+pnpm --filter @jowork/app dev
 ```
 
-### Project Structure
+## Guidelines
 
-```
-jowork/
-  packages/
-    core/          # @jowork/core — AGPL-3.0, gateway + agent engine
-    premium/       # @jowork/premium — commercial license (not for external PRs)
-  apps/
-    jowork/        # Open-source Tauri desktop app + Express gateway
-  docs/            # Documentation and planning
-  scripts/         # Dev tooling
-```
+- **TypeScript strict mode** — all new code must pass `tsc --noEmit`
+- **ESM modules** — use `.js` extensions in imports (even for `.ts` source files)
+- **KISS/DRY** — keep it simple, avoid duplication
+- **No breaking changes** to public `@jowork/core` APIs without a major version bump
 
-### Key Conventions
+## Pull Requests
 
-- **TypeScript strict mode** — All code must pass `tsc --noEmit`
-- **Express 5 wildcards** — Use `/{*path}`, not `*`
-- **Path handling** — Always use `node:path` functions, never string concatenation
-- **Platform checks** — Use `platform.ts` helpers, never raw `process.platform`
-- **No dotenv** — Config is parsed manually in `packages/core/src/config.ts`
-- **DB migrations** — Use `CREATE TABLE IF NOT EXISTS` pattern
-
-## Submitting a Pull Request
-
-1. Fork the repo and create a branch from `main`
-2. Make your changes with tests
-3. Run `pnpm lint && pnpm test` — both must pass
-4. Write a clear PR description explaining *why*, not just *what*
-5. Reference any related issues (`Fixes #123`)
-
-### Commit Format
-
-```
-feat(scope): short description
-fix(scope): short description
-chore(scope): short description
-docs(scope): short description
-test(scope): short description
-```
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feat/my-feature`
+3. Make your changes
+4. Ensure `pnpm --filter @jowork/core build` succeeds
+5. Ensure `pnpm --filter @jowork/app lint` passes
+6. Submit a PR with a clear description
 
 ## Adding a Connector
 
-Connectors follow the [Jowork Connect Protocol (JCP)](docs/JOWORK-PLAN.md).
+1. Create `packages/core/src/connectors/{name}/index.ts` implementing `ConnectorBase`
+2. Register in `packages/core/src/connectors/registry.ts`
+3. Add to `apps/jowork/src/index.ts`
 
-```typescript
-// packages/core/src/connectors/myservice.ts
-import type { JCPConnector } from './protocol.js';
+## Reporting Issues
 
-export const myServiceConnector: JCPConnector = {
-  id: 'my-service',
-  name: 'My Service',
-  version: '1.0.0',
-  capabilities: ['fetch'],
-  discover: async (cfg) => { /* ... */ },
-  fetch: async (refs, cfg) => { /* ... */ },
-};
-```
-
-Register it in `packages/core/src/connectors/index.ts` and add tests.
-
-## Adding a Locale
-
-Translations live in `packages/core/src/i18n.ts`. To add a new language:
-
-```typescript
-import { registerLocale } from '@jowork/core';
-
-registerLocale('de', {
-  'error.not_found': 'Nicht gefunden',
-  'ui.new_chat': 'Neuer Chat',
-  // ... all keys from the 'en' locale
-});
-```
-
-You can ship this as a separate npm package (e.g. `@jowork/locale-de`) or submit a PR to add it to core.
-
-## Reporting Security Issues
-
-**Do not open a public GitHub Issue for security vulnerabilities.**
-
-Email `security@jowork.work` with details. We follow responsible disclosure and aim to respond within 48 hours.
-
-## License
-
-By contributing to Jowork, you agree that your contributions will be licensed under the [AGPL-3.0 License](LICENSE).
-
-Premium features in `packages/premium/` are under a separate commercial license and are not open for external contributions.
+Please open an issue on GitHub with:
+- Steps to reproduce
+- Expected vs actual behavior
+- Node.js version, OS

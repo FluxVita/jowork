@@ -1,61 +1,60 @@
-name: Jowork Autonomous Dev
+name: Jowork 自主开发
 
 on:
-  workflow_dispatch:
+  workflow_dispatch:          # 手动触发（GitHub 页面点按钮）
   schedule:
-    # fallback：每 3 小时检查一次，防止自触发链断掉
-    - cron: '0 */3 * * *'
-
-permissions:
-  contents: write   # git push
-  actions: write    # 触发下一轮 workflow_dispatch
+    - cron: '0 */3 * * *'    # 每3小时自动触发一次
 
 jobs:
   develop:
-    runs-on: ubuntu-latest
-    timeout-minutes: 480
+    runs-on: [self-hosted, macOS, jowork]   # 跑在你的 MacBook 上
+    timeout-minutes: 150                     # 最多跑 2.5 小时
 
     steps:
-      - name: checkout
-        uses: actions/checkout@v4
-        with:
-          ref: main
-          fetch-depth: 0
-
-      - name: setup-node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-
-      - name: setup-pnpm
-        uses: pnpm/action-setup@v4
-        # ⚠️ 不写 version，由 package.json 的 packageManager 字段决定
-
-      - name: install-deps
-        run: pnpm install --frozen-lockfile
-
-      - name: install-claude
-        run: npm install -g @anthropic-ai/claude-code
-
-      - name: setup-git
+      - name: 拉取最新代码
         run: |
+          cd /Users/signalz/Documents/augment-projects/fluxvita_allinone
+          git fetch origin monorepo-migration
+          git checkout monorepo-migration
+          git pull origin monorepo-migration
+
+      - name: 检查待完成任务
+        id: check
+        run: |
+          PENDING=$(grep -c '- \[ \]' /Users/signalz/Documents/augment-projects/fluxvita_allinone/docs/JOWORK-PLAN.md || echo 0)
+          echo "pending=$PENDING" >> "$GITHUB_OUTPUT"
+          echo "待完成任务: $PENDING"
+
+      - name: 运行 Claude Code 自主开发
+        if: steps.check.outputs.pending != '0'
+        env:
+          CLAUDECODE: ""    # 清空，允许启动
+        run: |
+          cd /Users/signalz/Documents/augment-projects/fluxvita_allinone
+          unset CLAUDECODE
+          claude \
+            --dangerously-skip-permissions \
+            --max-turns 80 \
+            -p "$(cat .github/prompts/jowork-autonomous.md)"
+
+      - name: 提交并推送
+        if: steps.check.outputs.pending != '0'
+        run: |
+          cd /Users/signalz/Documents/augment-projects/fluxvita_allinone
           git config user.name "Jowork AI Dev"
           git config user.email "ai@fluxvita.com"
-          TOKEN=${{ secrets.GITHUB_TOKEN }}
-          git remote set-url origin \
-            "https://x-access-token:${TOKEN}@github.com/FluxVita/jowork.git"
+          git add -A
+          if ! git diff --cached --quiet; then
+            DONE=$(grep -c '- \[x\]' docs/JOWORK-PLAN.md || echo 0)
+            git commit -m "feat(jowork): 自主开发 — 已完成 ${DONE} 项 [skip ci]
 
-      - name: dev-loop
-        env:
-          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-        run: |
-          unset CLAUDECODE
-          bash .github/scripts/dev-loop.sh
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
+            git push origin monorepo-migration
+            echo "✅ 推送成功"
+          else
+            echo "本轮无新提交"
+          fi
 
-      - name: trigger-next-run
-        # ⚠️ if: always() 确保即使 dev-loop 出错也能触发下一轮
-        if: always()
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          bash .github/scripts/trigger-next.sh
+      - name: 任务完成通知
+        if: steps.check.outputs.pending == '0'
+        run: echo "🎉 JOWORK-PLAN.md 中所有任务已完成！"

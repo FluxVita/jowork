@@ -6,11 +6,13 @@
 
 **Your AI coworker that actually knows your business.**
 
+**真正懂你业务的 AI 工作伙伴。**
+
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![GitHub Stars](https://img.shields.io/github/stars/fluxvita/jowork?style=social)](https://github.com/fluxvita/jowork)
 [![Discord](https://img.shields.io/discord/placeholder?label=Discord&logo=discord&logoColor=white)](https://discord.gg/jowork)
 [![Docker Pulls](https://img.shields.io/docker/pulls/ghcr.io/fluxvita/jowork)](https://github.com/fluxvita/jowork/pkgs/container/jowork)
-[![中文](https://img.shields.io/badge/语言-中文%2FEnglish-blue)](README.zh.md)
+[![中文](https://img.shields.io/badge/语言-中文%2FEnglish-blue)](#-中文说明)
 
 [**Website**](https://jowork.work) · [**Docs**](https://docs.jowork.work) · [**Discord**](https://discord.gg/jowork) · [**Pricing**](https://jowork.work/pricing)
 
@@ -234,6 +236,45 @@ Before contributing, please:
 **Building a connector?** → [Jowork Connect Protocol docs](https://docs.jowork.work/jcp)
 **Building a skill?** → [Skills API docs](https://docs.jowork.work/skills)
 **Discussing the roadmap?** → [GitHub Discussions](https://github.com/fluxvita/jowork/discussions)
+
+---
+
+## 🌐 中文说明
+
+**Jowork** 是一个**开源、自托管的 AI 工作伙伴**，深度连接你的公司数据源（代码仓库、项目管理、文档、日历、数据分析），24/7 与你的团队协同工作。
+
+### 快速开始
+
+```bash
+# Docker 一键部署
+docker run -d --name jowork -p 18800:18800 \
+  -v ./jowork-data:/app/data \
+  -e ANTHROPIC_API_KEY=你的密钥 \
+  ghcr.io/fluxvita/jowork:latest
+# 浏览器打开 http://localhost:18800
+```
+
+```bash
+# 或从源码运行
+git clone https://github.com/fluxvita/jowork
+cd jowork && pnpm install && pnpm build
+node apps/jowork/dist/index.js
+```
+
+### 主要功能
+
+- 🔌 **连接一切** — GitHub/GitLab、Linear、飞书/Slack、PostHog、Figma、邮件
+- 🤖 **自主 Agent** — 定时任务、事件触发、目标驱动、工具调用（执行命令、创建 PR、发消息）
+- 📚 **深度上下文** — 公司级/团队级/个人级三层上下文，语义向量记忆
+- 💻 **极客模式** — 内置终端、代码执行、MCP 协议、自定义 Skills
+
+### 语言切换
+
+UI 支持中英双语，点击侧边栏底部的 **「中 / EN」** 按钮即可切换。自动检测浏览器语言。
+
+### 许可证
+
+核心代码 [AGPL-3.0](./LICENSE) · 个人使用永久免费 · 无用量限制
 
 ---
 
