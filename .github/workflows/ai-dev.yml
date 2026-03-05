@@ -1,0 +1,104 @@
+name: 🤖 Claude Code Autonomous Dev
+
+on:
+  # 手动触发（主要入口）
+  workflow_dispatch:
+    inputs:
+      session_minutes:
+        description: 'Session duration in minutes (max 330 = 5.5h per job)'
+        required: false
+        default: '330'
+      max_cycles:
+        description: 'Max task cycles (0 = unlimited)'
+        required: false
+        default: '0'
+
+  # 每 6 小时自动续接（确保 24h 持续运行）
+  schedule:
+    - cron: '0 */6 * * *'
+
+jobs:
+  develop:
+    name: Autonomous Development Session
+    runs-on: ubuntu-latest
+    timeout-minutes: 350  # 5h50m hard cap (GH max = 360)
+
+    permissions:
+      contents: write   # push commits
+      actions: write    # re-trigger self
+
+    steps:
+      # ── Checkout ────────────────────────────────────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── Node & pnpm ─────────────────────────────────────────────────────────
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install pnpm
+        run: npm install -g pnpm@latest --silent
+
+      # ── Claude Code CLI ─────────────────────────────────────────────────────
+      - name: Install Claude Code
+        run: npm install -g @anthropic-ai/claude-code --silent
+
+      - name: Verify Claude Code
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: claude --version
+
+      # ── Git identity ────────────────────────────────────────────────────────
+      - name: Configure git
+        run: |
+          git config user.name  "Claude Code [bot]"
+          git config user.email "claude-bot@fluxvita.com"
+
+      # ── Run autonomous dev loop ─────────────────────────────────────────────
+      - name: Run autonomous dev loop
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SESSION_MINUTES:   ${{ github.event.inputs.session_minutes || '330' }}
+          MAX_CYCLES:        ${{ github.event.inputs.max_cycles || '0' }}
+          GH_TOKEN:          ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          chmod +x scripts/dev-loop.sh
+          bash scripts/dev-loop.sh
+
+      # ── Summary ─────────────────────────────────────────────────────────────
+      - name: Session summary
+        if: always()
+        run: |
+          echo "## 🤖 Dev Session Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Finished at:** $(date -u '+%Y-%m-%d %H:%M UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Recent commits:**" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          git log --oneline -15 >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Phase status:**" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          grep -A 20 "### 0.7 当前开发状态追踪" docs/JOWORK-PLAN.md | head -20 >> $GITHUB_STEP_SUMMARY || echo "Plan not found" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      # ── Auto re-trigger for schedule runs ───────────────────────────────────
+      - name: Re-trigger next session (schedule only)
+        if: github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Check if there are still pending tasks
+          if grep -q "⏳ 未开始\|\[ \] " docs/JOWORK-PLAN.md 2>/dev/null; then
+            echo "Tasks remain — next session will start on schedule"
+          else
+            echo "All tasks complete! Disabling schedule..."
+            # Could disable the schedule here if needed
+          fi
