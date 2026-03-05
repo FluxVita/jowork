@@ -921,7 +921,7 @@ CREATE VIRTUAL TABLE context_docs_fts USING fts5(
 ### Phase 6: 三层上下文系统（2-3 天）
 
 - [x] 实现 `context_docs` 表和 FTS
-- [ ] 实现上下文组装逻辑（6.2 节）
+- [x] 实现上下文组装逻辑（6.2 节）
 - [ ] Onboarding 流程增加「工作方式文档」引导
 - [ ] 管理后台增加「上下文管理」页面
 - [ ] Agent 自学习逻辑（6.3 节）
