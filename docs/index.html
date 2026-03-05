@@ -546,18 +546,18 @@
             <span class="terminal-title">Jowork Agent</span>
           </div>
           <div class="terminal-body">
-            <div><span class="t-prompt">You →</span> <span class="t-cmd">What's blocking the checkout feature?</span></div>
-            <div style="margin-top:4px"><span class="t-out">Searching codebase...</span></div>
+            <div><span class="t-prompt">You →</span> <span class="t-cmd" data-i18n="term_q">What's blocking the checkout feature?</span></div>
+            <div style="margin-top:4px"><span class="t-out" data-i18n="term_searching">Searching codebase...</span></div>
             <div class="t-tool">  ⚙ search_data("checkout", gitlab)</div>
             <div class="t-tool">  ⚙ fetch_content(PR #247)</div>
             <div class="t-tool">  ⚙ read_memory("checkout context")</div>
-            <div style="margin-top:8px"><span class="t-result">Found 3 blocking issues:</span></div>
+            <div style="margin-top:8px"><span class="t-result" data-i18n="term_found">Found 3 blocking issues:</span></div>
             <div style="color:var(--text-muted); padding-left:20px; font-size:12px;">
-              <div>• PR #247 needs review (Sarah)</div>
-              <div>• Linear JOW-89: payment timeout bug</div>
-              <div>• Staging deploy blocked by CI failure</div>
+              <div data-i18n="term_issue1">• PR #247 needs review (Sarah)</div>
+              <div data-i18n="term_issue2">• Linear JOW-89: payment timeout bug</div>
+              <div data-i18n="term_issue3">• Staging deploy blocked by CI failure</div>
             </div>
-            <div style="margin-top:8px; color:var(--lime);">Shall I draft a Slack message to the team? <span class="t-cursor"></span></div>
+            <div style="margin-top:8px; color:var(--lime);"><span data-i18n="term_cta">Shall I draft a Slack message to the team?</span> <span class="t-cursor"></span></div>
           </div>
         </div>
       </div>
@@ -1195,6 +1195,13 @@
       footerDev: 'Developers',
       footerCompany: 'Company',
       footerCopy: '© 2025 FluxVita · Jowork is open-source under AGPL-3.0',
+      term_q: 'What\'s blocking the checkout feature?',
+      term_searching: 'Searching codebase...',
+      term_found: 'Found 3 blocking issues:',
+      term_issue1: '• PR #247 needs review (Sarah)',
+      term_issue2: '• Linear JOW-89: payment timeout bug',
+      term_issue3: '• Staging deploy blocked by CI failure',
+      term_cta: 'Shall I draft a Slack message to the team?',
     },
     zh: {
       navFeatures: '功能',
@@ -1327,6 +1334,13 @@
       footerDev: '开发者',
       footerCompany: '公司',
       footerCopy: '© 2025 FluxVita · Jowork 采用 AGPL-3.0 开源协议',
+      term_q: '是什么阻塞了结账功能？',
+      term_searching: '正在搜索代码库...',
+      term_found: '发现 3 个阻塞问题：',
+      term_issue1: '• PR #247 等待 Sarah 审核',
+      term_issue2: '• Linear JOW-89：支付超时 bug',
+      term_issue3: '• Staging 部署被 CI 失败阻塞',
+      term_cta: '需要我起草一条 Slack 消息通知团队吗？',
     },
   };
 
