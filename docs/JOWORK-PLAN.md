@@ -941,7 +941,7 @@ CREATE VIRTUAL TABLE context_docs_fts USING fts5(
 
 **目标**：Connector / Channel / Model Provider 插件化
 
-- [ ] 实现 Jowork Connect Protocol（见第九节）
+- [x] 实现 Jowork Connect Protocol（见第九节）
 - [ ] 实现 Channel 插件接口（见第十节）
 - [ ] Model Provider 动态注册（去掉硬编码）
 - [ ] 为开源版增加通用 Connector：GitHub Issues、Slack、Notion（至少 2 个）
