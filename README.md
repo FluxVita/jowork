@@ -12,7 +12,7 @@
 [![GitHub Stars](https://img.shields.io/github/stars/fluxvita/jowork?style=social)](https://github.com/fluxvita/jowork)
 [![Discord](https://img.shields.io/discord/placeholder?label=Discord&logo=discord&logoColor=white)](https://discord.gg/jowork)
 [![Docker Pulls](https://img.shields.io/docker/pulls/ghcr.io/fluxvita/jowork)](https://github.com/fluxvita/jowork/pkgs/container/jowork)
-[![中文](https://img.shields.io/badge/语言-中文%2FEnglish-blue)](README.md)
+[![中文](https://img.shields.io/badge/语言-中文%2FEnglish-blue)](#-中文说明)
 
 [**Website**](https://jowork.work) · [**Docs**](https://docs.jowork.work) · [**Discord**](https://discord.gg/jowork) · [**Pricing**](https://jowork.work/pricing)
 
