@@ -37,38 +37,33 @@ jobs:
         if: ${{ steps.check.outputs.pending != '0' }}
         uses: grll/claude-code-action@beta
         with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           use_oauth: true
           claude_access_token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
           claude_refresh_token: ${{ secrets.CLAUDE_REFRESH_TOKEN }}
           claude_expires_at: ${{ secrets.CLAUDE_EXPIRES_AT }}
           secrets_admin_pat: ${{ secrets.SECRETS_ADMIN_PAT }}
+          max_turns: "200"
+          timeout_minutes: "420"
           direct_prompt: |
             你是一名全栈工程师，在 fluxvita_allinone 的 main 分支上开发 Jowork。
 
-            工作流程：
+            工作流程（循环直到没有待做任务）：
             1. 读 docs/JOWORK-PLAN.md，找第一个 - [ ] 任务
-            2. 实现功能（参考 openclaw-main/ 已有代码，优先复用）
-            3. 运行验证命令确认没有明显错误
-            4. 把 - [ ] 改为 - [x]
-            5. git add -A && git commit -m "feat(jowork): <任务描述>"
-            6. 回到第 1 步继续下一个任务，直到没有 - [ ] 为止
+            2. 理解任务要求（查阅 openclaw-main/ 复用已有代码）
+            3. 实现功能，TypeScript strict，ESM，pnpm workspaces
+            4. 运行验证：pnpm install && pnpm --filter <包名> build
+            5. 把 - [ ] 改为 - [x]
+            6. git add -A && git commit -m "feat(jowork): <任务描述>"
+            7. 回到第 1 步，继续下一个任务
 
-            约束：
-            - 只能修改 packages/ apps/jowork/ docs/JOWORK-PLAN.md pnpm-workspace.yaml tsconfig.base.json .github/
-            - 禁止修改 src/ src-tauri/ public/ .env
-            - 禁止 git push（由 workflow 统一处理）
-            - TypeScript strict 模式，ESM，pnpm workspaces
-          timeout_minutes: "420"
+            允许修改：packages/ apps/jowork/ docs/JOWORK-PLAN.md
+            禁止修改：src/ src-tauri/ public/ .env master 分支
 
-      - name: push
+      - name: push-all-commits
         if: ${{ steps.check.outputs.pending != '0' }}
         run: |
           git config user.name "Jowork AI Dev"
           git config user.email "ai@fluxvita.com"
           git pull --rebase origin main || true
-          if ! git diff origin/main --quiet; then
-            git push origin main
-            echo "Pushed successfully"
-          else
-            echo "No changes to push"
-          fi
+          git push origin main || echo "Nothing to push"
