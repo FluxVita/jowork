@@ -208,6 +208,16 @@ const MIGRATIONS: Migration[] = [
       }
     },
   },
+  {
+    name: '007_session_forked_from',
+    up(db) {
+      const cols = db.prepare(`PRAGMA table_info(sessions)`).all() as Array<{ name: string }>;
+      const colNames = new Set(cols.map(c => c.name));
+      if (!colNames.has('forked_from')) {
+        db.exec(`ALTER TABLE sessions ADD COLUMN forked_from TEXT`);
+      }
+    },
+  },
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

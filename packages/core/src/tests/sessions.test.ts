@@ -32,10 +32,10 @@ function seedAgent(db: Database.Database, id = 'agent-1', ownerId = 'user-1'): v
     .run(id, 'Test Agent', ownerId, 'You are a test agent.', 'claude-3-haiku', now);
 }
 
-function seedSession(db: Database.Database, id = 'sess-1', userId = 'user-1', agentId = 'agent-1', title = 'Test Session', opts: { pinned?: number; folder?: string | null } = {}): void {
+function seedSession(db: Database.Database, id = 'sess-1', userId = 'user-1', agentId = 'agent-1', title = 'Test Session', opts: { pinned?: number; folder?: string | null; forkedFrom?: string | null } = {}): void {
   const now = new Date().toISOString();
-  db.prepare(`INSERT OR IGNORE INTO sessions (id, agent_id, user_id, title, pinned, folder, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?)`)
-    .run(id, agentId, userId, title, opts.pinned ?? 0, opts.folder ?? null, now, now);
+  db.prepare(`INSERT OR IGNORE INTO sessions (id, agent_id, user_id, title, pinned, folder, forked_from, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?)`)
+    .run(id, agentId, userId, title, opts.pinned ?? 0, opts.folder ?? null, opts.forkedFrom ?? null, now, now);
 }
 
 function seedMessage(db: Database.Database, id = 'msg-1', sessionId = 'sess-1', role = 'user', content = 'Hello'): void {
@@ -580,5 +580,101 @@ describe('Session — folders', () => {
       `SELECT DISTINCT folder FROM sessions WHERE user_id = ? AND folder IS NOT NULL`,
     ).all('user-2') as Array<{ folder: string }>;
     assert.equal(folders.length, 0, 'user-2 should not see user-1 folders');
+  });
+});
+
+// ─── Session forking (Phase 75) ──────────────────────────────────────────────
+
+describe('Session — forking', () => {
+  beforeEach(() => { setupTestDb(); });
+  afterEach(() => { closeDb(); });
+
+  test('fork copies all messages to a new session', () => {
+    const db = openDb();
+    seedUser(db);
+    seedAgent(db);
+    seedSession(db, 'sess-1');
+    seedMessage(db, 'msg-1', 'sess-1', 'user', 'Hello');
+    seedMessage(db, 'msg-2', 'sess-1', 'assistant', 'Hi there');
+    seedMessage(db, 'msg-3', 'sess-1', 'user', 'Thanks');
+
+    // Create fork
+    const now = new Date().toISOString();
+    db.prepare(
+      `INSERT INTO sessions (id, agent_id, user_id, title, pinned, folder, forked_from, created_at, updated_at) VALUES (?,?,?,?,0,NULL,?,?,?)`,
+    ).run('fork-1', 'agent-1', 'user-1', 'Test Session (fork)', 'sess-1', now, now);
+
+    // Copy messages
+    const msgs = db.prepare(`SELECT * FROM messages WHERE session_id = ? ORDER BY created_at`).all('sess-1') as Array<{ id: string; role: string; content: string; created_at: string }>;
+    for (const m of msgs) {
+      db.prepare(`INSERT INTO messages (id, session_id, role, content, created_at) VALUES (?,?,?,?,?)`)
+        .run(`fork-${m.id}`, 'fork-1', m.role, m.content, m.created_at);
+    }
+
+    const forkedMsgs = db.prepare(`SELECT * FROM messages WHERE session_id = ?`).all('fork-1');
+    assert.equal(forkedMsgs.length, 3, 'forked session should have all 3 messages');
+
+    const forkedSession = db.prepare(`SELECT forked_from FROM sessions WHERE id = ?`).get('fork-1') as { forked_from: string };
+    assert.equal(forkedSession.forked_from, 'sess-1');
+  });
+
+  test('fork copies messages up to a specific point', () => {
+    const db = openDb();
+    seedUser(db);
+    seedAgent(db);
+    seedSession(db, 'sess-1');
+
+    db.prepare(`INSERT INTO messages (id, session_id, role, content, created_at) VALUES (?,?,?,?,?)`)
+      .run('msg-1', 'sess-1', 'user', 'First', '2026-01-01T10:00:00.000Z');
+    db.prepare(`INSERT INTO messages (id, session_id, role, content, created_at) VALUES (?,?,?,?,?)`)
+      .run('msg-2', 'sess-1', 'assistant', 'Second', '2026-01-01T10:01:00.000Z');
+    db.prepare(`INSERT INTO messages (id, session_id, role, content, created_at) VALUES (?,?,?,?,?)`)
+      .run('msg-3', 'sess-1', 'user', 'Third', '2026-01-01T10:02:00.000Z');
+
+    // Copy only up to msg-2
+    const target = db.prepare(`SELECT created_at FROM messages WHERE id = ?`).get('msg-2') as { created_at: string };
+    const toCopy = db.prepare(
+      `SELECT * FROM messages WHERE session_id = ? AND created_at <= ? ORDER BY created_at`,
+    ).all('sess-1', target.created_at) as Array<{ content: string }>;
+
+    assert.equal(toCopy.length, 2, 'should only copy 2 messages');
+    assert.equal(toCopy[0]!.content, 'First');
+    assert.equal(toCopy[1]!.content, 'Second');
+  });
+
+  test('forked_from defaults to null', () => {
+    const db = openDb();
+    seedUser(db);
+    seedAgent(db);
+    seedSession(db);
+
+    const row = db.prepare(`SELECT forked_from FROM sessions WHERE id = ?`).get('sess-1') as { forked_from: string | null };
+    assert.equal(row.forked_from, null);
+  });
+
+  test('forked session is independent — deleting original does not affect fork', () => {
+    const db = openDb();
+    seedUser(db);
+    seedAgent(db);
+    seedSession(db, 'sess-orig');
+    seedMessage(db, 'msg-1', 'sess-orig', 'user', 'Hello');
+
+    // Create fork
+    const now = new Date().toISOString();
+    db.prepare(
+      `INSERT INTO sessions (id, agent_id, user_id, title, pinned, folder, forked_from, created_at, updated_at) VALUES (?,?,?,?,0,NULL,?,?,?)`,
+    ).run('sess-fork', 'agent-1', 'user-1', 'Fork', 'sess-orig', now, now);
+    db.prepare(`INSERT INTO messages (id, session_id, role, content, created_at) VALUES (?,?,?,?,?)`)
+      .run('msg-fork-1', 'sess-fork', 'user', 'Hello', now);
+
+    // Delete original
+    db.prepare(`DELETE FROM messages WHERE session_id = ?`).run('sess-orig');
+    db.prepare(`DELETE FROM sessions WHERE id = ?`).run('sess-orig');
+
+    // Fork should still exist
+    const fork = db.prepare(`SELECT id FROM sessions WHERE id = ?`).get('sess-fork') as { id: string } | undefined;
+    assert.ok(fork, 'forked session should survive original deletion');
+    const forkMsgs = db.prepare(`SELECT id FROM messages WHERE session_id = ?`).all('sess-fork');
+    assert.equal(forkMsgs.length, 1, 'forked messages should survive');
   });
 });

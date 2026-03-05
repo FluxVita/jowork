@@ -10,6 +10,8 @@
 //   DELETE /api/sessions/:id/messages/:msgId — delete a single message
 //   GET    /api/sessions/:id/messages — paginated message history (cursor-based)
 //   GET    /api/sessions/:id/export   — export full session as md|json|txt
+//   POST   /api/sessions/:id/fork    — fork session (copy messages up to a point)
+//   GET    /api/sessions/folders     — list distinct folders
 
 const PAGE_SIZE = 40;
 
@@ -26,6 +28,7 @@ interface SessionRow {
   title: string;
   pinned: number;
   folder: string | null;
+  forked_from: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -46,6 +49,7 @@ function rowToSession(row: SessionRow, messages: MessageRow[] = []): AgentSessio
     title: row.title,
     pinned: row.pinned === 1,
     folder: row.folder ?? null,
+    forkedFrom: row.forked_from ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     messages: messages.map(m => ({
@@ -113,11 +117,11 @@ export function sessionsRouter(): Router {
       }
 
       db.prepare(
-        `INSERT INTO sessions (id, agent_id, user_id, title, pinned, folder, created_at, updated_at) VALUES (?,?,?,?,0,NULL,?,?)`,
+        `INSERT INTO sessions (id, agent_id, user_id, title, pinned, folder, forked_from, created_at, updated_at) VALUES (?,?,?,?,0,NULL,NULL,?,?)`,
       ).run(id, aid, userId, title ?? 'New session', now, now);
 
       res.status(201).json(rowToSession(
-        { id, agent_id: aid, user_id: userId, title: title ?? 'New session', pinned: 0, folder: null, created_at: now, updated_at: now },
+        { id, agent_id: aid, user_id: userId, title: title ?? 'New session', pinned: 0, folder: null, forked_from: null, created_at: now, updated_at: now },
       ));
     } catch (err) { next(err); }
   });
@@ -409,6 +413,71 @@ export function sessionsRouter(): Router {
       res.setHeader('Content-Type', 'text/markdown; charset=utf-8');
       res.setHeader('Content-Disposition', `attachment; filename="${filename}.md"`);
       res.send(lines.join('\n'));
+    } catch (err) { next(err); }
+  });
+
+  // Fork a session — copy messages up to (and including) afterMessageId into a new session
+  // POST /api/sessions/:id/fork   body: { afterMessageId?: string }
+  // If afterMessageId is omitted, copies all messages.
+  router.post('/api/sessions/:id/fork', authenticate, (req, res, next) => {
+    try {
+      const db      = getDb();
+      const userId  = req.auth!.userId;
+      const session = db.prepare(
+        `SELECT * FROM sessions WHERE id = ? AND user_id = ?`,
+      ).get(String(req.params['id']), userId) as SessionRow | undefined;
+
+      if (!session) { res.status(404).json({ error: 'NOT_FOUND' }); return; }
+
+      const { afterMessageId } = req.body as { afterMessageId?: string };
+
+      // Get messages to copy
+      let messagesToCopy: MessageRow[];
+      if (afterMessageId) {
+        // Find the target message's created_at, then copy all messages up to and including it
+        const target = db.prepare(
+          `SELECT created_at FROM messages WHERE id = ? AND session_id = ?`,
+        ).get(afterMessageId, session.id) as { created_at: string } | undefined;
+
+        if (!target) { res.status(404).json({ error: 'MESSAGE_NOT_FOUND' }); return; }
+
+        messagesToCopy = db.prepare(
+          `SELECT * FROM messages WHERE session_id = ? AND created_at <= ? ORDER BY created_at ASC`,
+        ).all(session.id, target.created_at) as MessageRow[];
+      } else {
+        messagesToCopy = db.prepare(
+          `SELECT * FROM messages WHERE session_id = ? ORDER BY created_at ASC`,
+        ).all(session.id) as MessageRow[];
+      }
+
+      // Create new session
+      const newId = generateId();
+      const now   = nowISO();
+      const forkTitle = `${session.title} (fork)`;
+
+      db.prepare(
+        `INSERT INTO sessions (id, agent_id, user_id, title, pinned, folder, forked_from, created_at, updated_at) VALUES (?,?,?,?,0,?,?,?,?)`,
+      ).run(newId, session.agent_id, userId, forkTitle, session.folder, session.id, now, now);
+
+      // Copy messages with new IDs
+      const insertMsg = db.prepare(
+        `INSERT INTO messages (id, session_id, role, content, tool_calls, tool_results, created_at) VALUES (?,?,?,?,?,?,?)`,
+      );
+      const insertFts = db.prepare(
+        `INSERT INTO messages_fts(rowid, content) SELECT rowid, content FROM messages WHERE id = ?`,
+      );
+
+      for (const m of messagesToCopy) {
+        const msgId = generateId();
+        insertMsg.run(msgId, newId, m.role, m.content, null, null, m.created_at);
+        try { insertFts.run(msgId); } catch { /* FTS best-effort */ }
+      }
+
+      const newSession = db.prepare(`SELECT * FROM sessions WHERE id = ?`).get(newId) as SessionRow;
+      res.status(201).json({
+        ...rowToSession(newSession),
+        messagesCopied: messagesToCopy.length,
+      });
     } catch (err) { next(err); }
   });
 

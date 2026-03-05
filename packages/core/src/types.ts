@@ -78,6 +78,7 @@ export interface AgentSession {
   title: string;
   pinned: boolean;
   folder: string | null;
+  forkedFrom: string | null;
   createdAt: string;
   updatedAt: string;
   messages: Message[];

@@ -926,6 +926,16 @@
           } catch { toast('Failed to delete message', 'error'); }
         }
 
+        async function forkFromMessage(msgId) {
+          if (!activeSessionId.value) return;
+          try {
+            const result = await api('POST', `/api/sessions/${activeSessionId.value}/fork`, { afterMessageId: msgId });
+            sessions.value.unshift(result);
+            await selectSession(result.id);
+            toast(`Forked (${result.messagesCopied} messages copied)`, 'success');
+          } catch (e) { toast('Fork failed: ' + e.message, 'error'); }
+        }
+
         async function toggleFeedback(msg, rating) {
           if (!activeSessionId.value) return;
           const sid = activeSessionId.value;
@@ -1490,7 +1500,7 @@
           showSearch, searchQuery, searchResults, searchLoading, hasSearchResults,
           openSearch, closeSearch, onSearchInput, searchGoToSession,
           toasts, formatTime, formatTimeFull, copyMessage,
-          editingMsgId, editingContent, startEditMessage, cancelEditMessage, saveEditMessage, deleteMessage,
+          editingMsgId, editingContent, startEditMessage, cancelEditMessage, saveEditMessage, deleteMessage, forkFromMessage,
           currentTheme, setTheme,
         };
       },
@@ -1578,6 +1588,7 @@
                   <button class="msg-action-btn" :class="{ active: m.feedback === 'negative' }" title="Bad response" @click="toggleFeedback(m, 'negative')">👎</button>
                   <button class="msg-action-btn" title="Copy message" @click="copyMessage(m.content)">📋 Copy</button>
                   <button v-if="mi === messages.length - 1" class="msg-action-btn" title="Regenerate" @click="regenerateMessage(m.id)">↻ Regenerate</button>
+                  <button class="msg-action-btn" title="Fork from here" @click="forkFromMessage(m.id)">🔀 Fork</button>
                   <button class="msg-action-btn" title="Delete message" style="color:#f87171" @click="deleteMessage(m.id)">🗑</button>
                 </div>
                 <div class="msg-meta" :title="formatTimeFull(m.createdAt)">{{ formatTime(m.createdAt) }}</div>
@@ -1594,6 +1605,7 @@
                   {{ m.content }}
                   <div v-if="m.role === 'user'" class="msg-user-actions">
                     <button class="msg-action-btn" title="Edit message" @click="startEditMessage(m)">✏️</button>
+                    <button class="msg-action-btn" title="Fork from here" @click="forkFromMessage(m.id)">🔀</button>
                     <button class="msg-action-btn" title="Delete message" style="color:#f87171" @click="deleteMessage(m.id)">🗑</button>
                   </div>
                 </template>
