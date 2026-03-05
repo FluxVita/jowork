@@ -31,6 +31,7 @@ import {
   searchRouter,
   terminalRouter,
   feedbackRouter,
+  auditRouter,
 } from '@jowork/core';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -89,6 +90,7 @@ async function main(): Promise<void> {
       expressApp.use(adminRouter());
       expressApp.use(channelsRouter());
       expressApp.use(feedbackRouter());
+      expressApp.use(auditRouter());
 
       // Serve Vue 3 CDN SPA from public/
       if (existsSync(join(PUBLIC_DIR, 'index.html'))) {

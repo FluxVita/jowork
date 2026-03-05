@@ -37,3 +37,5 @@ export * from './network/index.js';
 export * from './terminal/index.js';
 export { recordRequest, collectSnapshot, renderPrometheus, resetMetrics } from './metrics/collector.js';
 export type { MetricsSnapshot } from './metrics/collector.js';
+export { recordAudit, queryAuditLog, purgeAuditBefore, inferResourceType } from './audit/index.js';
+export type { AuditEntry, AuditQuery, AuditQueryResult } from './audit/index.js';

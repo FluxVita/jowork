@@ -236,6 +236,27 @@ const MIGRATIONS: Migration[] = [
       `);
     },
   },
+  {
+    name: '009_audit_log',
+    up(db) {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS audit_log (
+          id            TEXT PRIMARY KEY,
+          user_id       TEXT NOT NULL,
+          action        TEXT NOT NULL,
+          resource      TEXT NOT NULL,
+          resource_type TEXT NOT NULL,
+          status_code   INTEGER NOT NULL,
+          ip            TEXT NOT NULL DEFAULT '',
+          user_agent    TEXT NOT NULL DEFAULT '',
+          created_at    TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_audit_log_user_id ON audit_log(user_id);
+        CREATE INDEX IF NOT EXISTS idx_audit_log_created_at ON audit_log(created_at);
+        CREATE INDEX IF NOT EXISTS idx_audit_log_resource_type ON audit_log(resource_type);
+      `);
+    },
+  },
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

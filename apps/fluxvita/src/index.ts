@@ -31,6 +31,7 @@ import {
   searchRouter,
   terminalRouter,
   feedbackRouter,
+  auditRouter,
 } from '@jowork/core';
 
 import { activatePremium, dispatch } from '@jowork/premium';
@@ -105,6 +106,7 @@ async function main(): Promise<void> {
       expressApp.use(adminRouter());
       expressApp.use(channelsRouter());
       expressApp.use(feedbackRouter());
+      expressApp.use(auditRouter());
 
       // Serve FluxVita SPA from public/
       if (existsSync(join(PUBLIC_DIR, 'index.html'))) {
