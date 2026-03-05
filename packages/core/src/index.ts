@@ -41,3 +41,5 @@ export { recordAudit, queryAuditLog, purgeAuditBefore, inferResourceType } from 
 export type { AuditEntry, AuditQuery, AuditQueryResult } from './audit/index.js';
 export { createTemplate, listTemplates, getTemplate, updateTemplate, deleteTemplate, seedBuiltinTemplates } from './templates/index.js';
 export type { ConversationTemplate, CreateTemplateInput, UpdateTemplateInput } from './templates/index.js';
+export { createWebhook, listWebhooks, getWebhook, toggleWebhook, deleteWebhook, emitWebhookEvent } from './webhooks/index.js';
+export type { WebhookSubscription, WebhookEventType, WebhookEvent } from './webhooks/index.js';

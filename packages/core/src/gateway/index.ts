@@ -30,3 +30,4 @@ export { auditRouter } from './routes/audit.js';
 export { auditMiddleware } from './middleware/audit.js';
 export { apiVersionMiddleware } from './middleware/api-version.js';
 export { templatesRouter } from './routes/templates.js';
+export { webhooksRouter } from './routes/webhooks.js';

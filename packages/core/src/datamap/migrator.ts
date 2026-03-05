@@ -277,6 +277,24 @@ const MIGRATIONS: Migration[] = [
       `);
     },
   },
+  {
+    name: '011_webhook_subscriptions',
+    up(db) {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS webhook_subscriptions (
+          id          TEXT PRIMARY KEY,
+          url         TEXT NOT NULL,
+          secret      TEXT NOT NULL,
+          events      TEXT NOT NULL DEFAULT '[]',
+          owner_id    TEXT NOT NULL,
+          is_active   INTEGER NOT NULL DEFAULT 1,
+          created_at  TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_webhooks_owner ON webhook_subscriptions(owner_id);
+        CREATE INDEX IF NOT EXISTS idx_webhooks_active ON webhook_subscriptions(is_active);
+      `);
+    },
+  },
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

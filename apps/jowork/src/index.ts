@@ -33,6 +33,8 @@ import {
   feedbackRouter,
   auditRouter,
   templatesRouter,
+  webhooksRouter,
+  usageRouter,
   seedBuiltinTemplates,
 } from '@jowork/core';
 
@@ -95,6 +97,8 @@ async function main(): Promise<void> {
       expressApp.use(feedbackRouter());
       expressApp.use(auditRouter());
       expressApp.use(templatesRouter());
+      expressApp.use(webhooksRouter());
+      expressApp.use(usageRouter());
 
       // Serve Vue 3 CDN SPA from public/
       if (existsSync(join(PUBLIC_DIR, 'index.html'))) {
