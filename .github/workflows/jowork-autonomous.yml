@@ -3,7 +3,7 @@ name: Jowork Autonomous Dev
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 */3 * * *'
+    - cron: '0 8 * * *'
 
 permissions:
   contents: write
@@ -11,7 +11,7 @@ permissions:
 jobs:
   develop:
     runs-on: [self-hosted, macOS, jowork]
-    timeout-minutes: 150
+    timeout-minutes: 480
 
     steps:
       - name: checkout
@@ -21,49 +21,57 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: check-pending
-        id: check
-        run: |
-          PENDING=$(python3 -c "
-          text = open('docs/JOWORK-PLAN.md').read()
-          print(text.count('- [ ]'))
-          ")
-          echo "pending=$PENDING" >> "$GITHUB_OUTPUT"
-          echo "Pending tasks: $PENDING"
-
-      - name: run-claude
-        if: ${{ steps.check.outputs.pending != '0' }}
-        run: |
-          unset CLAUDECODE
-          PROMPT=$(cat .github/prompts/jowork-autonomous.md)
-          claude \
-            --dangerously-skip-permissions \
-            --max-turns 80 \
-            --output-format stream-json \
-            --verbose \
-            -p "$PROMPT" \
-          | python3 -u .github/scripts/stream-parser.py
-
-      - name: commit-and-push
-        if: ${{ steps.check.outputs.pending != '0' }}
+      - name: setup-git
         run: |
           git config user.name "Jowork AI Dev"
           git config user.email "ai@fluxvita.com"
-          REPO_URL="https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/FluxVita/jowork.git"
-          git remote set-url origin "$REPO_URL"
-          git add -A
-          if ! git diff --cached --quiet; then
-            DONE=$(python3 -c "
-            text = open('docs/JOWORK-PLAN.md').read()
-            print(text.count('- [x]'))
-            ")
-            git commit -m "feat(jowork): auto-dev done=${DONE} [skip ci]"
-            git push
-            echo "Pushed successfully"
-          else
-            echo "No changes this round"
-          fi
+          TOKEN=${{ secrets.GITHUB_TOKEN }}
+          git remote set-url origin "https://x-access-token:${TOKEN}@github.com/FluxVita/jowork.git"
 
-      - name: all-done
-        if: ${{ steps.check.outputs.pending == '0' }}
-        run: echo "All tasks completed!"
+      - name: dev-loop
+        run: |
+          unset CLAUDECODE
+          ROUND=0
+          MAX_ROUNDS=30
+
+          while [ "$ROUND" -lt "$MAX_ROUNDS" ]; do
+            PENDING=$(python3 -c "
+          text = open('docs/JOWORK-PLAN.md').read()
+          print(text.count('- [ ]'))
+          ")
+
+            echo ""
+            echo "=============================="
+            echo "Round ${ROUND} | Pending: ${PENDING}"
+            echo "=============================="
+
+            if [ "$PENDING" -eq 0 ]; then
+              echo "All tasks completed!"
+              break
+            fi
+
+            PROMPT=$(cat .github/prompts/jowork-autonomous.md)
+            claude \
+              --dangerously-skip-permissions \
+              --max-turns 30 \
+              --output-format stream-json \
+              --verbose \
+              -p "$PROMPT" \
+            | python3 -u .github/scripts/stream-parser.py
+
+            git pull --rebase origin main || true
+            git add -A
+            if ! git diff --cached --quiet; then
+              DONE=$(python3 -c "
+          text = open('docs/JOWORK-PLAN.md').read()
+          print(text.count('- [x]'))
+          ")
+              git commit -m "feat(jowork): round=${ROUND} done=${DONE} tasks [skip ci]"
+              git push origin main
+              echo "Pushed: done=${DONE}"
+            else
+              echo "No changes in round ${ROUND}"
+            fi
+
+            ROUND=$((ROUND + 1))
+          done
