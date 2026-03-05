@@ -861,7 +861,7 @@ CREATE VIRTUAL TABLE context_docs_fts USING fts5(
 
 **目标**：把通用模块移入 core 包，保持功能不变
 
-- [ ] 移动模块（按依赖顺序）：
+- [x] 移动模块（按依赖顺序）：
   1. `utils/`、`types.ts`、`config.ts`（零依赖）
   2. `datamap/`（依赖 utils）
   3. `auth/`、`policy/`（依赖 datamap）
@@ -872,14 +872,14 @@ CREATE VIRTUAL TABLE context_docs_fts USING fts5(
   8. `scheduler/`（依赖 connectors）
   9. `gateway/` core（server + middleware + 基础路由）
   10. `channels/`、`services/`、`onboarding/`
-- [ ] 每移一个模块，跑一次测试确保不 break
-- [ ] 更新所有 import 路径为 `@jowork/core/...`
+- [x] 每移一个模块，跑一次测试确保不 break
+- [x] 更新所有 import 路径为 `@jowork/core/...`
 
 ### Phase 2: 抽取 packages/premium（1-2 天）
 
 **目标**：把高级功能移入 premium 包
 
-- [ ] 移动模块：
+- [x] 移动模块：
   1. `agent/engines/claude-agent.ts` + `dispatcher.ts`
   2. `memory/embedding.ts`（向量搜索）
   3. `gateway/terminal.ts`（极客模式）
@@ -887,19 +887,19 @@ CREATE VIRTUAL TABLE context_docs_fts USING fts5(
   5. `skills/executor.ts`（高级 Skills）
   6. `alerts/engine.ts`（事件触发）
   7. 高级工具：`run_command`、`manage_workspace`、`query_posthog`、`query_oss`
-- [ ] 实现 `edition.ts` 功能门控
-- [ ] Premium 包通过 `registerEdition()` 注册高级功能
+- [x] 实现 `edition.ts` 功能门控
+- [x] Premium 包通过 `registerEdition()` 注册高级功能
 
 ### Phase 3: 构建 apps/jowork（2 天）
 
 **目标**：创建开源版应用，仅依赖 core
 
-- [ ] 创建 `apps/jowork/src/index.ts`（精简启动入口）
-- [ ] 创建开源版路由（去掉 Premium 路由）
-- [ ] 适配开源版前端（去掉极客模式 Tab、简化 Admin）
-- [ ] 适配 Tauri 客户端（品牌改为 Jowork）
-- [ ] 编写 README.md、CONTRIBUTING.md
-- [ ] 本地测试 Personal 模式完整可用
+- [x] 创建 `apps/jowork/src/index.ts`（精简启动入口）
+- [x] 创建开源版路由（去掉 Premium 路由）
+- [x] 适配开源版前端（去掉极客模式 Tab、简化 Admin）
+- [x] 适配 Tauri 客户端（品牌改为 Jowork）
+- [x] 编写 README.md、CONTRIBUTING.md
+- [x] 本地测试 Personal 模式完整可用
 
 ### Phase 4: 适配 apps/fluxvita（1 天）
 
