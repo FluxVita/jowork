@@ -5,6 +5,9 @@ on:
   schedule:
     - cron: '0 */3 * * *'
 
+permissions:
+  contents: write
+
 jobs:
   develop:
     runs-on: [self-hosted, macOS, jowork]
@@ -16,12 +19,12 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: check-pending
         id: check
         run: |
           PENDING=$(python3 -c "
-          import re
           text = open('docs/JOWORK-PLAN.md').read()
           print(text.count('- [ ]'))
           ")
@@ -46,10 +49,11 @@ jobs:
         run: |
           git config user.name "Jowork AI Dev"
           git config user.email "ai@fluxvita.com"
+          REPO_URL="https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/FluxVita/jowork.git"
+          git remote set-url origin "$REPO_URL"
           git add -A
           if ! git diff --cached --quiet; then
             DONE=$(python3 -c "
-            import re
             text = open('docs/JOWORK-PLAN.md').read()
             print(text.count('- [x]'))
             ")
