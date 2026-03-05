@@ -949,10 +949,10 @@ CREATE VIRTUAL TABLE context_docs_fts USING fts5(
 
 ### Phase 9: 平台兼容 + 国际化 + Docker（2-3 天）
 
-- [ ] Windows 兼容性测试和修复（见第八节）
-- [ ] i18n 框架搭建 + 英文翻译（见第十一节）
-- [ ] Docker + docker-compose 一键部署
-- [ ] 编写开源版安装/使用文档
+- [x] Windows 兼容性测试和修复（见第八节）
+- [x] i18n 框架搭建 + 英文翻译（见第十一节）
+- [x] Docker + docker-compose 一键部署
+- [x] 编写开源版安装/使用文档
 
 ### Phase 10: 首次公开发布（1 天）
 
