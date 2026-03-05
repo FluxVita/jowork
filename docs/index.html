@@ -721,39 +721,39 @@
         <tbody>
           <tr>
             <td class="feature-name" data-i18n="cmpR1">Knows your codebase</td>
-            <td><span class="icon-no">✗ No context</span></td>
-            <td><span class="icon-partial">~ Read-only</span></td>
-            <td class="highlight"><span class="icon-yes">✓ Deep + writable</span></td>
+            <td><span class="icon-no" data-i18n="cmpV1a">✗ No context</span></td>
+            <td><span class="icon-partial" data-i18n="cmpV1b">~ Read-only</span></td>
+            <td class="highlight"><span class="icon-yes" data-i18n="cmpV1c">✓ Deep + writable</span></td>
           </tr>
           <tr>
             <td class="feature-name" data-i18n="cmpR2">Runs autonomously</td>
-            <td><span class="icon-no">✗ Chat only</span></td>
-            <td><span class="icon-no">✗ Search only</span></td>
-            <td class="highlight"><span class="icon-yes">✓ Event-driven + scheduled</span></td>
+            <td><span class="icon-no" data-i18n="cmpV2a">✗ Chat only</span></td>
+            <td><span class="icon-no" data-i18n="cmpV2b">✗ Search only</span></td>
+            <td class="highlight"><span class="icon-yes" data-i18n="cmpV2c">✓ Event-driven + scheduled</span></td>
           </tr>
           <tr>
             <td class="feature-name" data-i18n="cmpR3">Self-hosted</td>
-            <td><span class="icon-no">✗ SaaS only</span></td>
-            <td><span class="icon-no">✗ SaaS only</span></td>
-            <td class="highlight"><span class="icon-yes">✓ Your server, your data</span></td>
+            <td><span class="icon-no" data-i18n="cmpV3a">✗ SaaS only</span></td>
+            <td><span class="icon-no" data-i18n="cmpV3b">✗ SaaS only</span></td>
+            <td class="highlight"><span class="icon-yes" data-i18n="cmpV3c">✓ Your server, your data</span></td>
           </tr>
           <tr>
             <td class="feature-name" data-i18n="cmpR4">Takes real action</td>
-            <td><span class="icon-no">✗ Suggestions only</span></td>
-            <td><span class="icon-no">✗ Search only</span></td>
-            <td class="highlight"><span class="icon-yes">✓ Creates PRs, sends msgs</span></td>
+            <td><span class="icon-no" data-i18n="cmpV4a">✗ Suggestions only</span></td>
+            <td><span class="icon-no" data-i18n="cmpV4b">✗ Search only</span></td>
+            <td class="highlight"><span class="icon-yes" data-i18n="cmpV4c">✓ Creates PRs, sends msgs</span></td>
           </tr>
           <tr>
             <td class="feature-name" data-i18n="cmpR5">Works without internet</td>
             <td><span class="icon-no">✗</span></td>
             <td><span class="icon-no">✗</span></td>
-            <td class="highlight"><span class="icon-yes">✓ Local models supported</span></td>
+            <td class="highlight"><span class="icon-yes" data-i18n="cmpV5c">✓ Local models supported</span></td>
           </tr>
           <tr>
             <td class="feature-name" data-i18n="cmpR6">Personal use cost</td>
-            <td><span class="icon-partial">$20/month</span></td>
-            <td><span class="icon-no">$$$</span></td>
-            <td class="highlight"><span class="icon-yes">✓ Free forever</span></td>
+            <td><span class="icon-partial" data-i18n="cmpV6a">$20/month</span></td>
+            <td><span class="icon-no" data-i18n="cmpV6b">$$$</span></td>
+            <td class="highlight"><span class="icon-yes" data-i18n="cmpV6c">✓ Free forever</span></td>
           </tr>
         </tbody>
       </table>
@@ -789,9 +789,9 @@
     <!-- Code tabs -->
     <div class="fade-up" style="margin-top: clamp(32px, 5vh, 56px);">
       <div class="code-tabs">
-        <div class="code-tab active" onclick="switchTab('docker')">Docker</div>
-        <div class="code-tab" onclick="switchTab('desktop')">Desktop App</div>
-        <div class="code-tab" onclick="switchTab('source')">From Source</div>
+        <div class="code-tab active" onclick="switchTab('docker')" data-i18n="tabDocker">Docker</div>
+        <div class="code-tab" onclick="switchTab('desktop')" data-i18n="tabDesktop">Desktop App</div>
+        <div class="code-tab" onclick="switchTab('source')" data-i18n="tabSource">From Source</div>
       </div>
 
       <div id="tab-docker" class="code-panel active">
@@ -892,7 +892,7 @@
           <div class="plan-feat dim" data-i18n="p2f7">Sub-agent orchestration</div>
           <div class="plan-feat dim" data-i18n="p2f8">Event triggers</div>
         </div>
-        <a href="https://jowork.work/pricing" class="plan-btn plan-btn-primary">Start Pro →</a>
+        <a href="https://jowork.work/pricing" class="plan-btn plan-btn-primary" data-i18n="price2Btn">Start Pro →</a>
       </div>
 
       <div class="plan-card fade-up d3">
@@ -910,7 +910,7 @@
           <div class="plan-feat" data-i18n="p3f7">Email support</div>
           <div class="plan-feat dim" data-i18n="p3f8">Audit log &amp; SSO</div>
         </div>
-        <a href="https://jowork.work/pricing" class="plan-btn plan-btn-ghost">Start Team →</a>
+        <a href="https://jowork.work/pricing" class="plan-btn plan-btn-ghost" data-i18n="price3Btn">Start Team →</a>
       </div>
 
       <div class="plan-card fade-up d4">
@@ -928,7 +928,7 @@
           <div class="plan-feat" data-i18n="p4f7">Dedicated support</div>
           <div class="plan-feat" data-i18n="p4f8">Custom contract available</div>
         </div>
-        <a href="mailto:hello@jowork.work" class="plan-btn plan-btn-ghost">Contact Sales →</a>
+        <a href="mailto:hello@jowork.work" class="plan-btn plan-btn-ghost" data-i18n="price4Btn">Contact Sales →</a>
       </div>
     </div>
 
@@ -956,7 +956,7 @@
         </div>
       </div>
       <div style="display:flex; flex-direction:column; gap:12px; min-width:240px;">
-        <a href="https://github.com/fluxvita/jowork" target="_blank" class="btn-primary" style="justify-content:center; text-align:center;">
+        <a href="https://github.com/fluxvita/jowork" target="_blank" class="btn-primary" style="justify-content:center; text-align:center;" data-i18n="ossStarBtn">
           ⭐ Star on GitHub
         </a>
         <a href="https://github.com/fluxvita/jowork/issues" target="_blank" class="btn-ghost" style="justify-content:center; text-align:center;" data-i18n="ossIssue">
@@ -1005,19 +1005,19 @@
       <div>
         <div class="footer-col-title" data-i18n="footerProduct">Product</div>
         <div class="footer-links">
-          <a href="#features">Features</a>
-          <a href="#pricing">Pricing</a>
-          <a href="https://github.com/fluxvita/jowork/releases/latest">Download</a>
-          <a href="https://github.com/fluxvita/jowork/blob/main/docs/JOWORK-PLAN.md">Roadmap</a>
+          <a href="#features" data-i18n="footerLinkFeatures">Features</a>
+          <a href="#pricing" data-i18n="footerLinkPricing">Pricing</a>
+          <a href="https://github.com/fluxvita/jowork/releases/latest" data-i18n="footerLinkDownload">Download</a>
+          <a href="https://github.com/fluxvita/jowork/blob/main/docs/JOWORK-PLAN.md" data-i18n="footerLinkRoadmap">Roadmap</a>
         </div>
       </div>
       <div>
         <div class="footer-col-title" data-i18n="footerDev">Developers</div>
         <div class="footer-links">
           <a href="https://github.com/fluxvita/jowork" target="_blank">GitHub</a>
-          <a href="https://github.com/fluxvita/jowork/blob/main/docs/quick-start.md">Quick Start</a>
-          <a href="https://github.com/fluxvita/jowork/blob/main/docs/custom-domain.md">Custom Domain</a>
-          <a href="https://github.com/fluxvita/jowork/blob/main/CONTRIBUTING.md">Contributing</a>
+          <a href="https://github.com/fluxvita/jowork/blob/main/docs/quick-start.md" data-i18n="footerLinkQuickStart">Quick Start</a>
+          <a href="https://github.com/fluxvita/jowork/blob/main/docs/custom-domain.md" data-i18n="footerLinkDomain">Custom Domain</a>
+          <a href="https://github.com/fluxvita/jowork/blob/main/CONTRIBUTING.md" data-i18n="footerLinkContrib">Contributing</a>
         </div>
       </div>
       <div>
@@ -1025,8 +1025,8 @@
         <div class="footer-links">
           <a href="https://fluxvita.com" target="_blank">FluxVita</a>
           <a href="mailto:hello@jowork.work">hello@jowork.work</a>
-          <a href="https://github.com/fluxvita/jowork/blob/main/docs/legal/privacy-policy.md">Privacy Policy</a>
-          <a href="https://github.com/fluxvita/jowork/blob/main/docs/legal/terms-of-service.md">Terms</a>
+          <a href="https://github.com/fluxvita/jowork/blob/main/docs/legal/privacy-policy.md" data-i18n="footerLinkPrivacy">Privacy Policy</a>
+          <a href="https://github.com/fluxvita/jowork/blob/main/docs/legal/terms-of-service.md" data-i18n="footerLinkTerms">Terms</a>
         </div>
       </div>
     </div>
@@ -1202,6 +1202,18 @@
       term_issue2: '• Linear JOW-89: payment timeout bug',
       term_issue3: '• Staging deploy blocked by CI failure',
       term_cta: 'Shall I draft a Slack message to the team?',
+      cmpV1a: '✗ No context', cmpV1b: '~ Read-only', cmpV1c: '✓ Deep + writable',
+      cmpV2a: '✗ Chat only', cmpV2b: '✗ Search only', cmpV2c: '✓ Event-driven + scheduled',
+      cmpV3a: '✗ SaaS only', cmpV3b: '✗ SaaS only', cmpV3c: '✓ Your server, your data',
+      cmpV4a: '✗ Suggestions only', cmpV4b: '✗ Search only', cmpV4c: '✓ Creates PRs, sends msgs',
+      cmpV5c: '✓ Local models supported',
+      cmpV6a: '$20/month', cmpV6b: '$$$', cmpV6c: '✓ Free forever',
+      tabDocker: 'Docker', tabDesktop: 'Desktop App', tabSource: 'From Source',
+      price2Btn: 'Start Pro →', price3Btn: 'Start Team →', price4Btn: 'Contact Sales →',
+      ossStarBtn: '⭐ Star on GitHub',
+      footerLinkFeatures: 'Features', footerLinkPricing: 'Pricing', footerLinkDownload: 'Download', footerLinkRoadmap: 'Roadmap',
+      footerLinkQuickStart: 'Quick Start', footerLinkDomain: 'Custom Domain', footerLinkContrib: 'Contributing',
+      footerLinkPrivacy: 'Privacy Policy', footerLinkTerms: 'Terms',
     },
     zh: {
       navFeatures: '功能',
@@ -1222,7 +1234,7 @@
       stat4Label: '数据外泄量',
       problemTag: '01 / 痛点',
       problemTitle: '所有 AI 工具都缺少一样东西：<em>你的上下文。</em>',
-      problemDesc: 'ChatGPT 不了解你的代码库。Notion AI 看不到你的 Linear 工单。Slack AI 不懂你的部署流程。你每天花大量时间手动复制粘贴上下文。',
+      problemDesc: 'ChatGPT 不了解你的代码库。飞书智能助手看不到你的 Linear 工单。通义千问不懂你的部署流程。你每天花大量时间手动复制粘贴上下文。',
       gap1Num: '痛点 01',
       gap1Title: '没有真实的业务上下文',
       gap1Desc: '通用 AI 了解互联网，但不了解你的公司。每次对话都从零开始，你花在解释上的时间比做事的时间还多。',
@@ -1247,7 +1259,7 @@
       feat2Desc: '不只是问答——让 Jowork 行动。定时执行任务、响应事件、追求目标。',
       feat2L1: '支持 cron 表达式的定时任务',
       feat2L2: '事件触发工作流',
-      feat2L3: '创建 PR、发送消息、执行查询',
+      feat2L3: '创建 MR/PR、发飞书消息、执行查询',
       feat2L4: '内置 25 轮工具调用循环',
       feat3Title: '深度上下文记忆',
       feat3Desc: '三层上下文架构确保 Jowork 始终知道该知道的事。',
@@ -1276,8 +1288,8 @@
       cmpTag: '03 / 对比',
       cmpTitle: '为什么不用<em>现有的 AI 工具？</em>',
       cmpH1: '能力',
-      cmpH2: 'ChatGPT / Notion AI',
-      cmpH3: 'Dust.tt / Glean',
+      cmpH2: 'ChatGPT / 飞书智能助手',
+      cmpH3: '通义千问 / 豆包',
       cmpR1: '了解你的代码库',
       cmpR2: '自主运行',
       cmpR3: '自托管',
@@ -1291,10 +1303,10 @@
       step1Desc: '下载桌面应用或运行 Docker 一键命令。Jowork 在本地 18800 端口启动 Gateway，无需注册外部账号。',
       step2Num: '第二步',
       step2Title: '连接你的工具',
-      step2Desc: '添加 GitHub、Linear、Slack 等的 API Token。Jowork 自动发现数据并在后台建立索引。',
+      step2Desc: '添加飞书、GitLab、Linear 等的 API Token。Jowork 自动发现数据并在后台建立索引。',
       step3Num: '第三步',
       step3Title: '开始工作',
-      step3Desc: '提问、委派任务、设置定时作业。Jowork 了解你的上下文，可以执行真实操作——创建 PR、发送消息、运行分析。',
+      step3Desc: '提问、委派任务、设置定时作业。Jowork 了解你的上下文，可以执行真实操作——创建 MR、发飞书消息、运行数据分析。',
       priceTag: '05 / 定价',
       priceTitle: '个人使用免费。<em>随团队规模扩展。</em>',
       priceDesc: '核心版本开源且永久免费。高级功能面向需要更强能力的团队提供。',
@@ -1334,13 +1346,25 @@
       footerDev: '开发者',
       footerCompany: '公司',
       footerCopy: '© 2025 FluxVita · Jowork 采用 AGPL-3.0 开源协议',
-      term_q: '是什么阻塞了结账功能？',
+      term_q: '支付下单为什么一直超时？',
       term_searching: '正在搜索代码库...',
       term_found: '发现 3 个阻塞问题：',
-      term_issue1: '• PR #247 等待 Sarah 审核',
-      term_issue2: '• Linear JOW-89：支付超时 bug',
-      term_issue3: '• Staging 部署被 CI 失败阻塞',
-      term_cta: '需要我起草一条 Slack 消息通知团队吗？',
+      term_issue1: '• MR !247 等待小李审核',
+      term_issue2: '• Linear JOW-89：微信支付回调超时',
+      term_issue3: '• 预发环境部署被 CI 流水线阻塞',
+      term_cta: '需要我发飞书消息通知研发同学吗？',
+      cmpV1a: '✗ 无上下文', cmpV1b: '~ 只读', cmpV1c: '✓ 深度 + 可写',
+      cmpV2a: '✗ 仅对话', cmpV2b: '✗ 仅搜索', cmpV2c: '✓ 事件驱动 + 定时',
+      cmpV3a: '✗ 仅 SaaS', cmpV3b: '✗ 仅 SaaS', cmpV3c: '✓ 你的服务器，你的数据',
+      cmpV4a: '✗ 只给建议', cmpV4b: '✗ 仅搜索', cmpV4c: '✓ 创建 MR、发飞书消息',
+      cmpV5c: '✓ 支持本地大模型',
+      cmpV6a: '¥140/月', cmpV6b: '¥¥¥', cmpV6c: '✓ 永久免费',
+      tabDocker: 'Docker', tabDesktop: '桌面应用', tabSource: '从源码',
+      price2Btn: '开始 Pro →', price3Btn: '开始 Team →', price4Btn: '联系销售 →',
+      ossStarBtn: '⭐ 在 GitHub 上 Star',
+      footerLinkFeatures: '功能', footerLinkPricing: '定价', footerLinkDownload: '下载', footerLinkRoadmap: '路线图',
+      footerLinkQuickStart: '快速开始', footerLinkDomain: '自定义域名', footerLinkContrib: '参与贡献',
+      footerLinkPrivacy: '隐私政策', footerLinkTerms: '服务条款',
     },
   };
 
