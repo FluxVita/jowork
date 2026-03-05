@@ -945,7 +945,7 @@ CREATE VIRTUAL TABLE context_docs_fts USING fts5(
 - [x] 实现 Channel 插件接口（见第十节）
 - [x] Model Provider 动态注册（去掉硬编码）
 - [x] 为开源版增加通用 Connector：GitHub Issues、Slack、Notion（至少 2 个）
-- [ ] 为开源版增加通用 Channel：Telegram、Discord（至少 1 个）
+- [x] 为开源版增加通用 Channel：Telegram、Discord（至少 1 个）
 
 ### Phase 9: 平台兼容 + 国际化 + Docker（2-3 天）
 
