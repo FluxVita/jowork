@@ -434,10 +434,12 @@
         const connSuccess = ref('');
         const connSaving  = ref(false);
 
-        // Agent editor
-        const agentData   = ref(null);
-        const agentSaving = ref(false);
-        const agentMsg    = ref('');
+        // Agent editor (multi-agent)
+        const agents         = ref([]);
+        const selectedAgentId = ref(null);
+        const agentSaving    = ref(false);
+        const selectedAgent  = computed(() => agents.value.find(a => a.id === selectedAgentId.value) ?? null);
+        const agentMap       = computed(() => Object.fromEntries(agents.value.map(a => [a.id, a.name])));
 
         // Memories
         const memories     = ref([]);
@@ -678,9 +680,19 @@
           finally { loadingMore.value = false; }
         }
 
-        async function newSession() {
+        const showNewSessionPicker = ref(false);
+
+        async function newSession(agentId) {
           try {
-            const s = await api('POST', '/api/sessions', { title: 'New chat' });
+            // If multiple agents and no agentId specified, show picker
+            if (!agentId && agents.value.length > 1) {
+              showNewSessionPicker.value = true;
+              return;
+            }
+            showNewSessionPicker.value = false;
+            const body = { title: 'New chat' };
+            if (agentId) body.agentId = agentId;
+            const s = await api('POST', '/api/sessions', body);
             sessions.value.unshift(s);
             await selectSession(s.id);
           } catch (e) { toast('Failed to create session: ' + e.message, 'error'); }
@@ -1055,30 +1067,62 @@
           loadTerminalInfo();
         }
 
-        async function loadAgent() {
+        async function loadAgents() {
           try {
             const list = await api('GET', '/api/agents').catch(() => []);
-            if (Array.isArray(list) && list.length > 0) {
-              const a = list[0];
-              agentData.value = { id: a.id, name: a.name, systemPrompt: a.systemPrompt, model: a.model };
+            if (Array.isArray(list)) {
+              agents.value = list.map(a => ({ id: a.id, name: a.name, systemPrompt: a.systemPrompt, model: a.model }));
+              if (!selectedAgentId.value && agents.value.length > 0) {
+                selectedAgentId.value = agents.value[0].id;
+              }
             }
           } catch { /* ignore */ }
         }
 
         async function saveAgent() {
-          if (!agentData.value) return;
+          const a = selectedAgent.value;
+          if (!a) return;
           agentSaving.value = true;
           try {
-            await api('PATCH', `/api/agents/${agentData.value.id}`, {
-              name: agentData.value.name,
-              systemPrompt: agentData.value.systemPrompt,
-              model: agentData.value.model,
+            await api('PATCH', `/api/agents/${a.id}`, {
+              name: a.name,
+              systemPrompt: a.systemPrompt,
+              model: a.model,
             });
             toast('Agent saved!', 'success');
           } catch (e) {
             toast('Save failed: ' + (e.message ?? 'error'), 'error');
           } finally {
             agentSaving.value = false;
+          }
+        }
+
+        async function createAgent() {
+          try {
+            const a = await api('POST', '/api/agents', {
+              name: 'New Agent',
+              systemPrompt: 'You are a helpful AI coworker.',
+              model: 'claude-3-5-sonnet-latest',
+            });
+            agents.value.unshift({ id: a.id, name: a.name, systemPrompt: a.systemPrompt, model: a.model });
+            selectedAgentId.value = a.id;
+            toast('Agent created!', 'success');
+          } catch (e) {
+            toast('Failed to create agent: ' + (e.message ?? 'error'), 'error');
+          }
+        }
+
+        async function deleteAgent(agentId) {
+          if (agents.value.length <= 1) { toast('Cannot delete the only agent', 'error'); return; }
+          try {
+            await api('DELETE', `/api/agents/${agentId}`);
+            agents.value = agents.value.filter(a => a.id !== agentId);
+            if (selectedAgentId.value === agentId) {
+              selectedAgentId.value = agents.value[0]?.id ?? null;
+            }
+            toast('Agent deleted', 'success');
+          } catch (e) {
+            toast('Delete failed: ' + (e.message ?? 'error'), 'error');
           }
         }
 
@@ -1299,7 +1343,7 @@
             if (m) { modelPickProvider.value = m.provider; modelPickModel.value = m.model; }
           } catch { /* ignore */ }
 
-          await Promise.all([loadConnectors(), loadAgent(), loadMemories(), loadTasks(), loadWorkstyle(), loadUsage()]);
+          await Promise.all([loadConnectors(), loadAgents(), loadMemories(), loadTasks(), loadWorkstyle(), loadUsage()]);
 
           try {
             const h = await api('GET', '/health/full').catch(() => fetch('/health').then(r => r.json()).catch(() => null));
@@ -1414,7 +1458,7 @@
               onboarding.value = state;
               onboardingStep.value = state.currentStep;
               showOnboarding.value = true;
-              await Promise.all([loadAgent(), loadConnectors(), loadWorkstyle()]);
+              await Promise.all([loadAgents(), loadConnectors(), loadWorkstyle()]);
             }
           } catch { /* ignore */ }
         }
@@ -1476,14 +1520,14 @@
 
         return {
           sessions, activeSessionId, messages, inputText, streaming, streamingText, healthy, activeSession,
-          selectSession, newSession, sendMessage, regenerateMessage, toggleFeedback, onKeydown,
+          selectSession, newSession, showNewSessionPicker, sendMessage, regenerateMessage, toggleFeedback, onKeydown,
           renamingSessionId, renameText, startRename, confirmRename, cancelRename, deleteSession, exportSession,
           togglePin, folders, folderFilter, setFolderFilter, openFolderInput, showFolderInput, folderInputText, confirmFolder, cancelFolder,
           sessionFilter, filteredSessions, hasMore, nextCursor, loadingMore, loadMoreMessages,
           showSettings, settingsTab, modelInfo, providers, modelPickProvider, modelPickModel, modelSaving,
           connectors, connectorTypes, stats, healthFull,
           newConn, connError, connSaving,
-          agentData, agentSaving,
+          agents, selectedAgentId, selectedAgent, agentMap, agentSaving,
           memories, memoryQuery, newMemoryContent, memoryAdding,
           tasks, newTask, taskSaving,
           workstyleContent, workstyleSaving,
@@ -1492,7 +1536,7 @@
           terminalInput, terminalOutput, terminalCwd, terminalBusy, terminalHistory, terminalHistoryIdx, terminalOutputEl,
           runTerminalCommand, terminalReset, terminalHistoryUp, terminalHistoryDown,
           openSettings, applyModel, addConnector, removeConnector, testConnector, connectorTesting, syncConnector, connectorSyncing, extraFields, connIcon, renderMd,
-          saveAgent, loadMemories, deleteMemoryItem, addMemory,
+          saveAgent, createAgent, deleteAgent, loadMemories, deleteMemoryItem, addMemory,
           submitTask, toggleTaskEnabled, deleteTaskItem,
           saveWorkstyle, saveBudget, exportData, triggerBackup, checkUpdates, handleImport,
           onboarding, showOnboarding, onboardingStep, onboardingWorking,
