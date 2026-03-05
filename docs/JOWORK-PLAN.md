@@ -924,7 +924,7 @@ CREATE VIRTUAL TABLE context_docs_fts USING fts5(
 - [x] 实现上下文组装逻辑（6.2 节）
 - [x] Onboarding 流程增加「工作方式文档」引导
 - [x] 管理后台增加「上下文管理」页面
-- [ ] Agent 自学习逻辑（6.3 节）
+- [x] Agent 自学习逻辑（6.3 节）
 
 ### Phase 7: 开源清理 + 安全审计（1-2 天）
 
