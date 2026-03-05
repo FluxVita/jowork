@@ -24,3 +24,5 @@ export { searchRouter } from './routes/search.js';
 export type { SearchResponse, SearchResult, SearchResultMessage, SearchResultMemory, SearchResultContext, SearchResultConnectorItem } from './routes/search.js';
 export { terminalRouter } from './routes/terminal.js';
 export { feedbackRouter } from './routes/feedback.js';
+export { metricsRouter } from './routes/metrics.js';
+export { metricsMiddleware } from './middleware/metrics.js';

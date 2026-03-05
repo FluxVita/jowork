@@ -228,6 +228,7 @@
 | Phase 76：Connector 自动同步配置 UI | ✅ 完成 | 2026-03-05 | updateConnectorConfig函数(name/settings/syncSchedule更新)；PATCH /api/connectors/:id端点；前端Sync Schedule行(Auto-sync状态+lastSyncAt+Edit/Presets/cron输入/Save)；matchesCron测试+CRUD测试+路由测试；apps/jowork+apps/fluxvita均更新；12新测试；pnpm lint+test全绿（405/405） |
 | Phase 77：Session 文件夹管理增强 | ✅ 完成 | 2026-03-05 | PATCH /api/sessions/folders/:name(重命名，级联更新)；DELETE /api/sessions/folders/:name(删除，级联设NULL)；前端folder chips双击重命名+右键删除；用户隔离；apps/jowork+apps/fluxvita均更新；4新测试；pnpm lint+test全绿（409/409） |
 | Phase 78：自动展开输入框 | ✅ 完成 | 2026-03-05 | textarea autoResizeInput(@input自动调整高度，max-height:120px后滚动)；resetInputHeight(发送后重置)；overflow-y:auto；apps/jowork+apps/fluxvita均更新；pnpm lint全绿（纯前端） |
+| Phase 79：Prometheus Metrics + 系统指标采集 | ✅ 完成 | 2026-03-05 | MetricsCollector(recordRequest+collectSnapshot+renderPrometheus)；metricsMiddleware(请求计数/延迟/直方图)；GET /metrics Prometheus text exposition format；createApp自动挂载；10新测试；pnpm lint+test全绿（419/419） |
 | FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*
@@ -3476,6 +3477,19 @@ GET /health → {
 - [x] `apps/jowork/public/index.html`：textarea 添加 `@input="autoResizeInput"`，sendMessage 调用 `resetInputHeight()`
 - [x] `apps/fluxvita/public/index.html`：同步上述改动
 - [x] pnpm lint 全绿（纯前端改动，无新后端代码）
+
+### Phase 79: Prometheus Metrics + 系统指标采集（0.25 天）
+
+- [x] `packages/core/src/metrics/collector.ts`：`recordRequest()` 按 method:route:status 分组计数 + 延迟直方图（11 个 bucket）
+- [x] `collectSnapshot()`：汇总实时指标（uptime/heapUsed/rss/external/dbSize/totalRequests）
+- [x] `renderPrometheus()`：输出 Prometheus text exposition format（HELP/TYPE/gauge/counter/histogram 完整合规）
+- [x] `resetMetrics()`：测试用重置函数
+- [x] `packages/core/src/gateway/middleware/metrics.ts`：`metricsMiddleware` 自动追踪每个请求的 method/route/status/duration
+- [x] `packages/core/src/gateway/routes/metrics.ts`：`GET /metrics` 端点（Content-Type: text/plain; version=0.0.4）
+- [x] `server.ts`：`createApp()` 自动挂载 `metricsMiddleware` + `metricsRouter()`（两 app 无需手动注册）
+- [x] `jowork_info` 标签包含 version/mode/node_version
+- [x] 10 个新测试（collector 6 + renderPrometheus 2 + middleware 1 + route 1）
+- [x] pnpm lint+test 全绿（419/419）
 
 **AI 辅助开发预计总工期：6-10 个工作日**（全程 AI 写代码，人工只做决策/审查/测试）
 

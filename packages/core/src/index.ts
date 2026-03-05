@@ -35,3 +35,5 @@ export * from './onboarding/index.js';
 export * from './context/index.js';
 export * from './network/index.js';
 export * from './terminal/index.js';
+export { recordRequest, collectSnapshot, renderPrometheus, resetMetrics } from './metrics/collector.js';
+export type { MetricsSnapshot } from './metrics/collector.js';

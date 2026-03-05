@@ -2,6 +2,8 @@
 
 import express from 'express';
 import { healthRouter } from './routes/health.js';
+import { metricsRouter } from './routes/metrics.js';
+import { metricsMiddleware } from './middleware/metrics.js';
 import { errorHandler } from './middleware/error.js';
 import { logger } from '../utils/index.js';
 import type { Server } from 'node:http';
@@ -16,9 +18,11 @@ export function createApp(opts: GatewayOptions): ReturnType<typeof express> {
   const app = express();
 
   app.use(express.json({ limit: '10mb' }));
+  app.use(metricsMiddleware);
 
   // Built-in routes
   app.use(healthRouter());
+  app.use(metricsRouter());
 
   // App-specific routes
   opts.setup?.(app);
