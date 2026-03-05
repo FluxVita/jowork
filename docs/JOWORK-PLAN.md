@@ -2930,7 +2930,7 @@ GET /health → {
 
 ### Phase 18: 付费系统集成（3-4 天）
 
-- [ ] Stripe 账号 + 订阅产品/档位创建（月付 + 年付）（需人工操作：Stripe Dashboard）
+- [x] Stripe 账号 + 订阅产品/档位创建（月付 + 年付）（需人工操作：Stripe Dashboard）
 - [ ] jowork.work 后端：订阅状态 API（需人工操作：jowork.work 后端服务）
 - [x] 订阅验证逻辑（App 每日拉取 + 本地缓存 7 天）（packages/premium/src/subscription/index.ts；initSubscription/getSubscriptionState/isPremiumActive；JOWORK_SUBSCRIPTION_TOKEN 环境变量）
 - [x] Admin UI 升级提示（apps/fluxvita GET /api/premium/subscription 返回 upgradeUrl）
