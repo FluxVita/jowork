@@ -2955,12 +2955,12 @@ GET /health → {
 
 ### Phase 21: 首次公开发布（1 天）
 
-- [ ] 创建 GitHub 组织 `fluxvita`
-- [ ] 首次同步到 `fluxvita/jowork`
-- [ ] 编写 CONTRIBUTING.md、CODE_OF_CONDUCT.md
-- [ ] 创建 GitHub Discussions
-- [ ] 发布 v0.1.0 Release
-- [ ] 执行 GTM 发布计划
+- [x] 创建 GitHub 组织 `fluxvita`
+- [x] 首次同步到 `fluxvita/jowork`
+- [x] 编写 CONTRIBUTING.md、CODE_OF_CONDUCT.md
+- [x] 创建 GitHub Discussions
+- [x] 发布 v0.1.0 Release
+- [x] 执行 GTM 发布计划
 
 ### Phase 22: Slack 连接器 + JCP 自动注册（0.5 天）
 
