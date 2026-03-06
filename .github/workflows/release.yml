@@ -1,68 +1,65 @@
-name: Release (macOS)
+name: Release — Jowork macOS DMG
 
-# 由 GitLab CI sync-github-tag job 推送 tag 时触发
-# 前置条件：代码已通过 sync-github job 同步到 GitHub main
+# 触发方式：
+#   1. GitLab CI 的 sync-github-tag job 推 tag 到 GitHub → 自动触发
+#   2. 手动在 GitHub 打 tag（v*.*.* 格式）
 on:
   push:
     tags:
       - 'v*.*.*'
-
-permissions:
-  contents: write   # 创建 Release 需要写权限
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Version tag (e.g. v0.1.0)'
+        required: true
 
 jobs:
-  build-macos:
-    runs-on: macos-latest
+  build-jowork-dmg:
+    runs-on: macos-latest   # macos-14, Apple Silicon (arm64)
+    permissions:
+      contents: write       # 创建 GitHub Release 需要写权限
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: latest
-
-      - name: Setup Node.js
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: pnpm
 
-      - name: Install Rust stable
+      - name: Install pnpm
+        run: npm install -g pnpm
+
+      - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Rust build cache
+      - name: Cache Rust build
         uses: swatinem/rust-cache@v2
         with:
-          workspaces: './src-tauri -> target'
+          workspaces: apps/jowork/src-tauri -> target
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install
 
-      - name: Inject version into tauri.conf.json
-        run: |
-          BUILD_VERSION="${GITHUB_REF_NAME#v}"
-          node -e "
-            const fs = require('fs');
-            const v = process.env.BUILD_VERSION;
-            const cfg = JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json', 'utf8'));
-            cfg.version = v;
-            fs.writeFileSync('src-tauri/tauri.conf.json', JSON.stringify(cfg, null, 2));
-            console.log('tauri.conf.json version ->', v);
-          "
+      - name: Build Jowork DMG
+        run: pnpm --filter @jowork/app tauri:build -- --bundles app,dmg
         env:
-          BUILD_VERSION: ${{ github.ref_name }}
-
-      - name: Build Tauri app
-        env:
+          # 可选：配置 Tauri 自动更新签名（在 GitHub Secrets 里设置）
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-        run: npx tauri build --bundles app,dmg,updater
+
+      - name: Upload DMG artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Jowork-macOS-${{ github.ref_name }}
+          path: apps/jowork/src-tauri/target/release/bundle/dmg/*.dmg
+          retention-days: 90
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ github.ref_name || inputs.tag }}
+          files: apps/jowork/src-tauri/target/release/bundle/dmg/*.dmg
           generate_release_notes: true
-          files: |
-            src-tauri/target/release/bundle/dmg/*.dmg
-            src-tauri/target/release/bundle/macos/*.app.tar.gz
-            src-tauri/target/release/bundle/macos/*.app.tar.gz.sig
+          fail_on_unmatched_files: false
