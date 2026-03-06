@@ -61,14 +61,15 @@ html, body { width: 100%; height: 100%; background: #0d0d0d; overflow: hidden; }
 <div id="topbar">
   <span class="topbar-title">local shell</span>
   <div class="topbar-sep"></div>
-  <button class="btn-sm" onclick="clearTerminal()">清屏</button>
-  <button class="btn-sm" onclick="newSession()">重启</button>
-  <button class="btn-sm" onclick="goBack()">← 返回</button>
+  <button class="btn-sm" onclick="clearTerminal()" data-i18n="chat.clear">清屏</button>
+  <button class="btn-sm" onclick="newSession()" data-i18n="geek.restart">重启</button>
+  <button class="btn-sm" onclick="goBack()" data-i18n="geek.back">← 返回</button>
 </div>
 
 <!-- 终端 -->
 <div id="terminal-container"></div>
 
+<script src="/i18n.js"></script>
 <script src="/lib/xterm.js"></script>
 <script src="/lib/xterm-addon-fit.js"></script>
 <script src="/lib/xterm-addon-web-links.js"></script>
@@ -135,15 +136,19 @@ function localEchoFilter(serverData) {
 let authToken = (() => {
   const hash = location.hash.slice(1);
   const params = new URLSearchParams(hash);
-  return params.get('token') || localStorage.getItem('jowork_token') || '';
+  return params.get('token') || localStorage.getItem('fluxvita_token') || '';
 })();
 window.addEventListener('message', (e) => {
   if (e.data?.type === 'SHELL_TOKEN' && e.data.token) authToken = e.data.token;
 });
 
 // ─── Tauri API ───
+// geek.html 在 shell.html iframe 里运行时，__TAURI__ 可能只注入了主框架，
+// 因此额外往上查找 parent/top 帧。
 function getTauri() {
-  return window.__TAURI__;
+  try {
+    return window.__TAURI__ || window.parent?.__TAURI__ || window.top?.__TAURI__;
+  } catch { return null; }
 }
 
 // ─── PTY 模式（Tauri 原生）───
@@ -239,19 +244,23 @@ function connectWs() {
   }
 }
 
-// ─── 入口：优先 Tauri PTY → 本地 PTY-WS → 远端 WS ───
+// ─── 入口：本地 PTY-WS → Tauri PTY → 远端 WS（降级）───
+// 优先走零延迟本地通道，避免通过 frp 隧道连到远端 Mac mini。
 async function connect() {
+  // 1. 优先本地 PTY-WS（Tauri 内嵌 19802，macOS/Windows 本机 shell）
+  const ok = await connectLocalPtyWs();
+  if (ok) return;
+
+  // 2. PTY-WS 未就绪时，回退 Tauri 原生 PTY 事件模式（同为本机 shell）
   if (getTauri()) {
-    // tauri:// 页面：使用 Tauri 原生 PTY 命令
     await connectPty();
     return;
   }
-  // HTTP 代理加载的页面：先试本地 PTY-WS 服务器（Tauri 内嵌，零延迟）
-  const ok = await connectLocalPtyWs();
-  if (!ok) {
-    // 非 Tauri 环境（纯浏览器调试）：走远端 WS
-    connectWs();
-  }
+
+  // 3. 非 Tauri 环境（纯浏览器访问）：通过代理连服务器终端
+  term.writeln('\x1b[33m[提示] 本地终端需在 Tauri 桌面应用中使用。\x1b[0m');
+  term.writeln('\x1b[90m[连接服务器终端...]\x1b[0m');
+  connectWs();
 }
 
 // ─── 键盘输入路由 ───

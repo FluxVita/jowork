@@ -1,0 +1,1483 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FluxVita — 开始使用</title>
+<link rel="stylesheet" href="/styles/tokens.css">
+<script src="/theme.js"></script>
+<script src="/i18n.js"></script>
+<style>
+:root {
+  --lime: #9DD84A;
+  --lime-subtle: rgba(157,216,74,0.08);
+  --lime-border: rgba(157,216,74,0.18);
+  --cyan: #5CC8D8;
+  --purple: #C4B8E8;
+  --coral: #E8A898;
+  --amber: #D4A847;
+  --yellow: #E8D24A;
+  --text-muted: rgba(255,255,255,0.45);
+  --text-dim: rgba(255,255,255,0.28);
+  --F: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --F-mono: 'SF Mono', 'JetBrains Mono', monospace;
+  --radius: 10px;
+  --border: rgba(255,255,255,0.08);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--F);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.wrap {
+  width: 100%;
+  max-width: 480px;
+  padding: 0 20px 60px;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Tauri 拖动区 ── */
+.drag-handle {
+  height: 28px;
+  flex-shrink: 0;
+  -webkit-app-region: drag;
+}
+/* macOS 红绿灯让位 */
+html[data-platform="tauri"] .drag-handle {
+  padding-left: 76px;
+}
+
+/* ── Progress ── */
+.progress-bar {
+  display: flex;
+  gap: 4px;
+  padding: 0 0 36px;
+  transition: opacity 0.3s;
+  -webkit-app-region: drag;
+}
+.progress-bar.hidden { opacity: 0; pointer-events: none; }
+.prog-seg { -webkit-app-region: no-drag; }
+.prog-seg {
+  flex: 1; height: 2px; border-radius: 1px;
+  background: rgba(255,255,255,0.1);
+  transition: background 0.4s ease;
+}
+.prog-seg.done    { background: var(--lime); }
+.prog-seg.active  { background: rgba(157,216,74,0.4); }
+
+/* ── Steps ── */
+.step {
+  display: none; flex-direction: column; flex: 1;
+  animation: fadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.step.visible { display: flex; }
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Tag ── */
+.tag {
+  display: inline-flex; align-items: center;
+  padding: 3px 10px;
+  background: var(--lime-subtle);
+  border: 1px solid var(--lime-border);
+  border-radius: 4px;
+  font-family: var(--F-mono);
+  font-size: 11px; font-weight: 700;
+  color: var(--lime);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 16px;
+  width: fit-content;
+}
+
+/* ── H1 ── */
+.h1 {
+  font-size: clamp(22px, 4.5vw, 28px);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.03em;
+  margin-bottom: 10px;
+}
+.h1 em { font-style: normal; color: var(--lime); }
+
+.sub {
+  font-size: 14px; color: var(--text-muted); line-height: 1.6;
+  margin-bottom: 28px;
+}
+
+/* ── Gradient line ── */
+.grad-line {
+  height: 2px; border-radius: 1px; margin-bottom: 28px;
+  background: linear-gradient(90deg, #9DD84A, #5CC8D8, #C4B8E8, #E8A898);
+  opacity: 0.35;
+}
+
+/* ── Chat bubbles (step 1) ── */
+.bubbles { display: flex; flex-direction: column; gap: 8px; margin-bottom: 28px; }
+.bubble  { display: flex; align-items: flex-end; gap: 8px; }
+.bubble.bot { flex-direction: row-reverse; }
+
+.bubble-avatar {
+  width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; font-family: var(--F-mono);
+  background: rgba(255,255,255,0.06); color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+.bubble.bot .bubble-avatar {
+  background: var(--lime-subtle); color: var(--lime); border-color: var(--lime-border);
+}
+
+.bubble-msg {
+  max-width: 78%;
+  padding: 10px 14px;
+  border-radius: 14px 14px 14px 4px;
+  font-size: 13px; line-height: 1.5; color: var(--text);
+  background: rgba(255,255,255,0.06); border: 1px solid var(--border);
+}
+.bubble.bot .bubble-msg {
+  border-radius: 14px 14px 4px 14px;
+  background: var(--lime-subtle); border-color: var(--lime-border);
+  color: rgba(230,255,190,0.9);
+}
+
+/* ── Source pills (step 1) ── */
+.source-pills {
+  display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 28px; justify-content: center;
+}
+.source-pill {
+  display: flex; align-items: center; gap: 5px;
+  padding: 5px 12px; border-radius: 20px;
+  background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+  font-size: 12px; color: var(--text-muted);
+  font-family: var(--F-mono);
+}
+.source-pill-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--lime); }
+
+/* ── Role / source selectable cards ── */
+.sel-cards { display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px; }
+.sel-card {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 16px; border-radius: var(--radius);
+  background: rgba(255,255,255,0.025); border: 1.5px solid var(--border);
+  cursor: pointer; user-select: none;
+  transition: border-color 0.2s, background 0.2s, transform 0.2s;
+}
+.sel-card:hover { border-color: rgba(255,255,255,0.14); transform: translateX(2px); }
+.sel-card.selected { border-color: var(--lime); background: var(--lime-subtle); }
+.sel-card-icon { font-size: 20px; width: 32px; text-align: center; flex-shrink: 0; }
+.sel-card-body { flex: 1; }
+.sel-card-title { font-size: 14px; font-weight: 700; margin-bottom: 2px; }
+.sel-card-desc  { font-size: 12px; color: var(--text-muted); }
+.sel-check {
+  width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0;
+  border: 1.5px solid rgba(255,255,255,0.2);
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.2s;
+}
+.sel-card.selected .sel-check {
+  background: var(--lime); border-color: var(--lime);
+}
+.sel-check-dot {
+  width: 6px; height: 6px; border-radius: 50%; background: #0a0a0b; opacity: 0;
+  transition: opacity 0.2s;
+}
+.sel-card.selected .sel-check-dot { opacity: 1; }
+
+/* ── Source grid (2 col) ── */
+.src-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 24px; }
+.src-card {
+  position: relative; padding: 14px; border-radius: var(--radius);
+  background: rgba(255,255,255,0.025); border: 1.5px solid var(--border);
+  cursor: pointer; user-select: none;
+  transition: border-color 0.2s, background 0.2s;
+}
+.src-card:hover { border-color: rgba(255,255,255,0.14); }
+.src-card.selected { border-color: var(--lime); background: var(--lime-subtle); }
+.src-card-icon { font-size: 22px; margin-bottom: 8px; }
+.src-card-name { font-size: 13px; font-weight: 700; margin-bottom: 2px; }
+.src-card-hint { font-size: 11px; color: var(--text-muted); }
+.src-badge {
+  position: absolute; top: 8px; right: 8px;
+  font-family: var(--F-mono); font-size: 9px; font-weight: 700;
+  padding: 2px 6px; border-radius: 3px; text-transform: uppercase; letter-spacing: 0.5px;
+}
+.src-badge.recommended { background: var(--lime-subtle); color: var(--lime); border: 1px solid var(--lime-border); }
+.src-badge.optional    { background: rgba(255,255,255,0.04); color: var(--text-dim); border: 1px solid var(--border); }
+
+/* ── Connected items (step 4) ── */
+.connected-items { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
+.connected-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 13px 16px; border-radius: var(--radius);
+  background: rgba(255,255,255,0.025); border: 1px solid var(--border);
+}
+.connected-item-icon { font-size: 18px; }
+.connected-item-body { flex: 1; }
+.connected-item-name { font-size: 13px; font-weight: 700; margin-bottom: 1px; }
+.connected-item-desc { font-size: 11px; color: var(--text-muted); }
+.connected-check {
+  font-family: var(--F-mono); font-size: 11px; font-weight: 700;
+  color: #66bb6a; background: rgba(102,187,106,0.1);
+  padding: 2px 8px; border-radius: 3px;
+}
+
+/* ── Scenario cards (step 6) ── */
+.scenario-cards { display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px; }
+.scenario-card {
+  padding: 14px 16px; border-radius: var(--radius);
+  background: rgba(255,255,255,0.025); border: 1px solid var(--border);
+  transition: border-color 0.2s;
+}
+.scenario-card:hover { border-color: var(--lime-border); }
+.scenario-head {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
+}
+.scenario-icon { font-size: 16px; }
+.scenario-title { font-size: 13px; font-weight: 700; flex: 1; }
+.scenario-role {
+  font-family: var(--F-mono); font-size: 9px; font-weight: 700;
+  padding: 2px 6px; border-radius: 3px;
+  background: rgba(92,200,216,0.1); color: var(--cyan);
+  text-transform: uppercase;
+}
+.scenario-q {
+  font-size: 12px; color: var(--text-muted); line-height: 1.5;
+  padding: 8px 10px; background: rgba(255,255,255,0.03);
+  border-radius: 6px; font-style: italic;
+  border-left: 2px solid var(--lime-border);
+}
+
+/* ── Finish stats ── */
+.stat-row {
+  display: flex; gap: 0; border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden; margin-bottom: 20px;
+}
+.stat-cell {
+  flex: 1; text-align: center; padding: 16px 8px;
+  border-right: 1px solid var(--border);
+}
+.stat-cell:last-child { border-right: none; }
+.stat-num {
+  font-size: 28px; font-weight: 900; font-family: var(--F-mono);
+  letter-spacing: -0.02em; color: var(--lime); line-height: 1; margin-bottom: 4px;
+}
+.stat-label { font-size: 11px; color: var(--text-muted); }
+
+/* ── Summary list ── */
+.summary-list {
+  border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 24px;
+}
+.summary-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 16px; border-bottom: 1px solid var(--border); font-size: 13px;
+}
+.summary-row:last-child { border-bottom: none; }
+.summary-status { font-family: var(--F-mono); font-size: 11px; font-weight: 700; }
+.summary-status.ok  { color: #66bb6a; }
+.summary-status.off { color: var(--text-dim); }
+.summary-status.loading { display: inline-flex; align-items: center; }
+.summary-status.loading::after {
+  content: '';
+  width: 12px; height: 12px;
+  border: 2px solid var(--text-dim);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── OAuth ── */
+.oauth-code-box { margin-bottom: 16px; }
+.info-box {
+  padding: 10px 14px; border-radius: 8px; font-size: 12px;
+  background: var(--lime-subtle); border: 1px solid var(--lime-border);
+  color: rgba(200,255,140,0.8); line-height: 1.5; margin-bottom: 12px;
+}
+
+/* ── Form ── */
+.form-group { margin-bottom: 14px; }
+.form-group label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 5px; font-weight: 600; }
+input[type=text] {
+  width: 100%; padding: 10px 13px;
+  background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+  border-radius: 8px; color: var(--text); font-size: 13.5px; outline: none;
+  font-family: var(--F);
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.15);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+input[type=text]:focus { border-color: var(--lime); box-shadow: inset 0 1px 2px rgba(0,0,0,0.1), 0 0 0 2.5px rgba(157,216,74,0.15); }
+input[type=text]::placeholder { color: rgba(255,255,255,0.22); }
+
+details summary { cursor: pointer; font-size: 12px; color: var(--text-dim); list-style: none; }
+details summary:hover { color: var(--text-muted); }
+
+/* ── Buttons ── */
+.actions {
+  position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+  width: 100%; max-width: 480px; padding: 16px 20px 28px;
+  display: flex; flex-direction: column; gap: 8px;
+  background: linear-gradient(to top, var(--bg) 70%, transparent);
+  z-index: 10;
+}
+/* 横排模式：← 返回 + 下一步并排 */
+.actions.row {
+  flex-direction: row; align-items: center; gap: 8px;
+}
+.actions.row .btn-ghost {
+  flex-shrink: 0; width: auto; padding: 10px 16px;
+}
+.actions.row .btn-primary {
+  flex: 1;
+}
+/* 防止内容被固定按钮遮住 */
+.step { padding-bottom: 120px; }
+.btn-primary {
+  width: 100%; padding: 12px; border-radius: 9px; border: none;
+  background: var(--lime); color: #000; font-family: var(--F);
+  font-size: 14px; font-weight: 600; cursor: pointer; letter-spacing: -0.1px;
+  transition: opacity 0.15s;
+}
+.btn-primary:hover { opacity: 0.88; }
+.btn-primary:active { opacity: 0.72; }
+.btn-primary:disabled { opacity: 0.3; cursor: not-allowed; }
+.btn-secondary {
+  width: 100%; padding: 11px; border-radius: 9px;
+  background: transparent; color: var(--text-muted);
+  border: 1px solid var(--border); font-family: var(--F);
+  font-size: 13px; font-weight: 500; cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.btn-secondary:hover { border-color: rgba(255,255,255,0.2); color: var(--text); }
+.btn-ghost {
+  width: 100%; padding: 10px; border-radius: 9px; border: none;
+  background: transparent; color: var(--text-dim);
+  font-family: var(--F); font-size: 13px; cursor: pointer;
+  transition: color 0.15s;
+}
+.btn-ghost:hover { color: var(--text-muted); }
+
+/* ── Messages ── */
+.msg { font-size: 12px; padding: 10px 14px; border-radius: 8px; margin-bottom: 10px; }
+.msg-success { background: rgba(102,187,106,0.1); color: #66bb6a; }
+.msg-error   { background: rgba(255,77,106,0.1);  color: #ff4d6a; }
+
+/* ── Welcome logo ── */
+.welcome-top { padding: 32px 0 20px; }
+.brand {
+  font-size: 13px; font-weight: 900; font-family: var(--F-mono);
+  letter-spacing: 3px; text-transform: uppercase;
+  background: linear-gradient(90deg, #9DD84A, #5CC8D8, #C4B8E8);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  margin-bottom: 20px;
+}
+
+/* ── Feishu status badge ── */
+.feishu-ok {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 14px; border-radius: 20px;
+  background: rgba(102,187,106,0.1); border: 1px solid rgba(102,187,106,0.2);
+  font-size: 12px; color: #66bb6a; font-weight: 600; margin-bottom: 20px;
+}
+
+/* ── Step 2: 数据隔离双栏 ── */
+.isolation-cols {
+  display: flex; gap: 0; border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden; margin-bottom: 24px;
+  position: relative;
+}
+.isolation-col {
+  flex: 1; padding: 16px;
+}
+.isolation-col + .isolation-col {
+  border-left: 1px solid var(--border);
+}
+.isolation-divider {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  z-index: 2;
+  display: flex; align-items: center; justify-content: center;
+  width: 44px; height: 20px;
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 4px;
+  font-family: var(--F-mono); font-size: 9px; font-weight: 700;
+  color: var(--text-muted); letter-spacing: 0.5px; text-transform: uppercase;
+  white-space: nowrap;
+}
+.isolation-col-icon { font-size: 20px; margin-bottom: 8px; }
+.isolation-col-title {
+  font-size: 12px; font-weight: 700; margin-bottom: 10px;
+  color: var(--text);
+}
+.isolation-list {
+  list-style: none; display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px;
+}
+.isolation-list li {
+  font-size: 11.5px; color: var(--text-muted);
+  padding: 5px 8px; border-radius: 6px;
+  background: rgba(255,255,255,0.025); border: 1px solid var(--border);
+}
+.isolation-col-note {
+  font-size: 10.5px; color: var(--text-dim); line-height: 1.5;
+  padding-top: 8px; border-top: 1px solid var(--border);
+}
+.isolation-col.private .isolation-col-icon { color: var(--coral); }
+.isolation-col.private .isolation-col-title { color: var(--coral); }
+.isolation-col.public  .isolation-col-icon { color: var(--cyan); }
+.isolation-col.public  .isolation-col-title { color: var(--cyan); }
+
+/* ── Step 3: AI 流程图 ── */
+.flow-chart {
+  display: flex; flex-direction: column;
+  gap: 0; margin-bottom: 24px;
+  position: relative;
+}
+.flow-node {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 12px 14px; border-radius: var(--radius);
+  background: rgba(255,255,255,0.025); border: 1.5px solid var(--border);
+  position: relative; z-index: 1;
+}
+.flow-node.node-human {
+  border-color: var(--lime); background: rgba(157,216,74,0.06);
+}
+.flow-node.node-human-end {
+  border-color: var(--coral); background: rgba(232,168,152,0.06);
+}
+.flow-connector {
+  display: flex; align-items: center; justify-content: center;
+  height: 22px; position: relative;
+}
+.flow-connector::before {
+  content: '';
+  position: absolute; left: 50%; top: 0; bottom: 0;
+  width: 0;
+  border-left: 1.5px dashed rgba(255,255,255,0.14);
+}
+.flow-connector::after {
+  content: '↓';
+  position: relative; z-index: 1;
+  font-size: 11px; color: var(--text-dim);
+  background: var(--bg);
+  padding: 0 4px;
+}
+.flow-node-icon {
+  font-size: 16px; flex-shrink: 0;
+  width: 28px; text-align: center; margin-top: 1px;
+}
+.flow-node-body { flex: 1; }
+.flow-node-title {
+  font-size: 12px; font-weight: 700; margin-bottom: 3px; color: var(--text);
+}
+.flow-node.node-human .flow-node-title { color: var(--lime); }
+.flow-node.node-human-end .flow-node-title { color: var(--coral); }
+.flow-node-desc {
+  font-size: 11.5px; color: var(--text-muted); line-height: 1.5;
+}
+
+/* ── Intro steps: two-button actions row ── */
+.actions-row {
+  margin-top: auto; padding-top: 20px;
+  display: flex; gap: 8px;
+}
+.actions-row .btn-ghost {
+  width: auto; flex-shrink: 0; padding: 10px 16px;
+}
+.actions-row .btn-primary {
+  flex: 1;
+}
+
+/* ── Step 7: 公共数据状态条 ── */
+.public-data-bar {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 10px 14px; border-radius: 8px; margin-bottom: 20px;
+  background: rgba(102,187,106,0.06); border: 1px solid rgba(102,187,106,0.15);
+}
+.public-data-label {
+  font-size: 11.5px; font-weight: 600; color: #66bb6a; white-space: nowrap;
+}
+.public-data-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.public-data-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 8px; border-radius: 4px;
+  font-size: 11px; color: rgba(102,187,106,0.85);
+  background: rgba(102,187,106,0.08); border: 1px solid rgba(102,187,106,0.14);
+}
+.public-data-chip::before { content: '✓'; font-size: 10px; }
+
+/* ── Step 7: 个人数据源配置卡片 ── */
+.personal-src-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 8px; }
+.personal-src-card {
+  border-radius: var(--radius); border: 1.5px solid var(--border);
+  background: rgba(255,255,255,0.025);
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+.personal-src-card.filled { border-color: var(--lime-border); }
+.personal-src-card-head {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 14px; cursor: pointer; user-select: none;
+}
+.personal-src-card-icon { font-size: 18px; flex-shrink: 0; width: 26px; text-align: center; }
+.personal-src-card-info { flex: 1; min-width: 0; }
+.personal-src-card-name { font-size: 13px; font-weight: 700; margin-bottom: 1px; }
+.personal-src-card-desc { font-size: 11px; color: var(--text-muted); }
+.personal-src-card-status {
+  font-size: 11px; font-weight: 600; white-space: nowrap;
+  padding: 2px 8px; border-radius: 4px; font-family: var(--F-mono);
+}
+.personal-src-card-status.empty { color: var(--text-dim); }
+.personal-src-card-status.ok { color: #66bb6a; background: rgba(102,187,106,0.1); }
+.personal-src-card-body {
+  padding: 0 14px 14px;
+  display: none;
+}
+.personal-src-card.open .personal-src-card-body { display: block; }
+.personal-src-card-step {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 8px 10px; border-radius: 7px; margin-bottom: 10px;
+  background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+  font-size: 12px; color: var(--text-muted); line-height: 1.5;
+}
+.personal-src-card-step-num {
+  font-family: var(--F-mono); font-size: 10px; font-weight: 700;
+  color: var(--lime); background: var(--lime-subtle);
+  border: 1px solid var(--lime-border);
+  padding: 1px 5px; border-radius: 3px; flex-shrink: 0; margin-top: 1px;
+}
+.personal-src-save {
+  width: 100%; padding: 9px; border-radius: 7px; border: none;
+  background: var(--lime); color: #000; font-family: var(--F);
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  transition: opacity 0.15s; margin-top: 4px;
+}
+.personal-src-save:hover { opacity: 0.88; }
+.personal-src-skip {
+  width: 100%; padding: 8px; border-radius: 7px;
+  background: transparent; border: none; font-family: var(--F);
+  font-size: 12px; color: var(--text-dim); cursor: pointer; margin-top: 4px;
+  transition: color 0.15s;
+}
+.personal-src-skip:hover { color: var(--text-muted); }
+
+/* dev-only 角色标签 */
+.personal-src-role-tag {
+  display: inline-flex; font-family: var(--F-mono); font-size: 9px; font-weight: 700;
+  padding: 1px 5px; border-radius: 3px; text-transform: uppercase; letter-spacing: 0.4px;
+  background: rgba(92,200,216,0.1); color: var(--cyan); border: 1px solid rgba(92,200,216,0.2);
+  margin-left: 6px; vertical-align: middle;
+}
+
+/* ══════════════════════════════════════════
+   Light mode 适配
+   ══════════════════════════════════════════ */
+[data-theme="light"] {
+  --lime: #5a8a1a;
+  --lime-subtle: rgba(90,138,26,0.06);
+  --lime-border: rgba(90,138,26,0.20);
+  --cyan: #0097a7;
+  --purple: #6a5a99;
+  --coral: #b56b5a;
+  --amber: #bf8f00;
+  --yellow: #c49000;
+  --text-muted: rgba(0,0,0,0.45);
+  --text-dim: rgba(0,0,0,0.28);
+  --border: rgba(0,0,0,0.08);
+}
+
+/* 进度条轨道 */
+[data-theme="light"] .prog-seg { background: rgba(0,0,0,0.1); }
+
+/* 气泡 */
+[data-theme="light"] .bubble-avatar { background: rgba(0,0,0,0.05); }
+[data-theme="light"] .bubble-msg { background: rgba(0,0,0,0.04); }
+[data-theme="light"] .bubble.bot .bubble-msg { color: rgba(20,60,0,0.85); }
+
+/* Source pills */
+[data-theme="light"] .source-pill { background: rgba(0,0,0,0.04); }
+
+/* 选择卡片 */
+[data-theme="light"] .sel-card { background: rgba(0,0,0,0.025); }
+[data-theme="light"] .sel-card:hover { border-color: rgba(0,0,0,0.12); transform: translateX(2px); }
+[data-theme="light"] .sel-check { border-color: rgba(0,0,0,0.2); }
+
+/* 数据源网格卡片 */
+[data-theme="light"] .src-card { background: rgba(0,0,0,0.025); }
+[data-theme="light"] .src-card:hover { border-color: rgba(0,0,0,0.12); }
+[data-theme="light"] .src-badge.optional { background: rgba(0,0,0,0.04); }
+
+/* 已连接项目 */
+[data-theme="light"] .connected-item { background: rgba(0,0,0,0.025); }
+
+/* 场景卡片 */
+[data-theme="light"] .scenario-card { background: rgba(0,0,0,0.025); }
+[data-theme="light"] .scenario-q { background: rgba(0,0,0,0.025); }
+
+/* 表单输入 */
+[data-theme="light"] input[type=text] { background: rgba(0,0,0,0.03); }
+[data-theme="light"] input[type=text]::placeholder { color: rgba(0,0,0,0.25); }
+
+/* 按钮 */
+[data-theme="light"] .btn-secondary:hover { border-color: rgba(0,0,0,0.15); }
+
+/* 数据隔离双栏 */
+[data-theme="light"] .isolation-list li { background: rgba(0,0,0,0.03); }
+
+/* AI 流程图 */
+[data-theme="light"] .flow-node { background: rgba(0,0,0,0.025); }
+[data-theme="light"] .flow-node.node-human { background: rgba(90,138,26,0.06); }
+[data-theme="light"] .flow-node.node-human-end { background: rgba(181,107,90,0.06); }
+[data-theme="light"] .flow-connector::before { border-color: rgba(0,0,0,0.14); }
+
+/* 个人数据源卡片 */
+[data-theme="light"] .personal-src-card { background: rgba(0,0,0,0.02); }
+[data-theme="light"] .personal-src-card-step { background: rgba(0,0,0,0.03); }
+
+/* 通用信息框（inline style 覆盖） */
+[data-theme="light"] .info-note-box { background: rgba(0,0,0,0.025) !important; }
+
+/* OAuth info box */
+[data-theme="light"] .info-box { color: var(--lime); }
+
+/* 主题切换按钮 */
+.theme-toggle {
+  position: fixed; top: 10px; right: 14px; z-index: 999;
+  width: 28px; height: 28px; border-radius: 50%; border: none;
+  background: transparent; cursor: pointer;
+  font-size: 14px; line-height: 1;
+  color: var(--text-dim);
+  transition: color 0.2s, background 0.2s;
+  -webkit-app-region: no-drag;
+}
+.theme-toggle:hover { color: var(--text-muted); background: rgba(128,128,128,0.1); }
+html[data-platform="tauri"] .theme-toggle { top: 8px; right: 10px; }
+</style>
+</head>
+<body>
+<button class="theme-toggle" id="theme-btn" onclick="toggleTheme()" title="切换主题">◑</button>
+<div class="wrap">
+  <div class="drag-handle"></div>
+  <div class="progress-bar hidden" id="prog-bar"></div>
+
+  <!-- ══════════════════════════════════════════
+       Step 1 — 欢迎
+  ══════════════════════════════════════════ -->
+  <div class="step visible" id="step-1">
+    <div class="welcome-top">
+      <div class="brand">FluxVita</div>
+      <div class="h1">公司所有信息，<br>一个 <em>AI 工作空间</em></div>
+      <div class="sub">把飞书、GitLab、Linear 等平台的数据沉淀在一起，让 Agent 真正了解你们在做什么——不靠猜测，有据可查。</div>
+    </div>
+
+    <div class="grad-line"></div>
+
+    <div class="bubbles">
+      <div class="bubble">
+        <div class="bubble-avatar">你</div>
+        <div class="bubble-msg">上周哪些 MR 影响了支付模块？</div>
+      </div>
+      <div class="bubble bot">
+        <div class="bubble-avatar">✦</div>
+        <div class="bubble-msg">找到 3 个 MR，其中 !142 和 !156 修改了 checkout 核心逻辑，!148 是样式调整无影响。</div>
+      </div>
+      <div class="bubble">
+        <div class="bubble-avatar">你</div>
+        <div class="bubble-msg">飞书里关于这个功能的最终结论是什么？</div>
+      </div>
+      <div class="bubble bot">
+        <div class="bubble-avatar">✦</div>
+        <div class="bubble-msg">3月1日的讨论中，产品和研发达成一致：优先做 iOS 版本，Android Q3 排期。</div>
+      </div>
+    </div>
+
+    <div class="source-pills">
+      <div class="source-pill"><div class="source-pill-dot"></div>飞书群消息</div>
+      <div class="source-pill"><div class="source-pill-dot"></div>飞书文档</div>
+      <div class="source-pill"><div class="source-pill-dot"></div>GitLab</div>
+      <div class="source-pill"><div class="source-pill-dot"></div>Linear</div>
+      <div class="source-pill"><div class="source-pill-dot"></div>PostHog</div>
+      <div class="source-pill"><div class="source-pill-dot"></div>Figma</div>
+      <div class="source-pill"><div class="source-pill-dot"></div>个人邮箱</div>
+      <div class="source-pill"><div class="source-pill-dot"></div>公共邮箱</div>
+    </div>
+
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       Step 2 — 数据隔离
+  ══════════════════════════════════════════ -->
+  <div class="step" id="step-2">
+    <div class="tag">02 / 数据隐私</div>
+    <div class="h1">个人数据<em>完全隔离</em></div>
+    <div class="sub">你的私信和邮件只属于你。AI 绝不会在团队对话中引用你的私人数据，也不会污染公共上下文。</div>
+
+    <div class="isolation-cols">
+      <div class="isolation-col private">
+        <div class="isolation-col-icon">🔒</div>
+        <div class="isolation-col-title">你的私人空间</div>
+        <ul class="isolation-list">
+          <li>个人邮箱</li>
+          <li>飞书私信</li>
+          <li>私有日历</li>
+        </ul>
+        <div class="isolation-col-note">仅你可见，AI 不会将这些带入团队对话</div>
+      </div>
+      <div class="isolation-divider">隔离</div>
+      <div class="isolation-col public">
+        <div class="isolation-col-icon">👥</div>
+        <div class="isolation-col-title">团队共享空间</div>
+        <ul class="isolation-list">
+          <li>飞书群消息</li>
+          <li>公共邮箱</li>
+          <li>GitLab · Linear</li>
+        </ul>
+        <div class="isolation-col-note">所有成员可查，AI 对话时的公共上下文</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       Step 3 — AI 自主工作流
+  ══════════════════════════════════════════ -->
+  <div class="step" id="step-3">
+    <div class="tag">03 / AI 能力</div>
+    <div class="h1">从问题到解决，<em>全程自主</em></div>
+    <div class="sub">不只是回答问题。Agent 可以调用真实工具、读取代码、自己修复——直到交给你做最终决策。</div>
+
+    <div class="flow-chart">
+      <div class="flow-node node-human">
+        <div class="flow-node-icon">👤</div>
+        <div class="flow-node-body">
+          <div class="flow-node-title">你发起需求</div>
+          <div class="flow-node-desc">iOS 留存率下降了 12%，帮我分析原因</div>
+        </div>
+      </div>
+      <div class="flow-connector"></div>
+      <div class="flow-node">
+        <div class="flow-node-icon">🔍</div>
+        <div class="flow-node-body">
+          <div class="flow-node-title">查询数据</div>
+          <div class="flow-node-desc">自动查询 PostHog 事件数据 + OSS 日志，时间范围匹配</div>
+        </div>
+      </div>
+      <div class="flow-connector"></div>
+      <div class="flow-node">
+        <div class="flow-node-icon">📊</div>
+        <div class="flow-node-body">
+          <div class="flow-node-title">输出分析报告</div>
+          <div class="flow-node-desc">发现：版本 2.3.1 后 Day-3 留存明显下滑，与推送策略变更时间吻合</div>
+        </div>
+      </div>
+      <div class="flow-connector"></div>
+      <div class="flow-node">
+        <div class="flow-node-icon">💻</div>
+        <div class="flow-node-body">
+          <div class="flow-node-title">定位代码</div>
+          <div class="flow-node-desc">在 GitLab 查找推送相关代码，找到 notification/push.ts 第 142 行</div>
+        </div>
+      </div>
+      <div class="flow-connector"></div>
+      <div class="flow-node">
+        <div class="flow-node-icon">⚙️</div>
+        <div class="flow-node-body">
+          <div class="flow-node-title">修复并本地测试</div>
+          <div class="flow-node-desc">修改推送触发逻辑，本地运行测试套件，全部通过</div>
+        </div>
+      </div>
+      <div class="flow-connector"></div>
+      <div class="flow-node node-human-end">
+        <div class="flow-node-icon">✅</div>
+        <div class="flow-node-body">
+          <div class="flow-node-title">提交人工 review</div>
+          <div class="flow-node-desc">创建 MR !287，等待 Code Review</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       Step 4 — 登录
+  ══════════════════════════════════════════ -->
+  <div class="step" id="step-4">
+    <div class="tag">01 / 身份验证</div>
+    <div class="h1">登录你的<em>飞书账号</em></div>
+    <div class="sub">通过飞书 OAuth 授权，系统自动识别你的身份与权限。</div>
+
+    <div id="oauth-main">
+      <div id="login-msg"></div>
+    </div>
+
+    <details style="margin-top:24px">
+      <summary>▸ 开发模式登录</summary>
+      <div style="padding-top:14px;display:flex;flex-direction:column;gap:10px">
+        <div class="form-group">
+          <label>飞书 Open ID</label>
+          <input type="text" id="dev-id" placeholder="ou_xxxxxxxxxxxx">
+        </div>
+        <div class="form-group">
+          <label>姓名</label>
+          <input type="text" id="dev-name" placeholder="你的名字">
+        </div>
+        <button class="btn-secondary" onclick="devLogin()">登录</button>
+      </div>
+    </details>
+
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       Step 5 — 飞书已连接
+  ══════════════════════════════════════════ -->
+  <div class="step" id="step-5">
+    <div class="tag">03 / 数据源</div>
+    <div class="h1">飞书<em>已连接</em></div>
+    <div class="sub">通过你的账号授权，飞书数据会自动同步。Agent 从此刻起拥有团队上下文。</div>
+
+    <div class="feishu-ok">✓ 飞书账号已授权</div>
+
+    <div class="connected-items">
+      <div class="connected-item">
+        <div class="connected-item-icon">💬</div>
+        <div class="connected-item-body">
+          <div class="connected-item-name">群聊消息</div>
+          <div class="connected-item-desc">Bot 所在群组，自动同步历史讨论</div>
+        </div>
+        <div class="connected-check">已同步</div>
+      </div>
+      <div class="connected-item">
+        <div class="connected-item-icon">📄</div>
+        <div class="connected-item-body">
+          <div class="connected-item-name">文档 / Wiki</div>
+          <div class="connected-item-desc">飞书文档内容，支持全文检索</div>
+        </div>
+        <div class="connected-check">已同步</div>
+      </div>
+      <div class="connected-item">
+        <div class="connected-item-icon">👥</div>
+        <div class="connected-item-body">
+          <div class="connected-item-name">组织架构</div>
+          <div class="connected-item-desc">成员信息，Agent 知道团队里有谁</div>
+        </div>
+        <div class="connected-check">已同步</div>
+      </div>
+    </div>
+
+    <div class="info-note-box" style="font-size:12px; color:var(--text-dim); padding:10px 14px; border-radius:8px; background:rgba(255,255,255,0.025); border:1px solid var(--border);">
+      首次同步约需几分钟，之后保持实时更新。
+    </div>
+
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       Step 6 — 工作方式文档
+  ══════════════════════════════════════════ -->
+  <div class="step" id="step-6">
+    <div class="tag">04 / 工作方式</div>
+    <div class="h1">告诉 Agent<em>你的工作方式</em></div>
+    <div class="sub">Agent 会记住你的偏好，让每次对话更贴近你的习惯。可以随时在「设置」中修改。</div>
+
+    <div style="margin: 20px 0 10px; font-size:13px; color:var(--text-muted); font-weight:500;">示例</div>
+    <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:20px;">
+      <div style="background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:8px; padding:10px 14px; font-size:13px; color:var(--text-dim); line-height:1.6; cursor:pointer;" onclick="fillWorkstyleExample()">
+        💡 点击使用示例：我喜欢简洁直接的回答，不需要废话。用中文沟通，技术词汇保持英文。做决策时先给结论，再解释原因。
+      </div>
+    </div>
+
+    <textarea
+      id="workstyle-input"
+      placeholder="描述你的工作方式、沟通偏好、常用工具... 例如：我喜欢简洁的回答，每天早上先处理最重要的事，用 Linear 管理任务..."
+      style="width:100%; min-height:140px; padding:14px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.12); border-radius:10px; color:var(--text); font-size:14px; line-height:1.6; resize:vertical; font-family:var(--F); outline:none; transition:border-color 0.2s;"
+      onfocus="this.style.borderColor='rgba(157,216,74,0.4)'"
+      onblur="this.style.borderColor='rgba(255,255,255,0.12)'"
+    ></textarea>
+    <div id="workstyle-hint" style="font-size:12px; color:var(--text-dim); margin-top:8px; min-height:18px;"></div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       Step 7 — 个人数据源配置
+  ══════════════════════════════════════════ -->
+  <div class="step" id="step-7">
+    <div class="tag">04 / 个人数据源</div>
+    <div class="h1">配置你的<em>个人数据</em></div>
+    <div class="sub">公共数据已由管理员接入。下方是需要你授权的个人数据源，跳过的可稍后在设置中配置。</div>
+
+    <!-- 公共数据已配置状态条 -->
+    <div class="public-data-bar">
+      <span class="public-data-label">公共数据已配置</span>
+      <div class="public-data-chips">
+        <span class="public-data-chip">飞书文档</span>
+        <span class="public-data-chip">GitLab 公共</span>
+        <span class="public-data-chip">Linear</span>
+        <span class="public-data-chip">PostHog</span>
+      </div>
+    </div>
+
+    <!-- 个人数据源配置卡片 -->
+    <div class="personal-src-list">
+
+      <!-- 1. 飞书群聊 -->
+      <div class="personal-src-card" id="pcard-feishu-group">
+        <div class="personal-src-card-head" onclick="togglePcard('feishu-group')">
+          <div class="personal-src-card-icon">💬</div>
+          <div class="personal-src-card-info">
+            <div class="personal-src-card-name">飞书群聊</div>
+            <div class="personal-src-card-desc">让 Bot 进群，同步你所在群组的讨论</div>
+          </div>
+          <div class="personal-src-card-status empty" id="pstatus-feishu-group">未配置</div>
+        </div>
+        <div class="personal-src-card-body">
+          <div class="personal-src-card-step">
+            <span class="personal-src-card-step-num">1</span>
+            在飞书群聊中，点击右上角「设置」→「群机器人」→「添加机器人」
+          </div>
+          <div class="personal-src-card-step">
+            <span class="personal-src-card-step-num">2</span>
+            搜索并添加 <strong style="color:var(--lime)">@bv</strong>（FluxVita Bot）
+          </div>
+          <div class="personal-src-card-step">
+            <span class="personal-src-card-step-num">3</span>
+            添加完成后，群消息将自动同步到 Agent 上下文
+          </div>
+          <button class="personal-src-save" onclick="markPcardDone('feishu-group', this)">已添加到群 ✓</button>
+          <button class="personal-src-skip" onclick="closePcard('feishu-group')">稍后再说</button>
+        </div>
+      </div>
+
+      <!-- 2. 个人邮箱 -->
+      <div class="personal-src-card" id="pcard-email">
+        <div class="personal-src-card-head" onclick="togglePcard('email')">
+          <div class="personal-src-card-icon">📧</div>
+          <div class="personal-src-card-info">
+            <div class="personal-src-card-name">飞书个人邮箱</div>
+            <div class="personal-src-card-desc">接入飞书邮箱，让 Agent 协助处理邮件</div>
+          </div>
+          <div class="personal-src-card-status empty" id="pstatus-email">未配置</div>
+        </div>
+        <div class="personal-src-card-body">
+          <div class="form-group">
+            <label>邮箱地址</label>
+            <input type="text" id="email-addr" placeholder="yourname@fluxvita.com">
+          </div>
+          <div class="form-group">
+            <label>IMAP 授权码</label>
+            <input type="text" id="email-pass" placeholder="在飞书邮箱设置中生成专用密码">
+          </div>
+          <div class="personal-src-card-step" style="margin-top:4px">
+            <span class="personal-src-card-step-num">提示</span>
+            飞书邮箱网页版 →「设置」→「邮件客户端」→「生成密码」，复制后填入上方。
+          </div>
+          <button class="personal-src-save" onclick="savePcardInput('email', ['email-addr','email-pass'])">保存 →</button>
+          <button class="personal-src-skip" onclick="closePcard('email')">稍后再说</button>
+        </div>
+      </div>
+
+      <!-- 3. Figma -->
+      <div class="personal-src-card" id="pcard-figma">
+        <div class="personal-src-card-head" onclick="togglePcard('figma')">
+          <div class="personal-src-card-icon">🎨</div>
+          <div class="personal-src-card-info">
+            <div class="personal-src-card-name">Figma</div>
+            <div class="personal-src-card-desc">读取设计稿，让 Agent 理解你的设计意图</div>
+          </div>
+          <div class="personal-src-card-status empty" id="pstatus-figma">未配置</div>
+        </div>
+        <div class="personal-src-card-body">
+          <div class="form-group">
+            <label>Personal Access Token</label>
+            <input type="text" id="figma-token" placeholder="figd_xxxxxxxxxxxx">
+          </div>
+          <div class="personal-src-card-step">
+            <span class="personal-src-card-step-num">提示</span>
+            Figma 右上角头像 →「Settings」→「Security」→「Personal access tokens」→「Generate new token」
+          </div>
+          <button class="personal-src-save" onclick="savePcardInput('figma', ['figma-token'])">保存 →</button>
+          <button class="personal-src-skip" onclick="closePcard('figma')">稍后再说</button>
+        </div>
+      </div>
+
+      <!-- 4. GitLab（研发） -->
+      <div class="personal-src-card" id="pcard-gitlab">
+        <div class="personal-src-card-head" onclick="togglePcard('gitlab')">
+          <div class="personal-src-card-icon">🦊</div>
+          <div class="personal-src-card-info">
+            <div class="personal-src-card-name">
+              GitLab 个人 Token
+              <span class="personal-src-role-tag">研发</span>
+            </div>
+            <div class="personal-src-card-desc">用你的 Token 读取私有仓库与 MR</div>
+          </div>
+          <div class="personal-src-card-status empty" id="pstatus-gitlab">未配置</div>
+        </div>
+        <div class="personal-src-card-body">
+          <div class="form-group">
+            <label>Personal Access Token</label>
+            <input type="text" id="gitlab-token" placeholder="glpat-xxxxxxxxxxxx">
+          </div>
+          <div class="personal-src-card-step">
+            <span class="personal-src-card-step-num">提示</span>
+            GitLab 头像 →「Preferences」→「Access Tokens」→「Add new token」，勾选 read_api、read_repository
+          </div>
+          <button class="personal-src-save" onclick="savePcardInput('gitlab', ['gitlab-token'])">保存 →</button>
+          <button class="personal-src-skip" onclick="closePcard('gitlab')">稍后再说</button>
+        </div>
+      </div>
+
+    </div><!-- personal-src-list -->
+
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       Step 8 — Agent 能做什么
+  ══════════════════════════════════════════ -->
+  <div class="step" id="step-8">
+    <div class="tag">05 / 使用场景</div>
+    <div class="h1">Agent 能帮你<em>做什么</em></div>
+    <div class="sub">根据你的角色，这里是一些可以直接开口问的例子。</div>
+
+    <div class="scenario-cards" id="scenario-cards"></div>
+
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       Step 9 — 完成
+  ══════════════════════════════════════════ -->
+  <div class="step" id="step-9">
+    <div style="padding: 28px 0 16px; text-align:center;">
+      <div style="font-size:48px; margin-bottom:12px;">🚀</div>
+      <div class="tag" style="margin:0 auto 12px;">配置完成</div>
+      <div class="h1" style="text-align:center">准备好了，<em>开始探索</em></div>
+      <div class="sub" style="text-align:center">Agent 已拥有你们团队的上下文。</div>
+    </div>
+
+    <div class="stat-row" id="finish-stats"></div>
+
+    <div class="summary-list" id="finish-summary"></div>
+
+  </div>
+
+  <!-- 全局固定按钮区（在所有 step 之外，避免被 step 的 transform 动画影响） -->
+  <div id="global-actions" class="actions"></div>
+
+</div><!-- wrap -->
+
+<script>
+// ─── 主题切换 ───
+function toggleTheme() {
+  const next = ThemeManager.toggle();
+  const icons = { dark: '☾', light: '☀', auto: '◑' };
+  document.getElementById('theme-btn').textContent = icons[next] || '◑';
+}
+// 初始化按钮图标
+(function() {
+  const icons = { dark: '☾', light: '☀', auto: '◑' };
+  const pref = ThemeManager.getPreference();
+  const btn = document.getElementById('theme-btn');
+  if (btn) btn.textContent = icons[pref] || '◑';
+})();
+
+// ─── State ───
+const TOTAL = 9;
+let step = 1;
+let token = null;
+let user  = null;
+let roles   = [];
+let sources = [];
+
+// ─── Data ───
+const ALL_SOURCES = [
+  { id:'gitlab',  icon:'🦊', name:'GitLab',  hint:'代码 · MR · Issue',  roles:['dev','mgmt'] },
+  { id:'linear',  icon:'📐', name:'Linear',  hint:'任务 · 项目进度',    roles:['product','dev','mgmt'] },
+  { id:'posthog', icon:'📊', name:'PostHog', hint:'用户行为 · 数据',    roles:['ops','product','mgmt'] },
+  { id:'figma',   icon:'🎨', name:'Figma',   hint:'设计稿 · 组件库',    roles:['product'] },
+  { id:'email',   icon:'📧', name:'邮件',    hint:'邮件 · 用户反馈',    roles:['ops','mgmt'] },
+];
+
+const SCENARIOS = [
+  { icon:'📋', title:'晨会准备',     roles:['mgmt','product','dev','ops'], q:'帮我汇总昨天的进展：GitLab 合并了什么，Linear 完成了哪些任务，飞书有没有重要讨论。' },
+  { icon:'💻', title:'代码追踪',     roles:['dev'],                        q:'上周合并的 MR 里，哪些改动了支付相关的代码？' },
+  { icon:'📊', title:'数据异常排查', roles:['ops','product'],              q:'昨天下午用户留存突然下降，PostHog 有没有异常事件？结合最近的部署记录分析。' },
+  { icon:'🎨', title:'需求对齐',     roles:['product'],                    q:'Figma 最新的登录页设计，和飞书文档里的需求说明有没有出入？' },
+  { icon:'🔍', title:'跨平台搜索',   roles:['mgmt','product','dev','ops'], q:'飞书里讨论过的这个功能，Linear 里对应的任务现在是什么状态？' },
+];
+
+const SOURCE_NAMES = { feishu:'飞书', gitlab:'GitLab', linear:'Linear', posthog:'PostHog', figma:'Figma', email:'邮件' };
+
+// ─── Progress ───
+function renderProg() {
+  const bar = document.getElementById('prog-bar');
+  if (step <= 3) { bar.classList.add('hidden'); return; }
+  bar.classList.remove('hidden');
+  bar.innerHTML = '';
+  for (let i = 1; i < TOTAL; i++) {
+    const s = document.createElement('div');
+    s.className = 'prog-seg' + (i < step ? ' done' : i === step ? ' active' : '');
+    bar.appendChild(s);
+  }
+}
+
+// ─── 全局按钮配置（避免按钮在 step 动画内抖动）───
+const STEP_ACTIONS = {
+  1: { html: `<button class="btn-primary" onclick="nextStep()">开始配置 →</button>` },
+  2: { row: true, html: `<button class="btn-ghost" onclick="prevStep()">← 返回</button><button class="btn-primary" onclick="nextStep()">下一步 →</button>` },
+  3: { row: true, html: `<button class="btn-ghost" onclick="prevStep()">← 返回</button><button class="btn-primary" onclick="nextStep()">开始配置 →</button>` },
+  4: { row: true, html: `<button class="btn-ghost" onclick="prevStep()">← 返回</button><button class="btn-primary" id="oauth-btn" onclick="startOAuth()">使用飞书账号登录</button>` },
+  5: { html: `<button class="btn-primary" onclick="nextStep()">继续添加数据源 →</button><button class="btn-ghost" onclick="prevStep()">← 返回</button>` },
+  6: { html: `<button class="btn-primary" onclick="saveWorkstyleStep()">保存并继续 →</button><button class="btn-ghost" onclick="nextStep()">跳过</button><button class="btn-ghost" onclick="prevStep()">← 返回</button>` },
+  7: { html: `<button class="btn-primary" onclick="savePersonalSources()">继续 →</button><button class="btn-ghost" onclick="prevStep()">← 返回</button>` },
+  8: { html: `<button class="btn-primary" onclick="nextStep()">我知道了 →</button><button class="btn-ghost" onclick="prevStep()">← 返回</button>` },
+  9: { html: `<button class="btn-primary" onclick="finish()">开始对话 →</button>` },
+};
+
+function updateGlobalActions(n) {
+  const el = document.getElementById('global-actions');
+  if (!el) return;
+  const cfg = STEP_ACTIONS[n];
+  if (!cfg) { el.innerHTML = ''; return; }
+  el.innerHTML = cfg.html;
+  el.classList.toggle('row', !!cfg.row);
+}
+
+// ─── Navigation ───
+function goStep(n) {
+  document.querySelectorAll('.step').forEach(s => s.classList.remove('visible'));
+  document.getElementById(`step-${n}`).classList.add('visible');
+  step = n;
+  renderProg();
+  window.scrollTo(0, 0);
+  updateGlobalActions(n);
+  onEnter(n);
+}
+function nextStep() { goStep(step + 1); }
+function prevStep() { goStep(step - 1); }
+
+function onEnter(n) {
+  if (n === 6) loadWorkstyle();
+  if (n === 7) renderPersonalSources();
+  if (n === 8) renderScenarios();
+  if (n === 9) renderFinish(); // async，内部自更新 DOM
+}
+
+// ─── Role select ───
+function toggleSel(el, group) {
+  el.classList.toggle('selected');
+  if (group === 'role') {
+    roles = [...document.querySelectorAll('#role-cards .sel-card.selected')].map(c => c.dataset.role);
+    document.getElementById('role-next').disabled = roles.length === 0;
+  }
+}
+
+// ─── Step 6: 工作方式文档 ───
+function fillWorkstyleExample() {
+  const el = document.getElementById('workstyle-input');
+  if (el) el.value = '我喜欢简洁直接的回答，不需要废话。用中文沟通，技术词汇保持英文。做决策时先给结论，再解释原因。回复要简短，除非我特别要求详细说明。';
+}
+
+async function loadWorkstyle() {
+  const t = token || localStorage.getItem('fv_token');
+  if (!t) return;
+  try {
+    const r = await fetch('/api/agent/workstyle', { headers: { Authorization: `Bearer ${t}` } });
+    if (!r.ok) return;
+    const data = await r.json();
+    const el = document.getElementById('workstyle-input');
+    if (el && data.content) el.value = data.content;
+  } catch {}
+}
+
+async function saveWorkstyleStep() {
+  const t = token || localStorage.getItem('fv_token');
+  const el = document.getElementById('workstyle-input');
+  const hint = document.getElementById('workstyle-hint');
+  const content = el?.value?.trim() ?? '';
+
+  if (!content) { nextStep(); return; } // 空内容等同跳过
+
+  if (hint) hint.textContent = '保存中...';
+  try {
+    const r = await fetch('/api/agent/workstyle', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${t}` },
+      body: JSON.stringify({ content }),
+    });
+    if (!r.ok) throw new Error(await r.text());
+    if (hint) hint.textContent = '✓ 已保存';
+    setTimeout(() => nextStep(), 400);
+  } catch (err) {
+    if (hint) hint.textContent = `保存失败：${err.message}，已跳过`;
+    setTimeout(() => nextStep(), 800);
+  }
+}
+
+// ─── Step 7: 个人数据源配置 ───
+const personalSrcs = {}; // { feishu-group: true, email: {...}, figma: {...}, gitlab: {...} }
+
+function renderPersonalSources() {
+  // 从 localStorage 恢复已配置状态
+  const ids = ['feishu-group', 'email', 'figma', 'gitlab'];
+  for (const id of ids) {
+    const saved = id === 'feishu-group'
+      ? localStorage.getItem('fv_feishu_group_added')
+      : localStorage.getItem(`fv_pdata_${id}`);
+    if (!saved) continue;
+
+    personalSrcs[id] = id === 'feishu-group' ? true : JSON.parse(saved);
+
+    const card = document.getElementById(`pcard-${id}`);
+    const status = document.getElementById(`pstatus-${id}`);
+    if (!card || !status) continue;
+    card.classList.add('filled');
+    card.classList.remove('open');
+    status.textContent = '已配置';
+    status.className = 'personal-src-card-status ok';
+
+    // 回填输入框（email/figma/gitlab）
+    if (typeof personalSrcs[id] === 'object') {
+      for (const [fid, val] of Object.entries(personalSrcs[id])) {
+        const input = document.getElementById(fid);
+        if (input) input.value = val;
+      }
+    }
+  }
+}
+
+function togglePcard(id) {
+  const card = document.getElementById(`pcard-${id}`);
+  if (card.classList.contains('open')) {
+    card.classList.remove('open');
+  } else {
+    // 关闭其他展开的
+    document.querySelectorAll('.personal-src-card.open').forEach(c => c.classList.remove('open'));
+    card.classList.add('open');
+  }
+}
+function openPcard(id) {
+  document.querySelectorAll('.personal-src-card.open').forEach(c => c.classList.remove('open'));
+  document.getElementById(`pcard-${id}`).classList.add('open');
+}
+function closePcard(id) {
+  document.getElementById(`pcard-${id}`).classList.remove('open');
+}
+
+function markPcardDone(id, btn) {
+  personalSrcs[id] = true;
+  const card = document.getElementById(`pcard-${id}`);
+  card.classList.add('filled');
+  card.classList.remove('open');
+  const status = document.getElementById(`pstatus-${id}`);
+  status.textContent = '已配置';
+  status.className = 'personal-src-card-status ok';
+  // 自动展开下一个未配置的
+  autoOpenNext(id);
+}
+
+function savePcardInput(id, fieldIds) {
+  const data = {};
+  for (const fid of fieldIds) {
+    const val = document.getElementById(fid)?.value.trim();
+    if (!val) { return; } // 不强制，但不保存空值
+    data[fid] = val;
+  }
+  personalSrcs[id] = data;
+  localStorage.setItem(`fv_pdata_${id}`, JSON.stringify(data));
+  const card = document.getElementById(`pcard-${id}`);
+  card.classList.add('filled');
+  card.classList.remove('open');
+  const status = document.getElementById(`pstatus-${id}`);
+  status.textContent = '已配置';
+  status.className = 'personal-src-card-status ok';
+  autoOpenNext(id);
+}
+
+function autoOpenNext(doneId) {
+  const order = ['feishu-group', 'email', 'figma', 'gitlab'];
+  const idx = order.indexOf(doneId);
+  const next = order.slice(idx + 1).find(id => !personalSrcs[id]);
+  if (next) setTimeout(() => openPcard(next), 150);
+}
+
+function savePersonalSources() {
+  // 保存飞书群聊标记
+  if (personalSrcs['feishu-group']) {
+    localStorage.setItem('fv_feishu_group_added', '1');
+  }
+  nextStep();
+}
+
+// ─── Scenarios ───
+function renderScenarios() {
+  const visible = roles.length
+    ? SCENARIOS.filter(s => s.roles.some(r => roles.includes(r))).slice(0, 4)
+    : SCENARIOS.slice(0, 3);
+  document.getElementById('scenario-cards').innerHTML = visible.map(s => `
+    <div class="scenario-card">
+      <div class="scenario-head">
+        <div class="scenario-icon">${s.icon}</div>
+        <div class="scenario-title">${s.title}</div>
+        <div class="scenario-role">Agent</div>
+      </div>
+      <div class="scenario-q">「${s.q}」</div>
+    </div>`).join('');
+}
+
+// ─── Finish ───
+async function renderFinish() {
+  const CONNECTOR_NAMES = {
+    feishu_v1: '飞书', gitlab_v1: 'GitLab', linear_v1: 'Linear',
+    posthog_v1: 'PostHog', figma_v1: 'Figma', email_v1: '邮件',
+  };
+
+  const summaryEl = document.getElementById('finish-summary');
+  const statsEl = document.getElementById('finish-stats');
+
+  // 立即渲染所有行，每行状态先显示 spinner
+  summaryEl.innerHTML = Object.entries(CONNECTOR_NAMES).map(([id, name]) =>
+    `<div class="summary-row" id="row-${id}"><span>${name}</span><span class="summary-status loading" id="status-${id}"></span></div>`
+  ).join('');
+
+  // stat 也先用占位
+  statsEl.innerHTML = `
+    <div class="stat-cell"><div class="stat-num" id="stat-connected">-</div><div class="stat-label">已连接数据源</div></div>
+    <div class="stat-cell"><div class="stat-num">${roles.length || 1}</div><div class="stat-label">工作角色</div></div>
+    <div class="stat-cell"><div class="stat-num">∞</div><div class="stat-label">可问的问题</div></div>`;
+
+  try {
+    const resp = await fetch('/api/onboarding/connectors', {
+      headers: { Authorization: 'Bearer ' + token }
+    });
+    if (resp.ok) {
+      const data = await resp.json();
+      const health = data.connectors || {};
+      const connectedCount = Object.values(health).filter(h => h.ok).length;
+
+      document.getElementById('stat-connected').textContent = connectedCount;
+      Object.entries(CONNECTOR_NAMES).forEach(([id]) => {
+        const el = document.getElementById(`status-${id}`);
+        if (!el) return;
+        if (health[id]?.ok) {
+          el.className = 'summary-status ok';
+          el.textContent = '✓ 已连接';
+        } else {
+          el.className = 'summary-status off';
+          el.textContent = '可在设置中添加';
+        }
+      });
+      return;
+    }
+  } catch { /* 降级 */ }
+
+  // 降级：用本地 session 状态
+  const total = sources.length + 1;
+  document.getElementById('stat-connected').textContent = total;
+  const connectedIds = new Set(['feishu', ...sources]);
+  Object.entries(CONNECTOR_NAMES).forEach(([id, name]) => {
+    const el = document.getElementById(`status-${id}`);
+    if (!el) return;
+    // 将 connector key（feishu_v1）映射到 sources key（feishu）
+    const shortId = id.replace('_v1', '');
+    if (connectedIds.has(shortId)) {
+      el.className = 'summary-status ok';
+      el.textContent = '✓ 已连接';
+    } else {
+      el.className = 'summary-status off';
+      el.textContent = '可在设置中添加';
+    }
+  });
+}
+
+function finish() {
+  localStorage.setItem('fv_onboarding_done', '1');
+  window.location.href = '/shell.html';
+}
+
+// ─── Auth ───
+async function startOAuth() {
+  const btn = document.getElementById('oauth-btn');
+  btn.disabled = true; btn.textContent = '获取授权链接...';
+  try {
+    // 不传 redirect_uri，由服务端使用 GATEWAY_PUBLIC_URL 环境变量
+    // Tauri 端会通过 on_navigation 拦截回调跳转，转发到本地代理
+    const r = await fetch('/api/auth/oauth/url');
+    const d = await r.json();
+    if (d.url) {
+      location.href = d.url;
+    } else { showMsg('无法获取授权链接', 'error'); btn.disabled = false; btn.textContent = '使用飞书账号登录'; }
+  } catch { showMsg('网络连接失败', 'error'); btn.disabled = false; btn.textContent = '使用飞书账号登录'; }
+}
+
+async function finishOAuth() {
+  const code = document.getElementById('code-input').value.trim();
+  if (!code) { showMsg('请填写 code 参数', 'error'); return; }
+  try {
+    const r = await fetch('/api/auth/oauth/callback', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({code}) });
+    const d = await r.json();
+    if (d.token) onLoginOk(d.token, d.user);
+    else showMsg(d.error || '授权失败，请重试', 'error');
+  } catch { showMsg('网络连接失败', 'error'); }
+}
+
+async function devLogin() {
+  const id = document.getElementById('dev-id').value.trim();
+  const name = document.getElementById('dev-name').value.trim();
+  if (!id || !name) { showMsg('请填写 Open ID 和姓名', 'error'); return; }
+  try {
+    const r1 = await fetch('/api/auth/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({feishu_open_id:id, name}) });
+    const d1 = await r1.json();
+    if (d1.token) { onLoginOk(d1.token, d1.user); return; }
+    if (!d1.dev_code) { showMsg(d1.error||'登录失败', 'error'); return; }
+    const r2 = await fetch('/api/auth/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({feishu_open_id:id, name, challenge_id:d1.challenge_id, code:d1.dev_code}) });
+    const d2 = await r2.json();
+    if (d2.token) onLoginOk(d2.token, d2.user);
+    else showMsg(d2.error||'验证失败', 'error');
+  } catch { showMsg('网络连接失败', 'error'); }
+}
+
+function onLoginOk(t, u) {
+  token = t; user = u;
+  localStorage.setItem('fluxvita_token', t);
+  localStorage.setItem('fluxvita_user', JSON.stringify(u));
+  showMsg(`欢迎，${u.name}！`, 'success');
+  setTimeout(() => nextStep(), 500);
+}
+
+function showMsg(text, type) {
+  document.getElementById('login-msg').innerHTML = `<div class="msg msg-${type}">${text}</div>`;
+}
+
+// ─── Init ───
+renderProg();
+updateGlobalActions(step);
+const st = localStorage.getItem('fluxvita_token');
+if (st) {
+  token = st;
+  user = JSON.parse(localStorage.getItem('fluxvita_user') || '{}');
+  if (localStorage.getItem('fv_onboarding_done') === '1') {
+    window.location.href = '/shell.html';
+  } else if (localStorage.getItem('fv_oauth_just_done') === '1') {
+    // 飞书 OAuth 刚完成，清除标记，跳到角色选择步骤
+    localStorage.removeItem('fv_oauth_just_done');
+    goStep(5);
+  }
+}
+
+// ── Tauri 拖动（External URL 模式下 CSS -webkit-app-region 不生效，改用 JS）──
+if (window.__TAURI__) {
+  document.querySelector('.drag-handle').addEventListener('mousedown', async (e) => {
+    if (e.button !== 0) return;
+    try { await window.__TAURI__.window.getCurrentWindow().startDragging(); } catch (_) {}
+  });
+}
+</script>
+</body>
+</html>

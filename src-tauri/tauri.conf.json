@@ -1,28 +1,44 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Jowork",
-  "identifier": "com.jowork.app",
-  "version": "0.1.0",
+  "productName": "FluxVita",
+  "identifier": "com.fluxvita.gateway",
+  "version": "0.1.1",
   "build": {
-    "beforeBuildCommand": "pnpm --filter @jowork/app build && node apps/jowork/scripts/build-sidecar.mjs",
-    "frontendDist": "../public"
+    "frontendDist": "../tauri-ui"
   },
   "app": {
     "withGlobalTauri": true,
-    "windows": [
-      {
-        "title": "Jowork",
-        "width": 1360,
-        "height": 860,
-        "url": "http://127.0.0.1:9800/shell.html"
-      }
-    ]
+    "macOSPrivateApi": true,
+    "windows": []
   },
   "bundle": {
     "active": true,
-    "targets": ["dmg", "app", "nsis"],
-    "externalBin": [
-      "sidecar/jowork-gateway"
-    ]
+    "targets": ["app"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "windows": {
+      "wix": null,
+      "nsis": {
+        "languages": [
+          "SimpChinese",
+          "English"
+        ],
+        "displayLanguageSelector": false
+      }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDc3RjBFMkVCMUJENUE3RTgKUldUb3A5VWI2K0x3ZDczY0s5UzFDYW9TMlVBTVkzN2djMXZoZXg0d2tQYmlBSERNYVBucmpreUoK",
+      "endpoints": [
+        "https://gitlab.fluxvitae.com/Aiden/allinone/-/raw/master/latest.json"
+      ],
+      "dialog": false
+    }
   }
 }

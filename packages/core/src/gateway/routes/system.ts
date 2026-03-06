@@ -3,6 +3,8 @@ import { authMiddleware } from '../middleware.js';
 import { getOrgSetting, setScopedValue } from '../../auth/settings.js';
 import { getGatewayPublicUrl } from '../../utils/gateway-url.js';
 import { getDb } from '../../datamap/db.js';
+import { getLocalIps, discoverServices, startAdvertising, stopAdvertising } from '../../discovery/mdns.js';
+import { config } from '../../config.js';
 import type { Role } from '../../types.js';
 
 const router = Router();
@@ -29,6 +31,8 @@ function isBootstrapMode(): boolean {
 router.get('/setup-status', (_req, res) => {
   const done = getOrgSetting('system_setup_done') === 'true';
   const gatewayUrl = getGatewayPublicUrl();
+  const mode = (getOrgSetting('jowork_mode') ?? 'solo') as 'solo' | 'host' | 'join';
+  const remoteGatewayUrl = getOrgSetting('remote_gateway_url') ?? '';
 
   // 计算所有 OAuth 回调 URL（供前端展示）
   const oauthCallbacks = {
@@ -43,7 +47,24 @@ router.get('/setup-status', (_req, res) => {
     microsoft: `${gatewayUrl}/api/connectors/outlook_v1/oauth/callback`,
   };
 
-  res.json({ done, gateway_url: gatewayUrl, oauth_callbacks: oauthCallbacks });
+  res.json({ done, gateway_url: gatewayUrl, mode, remote_gateway_url: remoteGatewayUrl, oauth_callbacks: oauthCallbacks });
+});
+
+/**
+ * GET /api/system/local-ips
+ * 返回本机所有非回环 IPv4 地址，供 Host 模式展示给团队
+ */
+router.get('/local-ips', (_req, res) => {
+  res.json({ ips: getLocalIps() });
+});
+
+/**
+ * GET /api/system/discover
+ * 扫描局域网内的 Jowork 实例（3s 超时），供 Join 模式使用
+ */
+router.get('/discover', async (_req, res) => {
+  const services = await discoverServices(3000);
+  res.json({ services });
 });
 
 /**
@@ -63,6 +84,8 @@ router.post('/setup', (req, res, next) => {
 
   const {
     gateway_url,
+    mode,              // 'solo' | 'host' | 'join'
+    remote_gateway_url, // Join 模式下的远端 gateway 地址
     // 各连接器 OAuth 凭据（可选）
     feishu_app_id,
     feishu_app_secret,
@@ -82,7 +105,32 @@ router.post('/setup', (req, res, next) => {
     notion_client_secret,
   } = req.body as Record<string, string>;
 
-  // gateway_public_url 是必填
+  // 写入模式
+  const prevMode = getOrgSetting('jowork_mode') ?? 'solo';
+  const validMode = (mode === 'solo' || mode === 'host' || mode === 'join') ? mode : 'solo';
+  setScopedValue('org', 'default', 'jowork_mode', validMode);
+
+  // mDNS 广播随模式切换
+  if (validMode === 'host' && prevMode !== 'host') {
+    startAdvertising(config.port);
+  } else if (validMode !== 'host' && prevMode === 'host') {
+    stopAdvertising();
+  }
+
+  // Join 模式：保存远端地址，gateway_url 可为空
+  if (validMode === 'join') {
+    if (!remote_gateway_url || typeof remote_gateway_url !== 'string') {
+      res.status(400).json({ error: 'remote_gateway_url is required for join mode' });
+      return;
+    }
+    const remoteUrl = remote_gateway_url.trim().replace(/\/$/, '');
+    setScopedValue('org', 'default', 'remote_gateway_url', remoteUrl);
+    setScopedValue('org', 'default', 'system_setup_done', 'true');
+    res.json({ ok: true, mode: 'join', remote_gateway_url: remoteUrl });
+    return;
+  }
+
+  // Solo / Host 模式：gateway_url 必填
   if (!gateway_url || typeof gateway_url !== 'string') {
     res.status(400).json({ error: 'gateway_url is required' });
     return;

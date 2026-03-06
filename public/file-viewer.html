@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>文件预览</title>
 <script src="/theme.js"></script>
+<script src="/i18n.js"></script>
 <script src="/lib/marked.min.js"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -111,7 +112,7 @@ window.parent.postMessage({ type: 'REQUEST_TOKEN' }, '*');
 // 降级：从 localStorage 读 token
 setTimeout(() => {
   if (!token) {
-    const stored = localStorage.getItem('jowork_token');
+    const stored = localStorage.getItem('fluxvita_token');
     if (stored) { token = stored; loadFile(); }
   }
 }, 600);

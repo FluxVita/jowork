@@ -1,26 +1,56 @@
 {
-  "name": "@jowork/app",
+  "name": "fluxvita-allinone",
   "version": "0.1.0",
-  "description": "Jowork — open-source AI work partner (community edition)",
+  "description": "FluxVita All-in-One Agent Platform — Knowledge Router for internal teams",
   "type": "module",
-  "license": "AGPL-3.0",
   "main": "dist/index.js",
-  "private": true,
   "scripts": {
-    "build": "tsc",
-    "dev": "tsx watch src/index.ts",
-    "start": "node dist/index.js",
+    "dev": "tsx watch apps/fluxvita/src/index.ts",
+    "dev:stripe": "bash scripts/dev-stripe.sh",
+    "dev:src": "tsx watch src/index.ts",
+    "klaude-auth": "tsx watch src/klaude-auth-entry.ts",
+    "klaude-auth:start": "node dist/klaude-auth-entry.js",
+    "build": "pnpm --filter @jowork/core build && pnpm --filter @jowork/premium build && pnpm --filter @fluxvita/app build",
+    "start": "node apps/fluxvita/dist/index.js",
+    "test": "pnpm --filter @jowork/core build && node --test test/unit-*.test.ts test/p0-*.test.ts",
+    "test:e2e": "pnpm --filter @jowork/core build && node --test test/e2e-*.test.ts",
     "lint": "tsc --noEmit",
-    "tauri:dev": "tauri dev -c src-tauri/tauri.conf.json",
-    "tauri:build": "tauri build -c src-tauri/tauri.conf.json"
+    "db:init": "tsx src/datamap/init-db.ts",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
+    "postinstall": "chmod +x node_modules/node-pty/prebuilds/darwin-arm64/spawn-helper 2>/dev/null || true"
   },
   "engines": {
     "node": ">=22.0.0"
   },
+  "private": true,
   "dependencies": {
-    "@jowork/core": "workspace:*"
+    "@jowork/core": "workspace:*",
+    "@anthropic-ai/claude-agent-sdk": "^0.2.63",
+    "@larksuiteoapi/node-sdk": "^1.59.0",
+    "@tauri-apps/api": "^2.10.1",
+    "ali-oss": "^6.23.0",
+    "better-sqlite3": "^12.6.2",
+    "dotenv": "^17.3.1",
+    "express": "^5.2.1",
+    "gpt-tokenizer": "^3.4.0",
+    "imapflow": "^1.2.10",
+    "jsonwebtoken": "^9.0.3",
+    "llm-cost": "^1.0.5",
+    "mailparser": "^3.9.3",
+    "node-pty": "^1.1.0",
+    "ws": "^8.19.0"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2.10.0"
+    "@tauri-apps/cli": "^2.10.0",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/mailparser": "^3.4.6",
+    "@types/node": "^25.3.2",
+    "@types/ws": "^8.18.1",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
   }
 }

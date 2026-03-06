@@ -102,14 +102,19 @@ router.post('/', (req, res, next) => {
   res.json({ ok: true, message: '反馈已记录' });
 });
 
+const ANNOTATIONS_JSON = join(FEEDBACK_SUBDIR, 'annotations.json');
+
 /** POST /api/feedback/batch — 批量保存到带时间戳的独立文件 */
 router.post('/batch', (req, res, next) => {
   if (PUBLIC_FEEDBACK_ENABLED) return next();
   return authMiddleware(req, res, next);
 }, (req, res) => {
-  const { items, timestamp } = req.body as {
+  const { items, timestamp, annotations, markdown } = req.body as {
     items: Array<{ page?: string; tab?: string; url?: string; content?: string; viewport?: string; time?: string }>;
     timestamp?: string;
+    // 精准标注数据（含 elementInfo、CSS selector 等）
+    annotations?: unknown[];
+    markdown?: string;
   };
 
   if (!Array.isArray(items) || items.length === 0) {
@@ -129,9 +134,25 @@ router.post('/batch', (req, res, next) => {
   const filepath = join(FEEDBACK_SUBDIR, filename);
   const relativePath = `data/feedback/${filename}`;
 
-  const header = `# Jowork 测试反馈 — ${ts}\n\n> 保存时间：${ts}，共 ${items.length} 条\n\n---\n\n`;
-  const body = items.map(item => formatEntry(item)).join('');
-  writeFileSync(filepath, header + body, 'utf-8');
+  // 若有 markdown 字段（来自精准标注系统）直接使用，否则自动生成
+  const content = markdown || (
+    `# Jowork 测试反馈 — ${ts}\n\n> 保存时间：${ts}，共 ${items.length} 条\n\n---\n\n` +
+    items.map(item => formatEntry(item)).join('')
+  );
+  writeFileSync(filepath, content, 'utf-8');
+
+  // 保存精准标注 JSON（MCP server 读取）
+  if (Array.isArray(annotations) && annotations.length > 0) {
+    ensureFeedbackSubdir();
+    let existing: unknown[] = [];
+    try { existing = JSON.parse(readFileSync(ANNOTATIONS_JSON, 'utf-8')); } catch {}
+    const withMeta = (annotations as Record<string, unknown>[]).map((a) => ({
+      ...a,
+      _savedAt: new Date().toISOString(),
+      _done: false,
+    }));
+    writeFileSync(ANNOTATIONS_JSON, JSON.stringify([...existing, ...withMeta], null, 2), 'utf-8');
+  }
 
   // 同时追加到 agent_feedback.md（长期累积，Agent 可直接引用）
   const agentBlocks = items.map((item, idx) => formatAgentBlock(item, idx + 1, ts)).join('');

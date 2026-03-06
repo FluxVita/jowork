@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="/styles/tokens.css">
 <link rel="stylesheet" href="/styles/components.css">
 <script src="/theme.js"></script>
+<script src="/i18n.js"></script>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -212,32 +213,34 @@ select {
     <h1>FluxVita 管理后台</h1>
     <div class="user-info">
       <span id="user-display"></span>
-      <button class="btn btn-sm" onclick="doLogout()" style="margin-left:8px">退出</button>
+      <button class="btn btn-sm" onclick="doLogout()" style="margin-left:8px" data-i18n="ui.logout">退出</button>
     </div>
   </div>
 
   <div class="tabs">
-    <button class="tab active" data-tab="users">团队成员</button>
-    <button class="tab" data-tab="dataconfig">公共数据配置</button>
-    <button class="tab" data-tab="cron">定时任务</button>
-    <button class="tab" data-tab="system">系统监控</button>
-    <button class="tab" data-tab="services">服务管理</button>
-    <button class="tab" data-tab="usage">Token 用量</button>
-    <button class="tab" data-tab="toolstats">工具统计</button>
-    <button class="tab owner-only hidden" data-tab="pricing-engine">定价引擎</button>
-    <button class="tab owner-only hidden" data-tab="billing">订阅管理</button>
-    <button class="tab admin-only hidden" data-tab="aimodels">AI 模型</button>
-    <button class="tab" data-tab="groups">群组管理</button>
-    <button class="tab" data-tab="logs">系统日志</button>
-    <button class="tab" data-tab="context">上下文管理</button>
+    <button class="tab active" data-tab="users" data-i18n="admin.tab.users">团队成员</button>
+    <button class="tab" data-tab="dataconfig" data-i18n="admin.tab.dataconfig">公共数据配置</button>
+    <button class="tab" data-tab="cron" data-i18n="admin.tab.cron">定时任务</button>
+    <button class="tab" data-tab="system" data-i18n="admin.tab.system">系统监控</button>
+    <button class="tab" data-tab="services" data-i18n="admin.tab.services">服务管理</button>
+    <button class="tab" data-tab="usage" data-i18n="admin.tab.usage">Token 用量</button>
+    <button class="tab" data-tab="toolstats" data-i18n="admin.tab.toolstats">工具统计</button>
+    <button class="tab owner-only hidden" data-tab="pricing-engine" data-i18n="admin.tab.pricing">定价引擎</button>
+    <button class="tab owner-only hidden" data-tab="billing" data-i18n="admin.tab.billing">订阅管理</button>
+    <button class="tab admin-only hidden" data-tab="aimodels" data-i18n="admin.tab.aimodels">AI 模型</button>
+    <button class="tab" data-tab="groups" data-i18n="admin.tab.groups">群组管理</button>
+    <button class="tab" data-tab="logs" data-i18n="admin.tab.logs">系统日志</button>
+    <button class="tab" data-tab="context" data-i18n="admin.tab.context">上下文管理</button>
+    <button class="tab admin-only hidden" data-tab="audit" data-i18n="admin.tab.audit">审计日志</button>
+    <button class="tab" data-tab="preferences" data-i18n="admin.tab.preferences">我的偏好</button>
   </div>
 
   <div class="content">
     <!-- Users Tab -->
     <div id="tab-users" class="tab-content">
       <div class="toolbar">
-        <h3 style="font-size:15px">用户列表</h3>
-        <button class="btn" onclick="loadUsers()">刷新</button>
+        <h3 style="font-size:15px" data-i18n="admin.users_title">用户列表</h3>
+        <button class="btn" onclick="loadUsers()" data-i18n="ui.refresh">刷新</button>
       </div>
       <div class="card"><table>
         <thead><tr><th>姓名</th><th>邮箱</th><th>角色</th><th>状态</th><th>飞书 Open ID</th></tr></thead>
@@ -813,6 +816,75 @@ select {
       </div>
     </div>
 
+    <!-- 审计日志 Tab -->
+    <div id="tab-audit" class="tab-content hidden">
+      <div class="toolbar">
+        <h3 style="font-size:15px">审计日志</h3>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input id="audit-actor" class="search-input" placeholder="操作人 ID" style="width:160px">
+          <input id="audit-action" class="search-input" placeholder="操作类型" style="width:160px">
+          <select id="audit-days" style="height:32px;padding:0 8px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:4px">
+            <option value="1">最近 1 天</option>
+            <option value="7" selected>最近 7 天</option>
+            <option value="30">最近 30 天</option>
+          </select>
+          <button class="btn" onclick="loadAuditLogs()">查询</button>
+        </div>
+      </div>
+      <div class="card" style="margin-top:12px">
+        <table>
+          <thead><tr>
+            <th>时间</th><th>操作人</th><th>操作</th><th>目标类型</th><th>目标 ID</th><th>IP</th><th>详情</th>
+          </tr></thead>
+          <tbody id="audit-body"><tr><td colspan="7" style="text-align:center;color:var(--text2)">点击查询加载数据</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 我的偏好 Tab -->
+    <div id="tab-preferences" class="tab-content hidden">
+      <div class="toolbar"><h3 style="font-size:15px">我的偏好</h3></div>
+      <div class="card" style="margin-top:12px;max-width:480px">
+        <div style="display:grid;gap:18px">
+
+          <div>
+            <label style="font-size:12px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px">界面语言</label>
+            <select id="pref-language" style="width:100%;height:36px;padding:0 10px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:14px">
+              <option value="zh-CN">中文（简体）</option>
+              <option value="en">English</option>
+            </select>
+          </div>
+
+          <div>
+            <label style="font-size:12px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px">AI 回复风格</label>
+            <select id="pref-response-style" style="width:100%;height:36px;padding:0 10px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:14px">
+              <option value="concise">简洁 — 直接给结论</option>
+              <option value="balanced" selected>均衡 — 适度解释</option>
+              <option value="detailed">详细 — 完整推理过程</option>
+            </select>
+          </div>
+
+          <div>
+            <label style="font-size:12px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px">时区</label>
+            <select id="pref-timezone" style="width:100%;height:36px;padding:0 10px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:14px">
+              <option value="Asia/Shanghai">Asia/Shanghai（UTC+8）</option>
+              <option value="America/New_York">America/New_York（UTC-5）</option>
+              <option value="America/Los_Angeles">America/Los_Angeles（UTC-8）</option>
+              <option value="Europe/London">Europe/London（UTC+0）</option>
+              <option value="Europe/Berlin">Europe/Berlin（UTC+1）</option>
+              <option value="Asia/Tokyo">Asia/Tokyo（UTC+9）</option>
+            </select>
+          </div>
+
+        </div>
+        <div style="margin-top:20px;display:flex;gap:10px;justify-content:flex-end">
+          <button class="btn" onclick="loadPreferences()" style="background:var(--surface2)">重置</button>
+          <button class="btn" id="pref-save-btn" onclick="savePreferences()" style="background:var(--accent);color:var(--text-inverse)">保存</button>
+        </div>
+        <div id="pref-status" style="margin-top:10px;font-size:13px;min-height:18px"></div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -837,9 +909,9 @@ function readTokenFromHash() {
   return m ? decodeURIComponent(m[1]) : null;
 }
 const hashToken = readTokenFromHash();
-let token = hashToken || localStorage.getItem('jw_admin_token') || localStorage.getItem('jowork_token');
+let token = hashToken || localStorage.getItem('fv_admin_token') || localStorage.getItem('fluxvita_token');
 if (hashToken) {
-  localStorage.setItem('jw_admin_token', hashToken); // 顺手缓存，避免刷新丢失
+  localStorage.setItem('fv_admin_token', hashToken); // 顺手缓存，避免刷新丢失
 }
 let currentUser = null;
 
@@ -876,7 +948,7 @@ window.addEventListener('message', (e) => {
     dbg('SHELL_TOKEN received, user=' + (e.data.user?.name || '?'), 'ok');
     token = e.data.token;
     currentUser = e.data.user;
-    localStorage.setItem('jw_admin_token', token);
+    localStorage.setItem('fv_admin_token', token);
     dbgStatus('已登录', token, currentUser?.name);
     showApp();
   }
@@ -938,7 +1010,7 @@ async function doLogin() {
       } else if (data.token) {
         // 兼容旧响应格式
         token = data.token;
-        localStorage.setItem('jw_admin_token', token);
+        localStorage.setItem('fv_admin_token', token);
         currentUser = data.user;
         showApp();
       } else {
@@ -961,7 +1033,7 @@ async function _doVerify(openId, name, challengeId, code) {
     if (data.token) {
       _pendingChallengeId = null;
       token = data.token;
-      localStorage.setItem('jw_admin_token', token);
+      localStorage.setItem('fv_admin_token', token);
       currentUser = data.user;
       showApp();
     } else {
@@ -982,8 +1054,8 @@ function showLoginError(msg) {
 
 function doLogout() {
   token = null;
-  localStorage.removeItem('jw_admin_token');
-  localStorage.removeItem('jowork_token');
+  localStorage.removeItem('fv_admin_token');
+  localStorage.removeItem('fluxvita_token');
   if (inIframe) {
     window.parent.postMessage({ type: 'LOGOUT' }, '*');
   } else {
@@ -1117,7 +1189,7 @@ document.querySelectorAll('.tab').forEach(tab => {
       clearInterval(_logsAutoTimer);
       _logsAutoTimer = null;
     }
-    const loaders = { users: loadUsers, groups: loadGroups, cron: loadCronTasks, system: loadSystem, services: loadServices, usage: loadUsage, toolstats: loadToolStats, 'pricing-engine': loadPricingEngine, billing: loadBillingAdmin, aimodels: loadAiModels, logs: () => { loadLogs(true); if (_logsAutoEnabled) startLogsAuto(); }, context: loadContextDocs };
+    const loaders = { users: loadUsers, groups: loadGroups, cron: loadCronTasks, system: loadSystem, services: loadServices, usage: loadUsage, toolstats: loadToolStats, 'pricing-engine': loadPricingEngine, billing: loadBillingAdmin, aimodels: loadAiModels, logs: () => { loadLogs(true); if (_logsAutoEnabled) startLogsAuto(); }, context: loadContextDocs, audit: loadAuditLogs, preferences: loadPreferences };
     if (loaders[target]) loaders[target]();
   });
 });
@@ -2174,7 +2246,7 @@ window.addEventListener('unhandledrejection', (e) => dbg(`Unhandled rejection: $
       }
       dbg('token invalid, clearing', 'warn');
       token = null;
-      localStorage.removeItem('jw_admin_token');
+      localStorage.removeItem('fv_admin_token');
     }
 
     if (inIframe) {
@@ -2526,6 +2598,89 @@ async function saveBillingPrice(id) {
     showToast('价格配置已保存');
   } catch (e) {
     showToast('保存失败: ' + e.message, true);
+  }
+}
+
+// ─── 审计日志 ───
+
+async function loadAuditLogs() {
+  const body = document.getElementById('audit-body');
+  body.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text2)">加载中...</td></tr>';
+  try {
+    const days = document.getElementById('audit-days').value;
+    const actor = document.getElementById('audit-actor').value.trim();
+    const action = document.getElementById('audit-action').value.trim();
+    const from = new Date(Date.now() - days * 86400000).toISOString();
+    const params = new URLSearchParams({ from, limit: '200' });
+    if (actor) params.set('actor_id', actor);
+    if (action) params.set('action', action);
+    const r = await apiFetch(`/api/audit/logs?${params}`);
+    const logs = r.logs ?? [];
+    if (!logs.length) {
+      body.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text2)">暂无记录</td></tr>';
+      return;
+    }
+    body.innerHTML = logs.map(l => {
+      let detail = '';
+      try { detail = l.detail_json ? JSON.stringify(JSON.parse(l.detail_json)).slice(0, 80) : ''; } catch { detail = l.detail_json ?? ''; }
+      return `<tr>
+        <td style="font-size:11px;white-space:nowrap">${(l.created_at||'').slice(0,16)}</td>
+        <td style="font-size:12px">${escHtml(l.actor_id||'')}</td>
+        <td><code style="font-size:11px;background:var(--surface2);padding:1px 5px;border-radius:3px">${escHtml(l.action||'')}</code></td>
+        <td style="font-size:12px;color:var(--text2)">${escHtml(l.target_type||'')}</td>
+        <td style="font-size:11px;color:var(--text2)">${escHtml(l.target_id||'')}</td>
+        <td style="font-size:11px;color:var(--text2)">${escHtml(l.ip||'')}</td>
+        <td style="font-size:11px;color:var(--text2);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escHtml(l.detail_json||'')}">${escHtml(detail)}</td>
+      </tr>`;
+    }).join('');
+  } catch (e) {
+    body.innerHTML = `<tr><td colspan="7" style="color:#f87171;text-align:center">加载失败: ${e.message}</td></tr>`;
+  }
+}
+
+// ─── 用户偏好 ───
+
+async function loadPreferences() {
+  try {
+    const r = await apiFetch('/api/preferences');
+    const p = r.preferences ?? {};
+    document.getElementById('pref-language').value = p.language ?? 'zh-CN';
+    document.getElementById('pref-response-style').value = p.response_style ?? 'balanced';
+    document.getElementById('pref-timezone').value = p.timezone ?? 'Asia/Shanghai';
+    document.getElementById('pref-status').textContent = '';
+  } catch (e) {
+    document.getElementById('pref-status').textContent = '加载失败: ' + e.message;
+    document.getElementById('pref-status').style.color = '#f87171';
+  }
+}
+
+async function savePreferences() {
+  const btn = document.getElementById('pref-save-btn');
+  const status = document.getElementById('pref-status');
+  btn.disabled = true;
+  status.textContent = '保存中...';
+  status.style.color = 'var(--text2)';
+  try {
+    const body = {
+      language: document.getElementById('pref-language').value,
+      response_style: document.getElementById('pref-response-style').value,
+      timezone: document.getElementById('pref-timezone').value,
+    };
+    const r = await apiFetch('/api/preferences', { method: 'PUT', body: JSON.stringify(body) });
+    const lang = r.preferences?.language ?? body.language;
+    // 同步前端 i18n locale
+    const newLocale = lang.startsWith('zh') ? 'zh' : 'en';
+    const prevLocale = localStorage.getItem('jowork_locale');
+    try { localStorage.setItem('jowork_locale', newLocale); } catch { /* ignore */ }
+    status.textContent = '✓ 已保存';
+    status.style.color = '#4ade80';
+    // 语言变了则刷新页面让 i18n 生效
+    if (newLocale !== prevLocale) setTimeout(() => location.reload(), 600);
+  } catch (e) {
+    status.textContent = '保存失败: ' + e.message;
+    status.style.color = '#f87171';
+  } finally {
+    btn.disabled = false;
   }
 }
 

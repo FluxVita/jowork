@@ -48,6 +48,8 @@ import contextRoutes from './routes/context.js';
 import systemRoutes from './routes/system.js';
 import billingRoutes from './routes/billing.js';
 import { seedDefaultServices } from '../services/seed.js';
+import { startAdvertising } from '../discovery/mdns.js';
+import { getOrgSetting } from '../auth/settings.js';
 
 const log = createLogger('gateway');
 
@@ -71,7 +73,11 @@ export function startGateway(opts: GatewayOptions = {}) {
     next();
   });
 
-  app.use(express.json());
+  // body-parser@2.2.2 (Express 5) 对 charset 大小写敏感，用 type 函数统一匹配
+  app.use(express.json({ type: (req) => {
+    const ct = (req.headers['content-type'] ?? '').toLowerCase();
+    return ct.startsWith('application/json');
+  }}));
 
   // 请求耗时监控（慢请求/5xx 自动写持久化日志）
   app.use(requestLogger);
@@ -408,6 +414,13 @@ export function startGateway(opts: GatewayOptions = {}) {
   server.listen(config.port, config.host, () => {
     const proto = hasTls ? 'https' : 'http';
     log.info(`Jowork Gateway running on ${proto}://${config.host}:${config.port}`);
+
+    // Host 模式：向局域网广播 mDNS 服务，让团队成员可自动发现
+    const mode = getOrgSetting('jowork_mode');
+    if (mode === 'host') {
+      startAdvertising(config.port);
+      log.info('[mdns] Advertising Jowork service on LAN (host mode)');
+    }
     log.info('API endpoints:');
     log.info('  GET  /health');
     log.info('  POST /api/auth/login');

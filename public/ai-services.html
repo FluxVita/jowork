@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="/styles/tokens.css">
 <link rel="stylesheet" href="/styles/components.css">
 <script src="/theme.js"></script>
+<script src="/i18n.js"></script>
 <style>
 body {
   background: var(--bg);
@@ -358,8 +359,8 @@ body {
 <body>
 
 <div class="page-header">
-  <h1>⚡ AI 服务</h1>
-  <p>管理本地 AI 模型服务的启动与版本同步</p>
+  <h1 data-i18n="aiservices.title">⚡ AI 服务</h1>
+  <p data-i18n="aiservices.subtitle">管理本地 AI 模型服务的启动与版本同步</p>
 </div>
 
 <div class="services-grid">
@@ -426,6 +427,65 @@ body {
       </div>
       <div class="log-box" id="klaude-log"><span class="log-empty">暂无日志</span></div>
     </div>
+  </div>
+
+  <!-- ─── Agent Browser 卡片 ─── -->
+  <div class="service-card" id="agent-browser-card">
+    <div class="card-header">
+      <div class="card-icon">🌐</div>
+      <div class="card-title">
+        <h2>Agent Browser</h2>
+        <p>UI 自动化测试工具，让 AI Agent 可操控浏览器</p>
+      </div>
+      <div class="status-badge stopped" id="ab-badge">
+        <span class="status-dot"></span>
+        <span id="ab-status-text">检测中...</span>
+      </div>
+    </div>
+
+    <div class="card-meta" id="ab-meta">
+      <div class="meta-row">
+        <span class="meta-label">版本</span>
+        <span class="meta-value" id="ab-version">—</span>
+      </div>
+      <div class="meta-row">
+        <span class="meta-label">npm 包</span>
+        <span class="meta-value" style="color:var(--text2)">agent-browser</span>
+      </div>
+      <div class="meta-row">
+        <span class="meta-label">用途</span>
+        <span class="meta-value" style="color:var(--text2);font-family:var(--font)">Onboarding/Chat E2E 测试</span>
+      </div>
+    </div>
+
+    <!-- 未安装时显示安装引导 -->
+    <div id="ab-install-guide" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px;font-size:12px">
+      <div style="color:var(--text2);margin-bottom:10px">运行以下命令安装 Agent Browser：</div>
+      <div style="display:flex;gap:6px;align-items:center;background:#0d0d0d;border-radius:6px;padding:8px 12px">
+        <code id="ab-install-cmd" style="flex:1;font-family:var(--font-mono);font-size:12px;color:#b8ffb8;word-break:break-all">npm install -g agent-browser && agent-browser install</code>
+        <button class="btn-sm" onclick="copyInstallCmd()" title="复制" style="flex-shrink:0">复制</button>
+      </div>
+      <div style="color:var(--text2);margin-top:8px">安装完成后点击刷新检测状态。</div>
+    </div>
+
+    <!-- 已安装时显示操作按钮 -->
+    <div class="card-actions" id="ab-actions" style="display:none">
+      <button class="btn" onclick="checkAgentBrowser()">刷新检测</button>
+      <button class="btn btn-primary" onclick="runBrowserTest()">运行 UI 测试</button>
+    </div>
+
+    <!-- 未安装时底部按钮 -->
+    <div class="card-actions" id="ab-not-installed-actions">
+      <button class="btn" onclick="checkAgentBrowser()">重新检测</button>
+      <a href="https://github.com/vercel-labs/agent-browser" target="_blank" rel="noopener"
+         style="flex:1;display:flex;align-items:center;justify-content:center;padding:9px 14px;border-radius:8px;font-size:13px;font-weight:500;border:1px solid var(--border);background:var(--surface2);color:var(--text2);text-decoration:none;transition:all .15s"
+         onmouseover="this.style.color='var(--text)';this.style.borderColor='var(--border-hover)'"
+         onmouseout="this.style.color='var(--text2)';this.style.borderColor='var(--border)'">
+        查看文档
+      </a>
+    </div>
+
+    <div class="error-tip" id="ab-error"></div>
   </div>
 
   <!-- ─── MiniMax 卡片 ─── -->
@@ -596,7 +656,7 @@ window.addEventListener('message', e => {
   }
 });
 const hashToken = new URLSearchParams(location.hash.slice(1)).get('token');
-const lsToken = localStorage.getItem('jw_admin_token') || localStorage.getItem('jowork_token');
+const lsToken = localStorage.getItem('fv_admin_token') || localStorage.getItem('fluxvita_token');
 if (hashToken) { token = hashToken; init(); }
 else if (lsToken) { token = lsToken; init(); }
 
@@ -1196,7 +1256,82 @@ init = function() {
   _origInit();
   loadMcpServers();
   loadSkills();
+  checkAgentBrowser();
 };
+
+// ═══════════════════════════════════════
+// Agent Browser 检测与操作
+// ═══════════════════════════════════════
+
+async function checkAgentBrowser() {
+  const badge = document.getElementById('ab-badge');
+  const statusText = document.getElementById('ab-status-text');
+  const versionEl = document.getElementById('ab-version');
+  const installGuide = document.getElementById('ab-install-guide');
+  const actions = document.getElementById('ab-actions');
+  const notInstalledActions = document.getElementById('ab-not-installed-actions');
+  const errorEl = document.getElementById('ab-error');
+
+  badge.className = 'status-badge starting';
+  statusText.textContent = '检测中...';
+  errorEl.classList.remove('show');
+
+  try {
+    const r = await fetch(API + '/api/ai-services/agent-browser/status', { headers: authHeader() });
+    if (!r.ok) throw new Error('API 请求失败');
+    const data = await r.json();
+
+    if (data.installed) {
+      badge.className = 'status-badge running';
+      statusText.textContent = '已安装';
+      versionEl.textContent = data.version || '—';
+      installGuide.style.display = 'none';
+      actions.style.display = 'flex';
+      notInstalledActions.style.display = 'none';
+    } else {
+      badge.className = 'status-badge stopped';
+      statusText.textContent = '未安装';
+      versionEl.textContent = '—';
+      installGuide.style.display = 'block';
+      actions.style.display = 'none';
+      notInstalledActions.style.display = 'flex';
+    }
+  } catch (e) {
+    badge.className = 'status-badge error';
+    statusText.textContent = '检测失败';
+    errorEl.textContent = '检测失败：' + String(e);
+    errorEl.classList.add('show');
+  }
+}
+
+function copyInstallCmd() {
+  const cmd = document.getElementById('ab-install-cmd').textContent;
+  navigator.clipboard.writeText(cmd).then(() => {
+    const btn = event.target;
+    btn.textContent = '已复制';
+    setTimeout(() => { btn.textContent = '复制'; }, 2000);
+  });
+}
+
+async function runBrowserTest() {
+  const errorEl = document.getElementById('ab-error');
+  errorEl.classList.remove('show');
+  try {
+    const r = await fetch(API + '/api/agent/run-tool', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeader() },
+      body: JSON.stringify({
+        tool: 'run_command',
+        input: { command: 'agent-browser --version' },
+      }),
+    });
+    if (!r.ok) throw new Error('需要 Premium 权限或 API 不可用');
+    alert('UI 测试已触发，请在 Chat 界面查看结果。\n\n完整测试：在 Chat 中输入「帮我运行 onboarding UI 测试」');
+  } catch (e) {
+    // 降级：直接提示在终端运行
+    alert('提示：请在终端运行以下命令执行 UI 测试：\n\n./scripts/test-browser.sh\n\n（需要 Gateway 本地运行）');
+  }
+}
 </script>
 </body>
 </html>

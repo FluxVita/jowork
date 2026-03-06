@@ -1,0 +1,33 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Jowork",
+  "identifier": "com.jowork.app",
+  "version": "0.1.0",
+  "build": {
+    "beforeBuildCommand": "pnpm --filter @jowork/app build && node scripts/build-sidecar.mjs",
+    "frontendDist": "../public"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "title": "Jowork",
+        "width": 1360,
+        "height": 860,
+        "url": "tauri://localhost/loading.html"
+      }
+    ]
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["app"],
+    "icon": [
+      "icons/128x128.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "externalBin": [
+      "sidecar/jowork-gateway"
+    ]
+  }
+}

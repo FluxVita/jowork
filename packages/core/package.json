@@ -13,8 +13,11 @@
     },
     "./*": "./dist/*"
   },
+  "bin": {
+    "jowork": "./dist/cli/index.js"
+  },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && cp -r src/locales dist/ && node ../../scripts/build-i18n.js",
     "dev": "tsc --watch",
     "lint": "tsc --noEmit"
   },
@@ -25,6 +28,7 @@
     "@larksuiteoapi/node-sdk": "^1.59.0",
     "ali-oss": "^6.23.0",
     "better-sqlite3": "^12.6.2",
+    "bonjour-service": "^1.2.1",
     "express": "^5.0.1",
     "gpt-tokenizer": "^3.4.0",
     "imapflow": "^1.2.10",
@@ -32,7 +36,7 @@
     "mailparser": "^3.9.3",
     "node-pty": "^1.1.0",
     "stripe": "^17.7.0",
-    "ws": "^8.18.3"
+    "ws": "8.18.3"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",

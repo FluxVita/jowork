@@ -1,0 +1,46 @@
+# Git
+.git
+.gitignore
+.gitmodules
+
+# Dependencies (will be installed fresh in Docker)
+node_modules
+**/node_modules
+
+# Build artifacts (will be rebuilt in Docker)
+dist
+**/dist
+*.tsbuildinfo
+
+# Local data and secrets
+.env
+data/
+logs/
+cache/
+tauri-ui/
+
+# Development tools
+src-tauri/
+.gitlab-ci.yml
+.github/
+
+# Test files
+test/
+test_data/
+*.test.ts
+
+# Documentation
+docs/
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# macOS
+.DS_Store
+
+# Runtime files
+*.log
+*.pid
+openclaw-main/

@@ -1,2 +1,8 @@
 packages:
-  - packages/core
+  - .
+  - packages/*
+  - apps/*
+
+onlyBuiltDependencies:
+  - better-sqlite3
+  - node-pty

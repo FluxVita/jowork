@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/monokai.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css">
 <script src="/theme.js"></script>
+<script src="/i18n.js"></script>
 <style>
 :root {
   --chat-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
@@ -212,6 +213,24 @@ body {
   background: none; color: var(--text2); font-size: 12px; cursor: pointer;
 }
 .learn-btn-dismiss:hover { background: var(--surface2); }
+
+/* ─── 积分耗尽提示 ─── */
+.credits-exhausted-banner {
+  display: flex; align-items: flex-start; gap: 10px;
+  background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.3); border-radius: 10px;
+  padding: 12px 14px; margin: 6px 0 6px 12px; max-width: 480px;
+  animation: fadeUp .3s ease;
+}
+.credits-exhausted-icon { font-size: 20px; flex-shrink: 0; margin-top: 1px; }
+.credits-exhausted-body { flex: 1; min-width: 0; }
+.credits-exhausted-title { font-size: 13px; font-weight: 600; color: #ef4444; margin-bottom: 4px; }
+.credits-exhausted-desc { font-size: 12px; color: var(--text2); line-height: 1.5; margin-bottom: 10px; }
+.credits-exhausted-btn {
+  padding: 5px 16px; border-radius: 7px; border: none;
+  background: var(--accent, #9dd84a); color: #111; font-size: 12px; font-weight: 600;
+  cursor: pointer; transition: opacity .15s;
+}
+.credits-exhausted-btn:hover { opacity: 0.85; }
 
 /* ─── 文件卡片 ─── */
 .file-card {
@@ -535,15 +554,15 @@ body {
     <!-- 左侧栏 -->
     <div class="sidebar">
       <div class="sidebar-header">
-        <h2>对话历史</h2>
-        <button class="new-chat-btn" onclick="newChat()">+ 新对话</button>
+        <h2 data-i18n="chat.history">对话历史</h2>
+        <button class="new-chat-btn" onclick="newChat()" data-i18n="chat.new_chat">+ 新对话</button>
       </div>
       <div class="sidebar-search">
-        <input id="session-search" placeholder="搜索对话..." oninput="debounceSearch(this.value)">
+        <input id="session-search" placeholder="搜索对话..." data-i18n-placeholder="chat.search_placeholder" oninput="debounceSearch(this.value)">
       </div>
       <div class="session-list" id="session-list"></div>
       <div class="sidebar-footer">
-        <button class="sidebar-footer-btn" onclick="openWorkstyle()">📝 我的工作方式</button>
+        <button class="sidebar-footer-btn" onclick="openWorkstyle()" data-i18n="chat.workstyle_btn">📝 我的工作方式</button>
       </div>
     </div>
 
@@ -552,8 +571,9 @@ body {
       <div class="chat-header">
         <h1 id="chat-title">FluxVita AI 助手</h1>
         <div class="chat-header-right">
+          <span style="font-size:11px;color:var(--text2);font-weight:500;margin-right:6px;line-height:1;align-self:center">Agent</span>
           <div class="engine-switcher" id="engine-switcher">
-            <div class="engine-opt active" data-engine="builtin" onclick="switchEngine('builtin')">自建</div>
+            <div class="engine-opt active" data-engine="builtin" onclick="switchEngine('builtin')">小F</div>
             <div class="engine-opt" data-engine="claude_agent" onclick="switchEngine('claude_agent')">Claude Code</div>
           </div>
         </div>
@@ -561,8 +581,8 @@ body {
 
       <div class="messages" id="messages">
         <div class="message welcome">
-          <h2>你好，有什么可以帮你的？</h2>
-          <p>我可以搜索公司内部数据（飞书文档、GitLab 代码、Linear 任务、PostHog 数据等）来回答你的问题。</p>
+          <h2 data-i18n="chat.greeting">你好，有什么可以帮你的？</h2>
+          <p data-i18n="chat.greeting_sub">我可以搜索公司内部数据（飞书文档、GitLab 代码、Linear 任务、PostHog 数据等）来回答你的问题。</p>
           <div class="hint">
             <span onclick="quickAsk(this.textContent)">最近有哪些 MR 待合并？</span>
             <span onclick="quickAsk(this.textContent)">帮我查一下产品文档</span>
@@ -577,10 +597,10 @@ body {
         <div class="input-row">
           <button class="attach-btn" id="attach-btn" onclick="triggerImagePicker()" title="发送图片">🖼</button>
           <input type="file" id="image-input" accept="image/jpeg,image/png,image/gif,image/webp" multiple style="display:none" onchange="onImagesSelected(this)">
-          <textarea id="input" placeholder="输入你的问题..." rows="1" oninput="autoResize(this); updateSendBtn(this)"></textarea>
-          <button class="send-btn hidden" id="send-btn" onclick="sendMessage()">发送</button>
+          <textarea id="input" placeholder="输入你的问题..." data-i18n-placeholder="chat.input_placeholder" rows="1" oninput="autoResize(this); updateSendBtn(this)"></textarea>
+          <button class="send-btn hidden" id="send-btn" onclick="sendMessage()" data-i18n="ui.send">发送</button>
         </div>
-        <div class="input-hint" id="input-hint">Enter 发送 · Shift+Enter 换行</div>
+        <div class="input-hint" id="input-hint" data-i18n="chat.send_hint">Enter 发送 · Shift+Enter 换行</div>
       </div>
 
     </div>
@@ -589,18 +609,18 @@ body {
   <!-- ─── 终端面板（覆盖整个 chat-screen，含侧边栏）─── -->
   <div id="terminal-panel">
     <div id="term-mode-bar">
-      <button class="term-back-btn" onclick="toggleTerminalPanel()">← AI 助手</button>
-      <button class="term-mode-btn active" data-mode="shell" onclick="termSelectMode('shell', this)">终端</button>
+      <button class="term-back-btn" onclick="toggleTerminalPanel()" data-i18n="chat.back_to_ai">← AI 助手</button>
+      <button class="term-mode-btn active" data-mode="shell" onclick="termSelectMode('shell', this)" data-i18n="chat.terminal">终端</button>
       <button class="term-mode-btn" data-mode="tmux" onclick="termSelectMode('tmux', this)">tmux</button>
       <input id="tmux-sess-input" placeholder="session 名（留空=geek）" />
-      <button id="term-connect-btn" onclick="termConnect()">连接</button>
-      <span id="term-status">未连接</span>
-      <button id="term-clear-btn" onclick="termClear()">清屏</button>
+      <button id="term-connect-btn" onclick="termConnect()" data-i18n="chat.connect">连接</button>
+      <span id="term-status" data-i18n="chat.not_connected">未连接</span>
+      <button id="term-clear-btn" onclick="termClear()" data-i18n="chat.clear">清屏</button>
     </div>
     <div id="term-container"></div>
     <div id="term-overlay">
-      <p id="term-overlay-msg">连接已断开</p>
-      <button onclick="termConnect()">重新连接</button>
+      <p id="term-overlay-msg" data-i18n="chat.connection_lost">连接已断开</p>
+      <button onclick="termConnect()" data-i18n="chat.reconnect">重新连接</button>
     </div>
   </div>
 </div>
@@ -609,18 +629,18 @@ body {
 <div class="modal-overlay" id="workstyle-modal">
   <div class="modal-box">
     <div class="modal-header">
-      <h3>我的工作方式</h3>
+      <h3 data-i18n="chat.workstyle_title">我的工作方式</h3>
       <button class="modal-close" onclick="closeWorkstyle()">&times;</button>
     </div>
     <div class="modal-body">
       <div class="modal-hint">
-        用 Markdown 描述你的工作方式、沟通偏好、关注重点等。AI 助手会在每次对话时自动参考这份文档来调整回答。
+        <span data-i18n="chat.workstyle_hint">用 Markdown 描述你的工作方式、沟通偏好、关注重点等。AI 助手会在每次对话时自动参考这份文档来调整回答。</span>
       </div>
       <textarea id="workstyle-editor" placeholder="例如：&#10;&#10;## 回答风格&#10;- 简洁直接，不要废话&#10;- 用中文回答，技术词汇保留英文&#10;&#10;## 关注重点&#10;- 优先给出结论，再解释原因"></textarea>
     </div>
     <div class="modal-footer">
-      <button class="btn" onclick="closeWorkstyle()">取消</button>
-      <button class="btn btn-primary" style="width:auto;padding:10px 24px" onclick="saveWorkstyleDoc()">保存</button>
+      <button class="btn" onclick="closeWorkstyle()" data-i18n="ui.cancel">取消</button>
+      <button class="btn btn-primary" style="width:auto;padding:10px 24px" onclick="saveWorkstyleDoc()" data-i18n="ui.save">保存</button>
     </div>
   </div>
 </div>
@@ -633,7 +653,7 @@ body {
 if (window.marked) window.marked.use({ gfm: true, breaks: false });
 
 const API = '';
-let token = localStorage.getItem('jowork_token');
+let token = localStorage.getItem('fluxvita_token');
 let currentUser = null;
 let currentSessionId = null;
 let currentEngine = 'builtin';
@@ -656,7 +676,7 @@ window.addEventListener('message', (e) => {
   if (e.data?.type === 'SHELL_TOKEN' && e.data.token) {
     token = e.data.token;
     currentUser = e.data.user;
-    localStorage.setItem('jowork_token', token);
+    localStorage.setItem('fluxvita_token', token);
     enterChat();
   }
 });
@@ -686,7 +706,7 @@ async function verifyAndEnter() {
       // iframe 模式：不清除 localStorage token（parent 控制），直接向 parent 请求
       window.parent.postMessage({ type: 'REQUEST_TOKEN' }, '*');
     } else {
-      localStorage.removeItem('jowork_token');
+      localStorage.removeItem('fluxvita_token');
       document.getElementById('login-screen').style.display = 'flex';
     }
   }
@@ -722,11 +742,11 @@ async function devLogin() {
       const data2 = await resp2.json();
       if (data2.token) {
         token = data2.token; currentUser = data2.user;
-        localStorage.setItem('jowork_token', token); enterChat();
+        localStorage.setItem('fluxvita_token', token); enterChat();
       } else { showError(data2.error || '验证失败'); }
     } else if (data.token) {
       token = data.token; currentUser = data.user;
-      localStorage.setItem('jowork_token', token); enterChat();
+      localStorage.setItem('fluxvita_token', token); enterChat();
     } else { showError(data.error || '登录失败'); }
   } catch { showError('网络连接失败'); }
 }
@@ -739,7 +759,7 @@ function showError(msg) {
 
 function logout() {
   token = null; currentUser = null; currentSessionId = null;
-  localStorage.removeItem('jowork_token');
+  localStorage.removeItem('fluxvita_token');
   if (inIframe) window.parent.postMessage({ type: 'LOGOUT' }, '*');
   else location.reload();
 }
@@ -1161,6 +1181,23 @@ function handleSSEEvent(event, data, thinkingEl, state) {
       }
       if (thinkingEl.parentNode) thinkingEl.remove();
       return 'stopped'; // 通知读循环退出
+    }
+
+    case 'credits_exhausted': {
+      if (thinkingEl.parentNode) thinkingEl.remove();
+      if (state.streamingMsgEl) { state.streamingMsgEl.classList.remove('streaming'); state.streamingMsgEl = null; }
+      const banner = document.createElement('div');
+      banner.className = 'credits-exhausted-banner';
+      banner.innerHTML = `
+        <div class="credits-exhausted-icon">⚡</div>
+        <div class="credits-exhausted-body">
+          <div class="credits-exhausted-title">积分已用完</div>
+          <div class="credits-exhausted-desc">本月积分额度已耗尽（${data.used || 0} / ${data.total || 0}）。升级计划获取更多积分。</div>
+          <button class="credits-exhausted-btn" onclick="window.parent.postMessage({type:'NAVIGATE',panel:'billing'},'*')">升级计划</button>
+        </div>`;
+      document.getElementById('messages').appendChild(banner);
+      scrollToBottom();
+      break;
     }
 
     case 'error':
@@ -1873,7 +1910,7 @@ function termConnect() {
   if (termWs) { termWs.close(); termWs = null; }
   termHideOverlay();
 
-  const tok = localStorage.getItem('jowork_token');
+  const tok = localStorage.getItem('fluxvita_token');
   if (!tok) {
     termXterm?.writeln('\x1b[31m[错误] 未登录\x1b[0m');
     return;

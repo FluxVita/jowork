@@ -1,12 +1,13 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
+<meta name="x-app-id" content="fluxvita">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Jowork</title>
+<title>FluxVita</title>
 <link rel="stylesheet" href="/styles/tokens.css">
 <script src="/theme.js"></script>
-<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+<script src="/i18n.js"></script>
 <style>
 /* ── Shell 专用颜色层级 ── */
 :root {
@@ -33,7 +34,7 @@ html, body {
 }
 
 /* ═══════════════════════════════════════
-   Login screen
+   登录蒙层
    ═══════════════════════════════════════ */
 #login-screen {
   position: fixed; inset: 0; z-index: 9999;
@@ -73,37 +74,20 @@ html, body {
   background: var(--gradient-brand, linear-gradient(90deg,#9DD84A,#5CC8D8,#C4B8E8,#E8A898));
 }
 
-/* 登录页 logo 方块 */
-.login-logo-mark {
+.login-logo {
   width: 52px; height: 52px; border-radius: 13px;
-  background: var(--accent, #9DD84A);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 22px; font-weight: 800; color: #0a0a0b;
-  margin: 0 auto 18px;
-  box-shadow: 0 4px 16px rgba(157,216,74,0.3);
-  letter-spacing: -1px;
+  object-fit: cover; margin: 0 auto 18px; display: block;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.08);
+}
+[data-theme="light"] .login-logo {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.1), 0 0 0 1px rgba(0,0,0,0.06);
 }
 
 .login-box h1 {
   font-size: 18px; font-weight: 700;
   color: var(--text); margin: 0 0 6px; letter-spacing: -0.4px;
 }
-.login-box p { color: var(--text2); font-size: 13px; margin: 0 0 22px; line-height: 1.55; }
-
-.login-input {
-  width: 100%; padding: 10px 12px; margin-bottom: 10px; box-sizing: border-box;
-  background: rgba(255,255,255,0.04); border: 1px solid var(--sh-sep);
-  border-radius: var(--radius-sm, 7px); color: var(--text); font-size: 14px;
-  outline: none; font-family: inherit; transition: border-color .15s;
-}
-.login-input:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(157,216,74,0.18);
-}
-[data-theme="light"] .login-input { background: rgba(0,0,0,0.04); }
-[data-theme="light"] .login-input:focus {
-  box-shadow: 0 0 0 3px rgba(90,138,26,0.15);
-}
+.login-box p { color: var(--text2); font-size: 13px; margin: 0 0 24px; line-height: 1.55; }
 
 .btn-primary {
   background: var(--accent, #9DD84A); color: #0a0a0b;
@@ -117,11 +101,30 @@ html, body {
 .btn-primary:active { opacity: .76; }
 .btn-primary:disabled { opacity: .35; cursor: not-allowed; box-shadow: none; }
 
-.login-error {
-  margin-top: 10px; padding: 8px 12px;
-  background: var(--red-bg, rgba(255,59,48,0.1)); border-radius: var(--radius-sm, 7px);
-  color: var(--red, #ff6b6b); font-size: 12px; display: none;
+.dev-login { margin-top: 16px; }
+.dev-login a { color: var(--text2); font-size: 12px; text-decoration: none; opacity: 0.6; transition: opacity .15s; }
+.dev-login a:hover { opacity: 1; }
+.dev-form { margin-top: 10px; display: none; }
+.dev-form input {
+  width: 100%; padding: 9px 12px; margin-bottom: 7px; box-sizing: border-box;
+  background: rgba(255,255,255,0.04); border: 1px solid var(--sh-sep);
+  border-radius: var(--radius-sm, 7px); color: var(--text); font-size: 13px;
+  outline: none; font-family: inherit; transition: border-color .15s;
 }
+.dev-form input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(157,216,74,0.18);
+}
+[data-theme="light"] .dev-form input { background: rgba(0,0,0,0.04); }
+[data-theme="light"] .dev-form input:focus {
+  box-shadow: 0 0 0 3px rgba(90,138,26,0.15);
+}
+.login-error { color: var(--red, #ff5a72); font-size: 12px; margin-top: 10px; display: none; }
+
+/* ═══════════════════════════════════════
+   主壳
+   ═══════════════════════════════════════ */
+#app { display: none; flex-direction: row; height: 100vh; }
 
 /* ═══════════════════════════════════════
    Sidebar
@@ -131,95 +134,117 @@ html, body {
   background: var(--sh-sidebar);
   border-right: 1px solid var(--sh-sep);
   display: flex; flex-direction: column;
-  position: relative;
+  height: 100%; overflow: hidden;
+  -webkit-user-select: none; user-select: none;
+  -webkit-app-region: drag;
   transition: width .22s cubic-bezier(0.16, 1, 0.3, 1);
-  z-index: 10;
-  -webkit-user-select: none;
-  user-select: none;
+  position: relative;
 }
 .sidebar.collapsed { width: 54px; }
 
+/* 折叠按钮 */
+.collapse-btn {
+  flex-shrink: 0; width: 22px; height: 22px;
+  border-radius: 5px; border: none; background: transparent;
+  color: var(--text2); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .1s, color .1s, transform .22s cubic-bezier(0.16, 1, 0.3, 1);
+  -webkit-app-region: no-drag;
+  margin-left: auto;
+}
+.collapse-btn:hover { background: var(--accent-bg, rgba(157,216,74,0.08)); color: var(--accent); }
+.sidebar.collapsed .collapse-btn { transform: rotate(180deg); display: none; }
+
+/* 折叠状态 */
+.sidebar.collapsed .sidebar-brand { justify-content: center; padding-left: 0; padding-right: 0; }
+.sidebar.collapsed .brand-text { display: none; }
+.sidebar.collapsed .nav-group-label { display: none; }
+.sidebar.collapsed .action-btn-label { display: none; }
+.sidebar.collapsed .sidebar-user-name { display: none; }
+.sidebar.collapsed .nav-item { justify-content: center; padding: 0; font-size: 0; }
+.sidebar.collapsed .nav-item-icon { width: auto; }
+.sidebar.collapsed .sidebar-actions { flex-direction: column; padding: 6px 8px 2px; gap: 2px; }
+.sidebar.collapsed .action-btn { flex-direction: row; justify-content: center; padding: 8px 0; }
+.sidebar.collapsed .sidebar-user-row { justify-content: center; padding: 10px 4px 8px; }
+.sidebar.collapsed .sidebar-user-info { display: none; }
+.sidebar.collapsed .brand-logo {
+  width: 28px; height: 28px; border-radius: 7px; cursor: pointer;
+  transition: box-shadow .15s, transform .15s;
+}
+.sidebar.collapsed .brand-logo:hover { box-shadow: 0 0 0 2px rgba(157,216,74,0.5); transform: scale(1.06); }
+.sidebar.collapsed .status-dot { display: none; }
+.sidebar.collapsed .nav-item.active::before { display: none; }
+.sidebar.collapsed .sidebar-resize-handle { display: none; }
+
+/* 品牌区 */
+.sidebar-brand {
+  flex-shrink: 0; padding: 16px 14px 12px;
+  display: flex; align-items: center; gap: 10px;
+  -webkit-app-region: no-drag;
+}
+html[data-platform="tauri"]:not(.fullscreen) .sidebar-brand {
+  padding-top: 28px; -webkit-app-region: drag;
+}
+html[data-platform="tauri"]:not(.fullscreen) .sidebar-brand * { -webkit-app-region: no-drag; }
+html[data-platform="tauri"].fullscreen .sidebar-brand { padding-top: 16px; }
+html[data-platform="tauri"]:not(.fullscreen) .sidebar-brand {
+  background: rgba(22,22,25,0.88) !important;
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+}
+html[data-platform="tauri"][data-theme="light"]:not(.fullscreen) .sidebar-brand {
+  background: rgba(232,232,228,0.92) !important;
+  backdrop-filter: blur(20px) saturate(1.2);
+  -webkit-backdrop-filter: blur(20px) saturate(1.2);
+}
+
+.brand-logo {
+  width: 34px; height: 34px; border-radius: 9px;
+  object-fit: cover; flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.45);
+}
+.brand-text { flex: 1; min-width: 0; }
+.brand-name { font-size: 15px; font-weight: 700; color: var(--text); letter-spacing: -0.3px; line-height: 1.2; }
+.brand-sub { font-size: 10.5px; color: var(--text2); opacity: 0.65; margin-top: 1px; }
+
+.sidebar-divider { height: 1px; background: var(--sh-sep); margin: 0 0 4px; flex-shrink: 0; }
+
+/* Resize handle */
 .sidebar-resize-handle {
-  position: absolute; right: -3px; top: 0; bottom: 0; width: 6px;
-  cursor: col-resize; z-index: 20; transition: background .15s;
+  position: absolute; right: -4px; top: 0; bottom: 0;
+  width: 8px; cursor: ew-resize; z-index: 10;
+  -webkit-app-region: no-drag; transition: background .15s;
 }
 .sidebar-resize-handle:hover,
 .sidebar-resize-handle.dragging { background: rgba(157,216,74,0.25); }
-.sidebar.collapsed .sidebar-resize-handle { display: none; }
 
-/* Brand */
-.sidebar-brand {
-  display: flex; align-items: center; gap: 10px;
-  padding: 14px 14px 12px; flex-shrink: 0;
-  -webkit-app-region: drag;
+/* 导航区 */
+.sidebar-nav {
+  flex: 1; overflow-y: auto; padding: 4px 8px 4px;
+  -webkit-app-region: no-drag; scrollbar-width: none;
 }
-html[data-platform="tauri"]:not(.fullscreen) .sidebar-brand { padding-top: 44px; }
-html[data-platform="tauri"]:not(.fullscreen) .sidebar-brand * { -webkit-app-region: no-drag; }
-html[data-platform="tauri"].fullscreen .sidebar-brand { padding-top: 14px; }
-html[data-platform="tauri"]:not(.fullscreen) .sidebar-brand {
-  -webkit-backdrop-filter: blur(40px) saturate(1.5);
-  backdrop-filter: blur(40px) saturate(1.5);
-  background: rgba(22,22,25,0.8) !important;
-}
-html[data-platform="tauri"][data-theme="light"]:not(.fullscreen) .sidebar-brand {
-  background: rgba(232,232,228,0.85) !important;
-}
-
-/* Logo mark (colored square with letter) */
-.brand-logo {
-  width: 30px; height: 30px; border-radius: 8px;
-  flex-shrink: 0;
-  background: var(--accent, #9DD84A);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 14px; font-weight: 800; color: #0a0a0b;
-  cursor: default;
-  box-shadow: 0 2px 8px rgba(157,216,74,0.25);
-  letter-spacing: -0.5px;
-}
-.sidebar.collapsed .brand-logo { cursor: pointer; width: 30px; height: 30px; margin: 0 auto; }
-.sidebar.collapsed .brand-logo:hover { opacity: .85; }
-
-.brand-text { flex: 1; min-width: 0; }
-.brand-name {
-  font-size: 14px; font-weight: 700; color: var(--text);
-  letter-spacing: -0.2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.brand-sub { font-size: 11px; color: var(--text2); opacity: 0.65; white-space: nowrap; }
-
-.collapse-btn {
-  background: transparent; border: none; cursor: pointer;
-  color: var(--text2); padding: 2px; opacity: 0.6;
-  border-radius: 5px; transition: opacity .12s, background .12s, transform .22s cubic-bezier(0.16,1,0.3,1);
-  flex-shrink: 0; display: flex; align-items: center; justify-content: center;
-  -webkit-app-region: no-drag; width: 20px; height: 20px;
-}
-.collapse-btn:hover { opacity: 1; background: var(--accent-bg, rgba(157,216,74,0.08)); color: var(--accent); }
-.sidebar.collapsed .brand-text { display: none; }
-.sidebar.collapsed .collapse-btn { display: none; }
-
-.sidebar-divider { height: 1px; background: var(--sh-sep); margin: 0 10px; flex-shrink: 0; }
-.sidebar.collapsed .sidebar-divider { margin: 0 8px; }
-
-/* Nav */
-.sidebar-nav { flex: 1; overflow-y: auto; padding: 8px 8px; scrollbar-width: none; }
 .sidebar-nav::-webkit-scrollbar { display: none; }
 
 .nav-group { margin-bottom: 4px; }
 .nav-group-label {
-  font-size: 10px; font-weight: 600; color: var(--text2); opacity: 0.5;
-  letter-spacing: 0.04em; text-transform: uppercase;
-  padding: 8px 8px 4px; display: block;
+  font-size: 10px; font-weight: 600;
+  color: var(--text2); opacity: 0.55;
+  text-transform: uppercase; letter-spacing: 0.4px;
+  padding: 12px 8px 4px; display: block;
 }
-.sidebar.collapsed .nav-group-label { display: none; }
+.nav-group:first-child .nav-group-label { padding-top: 2px; }
 
 .nav-item {
+  position: relative;
   display: flex; align-items: center; gap: 8px;
   padding: 0 9px; height: 30px;
-  border-radius: 7px; border: none; background: transparent;
-  color: var(--text2); font-size: 13px; font-weight: 500;
-  cursor: pointer; font-family: inherit; width: 100%; text-align: left;
-  transition: background .1s, color .1s; letter-spacing: -0.1px;
-  position: relative;
+  border-radius: 7px; cursor: pointer;
+  border: none; background: transparent;
+  width: 100%; text-align: left;
+  font-size: 13px; color: var(--text2); font-weight: 500;
+  letter-spacing: -0.15px;
+  transition: background .1s, color .1s;
+  -webkit-app-region: no-drag; white-space: nowrap;
 }
 .nav-item:hover { background: rgba(255,255,255,0.05); color: var(--text); }
 .nav-item.active {
@@ -227,68 +252,64 @@ html[data-platform="tauri"][data-theme="light"]:not(.fullscreen) .sidebar-brand 
   color: var(--text); font-weight: 600;
 }
 .nav-item.active::before {
-  content: ''; position: absolute; left: 1px; top: 50%; transform: translateY(-50%);
-  width: 3px; height: 14px; background: var(--accent); border-radius: 2px;
+  content: '';
+  position: absolute; left: 1px; top: 50%; transform: translateY(-50%);
+  width: 3px; height: 14px; border-radius: 2px; background: var(--accent);
 }
+
 .nav-item-icon {
   width: 18px; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
-  opacity: 0.65; transition: opacity .1s, color .1s; color: var(--text2);
+  opacity: 0.65; transition: opacity .1s, color .1s;
+  color: var(--text2);
 }
 .nav-item.active .nav-item-icon { opacity: 1; color: var(--accent); }
 .nav-item:hover .nav-item-icon { opacity: 1; color: inherit; }
-.sidebar.collapsed .nav-item { justify-content: center; padding: 0; font-size: 0; }
-.sidebar.collapsed .nav-item.active::before { display: none; }
-.sidebar.collapsed .nav-item-icon { width: auto; }
 
 [data-theme="light"] .nav-item:hover { background: rgba(0,0,0,0.05); }
 [data-theme="light"] .nav-item.active { background: rgba(90,138,26,0.09); }
 [data-theme="light"] .nav-item.active::before { background: var(--accent2, #5a8a1a); }
 [data-theme="light"] .nav-item.active .nav-item-icon { color: var(--accent2, #5a8a1a); }
 
-/* Sidebar footer */
-.sidebar-footer { flex-shrink: 0; padding: 6px 8px 10px; }
+/* 底部区域 */
+.sidebar-footer { flex-shrink: 0; -webkit-app-region: no-drag; }
+
 .sidebar-actions {
-  display: flex; gap: 3px; margin-bottom: 6px;
-  border-top: 1px solid var(--sh-sep); padding-top: 8px;
+  display: flex; gap: 4px;
+  padding: 6px 10px 2px;
+  border-top: 1px solid var(--sh-sep);
 }
 .action-btn {
-  display: flex; align-items: center; justify-content: center; gap: 5px;
-  padding: 6px 8px; border-radius: 7px; border: none; background: transparent;
-  color: var(--text2); font-size: 12px;
-  cursor: pointer; font-family: inherit;
-  transition: background .1s, color .1s; flex: 1;
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 3px; padding: 7px 4px;
+  border-radius: 8px; border: none;
+  background: transparent;
+  color: var(--text2); font-family: inherit; cursor: pointer;
+  transition: background .12s, color .12s;
 }
-.action-btn:hover { background: rgba(255,255,255,0.07); color: var(--text); }
-.action-btn.danger:hover { background: var(--red-bg, rgba(255,59,48,0.12)); color: var(--red, #ff6b6b); }
-.action-btn-icon { display: flex; align-items: center; justify-content: center; line-height: 1; }
-.action-btn-label { font-size: 11px; }
-.sidebar.collapsed .action-btn-label { display: none; }
-.sidebar.collapsed .action-btn { padding: 8px; }
-[data-theme="light"] .action-btn { color: rgba(0,0,0,0.4); }
-[data-theme="light"] .action-btn:hover { background: rgba(0,0,0,0.05); color: rgba(0,0,0,0.65); }
-
-/* User row */
-.sidebar-user-row {
-  display: flex; align-items: center; gap: 8px;
-  padding: 6px 8px; border-radius: 8px; cursor: pointer;
-  transition: background .1s;
+.action-btn:hover {
+  background: rgba(255,255,255,0.07);
+  color: var(--text);
 }
-.sidebar-user-row:hover { background: rgba(255,255,255,0.05); }
-[data-theme="light"] .sidebar-user-row:hover { background: rgba(0,0,0,0.05); }
-.sidebar-user-avatar {
-  width: 24px; height: 24px; border-radius: 50%;
-  background: var(--accent-bg); border: 1.5px solid var(--accent-border);
+.action-btn.danger:hover {
+  background: var(--red-bg, rgba(255,77,106,0.08));
+  color: var(--red, #ff4d6a);
+}
+.action-btn-icon {
+  line-height: 1; font-size: 14px;
   display: flex; align-items: center; justify-content: center;
-  font-size: 11px; font-weight: 700; color: var(--accent); flex-shrink: 0;
 }
-.sidebar-user-name {
-  font-size: 12px; color: var(--text2); flex: 1; min-width: 0;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
+.action-btn-label { font-size: 9.5px; letter-spacing: 0.1px; line-height: 1; }
+
+[data-theme="light"] .action-btn { background: transparent; }
+[data-theme="light"] .action-btn:hover { background: rgba(0,0,0,0.06); color: rgba(0,0,0,0.78); }
+[data-theme="light"] .action-btn.danger:hover { background: rgba(220,53,69,0.06); color: #dc3545; }
+
+/* Gateway 状态圆点 */
 .status-dot {
   width: 6px; height: 6px; border-radius: 50%;
-  background: rgba(255,255,255,0.14); flex-shrink: 0;
+  background: rgba(255,255,255,0.14); flex-shrink: 0; transition: background .3s;
 }
 .status-dot.online {
   background: var(--accent);
@@ -299,14 +320,57 @@ html[data-platform="tauri"][data-theme="light"]:not(.fullscreen) .sidebar-brand 
   60%  { box-shadow: 0 0 0 5px rgba(157,216,74,0);    }
   100% { box-shadow: 0 0 0 0   rgba(157,216,74,0);    }
 }
-.status-dot.offline { background: var(--red, #ff6b6b); }
-.sidebar.collapsed .sidebar-user-name { display: none; }
-.sidebar.collapsed .sidebar-user-row { justify-content: center; }
-[data-theme="light"] .sidebar-user-avatar { background: rgba(90,138,26,0.1); border-color: rgba(90,138,26,0.2); color: #5a8a1a; }
-[data-theme="light"] .sidebar-user-name { color: rgba(0,0,0,0.5); }
+.status-dot.offline { background: var(--red, #ff4d6a); }
 [data-theme="light"] .status-dot { background: rgba(0,0,0,0.14); }
 
-/* Tooltip */
+/* Offline banner */
+.offline-banner {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 9997;
+  background: rgba(220,40,40,0.11);
+  border-bottom: 1px solid rgba(255,100,80,0.18);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  align-items: center; gap: 8px;
+  padding: 6px 16px; font-size: 12px; color: var(--red, #ff4d6a);
+  animation: banner-slide-down .22s ease-out;
+}
+@keyframes banner-slide-down {
+  from { transform: translateY(-100%); opacity: 0; }
+  to   { transform: none; opacity: 1; }
+}
+.offline-banner-msg { flex: 1; }
+.offline-retry {
+  padding: 3px 10px; background: transparent;
+  border: 1px solid rgba(255,100,80,0.3); border-radius: 5px;
+  color: var(--red, #ff4d6a); font-size: 11px; cursor: pointer;
+  font-family: inherit; transition: background .12s;
+}
+.offline-retry:hover { background: rgba(255,100,80,0.1); }
+[data-theme="light"] .offline-banner {
+  background: rgba(255,59,48,0.07);
+  border-bottom-color: rgba(255,59,48,0.15);
+}
+
+/* 用户行 */
+.sidebar-user-row {
+  display: flex; align-items: center; gap: 9px;
+  padding: 10px 14px 8px;
+  border-top: 1px solid var(--sh-sep);
+  cursor: pointer; border-radius: 0 0 8px 8px; transition: background .1s;
+}
+.sidebar-user-row:hover { background: rgba(255,255,255,0.04); }
+[data-theme="light"] .sidebar-user-row:hover { background: rgba(0,0,0,0.04); }
+.sidebar-user-avatar {
+  width: 26px; height: 26px; border-radius: 50%;
+  background: var(--accent-bg); border: 1.5px solid var(--accent-border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10.5px; font-weight: 700; color: var(--accent); flex-shrink: 0;
+}
+.sidebar-user-name {
+  flex: 1; font-size: 12.5px; color: var(--text2); font-weight: 500;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* Tooltip（折叠时） */
 .nav-tooltip {
   position: fixed; z-index: 9999;
   background: rgba(52, 52, 56, 0.97);
@@ -326,6 +390,7 @@ html[data-platform="tauri"][data-theme="light"]:not(.fullscreen) .sidebar-brand 
   box-shadow: 0 2px 8px rgba(0,0,0,0.16), 0 0 0 0.5px rgba(0,0,0,0.08);
 }
 
+/* 面板切换 fade-in */
 @keyframes panelFadeIn {
   from { opacity: 0; transform: scale(0.985); }
   to   { opacity: 1; transform: scale(1); }
@@ -335,7 +400,9 @@ html[data-platform="tauri"][data-theme="light"]:not(.fullscreen) .sidebar-brand 
   transform-origin: center top;
 }
 
-/* File tree panel */
+/* ═══════════════════════════════════════
+   文件树侧边栏
+   ═══════════════════════════════════════ */
 #file-tree-panel {
   width: 0; flex-shrink: 0; overflow: hidden;
   border-right: 0px solid var(--sh-sep);
@@ -345,16 +412,19 @@ html[data-platform="tauri"][data-theme="light"]:not(.fullscreen) .sidebar-brand 
 #file-tree-panel.open { width: 260px; border-right-width: 1px; }
 #file-tree-panel > iframe { width: 260px; height: 100%; border: none; display: block; }
 
-/* Content area */
+/* ═══════════════════════════════════════
+   内容区
+   ═══════════════════════════════════════ */
 .content-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
 
-/* Tab bar (file tabs only) */
+/* Tab 栏 */
 .panel-tabbar {
-  display: none; align-items: center; gap: 2px; padding: 0 8px;
-  height: 36px; flex-shrink: 0;
+  display: none; align-items: center; gap: 2px;
+  padding: 0 8px; height: 36px; flex-shrink: 0;
   background: rgba(13,13,16,0.92);
   backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-  border-bottom: 1px solid var(--sh-sep); -webkit-app-region: drag;
+  border-bottom: 1px solid var(--sh-sep);
+  -webkit-app-region: drag;
   -webkit-user-select: none; user-select: none;
 }
 .panel-tabbar.visible { display: flex; }
@@ -362,14 +432,16 @@ html[data-platform="tauri"][data-theme="light"]:not(.fullscreen) .sidebar-brand 
 
 .panel-tab {
   display: flex; align-items: center; gap: 5px;
-  padding: 5px 12px; border-radius: 7px; border: none; background: transparent;
+  padding: 5px 12px; border-radius: 7px;
+  border: none; background: transparent;
   color: var(--text2); font-size: 12px; font-weight: 500;
-  cursor: pointer; font-family: inherit; letter-spacing: -.1px;
-  transition: background .12s, color .12s; -webkit-app-region: no-drag;
+  cursor: pointer; font-family: inherit; letter-spacing: -0.1px;
+  transition: background .12s, color .12s;
+  -webkit-app-region: no-drag;
 }
-.panel-tab:hover { color: var(--text); background: rgba(255,255,255,.06); }
-.panel-tab.active { color: var(--text); background: rgba(255,255,255,.1); font-weight: 600; }
-.panel-tab-icon { font-size: 11px; }
+.panel-tab:hover { color: var(--text); background: rgba(255,255,255,0.06); }
+.panel-tab.active { color: var(--text); background: rgba(255,255,255,0.1); font-weight: 600; }
+.panel-tab-icon { display: flex; align-items: center; }
 .panel-tab-close {
   width: 14px; height: 14px; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
@@ -377,17 +449,19 @@ html[data-platform="tauri"][data-theme="light"]:not(.fullscreen) .sidebar-brand 
   color: var(--text2); margin-left: 3px;
   transition: color .1s, background .1s; pointer-events: all;
 }
-.panel-tab-close:hover { color: var(--text); background: rgba(255,255,255,.1); }
-[data-theme="light"] .panel-tab { color: rgba(0,0,0,.4); }
-[data-theme="light"] .panel-tab:hover { color: rgba(0,0,0,.72); background: rgba(0,0,0,.05); }
-[data-theme="light"] .panel-tab.active { color: rgba(0,0,0,.88); background: rgba(0,0,0,.08); }
+.panel-tab-close:hover { color: var(--text); background: rgba(255,255,255,0.1); }
+[data-theme="light"] .panel-tab { color: rgba(0,0,0,0.4); }
+[data-theme="light"] .panel-tab:hover { color: rgba(0,0,0,0.72); background: rgba(0,0,0,0.05); }
+[data-theme="light"] .panel-tab.active { color: rgba(0,0,0,0.88); background: rgba(0,0,0,0.08); }
+[data-theme="light"] .panel-tab-close { color: rgba(0,0,0,0.25); }
+[data-theme="light"] .panel-tab-close:hover { color: rgba(0,0,0,0.7); background: rgba(0,0,0,0.08); }
 
-/* Panels */
+/* 面板区 */
 .panels { flex: 1; position: relative; overflow: hidden; background: var(--sh-bg); }
 .panel-frame { position: absolute; inset: 0; width: 100%; height: 100%; border: none; display: none; background: transparent; }
 .panel-frame.active { display: block; }
 
-/* CSS loading spinner */
+/* CSS 加载指示器（旋转圆弧） */
 .panel-loading {
   position: absolute; inset: 0;
   display: flex; align-items: center; justify-content: center;
@@ -409,386 +483,94 @@ html[data-platform="tauri"][data-theme="light"]:not(.fullscreen) .sidebar-brand 
 .panel-loading.hidden { opacity: 0; pointer-events: none; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* Offline banner */
-.offline-banner {
-  position: fixed; top: 0; left: 0; right: 0; z-index: 9997;
-  background: rgba(220,40,40,0.11);
-  border-bottom: 1px solid rgba(255,100,80,0.18);
-  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-  display: flex; align-items: center; gap: 8px;
-  padding: 6px 16px; font-size: 12px; color: var(--red, #ff6b6b);
-  animation: banner-slide-down .22s ease-out;
-}
-@keyframes banner-slide-down {
-  from { transform: translateY(-100%); opacity: 0; }
-  to   { transform: none; opacity: 1; }
-}
-.offline-banner-msg { flex: 1; }
-.offline-retry {
-  padding: 3px 10px; background: transparent;
-  border: 1px solid rgba(255,100,80,0.3); border-radius: 5px;
-  color: var(--red, #ff6b6b); font-size: 11px; cursor: pointer;
-  font-family: inherit; transition: background .12s;
-}
-.offline-retry:hover { background: rgba(255,100,80,0.1); }
-[data-theme="light"] .offline-banner {
-  background: rgba(255,59,48,0.07);
-  border-bottom-color: rgba(255,59,48,0.15);
-}
-
-/* Update bar */
+/* 更新提示条 */
 .update-bar {
   position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-  background: var(--sh-card); border: 1px solid var(--accent-border, rgba(157,216,74,.18));
+  background: var(--sh-card); border: 1px solid var(--accent-border, rgba(157,216,74,0.18));
   border-radius: var(--radius-md, 10px); padding: 10px 18px;
-  display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--text);
-  box-shadow: 0 8px 32px rgba(0,0,0,.5); z-index: 9999;
-  animation: slideUp .3s cubic-bezier(0.16,1,0.3,1);
+  display: flex; align-items: center; gap: 12px;
+  font-size: 13px; color: var(--text);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5); z-index: 9999;
+  animation: slideUp .3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .update-bar.hidden { display: none !important; }
 .update-version { color: var(--accent); font-weight: 600; }
-.update-btn { padding: 5px 12px; background: var(--accent); color: #0a0a0b; border: none; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; }
-.update-dismiss { padding: 5px 8px; background: transparent; border: none; color: var(--text2); font-size: 12px; cursor: pointer; font-family: inherit; }
-@keyframes slideUp { from { opacity: 0; transform: translateX(-50%) translateY(10px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
-
-/* ═══════════════════════════════════════
-   Onboarding overlay
-   ═══════════════════════════════════════ */
-.onboarding-overlay {
-  position: fixed; inset: 0; z-index: 10001;
-  background: var(--sh-bg);
-  background-image: radial-gradient(circle, rgba(255,255,255,0.025) 1px, transparent 1px);
-  background-size: 28px 28px;
-  display: flex; align-items: center; justify-content: center;
-  padding: 24px;
-  animation: fadeIn .28s ease-out;
+.update-btn {
+  padding: 5px 12px; background: var(--accent); color: #0a0a0b;
+  border: none; border-radius: 6px; font-size: 12px; font-weight: 600;
+  cursor: pointer; font-family: inherit;
 }
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-
-.onboarding-card {
-  background: var(--sh-card, #252528);
-  border: 1px solid var(--sh-sep);
-  border-radius: 18px;
-  padding: 40px 40px 36px;
-  width: 520px; max-width: 100%;
-  box-shadow: 0 32px 80px rgba(0,0,0,0.65), 0 1px 0 rgba(255,255,255,0.04) inset;
-  position: relative; overflow: hidden;
+.update-dismiss {
+  padding: 5px 8px; background: transparent; border: none;
+  color: var(--text2); font-size: 12px; cursor: pointer; font-family: inherit;
 }
-.onboarding-card::before {
-  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
-  background: var(--gradient-brand, linear-gradient(90deg,#9DD84A,#5CC8D8,#C4B8E8,#E8A898));
+@keyframes slideUp {
+  from { opacity: 0; transform: translateX(-50%) translateY(10px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
-[data-theme="light"] .onboarding-card {
-  background: #ffffff; border-color: rgba(0,0,0,0.08);
-  box-shadow: 0 8px 40px rgba(0,0,0,0.12), 0 1px 0 rgba(255,255,255,0.8) inset;
-}
-
-/* Progress dots */
-.onboarding-progress {
-  display: flex; gap: 6px; margin-bottom: 28px; justify-content: center;
-}
-.ob-dot {
-  width: 6px; height: 6px; border-radius: 50%;
-  background: rgba(255,255,255,0.12); transition: all .2s;
-}
-.ob-dot.active { background: var(--accent, #9DD84A); width: 20px; border-radius: 3px; }
-.ob-dot.done { background: rgba(157,216,74,0.35); }
-[data-theme="light"] .ob-dot { background: rgba(0,0,0,0.1); }
-[data-theme="light"] .ob-dot.active { background: var(--accent2, #5a8a1a); }
-[data-theme="light"] .ob-dot.done { background: rgba(90,138,26,0.3); }
-
-.onboarding-title {
-  font-size: 22px; font-weight: 700; color: var(--text);
-  margin: 0 0 8px; letter-spacing: -0.5px; text-align: center;
-}
-.onboarding-sub {
-  font-size: 14px; color: var(--text2); margin: 0 0 28px; text-align: center; line-height: 1.55;
-}
-
-/* Choice grid */
-.choice-grid {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 8px;
-}
-.choice-card {
-  background: rgba(255,255,255,0.04); border: 1.5px solid var(--sh-sep);
-  border-radius: 12px; padding: 22px 16px 18px;
-  cursor: pointer; font-family: inherit; text-align: center;
-  transition: border-color .15s, background .15s, transform .1s;
-  display: flex; flex-direction: column; align-items: center; gap: 8px;
-}
-.choice-card:hover {
-  background: rgba(255,255,255,0.07); border-color: rgba(157,216,74,0.35);
-  transform: translateY(-1px);
-}
-.choice-card:active { transform: translateY(0); }
-.choice-card.selected {
-  border-color: var(--accent, #9DD84A);
-  background: rgba(157,216,74,0.08);
-}
-[data-theme="light"] .choice-card { background: rgba(0,0,0,0.025); border-color: rgba(0,0,0,0.09); }
-[data-theme="light"] .choice-card:hover { background: rgba(90,138,26,0.05); border-color: rgba(90,138,26,0.3); }
-[data-theme="light"] .choice-card.selected { border-color: var(--accent2,#5a8a1a); background: rgba(90,138,26,0.07); }
-
-.choice-icon { font-size: 26px; line-height: 1; }
-.choice-label { font-size: 14px; font-weight: 600; color: var(--text); letter-spacing: -.2px; }
-.choice-desc { font-size: 12px; color: var(--text2); line-height: 1.4; }
-
-/* Key input step */
-.onboarding-input {
-  width: 100%; padding: 11px 14px; box-sizing: border-box;
-  background: rgba(255,255,255,0.04); border: 1px solid var(--sh-sep);
-  border-radius: 8px; color: var(--text); font-size: 14px;
-  outline: none; font-family: inherit; transition: border-color .15s;
-  margin-bottom: 16px;
-}
-.onboarding-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(157,216,74,0.18); }
-[data-theme="light"] .onboarding-input { background: rgba(0,0,0,0.04); }
-
-.onboarding-actions {
-  display: flex; gap: 8px; justify-content: flex-end;
-}
-.btn-secondary {
-  padding: 9px 16px; background: transparent; border: 1px solid var(--sh-sep);
-  border-radius: 7px; color: var(--text2); font-size: 13px; font-weight: 500;
-  cursor: pointer; font-family: inherit; transition: background .12s, color .12s;
-}
-.btn-secondary:hover { background: rgba(255,255,255,0.06); color: var(--text); }
-[data-theme="light"] .btn-secondary { border-color: rgba(0,0,0,0.1); }
-[data-theme="light"] .btn-secondary:hover { background: rgba(0,0,0,0.05); }
-
-/* ═══════════════════════════════════════
-   Settings modal
-   ═══════════════════════════════════════ */
-.settings-backdrop {
-  position: fixed; inset: 0; z-index: 10000;
-  background: rgba(0,0,0,0.55);
-  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
-  display: flex; align-items: center; justify-content: center;
-  padding: 24px; animation: fadeIn .18s ease-out;
-}
-.settings-dialog {
-  background: var(--sh-card, #252528);
-  border: 1px solid var(--sh-sep);
-  border-radius: 14px;
-  width: 420px; max-width: 100%;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.6);
-  overflow: hidden;
-}
-[data-theme="light"] .settings-dialog { background: #ffffff; border-color: rgba(0,0,0,0.08); }
-
-.settings-header {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 18px 20px 16px; border-bottom: 1px solid var(--sh-sep);
-}
-.settings-header h3 { margin: 0; font-size: 15px; font-weight: 600; color: var(--text); letter-spacing: -.2px; }
-.settings-close {
-  background: transparent; border: none; color: var(--text2); font-size: 18px;
-  cursor: pointer; padding: 2px 6px; border-radius: 5px; line-height: 1;
-  transition: color .12s, background .12s; font-family: inherit;
-}
-.settings-close:hover { color: var(--text); background: rgba(255,255,255,0.07); }
-
-.settings-body { padding: 16px 20px 20px; display: flex; flex-direction: column; gap: 14px; }
-
-.pref-row { display: flex; align-items: center; gap: 12px; }
-.pref-row label { font-size: 13px; color: var(--text2); width: 120px; flex-shrink: 0; }
-.pref-select {
-  flex: 1; padding: 7px 10px; background: rgba(255,255,255,0.05);
-  border: 1px solid var(--sh-sep); border-radius: 7px; color: var(--text);
-  font-size: 13px; font-family: inherit; cursor: pointer; outline: none;
-  transition: border-color .12s;
-}
-.pref-select:focus { border-color: var(--accent); }
-[data-theme="light"] .pref-select { background: rgba(0,0,0,0.04); border-color: rgba(0,0,0,0.1); }
-
-.pref-apikey {
-  flex: 1; display: flex; align-items: center; gap: 8px;
-  font-size: 13px; color: var(--text2);
-}
-.btn-small {
-  padding: 4px 10px; background: transparent; border: 1px solid var(--sh-sep);
-  border-radius: 5px; color: var(--text2); font-size: 12px; cursor: pointer;
-  font-family: inherit; transition: background .12s, color .12s;
-}
-.btn-small:hover { background: rgba(255,255,255,0.07); color: var(--text); }
-[data-theme="light"] .btn-small { border-color: rgba(0,0,0,0.1); }
 </style>
 </head>
 <body>
-<div id="shell-root">
-<script src="/services-guard.js"></script>
 
-<!-- ── Login screen ── -->
+<!-- ── 登录蒙层 ── -->
 <div id="login-screen">
   <div class="login-box">
-    <div class="login-logo-mark">J</div>
-    <h1>Jowork</h1>
-    <p>Your AI work partner — runs locally</p>
-    <input class="login-input" id="login-username" v-model="loginForm.username" @keydown.enter="localLoginVue" type="text" placeholder="Username" autocomplete="username">
-    <input class="login-input" id="login-displayname" v-model="loginForm.displayName" @keydown.enter="localLoginVue" type="text" placeholder="Display name (optional)" autocomplete="name">
-    <button class="btn-primary" id="login-btn" @click="localLoginVue">Get Started</button>
+    <img class="login-logo" src="/jovida-logo.png" alt="FluxVita">
+    <h1>FluxVita</h1>
+    <p>内部数据与 AI 协作平台</p>
+    <button class="btn-primary" id="oauth-btn" onclick="startOAuthLogin()">使用飞书账号登录</button>
     <div id="login-error" class="login-error"></div>
-  </div>
-</div>
-
-<!-- ── Onboarding overlay ── -->
-<div v-if="shellState.onboardingStep" class="onboarding-overlay">
-  <div class="onboarding-card">
-    <!-- 进度条 -->
-    <div class="onboarding-progress">
-      <div :class="['ob-dot', shellState.onboardingStep === 'use_case' ? 'active' : 'done']"></div>
-      <div :class="['ob-dot', shellState.onboardingStep === 'api_mode' ? 'active' : (shellState.onboardingStep === 'use_case' ? '' : 'done')]"></div>
-      <div :class="['ob-dot', shellState.onboardingStep === 'own_key_input' ? 'active' : (shellState.onboardingStep === 'deploy_mode' ? 'done' : '')]"></div>
-      <div :class="['ob-dot', shellState.onboardingStep === 'deploy_mode' ? 'active' : '']"></div>
-    </div>
-
-    <!-- Step: use_case -->
-    <div v-if="shellState.onboardingStep === 'use_case'">
-      <h2 class="onboarding-title">How will you use Jowork?</h2>
-      <p class="onboarding-sub">This helps us personalize your experience</p>
-      <div class="choice-grid">
-        <button class="choice-card" onclick="advanceOnboarding('use_case','personal')">
-          <div class="choice-icon">👤</div>
-          <div class="choice-label">Personal</div>
-          <div class="choice-desc">Just for yourself, side projects, freelance</div>
-        </button>
-        <button class="choice-card" onclick="advanceOnboarding('use_case','team')">
-          <div class="choice-icon">👥</div>
-          <div class="choice-label">Team</div>
-          <div class="choice-desc">For a team or organization with members</div>
-        </button>
-      </div>
-    </div>
-
-    <!-- Step: api_mode -->
-    <div v-if="shellState.onboardingStep === 'api_mode'">
-      <h2 class="onboarding-title">AI model setup</h2>
-      <p class="onboarding-sub">Either way, all features work the same</p>
-      <div class="choice-grid">
-        <button class="choice-card" onclick="advanceOnboarding('api_mode','own_key')">
-          <div class="choice-icon">🔑</div>
-          <div class="choice-label">My own API Key</div>
-          <div class="choice-desc">Use your Anthropic or OpenAI key directly</div>
-        </button>
-        <button class="choice-card" onclick="advanceOnboarding('api_mode','subscription')">
-          <div class="choice-icon">⚡</div>
-          <div class="choice-label">Jowork Plan</div>
-          <div class="choice-desc">Use Jowork's built-in model access</div>
-        </button>
-      </div>
-    </div>
-
-    <!-- Step: own_key_input -->
-    <div v-if="shellState.onboardingStep === 'own_key_input'">
-      <h2 class="onboarding-title">Enter your API Key</h2>
-      <p class="onboarding-sub">Stored encrypted on your server. Never shared.</p>
-      <input class="onboarding-input" v-model="shellState.onboardingChoice.ownApiKey" type="password" placeholder="sk-..." id="ob-api-key-input" @keydown.enter="advanceOnboarding('own_key_input', shellState.onboardingChoice.ownApiKey)">
-      <div class="onboarding-actions">
-        <button class="btn-secondary" onclick="advanceOnboarding('own_key_input','')">Skip for now</button>
-        <button class="btn-primary" style="width:auto;padding:9px 20px;" onclick="advanceOnboarding('own_key_input', shellState.onboardingChoice.ownApiKey)">Continue</button>
-      </div>
-    </div>
-
-    <!-- Step: deploy_mode -->
-    <div v-if="shellState.onboardingStep === 'deploy_mode'">
-      <h2 class="onboarding-title">How are you running Jowork?</h2>
-      <p class="onboarding-sub">This determines your setup recommendations</p>
-      <div class="choice-grid">
-        <button class="choice-card" onclick="advanceOnboarding('deploy_mode','desktop')">
-          <div class="choice-icon">🖥️</div>
-          <div class="choice-label">Desktop App</div>
-          <div class="choice-desc">Running as a local desktop application</div>
-        </button>
-        <button class="choice-card" onclick="advanceOnboarding('deploy_mode','server')">
-          <div class="choice-icon">🚀</div>
-          <div class="choice-label">Self-hosted</div>
-          <div class="choice-desc">Running on a server or in the cloud</div>
-        </button>
+    <div class="dev-login" id="dev-login-section" style="display:none">
+      <a href="#" onclick="event.preventDefault();document.getElementById('dev-form').style.display='block'">开发模式登录</a>
+      <div id="dev-form" class="dev-form">
+        <input id="dev-open-id" placeholder="飞书 Open ID">
+        <input id="dev-name" placeholder="姓名">
+        <button class="btn-primary" onclick="devLogin()" style="margin-top:4px">登录</button>
       </div>
     </div>
   </div>
 </div>
 
-<!-- ── Settings modal ── -->
-<div v-if="shellState.showSettings" class="settings-backdrop" @click.self="shellState.showSettings = false">
-  <div class="settings-dialog">
-    <div class="settings-header">
-      <h3>Preferences</h3>
-      <button class="settings-close" @click="shellState.showSettings = false">×</button>
-    </div>
-    <div class="settings-body">
-      <div class="pref-row">
-        <label>Use case</label>
-        <select class="pref-select" @change="updatePref('use_case', $event.target.value)" :value="shellState.userPrefs.use_case || 'personal'">
-          <option value="personal">Personal</option>
-          <option value="team">Team</option>
-        </select>
-      </div>
-      <div class="pref-row">
-        <label>AI model access</label>
-        <select class="pref-select" @change="updatePref('api_mode', $event.target.value)" :value="shellState.userPrefs.api_mode || 'subscription'">
-          <option value="subscription">Jowork Plan</option>
-          <option value="own_key">My own API Key</option>
-        </select>
-      </div>
-      <div class="pref-row" v-if="shellState.userPrefs.api_mode === 'own_key'">
-        <label>API Key</label>
-        <div class="pref-apikey">
-          <span>{{ shellState.userPrefsApiKeyMasked || 'Not set' }}</span>
-          <button class="btn-small" onclick="doPromptChangeApiKey()">Change</button>
-        </div>
-      </div>
-      <div class="pref-row">
-        <label>Deploy mode</label>
-        <select class="pref-select" @change="updatePref('deploy_mode', $event.target.value)" :value="shellState.userPrefs.deploy_mode || 'desktop'">
-          <option value="desktop">Desktop App</option>
-          <option value="server">Self-hosted</option>
-        </select>
-      </div>
-    </div>
-  </div>
+<!-- ── Offline banner（断连后显示，由 setGatewayStatus 控制） ── -->
+<div id="offline-banner" class="offline-banner" style="display:none">
+  <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="8" r="6.5"/><path d="M8 4.5v4M8 11v1"/></svg>
+  <span class="offline-banner-msg">Gateway 离线 — 正在重连...</span>
+  <button class="offline-retry" onclick="checkGatewayStatus()">立即重试</button>
 </div>
 
-<!-- ── App shell ── -->
-<div id="app" style="display:none; height:100%; display:none; flex-direction:row;">
-
-  <!-- Offline banner (shown after first health check when gateway is down) -->
-  <div v-if="shellState.gatewayChecked && !shellState.gatewayOnline" class="offline-banner">
-    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="8" r="6.5"/><path d="M8 4.5v4M8 11v1"/></svg>
-    <span class="offline-banner-msg">Gateway offline — retrying…</span>
-    <button class="offline-retry" @click="doCheckGateway">Retry now</button>
-  </div>
+<!-- ── 主壳 ── -->
+<div id="app">
 
   <!-- Sidebar -->
   <div class="sidebar">
     <div class="sidebar-resize-handle" id="sidebar-resize"></div>
 
-    <!-- Brand -->
+    <!-- 品牌区 -->
     <div class="sidebar-brand">
-      <div class="brand-logo" id="brand-logo">J</div>
+      <img class="brand-logo" id="brand-logo" src="/app-icon.png" alt="FluxVita">
       <div class="brand-text">
-        <div class="brand-name">Jowork</div>
-        <div class="brand-sub">AI Work Partner</div>
+        <div class="brand-name">FluxVita</div>
+        <div class="brand-sub">AI 工作空间</div>
       </div>
-      <button class="collapse-btn" id="collapse-btn" onclick="toggleSidebar()" title="Collapse sidebar">
+      <button class="collapse-btn" id="collapse-btn" onclick="toggleSidebar()" title="折叠侧边栏">
         <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 4L6 8l4 4"/></svg>
       </button>
     </div>
     <div class="sidebar-divider"></div>
 
-    <!-- Nav -->
+    <!-- 导航 -->
     <nav class="sidebar-nav">
       <div class="nav-group">
-        <span class="nav-group-label">Workspace</span>
-        <button class="nav-item" :class="{ active: shellState.activePanel === 'chat' }" data-panel="chat" @click="onNavClick('chat')" title="AI Assistant">
+        <span class="nav-group-label">工作台</span>
+        <button class="nav-item active" data-panel="chat" title="AI 助手">
           <span class="nav-item-icon">
             <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M11.2 4.8l1.4-1.4M3.4 12.6l1.4-1.4"/>
               <circle cx="8" cy="8" r="2.2"/>
             </svg>
-          </span>AI Assistant
+          </span><span data-i18n="nav.ai_assistant">AI 助手</span>
         </button>
-        <button class="nav-item" :class="{ active: shellState.activePanel === 'dashboard' }" data-panel="dashboard" @click="onNavClick('dashboard')" title="Dashboard">
+        <button class="nav-item" data-panel="dashboard" title="数据看板">
           <span class="nav-item-icon">
             <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
               <rect x="2" y="2" width="5.2" height="5.2" rx="1.2"/>
@@ -796,27 +578,28 @@ html[data-platform="tauri"][data-theme="light"]:not(.fullscreen) .sidebar-brand 
               <rect x="2" y="8.8" width="5.2" height="5.2" rx="1.2"/>
               <rect x="8.8" y="8.8" width="5.2" height="5.2" rx="1.2"/>
             </svg>
-          </span>Dashboard
+          </span><span data-i18n="nav.dashboard">数据看板</span>
         </button>
-        <button class="nav-item" :class="{ active: shellState.activePanel === 'logs' }" data-panel="logs" @click="onNavClick('logs')" title="My Logs">
+        <button class="nav-item" data-panel="logs" title="我的日志">
           <span class="nav-item-icon">
             <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M3 3h10M3 6.5h7M3 10h8M3 13h5"/>
             </svg>
-          </span>My Logs
+          </span><span data-i18n="nav.logs">我的日志</span>
         </button>
       </div>
 
       <div class="nav-group">
-        <span class="nav-group-label">Settings</span>
-        <button class="nav-item" :class="{ active: shellState.activePanel === 'aiservices' }" data-panel="aiservices" @click="onNavClick('aiservices')" data-service="svc_page_ai_services" title="AI Services">
+        <span class="nav-group-label" data-i18n="nav.group.manage">管理</span>
+        <button class="nav-item" data-panel="aiservices" data-service="svc_page_ai_services" title="AI 服务">
           <span class="nav-item-icon">
             <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M9.5 2L6 9h3.5L8 14l6.5-8H11z"/>
             </svg>
-          </span>AI Services
+          </span><span data-i18n="nav.ai_services">AI 服务</span>
         </button>
-        <button class="nav-item" :class="{ active: shellState.activePanel === 'admin' }" data-panel="admin" @click="onNavClick('admin')" data-service="svc_page_admin" title="Admin">
+
+        <button class="nav-item" data-panel="admin" data-service="svc_page_admin" title="管理后台">
           <span class="nav-item-icon">
             <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true">
               <path d="M3 5h10M3 8.5h10M3 12h10"/>
@@ -824,88 +607,87 @@ html[data-platform="tauri"][data-theme="light"]:not(.fullscreen) .sidebar-brand 
               <circle cx="10" cy="8.5" r="1.7" fill="none"/>
               <circle cx="6.5" cy="12" r="1.7" fill="none"/>
             </svg>
-          </span>Admin
+          </span><span data-i18n="nav.admin_panel">管理后台</span>
         </button>
-        <button class="nav-item" :class="{ active: shellState.fileTreeOpen }" id="files-tree-btn" @click="onToggleFileTree" title="File Explorer">
+        <button class="nav-item" id="files-tree-btn" title="文件管理器">
           <span class="nav-item-icon">
             <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M2 6a1.5 1.5 0 011.5-1.5H7l1.5-2.5h4A1.5 1.5 0 0114 3.5V12A1.5 1.5 0 0112.5 13.5h-9A1.5 1.5 0 012 12V6z"/>
             </svg>
-          </span>Files
+          </span><span data-i18n="nav.files">文件</span>
         </button>
       </div>
     </nav>
 
-    <!-- Footer -->
+    <!-- 底部功能区 -->
     <div class="sidebar-footer">
       <div class="sidebar-actions">
-        <button class="action-btn" onclick="toggleTheme()" title="Toggle theme">
-          <span class="action-btn-icon">◑</span>
-          <span class="action-btn-label">Theme</span>
-        </button>
-        <button class="action-btn" onclick="shellState.showSettings = true" title="Preferences">
+        <button class="action-btn" onclick="toggleTheme()" title="切换主题">
           <span class="action-btn-icon">
-            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true">
-              <circle cx="8" cy="8" r="2.2"/>
-              <path d="M8 1.5v1.3M8 13.2v1.3M1.5 8h1.3M13.2 8h1.3M3.4 3.4l.93.93M11.67 11.67l.93.93M11.67 4.33l.93-.93M3.4 12.6l.93-.93"/>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
             </svg>
           </span>
-          <span class="action-btn-label">Settings</span>
+          <span class="action-btn-label" data-i18n="nav.theme">主题</span>
         </button>
-        <button class="action-btn" onclick="forceReload()" title="Reload">
+        <button class="action-btn" id="lang-toggle-btn" onclick="toggleLocale()" title="Switch Language / 切换语言">
+          <span class="action-btn-icon" id="lang-toggle-icon" style="font-size:11px;font-weight:700;letter-spacing:-.5px">中</span>
+          <span class="action-btn-label" id="lang-toggle-label">EN</span>
+        </button>
+        <button class="action-btn" onclick="forceReload()" title="刷新页面">
           <span class="action-btn-icon">
-            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M13.5 4A6 6 0 103.5 12.5"/>
-              <path d="M13.5 1.5v3h-3"/>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
             </svg>
           </span>
-          <span class="action-btn-label">Reload</span>
+          <span class="action-btn-label" data-i18n="nav.refresh">刷新</span>
         </button>
-        <button class="action-btn danger" onclick="logout()" title="Log out">
+        <button class="action-btn danger" onclick="logout()" title="退出登录">
           <span class="action-btn-icon">
-            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M6 3H4a1 1 0 00-1 1v8a1 1 0 001 1h2"/>
-              <path d="M10.5 5.5L13 8l-2.5 2.5M7.5 8H13"/>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
             </svg>
           </span>
-          <span class="action-btn-label">Logout</span>
+          <span class="action-btn-label" data-i18n="nav.logout">退出</span>
         </button>
       </div>
 
-      <!-- User row -->
-      <div class="sidebar-user-row" @click="onNavClick('admin')" title="Settings &amp; Admin">
-        <div class="sidebar-user-avatar" id="user-avatar">{{ userInitial }}</div>
-        <div class="sidebar-user-name" id="user-chip">{{ userDisplayName }}</div>
-        <div
-          id="status-dot"
-          :class="['status-dot', shellState.gatewayOnline ? 'online' : 'offline']"
-          :title="shellState.gatewayOnline ? 'Gateway online' : 'Gateway offline'"
-        ></div>
+      <!-- 用户行 -->
+      <div class="sidebar-user-row" onclick="if(token) switchPanel('admin')" title="设置与管理">
+        <div class="sidebar-user-avatar" id="user-avatar">?</div>
+        <div class="sidebar-user-info" style="flex:1;min-width:0;overflow:hidden">
+          <div class="sidebar-user-name" id="user-chip" data-i18n-default="nav.loading">加载中</div>
+
+        </div>
+        <div class="status-dot" id="status-dot" title="检查中..."></div>
       </div>
     </div>
 
   </div>
 
-  <!-- File tree panel -->
-  <div id="file-tree-panel" :class="{ open: shellState.fileTreeOpen }">
+  <!-- 文件树侧边栏 -->
+  <div id="file-tree-panel">
     <iframe id="frame-files-tree" src="about:blank"></iframe>
   </div>
 
-  <!-- Content area -->
+  <!-- 内容区（含 tab 栏 + 面板） -->
   <div class="content-area">
-    <!-- File tabs bar (only shown when files are open) -->
-    <div class="panel-tabbar" id="panel-tabbar" :class="{ visible: shellState.fileTabs.length > 0 }">
-      <button
-        v-for="t in shellState.fileTabs"
-        :key="t.id"
-        class="panel-tab"
-        :class="{ active: shellState.activePanel === t.id }"
-        :id="`tab-${t.id}`"
-        @click="onFileTabClick(t.id, $event)"
-      >
-        <span class="panel-tab-icon">{{ fileTabIcon(t.ext) }}</span>
-        <span>{{ t.name }}</span>
-        <span class="panel-tab-close">×</span>
+    <!-- AI 助手子 tab 栏（对话 / 终端） -->
+    <div class="panel-tabbar" id="panel-tabbar">
+      <button class="panel-tab active" id="tab-chat" onclick="switchSubPanel('chat')">
+        <span class="panel-tab-icon">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M3 5a1.5 1.5 0 011.5-1.5h7A1.5 1.5 0 0113 5v5.5a1.5 1.5 0 01-1.5 1.5H8l-3.5 2.5V12H4.5A1.5 1.5 0 013 10.5V5z"/>
+          </svg>
+        </span>&nbsp;<span data-i18n="nav.chat_tab">AI 对话</span>
+      </button>
+      <button class="panel-tab" id="tab-geek" onclick="switchSubPanel('geek')">
+        <span class="panel-tab-icon">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="2" y="2.5" width="12" height="11" rx="1.5"/>
+            <path d="M5.5 7.5l2 2-2 2M9 11.5h2.5"/>
+          </svg>
+        </span>&nbsp;<span data-i18n="nav.terminal">极客模式</span>
       </button>
     </div>
 
@@ -914,110 +696,76 @@ html[data-platform="tauri"][data-theme="light"]:not(.fullscreen) .sidebar-brand 
       <iframe class="panel-frame active" id="frame-chat" data-src="/chat.html" src="about:blank"></iframe>
       <iframe class="panel-frame" id="frame-aiservices" data-src="/ai-services.html" src="about:blank" data-service="svc_page_ai_services"></iframe>
       <iframe class="panel-frame" id="frame-admin" data-src="/admin.html" src="about:blank" data-service="svc_page_admin"></iframe>
+
       <iframe class="panel-frame" id="frame-logs" data-src="/logs.html" src="about:blank"></iframe>
-      <iframe
-        v-for="t in shellState.fileTabs"
-        :key="t.id"
-        class="panel-frame"
-        :class="{ active: shellState.activePanel === t.id }"
-        :id="`frame-${t.id}`"
-        :src="fileTabSrc(t)"
-        @load="onFileFrameLoad"
-      ></iframe>
+      <iframe class="panel-frame" id="frame-geek" data-src="/geek.html" src="about:blank"></iframe>
       <div class="panel-loading" id="panel-loading"></div>
     </div>
   </div>
 
-  <!-- Update bar -->
+  <!-- 更新提示条 -->
   <div class="update-bar hidden" id="update-bar">
-    <span>New version <span class="update-version" id="update-version"></span> available</span>
-    <button class="update-btn" onclick="doUpdate()">Update now</button>
-    <button class="update-dismiss" onclick="document.getElementById('update-bar').classList.add('hidden')">Later</button>
+    <span>新版本 <span class="update-version" id="update-version"></span> 可用</span>
+    <button class="update-btn" onclick="doUpdate()">立即更新</button>
+    <button class="update-dismiss" onclick="document.getElementById('update-bar').classList.add('hidden')">稍后</button>
   </div>
-
 </div>
 
-<!-- Nav tooltip -->
+<!-- 折叠时 nav-item tooltip -->
 <div class="nav-tooltip" id="nav-tooltip"></div>
-<div id="vue-bootstrap" style="display:none;"></div>
-</div>
 
+<script src="/services-guard.js"></script>
+<script src="/feedback-widget.js"></script>
 <script>
 const API = '';
-const TOKEN_KEY = 'jowork_token';
-const AUTO_USER_KEY = 'jowork_local_user';
-const shellState = window.Vue
-  ? Vue.reactive({
-      token: localStorage.getItem(TOKEN_KEY),
-      currentUser: null,
-      activePanel: 'chat',
-      fileTreeOpen: localStorage.getItem('jw_file_tree_open') === '1',
-      gatewayOnline: false,
-      gatewayChecked: false,
-      fileTabs: [],
-      // Onboarding
-      onboardingStep: null,          // 'use_case' | 'api_mode' | 'own_key_input' | 'deploy_mode' | null
-      onboardingChoice: { useCase: null, apiMode: null, ownApiKey: '', deployMode: null },
-      // Settings
-      showSettings: false,
-      userPrefs: {},
-      userPrefsApiKeySet: false,
-      userPrefsApiKeyMasked: null,
-    })
-  : {
-      token: localStorage.getItem(TOKEN_KEY),
-      currentUser: null,
-      activePanel: 'chat',
-      fileTreeOpen: localStorage.getItem('jw_file_tree_open') === '1',
-      gatewayOnline: false,
-      gatewayChecked: false,
-      fileTabs: [],
-      onboardingStep: null,
-      onboardingChoice: { useCase: null, apiMode: null, ownApiKey: '', deployMode: null },
-      showSettings: false,
-      userPrefs: {},
-      userPrefsApiKeySet: false,
-      userPrefsApiKeyMasked: null,
-    };
-const loginForm = window.Vue
-  ? Vue.reactive({ username: '', displayName: '' })
-  : { username: '', displayName: '' };
+let token = localStorage.getItem('fluxvita_token');
+let currentUser = null;
+let activePanel = 'chat';
 const loadedPanels = new Set();
+const openFileTabs = new Map(); // fileId → { path, name, ext }
 
-// ── Theme ──
+// ── 主题 ──
 ThemeManager.initShell();
 
-// ── Sidebar collapse ──
-const SIDEBAR_KEY = 'jw_sidebar_collapsed';
+// ── Sidebar 折叠 ──
+const SIDEBAR_KEY = 'fv_sidebar_collapsed';
 
 function toggleSidebar() {
   const sidebar = document.querySelector('.sidebar');
   const collapsed = sidebar.classList.toggle('collapsed');
   localStorage.setItem(SIDEBAR_KEY, collapsed ? '1' : '0');
-  document.getElementById('collapse-btn').title = collapsed ? 'Expand sidebar' : 'Collapse sidebar';
+  document.getElementById('collapse-btn').title = collapsed ? '展开侧边栏' : '折叠侧边栏';
 }
 
+// 初始化折叠状态
 if (localStorage.getItem(SIDEBAR_KEY) === '1') {
   document.querySelector('.sidebar').classList.add('collapsed');
+  const btn = document.getElementById('collapse-btn');
+  if (btn) btn.title = '展开侧边栏';
 }
 
+// 折叠时 logo 点击展开
 document.getElementById('brand-logo').addEventListener('click', () => {
   if (document.querySelector('.sidebar').classList.contains('collapsed')) toggleSidebar();
 });
 
-// ── Sidebar resize ──
+// ── Sidebar 宽度拖动调整 ──
 (function () {
   const sidebar = document.querySelector('.sidebar');
   const handle = document.getElementById('sidebar-resize');
-  const MIN_W = 160, MAX_W = 400, W_KEY = 'jw_sidebar_width';
+  const MIN_W = 160, MAX_W = 400, W_KEY = 'fv_sidebar_width';
+
   const savedW = parseInt(localStorage.getItem(W_KEY));
   if (savedW && !sidebar.classList.contains('collapsed')) sidebar.style.width = savedW + 'px';
+
   handle.addEventListener('mousedown', (e) => {
     if (sidebar.classList.contains('collapsed')) return;
     e.preventDefault();
     handle.classList.add('dragging');
     const startX = e.clientX, startW = sidebar.offsetWidth;
-    function onMove(e) { sidebar.style.width = Math.min(MAX_W, Math.max(MIN_W, startW + e.clientX - startX)) + 'px'; }
+    function onMove(e) {
+      sidebar.style.width = Math.min(MAX_W, Math.max(MIN_W, startW + e.clientX - startX)) + 'px';
+    }
     function onUp() {
       handle.classList.remove('dragging');
       localStorage.setItem(W_KEY, sidebar.offsetWidth);
@@ -1029,7 +777,7 @@ document.getElementById('brand-logo').addEventListener('click', () => {
   });
 })();
 
-// ── Nav tooltip ──
+// ── 折叠时自定义 tooltip ──
 (function () {
   const tooltip = document.getElementById('nav-tooltip');
   const sidebar = document.querySelector('.sidebar');
@@ -1048,10 +796,17 @@ document.getElementById('brand-logo').addEventListener('click', () => {
   });
 })();
 
-// ── Gateway status ──
+// ── Gateway 状态检查 ──
+let gatewayChecked = false;
 function setGatewayStatus(online) {
-  shellState.gatewayOnline = Boolean(online);
-  shellState.gatewayChecked = true;
+  gatewayChecked = true;
+  const dot = document.getElementById('status-dot');
+  if (dot) {
+    dot.className = 'status-dot ' + (online ? 'online' : 'offline');
+    dot.title = online ? 'Gateway 在线' : 'Gateway 离线';
+  }
+  const banner = document.getElementById('offline-banner');
+  if (banner) banner.style.display = (!online && token) ? 'flex' : 'none';
 }
 async function checkGatewayStatus() {
   try {
@@ -1064,10 +819,10 @@ function startGatewayMonitor() {
   setInterval(checkGatewayStatus, 30000);
 }
 
-// ── Keyboard shortcuts ──
+// ── 键盘快捷键 ──
 const PANEL_SHORTCUT = ['chat', 'dashboard', 'aiservices', 'admin', 'chat'];
 document.addEventListener('keydown', (e) => {
-  if (!shellState.token) return;
+  if (!token) return;
   const meta = e.metaKey || e.ctrlKey;
   if (meta && e.key >= '1' && e.key <= '5') {
     e.preventDefault();
@@ -1082,113 +837,116 @@ const THEME_ICONS = {
   light: `<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="8" r="2.6"/><path d="M8 2v1.8M8 12.2V14M2 8h1.8M12.2 8H14M3.88 3.88l1.27 1.27M10.85 10.85l1.27 1.27M10.85 5.15l1.27-1.27M3.88 12.12l1.27-1.27"/></svg>`,
   dark: `<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.5 9.5A6 6 0 017 3.5a5.5 5.5 0 100 9 6 6 0 006.5-3z"/></svg>`,
 };
+
 function updateThemeBtn() {
   const pref = ThemeManager.getPreference();
   const btn = document.querySelector('.action-btn[onclick="toggleTheme()"]');
   if (btn) btn.querySelector('.action-btn-icon').innerHTML = THEME_ICONS[pref] || THEME_ICONS.auto;
 }
-function toggleTheme() { ThemeManager.toggle(); updateThemeBtn(); }
 
-// ── Init: verify token ──
-(async function init() {
-  // Setup Wizard 检查：若 gateway 在线且 setup 未完成，跳转到 setup.html
-  try {
-    const setupResp = await fetch(API + '/api/system/setup-status', { signal: AbortSignal.timeout(3000) });
-    if (setupResp.ok) {
-      const setupData = await setupResp.json();
-      if (!setupData.done) {
-        location.href = '/setup.html';
-        return;
-      }
-    }
-  } catch { /* gateway 离线时跳过检查，不阻断正常流程 */ }
+function toggleTheme() {
+  ThemeManager.toggle();
+  updateThemeBtn();
+}
 
-  if (!shellState.token) {
-    const result = await autoLocalLogin();
-    if (result !== true) {
-      showLoginScreen();
-      if (result === 'offline') setTimeout(() => showLoginError('Gateway is offline — start the server first'), 50);
+// ── 语言切换 ──
+function updateLangBtn() {
+  const locale = window.__jowork_locale || localStorage.getItem('jowork_locale') || 'zh';
+  const icon = document.getElementById('lang-toggle-icon');
+  const label = document.getElementById('lang-toggle-label');
+  if (!icon || !label) return;
+  if (locale === 'zh') { icon.textContent = '中'; label.textContent = 'EN'; }
+  else { icon.textContent = 'EN'; label.textContent = '中'; }
+}
+function toggleLocale() {
+  const current = window.__jowork_locale || localStorage.getItem('jowork_locale') || 'zh';
+  const next = current === 'zh' ? 'en' : 'zh';
+  try { localStorage.setItem('jowork_locale', next); } catch { /* ignore */ }
+  location.reload();
+}
+updateLangBtn();
+
+// ── 启动：检测 dev 登录 ──
+fetch(API + '/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
+  .then(r => r.json()).then(d => {
+    if (d.hint && d.hint.includes('DEV_DIRECT_LOGIN_ENABLED')) {
+      const el = document.getElementById('dev-login-section');
+      if (el) el.style.display = '';
     }
-    return;
-  }
+  }).catch(() => {});
+
+// ── Onboarding 检查 ──
+// 有 token → 直接验证进入（老用户换浏览器不应再走 onboarding）
+// 无 token → 去 onboarding 做首次登录引导
+if (!token) {
+  location.replace('/onboarding.html');
+} else {
+  verifyAndEnter();
+}
+
+async function verifyAndEnter() {
   try {
     const resp = await fetch(API + '/api/auth/me', {
-      headers: { Authorization: 'Bearer ' + shellState.token },
-      signal: AbortSignal.timeout(5000),
+      headers: { Authorization: 'Bearer ' + token }
     });
-    if (!resp.ok) throw new Error('token invalid');
+    if (!resp.ok) throw new Error();
     const data = await resp.json();
-    shellState.currentUser = data.user;
+    currentUser = data.user;
+    if (data.feishu_verified === false) {
+      console.warn('[auth] Token not feishu_verified. AI features will be restricted.');
+    }
+    localStorage.setItem('fv_onboarding_done', '1');
     enterApp();
-  } catch (err) {
-    shellState.token = null;
-    localStorage.removeItem(TOKEN_KEY);
-    const result = await autoLocalLogin();
-    if (result !== true) {
-      showLoginScreen();
-      if (result === 'offline') setTimeout(() => showLoginError('Gateway is offline — start the server first'), 50);
-    }
-  }
-})();
-
-function showLoginScreen() {
-  const ls = document.getElementById('login-screen');
-  ls.style.display = 'flex';
-}
-
-// ── Local login ──
-async function localLogin(input) {
-  const usernameEl = document.getElementById('login-username');
-  const displayEl = document.getElementById('login-displayname');
-  const username = (input?.username ?? usernameEl.value).trim();
-  const display_name = (input?.display_name ?? displayEl.value).trim() || username;
-  if (!username || username.length < 2) { showLoginError('Username must be at least 2 characters'); return; }
-  const btn = document.getElementById('login-btn');
-  btn.disabled = true; btn.textContent = 'Signing in...';
-  try {
-    const resp = await fetch(API + '/api/auth/local', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, display_name }),
-    });
-    const data = await resp.json();
-    if (data.token) {
-      shellState.token = data.token;
-      shellState.currentUser = data.user;
-      localStorage.setItem(TOKEN_KEY, shellState.token);
-      document.getElementById('login-screen').style.display = 'none';
-      enterApp();
-    } else {
-      showLoginError(data.error || 'Login failed');
-      btn.disabled = false; btn.textContent = 'Get Started';
-    }
   } catch {
-    showLoginError('Cannot reach server — is Jowork Gateway running?');
-    btn.disabled = false; btn.textContent = 'Get Started';
+    token = null;
+    localStorage.removeItem('fluxvita_token');
+    localStorage.removeItem('fluxvita_user');
+    localStorage.removeItem('fv_onboarding_done');
+    location.replace('/onboarding.html');
   }
 }
 
-async function autoLocalLogin() {
-  const saved = localStorage.getItem(AUTO_USER_KEY);
-  const username = (saved && saved.trim()) || `local_${Math.random().toString(36).slice(2, 10)}`;
-  const display_name = (saved && saved.trim()) || 'Local User';
+// ── 登录 ──
+async function startOAuthLogin() {
+  const btn = document.getElementById('oauth-btn');
+  btn.disabled = true; btn.textContent = '正在跳转...';
   try {
-    const resp = await fetch(API + '/api/auth/local', {
+    const resp = await fetch(API + '/api/auth/oauth/url');
+    const data = await resp.json();
+    if (data.url) { location.href = data.url; }
+    else { showLoginError('无法获取授权链接'); btn.disabled = false; btn.textContent = '使用飞书账号登录'; }
+  } catch { showLoginError('网络连接失败'); btn.disabled = false; btn.textContent = '使用飞书账号登录'; }
+}
+
+async function devLogin() {
+  const openId = document.getElementById('dev-open-id').value.trim();
+  const name = document.getElementById('dev-name').value.trim();
+  if (!openId || !name) { showLoginError('请填写 Open ID 和姓名'); return; }
+  try {
+    const resp = await fetch(API + '/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, display_name }),
-      signal: AbortSignal.timeout(5000),
+      body: JSON.stringify({ feishu_open_id: openId, name }),
     });
     const data = await resp.json();
-    if (!data.token) return false;
-    shellState.token = data.token;
-    shellState.currentUser = data.user;
-    localStorage.setItem(TOKEN_KEY, shellState.token);
-    localStorage.setItem(AUTO_USER_KEY, username);
-    document.getElementById('login-screen').style.display = 'none';
-    enterApp();
-    return true;
-  } catch { return 'offline'; }
+    if (data.challenge_id && data.dev_code) {
+      const resp2 = await fetch(API + '/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ feishu_open_id: openId, name, challenge_id: data.challenge_id, code: data.dev_code }),
+      });
+      const data2 = await resp2.json();
+      if (data2.token) {
+        token = data2.token; currentUser = data2.user;
+        localStorage.setItem('fluxvita_token', token);
+        enterApp();
+      } else { showLoginError(data2.error || '验证失败'); }
+    } else if (data.token) {
+      token = data.token; currentUser = data.user;
+      localStorage.setItem('fluxvita_token', token);
+      enterApp();
+    } else { showLoginError(data.error || '登录失败'); }
+  } catch { showLoginError('网络连接失败'); }
 }
 
 function showLoginError(msg) {
@@ -1198,156 +956,125 @@ function showLoginError(msg) {
 }
 
 function logout() {
-  shellState.token = null;
-  shellState.currentUser = null;
-  localStorage.removeItem(TOKEN_KEY);
-  location.reload();
+  token = null; currentUser = null;
+  localStorage.removeItem('fluxvita_token');
+  localStorage.removeItem('fluxvita_user');
+  localStorage.removeItem('fv_onboarding_done');
+  localStorage.removeItem('fv_oauth_just_done');
+  location.replace('/onboarding.html');
+}
+
+
+// ── Toast 通知 ──
+function showToast(msg, type = 'info') {
+  const toast = document.createElement('div');
+  toast.textContent = msg;
+  Object.assign(toast.style, {
+    position: 'fixed', bottom: '24px', left: '50%', transform: 'translateX(-50%)',
+    background: type === 'success' ? 'var(--accent, #9dd84a)' : 'rgba(40,40,44,0.95)',
+    color: type === 'success' ? '#111' : 'var(--text, #e8e8e8)',
+    padding: '10px 20px', borderRadius: '10px', fontSize: '13px', fontWeight: '500',
+    boxShadow: '0 4px 20px rgba(0,0,0,0.3)', zIndex: '9999',
+    transition: 'opacity 0.3s', opacity: '1',
+  });
+  document.body.appendChild(toast);
+  setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 3000);
 }
 
 function forceReload() {
   document.querySelectorAll('.panel-frame').forEach(f => { f.src = 'about:blank'; });
   loadedPanels.clear();
-  const frame = document.getElementById(`frame-${shellState.activePanel}`);
+  const frame = document.getElementById(`frame-${activePanel}`);
   if (frame) {
-    const src = frame.dataset.src || getFileTabSrcByPanel(shellState.activePanel);
-    if (!src) return;
+    const src = frame.dataset.src;
     const ts = Date.now();
     const sep = src.includes('?') ? '&' : '?';
     const loading = document.getElementById('panel-loading');
     loading.classList.remove('hidden');
-    frame.onload = () => { injectToken(frame); setTimeout(() => injectToken(frame), 200); loading.classList.add('hidden'); };
-    frame.src = src + sep + '_t=' + ts + '#token=' + encodeURIComponent(shellState.token || '');
-    loadedPanels.add(shellState.activePanel);
-  }
-}
-
-// ── Preferences / Onboarding ──
-async function loadUserPrefs() {
-  if (!shellState.token) return;
-  try {
-    const resp = await fetch(API + '/api/preferences', {
-      headers: { Authorization: 'Bearer ' + shellState.token },
-      signal: AbortSignal.timeout(5000),
-    });
-    if (!resp.ok) return;
-    const data = await resp.json();
-    shellState.userPrefs = data.preferences || {};
-    shellState.userPrefsApiKeySet = !!data.api_key_set;
-    shellState.userPrefsApiKeyMasked = data.api_key_masked || null;
-    // 如果 use_case 未设置，启动 onboarding 引导
-    if (!shellState.userPrefs.use_case) {
-      shellState.onboardingStep = 'use_case';
-    }
-  } catch { /* 忽略：不影响主流程 */ }
-}
-
-function advanceOnboarding(step, choice) {
-  if (step === 'use_case') {
-    shellState.onboardingChoice.useCase = choice;
-    shellState.onboardingStep = 'api_mode';
-  } else if (step === 'api_mode') {
-    shellState.onboardingChoice.apiMode = choice;
-    shellState.onboardingStep = choice === 'own_key' ? 'own_key_input' : 'deploy_mode';
-  } else if (step === 'own_key_input') {
-    shellState.onboardingChoice.ownApiKey = choice;
-    shellState.onboardingStep = 'deploy_mode';
-  } else if (step === 'deploy_mode') {
-    shellState.onboardingChoice.deployMode = choice;
-    shellState.onboardingStep = null;
-    saveOnboardingChoices();
-  }
-}
-
-async function saveOnboardingChoices() {
-  if (!shellState.token) return;
-  try {
-    const body = {
-      use_case: shellState.onboardingChoice.useCase,
-      api_mode: shellState.onboardingChoice.apiMode,
-      deploy_mode: shellState.onboardingChoice.deployMode,
+    frame.onload = () => {
+      injectToken(frame);
+      setTimeout(() => injectToken(frame), 200);
+      loading.classList.add('hidden');
     };
-    if (shellState.onboardingChoice.ownApiKey) {
-      body.api_key = shellState.onboardingChoice.ownApiKey;
-    }
-    const resp = await fetch(API + '/api/preferences', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + shellState.token },
-      body: JSON.stringify(body),
-    });
-    if (resp.ok) {
-      const data = await resp.json();
-      shellState.userPrefs = data.preferences || {};
-      shellState.userPrefsApiKeySet = !!data.api_key_set;
-      shellState.userPrefsApiKeyMasked = data.api_key_masked || null;
-    }
-  } catch { /* ignore */ }
+    frame.src = src + sep + '_t=' + ts + '#token=' + encodeURIComponent(token || '');
+    loadedPanels.add(activePanel);
+  }
 }
 
-async function updatePref(key, value) {
-  if (!shellState.token) return;
-  try {
-    const resp = await fetch(API + '/api/preferences', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + shellState.token },
-      body: JSON.stringify({ [key]: value }),
-    });
-    if (resp.ok) {
-      const data = await resp.json();
-      shellState.userPrefs = data.preferences || {};
-      shellState.userPrefsApiKeySet = !!data.api_key_set;
-      shellState.userPrefsApiKeyMasked = data.api_key_masked || null;
-    }
-  } catch { /* ignore */ }
-}
-
-function doPromptChangeApiKey() {
-  const key = prompt('Enter your new API key (leave blank to cancel):');
-  if (!key || !key.trim()) return;
-  fetch(API + '/api/preferences', {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + shellState.token },
-    body: JSON.stringify({ api_key: key.trim() }),
-  }).then(r => r.json()).then(data => {
-    shellState.userPrefsApiKeySet = !!data.api_key_set;
-    shellState.userPrefsApiKeyMasked = data.api_key_masked || null;
-  }).catch(() => {});
-}
-
-// ── Enter app ──
+// ── 进入主界面 ──
 async function enterApp() {
   document.getElementById('login-screen').style.display = 'none';
   const app = document.getElementById('app');
   app.style.display = 'flex';
 
+  const name = currentUser?.name || '?';
+  document.getElementById('user-chip').textContent = name;
+  document.getElementById('user-avatar').textContent = name.charAt(0).toUpperCase();
+
   await ServicesGuard.ready;
   document.querySelectorAll('[data-service]').forEach(el => {
     const svcId = el.getAttribute('data-service');
-    if (svcId && !ServicesGuard.hasService(svcId)) el.style.display = 'none';
+    if (svcId && !ServicesGuard.hasService(svcId)) {
+      el.style.display = 'none';
+    }
   });
-
-  // 加载偏好设置（若 use_case 未设置则自动触发 onboarding）
-  await loadUserPrefs();
 
   switchPanel('chat');
   updateThemeBtn();
   startGatewayMonitor();
-  if (shellState.fileTreeOpen) toggleFileTree(true);
+  if (localStorage.getItem(FILE_TREE_KEY) === '1') toggleFileTree();
 }
 
-// ── Panel switching ──
-function syncActivePanelsFromState() {
-  const active = shellState.activePanel;
+// ── 文件树侧边栏 toggle ──
+const FILE_TREE_KEY = 'fv_file_tree_open';
+let fileTreeLoaded = false;
+
+function toggleFileTree() {
+  if (!token) return;
+  const panel = document.getElementById('file-tree-panel');
+  const btn = document.getElementById('files-tree-btn');
+  const isOpen = panel.classList.toggle('open');
+  btn.classList.toggle('active', isOpen);
+  localStorage.setItem(FILE_TREE_KEY, isOpen ? '1' : '0');
+
+  if (isOpen && !fileTreeLoaded) {
+    fileTreeLoaded = true;
+    const frame = document.getElementById('frame-files-tree');
+    frame.onload = () => {
+      injectToken(frame);
+      setTimeout(() => injectToken(frame), 300);
+    };
+    frame.src = '/files.html#token=' + encodeURIComponent(token || '');
+  } else if (isOpen) {
+    injectToken(document.getElementById('frame-files-tree'));
+  }
+}
+
+document.getElementById('files-tree-btn').addEventListener('click', toggleFileTree);
+
+// ── 导航切换 ──
+document.querySelectorAll('.nav-item[data-panel]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (!token) return;
+    switchPanel(btn.dataset.panel);
+  });
+});
+
+function switchPanel(name) {
+  if (name === 'geek') { switchSubPanel('geek'); return; }
+  if (activePanel === name && loadedPanels.has(name)) return;
+  activePanel = name;
+
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.toggle('active', b.dataset.panel === name));
+
+  const tabbar = document.getElementById('panel-tabbar');
+  tabbar.classList.toggle('visible', name === 'chat' || openFileTabs.size > 0);
+
   document.querySelectorAll('.panel-frame').forEach(f => {
-    const isActive = f.id === `frame-${active}`;
+    const isActive = f.id === `frame-${name}`;
     f.classList.toggle('active', isActive);
     if (isActive) { f.classList.remove('fade-in'); void f.offsetWidth; f.classList.add('fade-in'); }
   });
-}
-
-function switchPanel(name) {
-  if (shellState.activePanel === name && loadedPanels.has(name)) return;
-  shellState.activePanel = name;
-  syncActivePanelsFromState();
 
   if (!loadedPanels.has(name)) {
     loadedPanels.add(name);
@@ -1355,13 +1082,49 @@ function switchPanel(name) {
     const src = frame.dataset.src;
     const loading = document.getElementById('panel-loading');
     loading.classList.remove('hidden');
-    frame.onload = () => { injectToken(frame); setTimeout(() => injectToken(frame), 200); loading.classList.add('hidden'); };
-    frame.src = src + '#token=' + encodeURIComponent(shellState.token || '');
+    frame.onload = () => {
+      injectToken(frame);
+      setTimeout(() => injectToken(frame), 200);
+      loading.classList.add('hidden');
+    };
+    frame.src = src + '#token=' + encodeURIComponent(token || '');
+  }
+}
+
+// ── AI 助手子面板切换（对话 / 终端）──
+function switchSubPanel(name) {
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.toggle('active', b.dataset.panel === 'chat'));
+  document.getElementById('panel-tabbar').classList.add('visible');
+
+  document.getElementById('tab-chat').classList.toggle('active', name === 'chat');
+  document.getElementById('tab-geek').classList.toggle('active', name === 'geek');
+
+  ['chat', 'geek'].forEach(p => {
+    const f = document.getElementById(`frame-${p}`);
+    f.classList.toggle('active', p === name);
+    if (p === name) { f.classList.remove('fade-in'); void f.offsetWidth; f.classList.add('fade-in'); }
+  });
+
+  activePanel = name;
+
+  if (name === 'geek' && !loadedPanels.has('geek')) {
+    loadedPanels.add('geek');
+    const frame = document.getElementById('frame-geek');
+    const loading = document.getElementById('panel-loading');
+    loading.classList.remove('hidden');
+    frame.onload = () => {
+      injectToken(frame);
+      setTimeout(() => injectToken(frame), 200);
+      loading.classList.add('hidden');
+    };
+    frame.src = frame.dataset.src + '#token=' + encodeURIComponent(token || '');
   }
 }
 
 function injectToken(frame) {
-  try { frame.contentWindow.postMessage({ type: 'SHELL_TOKEN', token: shellState.token, user: shellState.currentUser }, '*'); } catch {}
+  try {
+    frame.contentWindow.postMessage({ type: 'SHELL_TOKEN', token, user: currentUser }, '*');
+  } catch {}
 }
 
 window.addEventListener('message', (e) => {
@@ -1375,63 +1138,105 @@ window.addEventListener('message', (e) => {
     });
   }
   if (e.data?.type === 'LOGOUT') logout();
-  if (e.data?.type === 'relogin') { localStorage.removeItem(TOKEN_KEY); shellState.token = null; location.reload(); }
-  if (e.data?.type === 'NAVIGATE') { const panel = e.data.panel; if (panel) switchPanel(panel); }
-  if (e.data?.type === 'OPEN_FILE') openFileTab(e.data);
+  if (e.data?.type === 'relogin') {
+    localStorage.removeItem('fluxvita_token');
+    token = null;
+    startOAuthLogin();
+  }
+  if (e.data?.type === 'NAVIGATE') {
+    const panel = e.data.panel;
+    if (panel) switchPanel(panel);
+  }
+  if (e.data?.type === 'OPEN_FILE') {
+    openFileTab(e.data);
+  }
 });
 
-// ── File tabs ──
+// ── 文件标签页 ──
 function _fileTabId(path) {
   let h = 5381;
   for (let i = 0; i < path.length; i++) h = ((h << 5) + h) ^ path.charCodeAt(i);
   return 'file_' + (h >>> 0).toString(36);
 }
-function getFileTab(fileId) { return shellState.fileTabs.find(t => t.id === fileId); }
-function getFileTabSrc(tab) { return `/file-viewer.html?path=${encodeURIComponent(tab.path)}`; }
-function getFileTabSrcByPanel(panelId) { const tab = getFileTab(panelId); return tab ? getFileTabSrc(tab) : ''; }
 
 function openFileTab({ path, name, ext }) {
-  if (!path) return;
   const fileId = _fileTabId(path);
-  if (getFileTab(fileId)) { activateFileTab(fileId); return; }
-  const fallbackName = path.split('/').pop() || 'Untitled';
-  const normalizedExt = ext || fallbackName.split('.').pop() || '';
-  shellState.fileTabs.push({ id: fileId, path, name: name || fallbackName, ext: normalizedExt });
+
+  if (openFileTabs.has(fileId)) {
+    activateFileTab(fileId);
+    return;
+  }
+
+  const icon = (ext === 'md' || ext === 'markdown') ? '📝' : '🌐';
+  const tabBtn = document.createElement('button');
+  tabBtn.className = 'panel-tab';
+  tabBtn.id = `tab-${fileId}`;
+  tabBtn.innerHTML =
+    `<span class="panel-tab-icon">${icon}</span><span>${name}</span>` +
+    `<span class="panel-tab-close" data-file-id="${fileId}">×</span>`;
+  tabBtn.addEventListener('click', (e) => {
+    if (e.target.classList.contains('panel-tab-close')) {
+      closeFileTab(e.target.dataset.fileId);
+    } else {
+      activateFileTab(fileId);
+    }
+  });
+  document.getElementById('panel-tabbar').appendChild(tabBtn);
+
+  const frame = document.createElement('iframe');
+  frame.className = 'panel-frame';
+  frame.id = `frame-${fileId}`;
+  frame.onload = () => {
+    injectToken(frame);
+    setTimeout(() => injectToken(frame), 200);
+  };
+  frame.src = `/file-viewer.html?path=${encodeURIComponent(path)}`;
+  const panels = document.getElementById('panels');
+  panels.insertBefore(frame, document.getElementById('panel-loading'));
+
+  openFileTabs.set(fileId, { path, name, ext });
   activateFileTab(fileId);
 }
-function activateFileTab(fileId) { shellState.activePanel = fileId; syncActivePanelsFromState(); }
-function closeFileTab(fileId) {
-  const wasActive = shellState.activePanel === fileId;
-  shellState.fileTabs = shellState.fileTabs.filter(t => t.id !== fileId);
-  if (wasActive) {
-    const remaining = shellState.fileTabs.map(t => t.id);
-    if (remaining.length > 0) activateFileTab(remaining[remaining.length - 1]);
-    else switchPanel('chat');
-  } else { syncActivePanelsFromState(); }
+
+function activateFileTab(fileId) {
+  activePanel = fileId;
+  document.querySelectorAll('.nav-item').forEach(b =>
+    b.classList.toggle('active', b.dataset.panel === 'chat'));
+  document.querySelectorAll('.panel-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(`tab-${fileId}`)?.classList.add('active');
+  document.querySelectorAll('.panel-frame').forEach(f => f.classList.remove('active'));
+  const frame = document.getElementById(`frame-${fileId}`);
+  if (frame) {
+    frame.classList.add('active');
+    frame.classList.remove('fade-in'); void frame.offsetWidth; frame.classList.add('fade-in');
+  }
+  document.getElementById('panel-tabbar').classList.add('visible');
 }
 
-// ── File tree ──
-const FILE_TREE_KEY = 'jw_file_tree_open';
-let fileTreeLoaded = false;
-function toggleFileTree(forceOpen) {
-  if (!shellState.token) return;
-  const isOpen = typeof forceOpen === 'boolean' ? forceOpen : !shellState.fileTreeOpen;
-  shellState.fileTreeOpen = isOpen;
-  localStorage.setItem(FILE_TREE_KEY, shellState.fileTreeOpen ? '1' : '0');
-  if (shellState.fileTreeOpen && !fileTreeLoaded) {
-    fileTreeLoaded = true;
-    const frame = document.getElementById('frame-files-tree');
-    frame.onload = () => { injectToken(frame); setTimeout(() => injectToken(frame), 200); };
-    frame.src = '/files.html#token=' + encodeURIComponent(shellState.token || '');
-  } else if (shellState.fileTreeOpen) {
-    injectToken(document.getElementById('frame-files-tree'));
+function closeFileTab(fileId) {
+  const wasActive = activePanel === fileId;
+  openFileTabs.delete(fileId);
+  document.getElementById(`tab-${fileId}`)?.remove();
+  document.getElementById(`frame-${fileId}`)?.remove();
+
+  if (wasActive) {
+    const remaining = [...openFileTabs.keys()];
+    if (remaining.length > 0) {
+      activateFileTab(remaining[remaining.length - 1]);
+    } else {
+      switchSubPanel('chat');
+    }
   }
 }
 
-// ── Tauri ──
+// ── Tauri 事件 ──
 if (window.__TAURI__) {
-  window.__TAURI__.event.listen('health-status', (event) => { setGatewayStatus(event.payload.online); });
+  window.__TAURI__.event.listen('health-status', (event) => {
+    setGatewayStatus(event.payload.online);
+  });
 }
+
+// ── Tauri 自动更新 ──
 if (window.__TAURI__) {
   window.__TAURI__.event.listen('update-available', (event) => {
     const { version } = event.payload;
@@ -1441,10 +1246,16 @@ if (window.__TAURI__) {
 }
 async function doUpdate() {
   if (!window.__TAURI__) return;
-  document.querySelector('.update-btn').textContent = 'Updating...';
-  try { await window.__TAURI__.core.invoke('install_update'); }
-  catch (e) { alert('Update failed: ' + e); document.querySelector('.update-btn').textContent = 'Update now'; }
+  document.querySelector('.update-btn').textContent = '更新中...';
+  try {
+    await window.__TAURI__.core.invoke('install_update');
+  } catch (e) {
+    alert('更新失败：' + e);
+    document.querySelector('.update-btn').textContent = '立即更新';
+  }
 }
+
+// ── Tauri 全屏状态检测 ──
 if (window.__TAURI__) {
   const appWin = window.__TAURI__.window.getCurrentWindow();
   async function syncFullscreen() {
@@ -1456,49 +1267,16 @@ if (window.__TAURI__) {
   appWin.listen('tauri://enter-full-screen', () => document.documentElement.classList.add('fullscreen'));
   appWin.listen('tauri://leave-full-screen', () => document.documentElement.classList.remove('fullscreen'));
 }
+
+// ── Tauri 原生拖动（sidebar 区域）──
 if (window.__TAURI__) {
   document.querySelector('.sidebar').addEventListener('mousedown', async (e) => {
     if (e.button !== 0) return;
     if (e.target.closest('button, a, input, .nav-item, .action-btn, .sidebar-footer')) return;
-    try { await window.__TAURI__.window.getCurrentWindow().startDragging(); } catch (_) {}
+    try {
+      await window.__TAURI__.window.getCurrentWindow().startDragging();
+    } catch (_) {}
   });
-}
-
-if (window.Vue) {
-  window.__joworkShellVue = Vue.createApp({
-    setup() {
-      const userDisplayName = Vue.computed(() => shellState.currentUser?.name || 'Loading');
-      const userInitial = Vue.computed(() => (shellState.currentUser?.name?.charAt(0) || '?').toUpperCase());
-      Vue.watch(() => shellState.activePanel, () => { syncActivePanelsFromState(); });
-      function localLoginVue() {
-        return localLogin({ username: loginForm.username, display_name: loginForm.displayName });
-      }
-      function onNavClick(panel) { if (!shellState.token) return; switchPanel(panel); }
-      function onToggleFileTree() { return toggleFileTree(); }
-      function onFileTabClick(fileId, event) {
-        if (event?.target?.classList?.contains('panel-tab-close')) return closeFileTab(fileId);
-        return activateFileTab(fileId);
-      }
-      function onFileFrameLoad(event) {
-        const frame = event?.target;
-        if (!frame) return;
-        injectToken(frame);
-        setTimeout(() => injectToken(frame), 200);
-      }
-      function fileTabIcon(ext) {
-        const normalized = String(ext || '').toLowerCase();
-        return normalized === 'md' || normalized === 'markdown' ? '📝' : '🌐';
-      }
-      function fileTabSrc(tab) { return getFileTabSrc(tab); }
-      function doCheckGateway() { checkGatewayStatus(); }
-      return {
-        shellState, loginForm, localLoginVue, onNavClick, onToggleFileTree,
-        userDisplayName, userInitial, onFileTabClick, onFileFrameLoad, fileTabIcon, fileTabSrc,
-        doCheckGateway, advanceOnboarding, updatePref,
-      };
-    },
-    data() { return { bootedAt: Date.now() }; },
-  }).mount('#shell-root');
 }
 </script>
 </body>

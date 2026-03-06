@@ -33,7 +33,7 @@ export const config: GatewayConfig = {
   jwt_secret: env('JWT_SECRET'),
   db_path: env('DB_PATH', resolve(process.cwd(), 'data', 'datamap.db')),
   cache_dir: env('CACHE_DIR', resolve(process.cwd(), 'cache')),
-  token_storage_key: env('TOKEN_STORAGE_KEY', 'jowork_token'),
+  token_storage_key: env('TOKEN_STORAGE_KEY', 'fluxvita_token'),
   feishu: {
     app_id: env('FEISHU_APP_ID', ''),
     app_secret: env('FEISHU_APP_SECRET', ''),

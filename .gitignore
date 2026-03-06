@@ -1,14 +1,37 @@
 node_modules/
 dist/
-data/
-logs/
-log/
 .env
 .env.*
 !.env.example
+cache/
+log/
+logs/
+*.log
+.DS_Store
+test_data/
+
+# SQLite 数据库及运行时文件
 *.db
+*.db-journal
 *.db-shm
 *.db-wal
-cache/
-test_data/
-.DS_Store
+
+# 运行时生成的数据目录（不提交数据，只提交结构）
+data/bin/
+data/repos/
+data/content/
+data/feedback/
+data/archives/
+data/backups/
+# TLS 自签名证书（生产环境专用，不提交）
+data/tls.key
+data/tls.cert
+
+# Tauri 编译产物
+src-tauri/target/
+
+# Tauri CLI 生成的移动端图标（不需要提交）
+src-tauri/icons/android/
+src-tauri/icons/ios/
+src-tauri/icons/Square*.png
+src-tauri/icons/StoreLogo.png

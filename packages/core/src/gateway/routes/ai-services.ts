@@ -14,6 +14,7 @@ import {
 } from '../../ai-services/klaude-manager.js';
 import { readFileSync, existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { exec } from 'node:child_process';
 import { createLogger } from '../../utils/logger.js';
 
 const log = createLogger('ai-services-route');
@@ -83,6 +84,18 @@ router.post('/klaude/stop', authMiddleware, requireRole('owner', 'admin'), (_req
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }
+});
+
+/** GET /api/ai-services/agent-browser/status — 检测 agent-browser 是否已安装 */
+router.get('/agent-browser/status', authMiddleware, (_req, res) => {
+  exec('agent-browser --version 2>/dev/null', (err, stdout) => {
+    if (err) {
+      res.json({ installed: false, version: null });
+    } else {
+      const version = stdout.trim().replace(/^agent-browser\s+/, '') || null;
+      res.json({ installed: true, version });
+    }
+  });
 });
 
 export default router;

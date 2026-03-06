@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jowork — Setup</title>
+<link rel="stylesheet" href="/styles/tokens.css">
+<script src="/theme.js"></script>
+<script src="/i18n.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; }
+html, body {
+  height: 100%; margin: 0; padding: 0;
+  background: var(--bg, #0f0f12);
+  color: var(--text, #e8e8e0);
+  font-family: var(--font, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif);
+  -webkit-font-smoothing: antialiased;
+}
+
+.page {
+  min-height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg, #0f0f12);
+  background-image: radial-gradient(circle, rgba(255,255,255,0.025) 1px, transparent 1px);
+  background-size: 28px 28px;
+  padding: 24px 16px;
+}
+
+.card {
+  width: 100%; max-width: 620px;
+  background: rgba(37,37,40,0.9);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 16px;
+  padding: 40px 36px 36px;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+  position: relative; overflow: hidden;
+}
+.card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, #9DD84A, #5CC8D8, #C4B8E8, #E8A898);
+}
+[data-theme="light"] .card {
+  background: rgba(255,255,255,0.92);
+  border: 1px solid rgba(0,0,0,0.07);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+}
+
+/* Steps */
+.steps { display: flex; gap: 8px; margin-bottom: 36px; align-items: center; }
+.step { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text2, #888); font-weight: 500; }
+.step-num {
+  width: 24px; height: 24px; border-radius: 50%;
+  background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.12);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 600; transition: background .2s, border-color .2s;
+}
+.step.active .step-num { background: var(--accent, #9DD84A); border-color: var(--accent, #9DD84A); color: #000; }
+.step.done .step-num { background: rgba(157,216,74,0.2); border-color: rgba(157,216,74,0.4); color: var(--accent, #9DD84A); }
+.step-sep { flex: 1; height: 1px; background: rgba(255,255,255,0.08); }
+[data-theme="light"] .step-sep { background: rgba(0,0,0,0.1); }
+
+/* Section header */
+.step-title { font-size: 20px; font-weight: 700; letter-spacing: -0.4px; margin: 0 0 6px; }
+.step-desc { font-size: 13px; color: var(--text2, #888); margin: 0 0 28px; line-height: 1.55; }
+
+/* ── Mode Cards ── */
+.mode-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 8px; }
+@media (max-width: 500px) { .mode-cards { grid-template-columns: 1fr; } }
+
+.mode-card {
+  border: 1.5px solid rgba(255,255,255,0.1);
+  border-radius: 12px; padding: 20px 16px;
+  cursor: pointer; text-align: left; background: rgba(255,255,255,0.03);
+  transition: border-color .18s, background .18s, box-shadow .18s;
+  position: relative;
+}
+.mode-card:hover { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.2); }
+.mode-card.selected {
+  border-color: var(--accent, #9DD84A);
+  background: rgba(157,216,74,0.07);
+  box-shadow: 0 0 0 3px rgba(157,216,74,0.12);
+}
+[data-theme="light"] .mode-card { background: rgba(0,0,0,0.03); border-color: rgba(0,0,0,0.1); }
+[data-theme="light"] .mode-card:hover { background: rgba(0,0,0,0.06); }
+[data-theme="light"] .mode-card.selected { background: rgba(157,216,74,0.1); }
+
+.mode-icon {
+  font-size: 26px; margin-bottom: 12px; display: block;
+  line-height: 1;
+}
+.mode-title { font-size: 14px; font-weight: 700; margin: 0 0 6px; }
+.mode-desc { font-size: 12px; color: var(--text2, #888); line-height: 1.5; margin: 0; }
+.mode-badge {
+  position: absolute; top: 10px; right: 10px;
+  font-size: 10px; font-weight: 600; padding: 2px 7px;
+  border-radius: 4px;
+}
+.mode-badge.recommended { background: rgba(157,216,74,0.2); color: #9DD84A; }
+
+/* ── Host Mode UI ── */
+.ip-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
+.ip-row {
+  display: flex; align-items: center; gap: 10px;
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px; padding: 10px 14px;
+}
+[data-theme="light"] .ip-row { background: rgba(0,0,0,0.04); border-color: rgba(0,0,0,0.1); }
+.ip-url { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 13px; flex: 1; color: var(--accent, #9DD84A); }
+.copy-btn {
+  background: none; border: 1px solid rgba(255,255,255,0.12); border-radius: 5px;
+  color: var(--text2, #888); font-size: 11px; padding: 4px 10px; cursor: pointer;
+  transition: background .15s, color .15s; white-space: nowrap; font-family: inherit;
+}
+.copy-btn:hover { background: rgba(255,255,255,0.07); color: var(--text, #e8e8e0); }
+
+.info-box {
+  background: rgba(157,216,74,0.06); border: 1px solid rgba(157,216,74,0.2);
+  border-radius: 8px; padding: 12px 14px; font-size: 13px;
+  color: var(--text2, #999); line-height: 1.55; margin-bottom: 20px;
+}
+.info-box strong { color: var(--accent, #9DD84A); }
+
+/* ── Join Mode UI ── */
+.discover-status {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 13px; color: var(--text2, #888); margin-bottom: 16px;
+}
+.spinner {
+  width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.1);
+  border-top-color: var(--accent, #9DD84A);
+  border-radius: 50%; animation: spin .7s linear infinite; flex-shrink: 0;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.service-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+.service-item {
+  display: flex; align-items: center; gap: 12px;
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px; padding: 12px 14px; cursor: pointer;
+  transition: background .15s, border-color .15s;
+}
+.service-item:hover { background: rgba(255,255,255,0.08); border-color: rgba(157,216,74,0.3); }
+.service-item.selected { border-color: var(--accent, #9DD84A); background: rgba(157,216,74,0.07); }
+[data-theme="light"] .service-item { background: rgba(0,0,0,0.03); border-color: rgba(0,0,0,0.1); }
+.service-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent, #9DD84A); flex-shrink: 0; }
+.service-name { font-size: 13px; font-weight: 600; }
+.service-url { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 11px; color: var(--text2, #888); }
+
+.divider { display: flex; align-items: center; gap: 10px; margin: 16px 0; color: var(--text2, #888); font-size: 12px; }
+.divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: rgba(255,255,255,0.08); }
+[data-theme="light"] .divider::before, [data-theme="light"] .divider::after { background: rgba(0,0,0,0.1); }
+
+/* Form */
+.field { margin-bottom: 16px; }
+.field label { display: block; font-size: 12px; font-weight: 600; color: var(--text2, #888); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+.field input {
+  width: 100%; padding: 10px 12px;
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px; color: var(--text, #e8e8e0); font-size: 14px;
+  outline: none; font-family: inherit; transition: border-color .15s, box-shadow .15s;
+}
+.field input:focus { border-color: var(--accent, #9DD84A); box-shadow: 0 0 0 3px rgba(157,216,74,0.15); }
+[data-theme="light"] .field input { background: rgba(0,0,0,0.04); border-color: rgba(0,0,0,0.12); color: #111; }
+
+/* Buttons */
+.btn-row { display: flex; gap: 10px; justify-content: flex-end; margin-top: 28px; }
+.btn {
+  padding: 10px 22px; border-radius: 8px; font-size: 14px; font-weight: 600;
+  cursor: pointer; border: none; font-family: inherit; transition: opacity .15s;
+}
+.btn:active { opacity: .75; }
+.btn:disabled { opacity: .35; cursor: not-allowed; }
+.btn-primary { background: var(--accent, #9DD84A); color: #000; box-shadow: 0 2px 8px rgba(157,216,74,0.25); }
+.btn-secondary { background: rgba(255,255,255,0.07); color: var(--text, #e8e8e0); border: 1px solid rgba(255,255,255,0.1); }
+[data-theme="light"] .btn-secondary { background: rgba(0,0,0,0.06); border-color: rgba(0,0,0,0.1); color: #111; }
+
+/* Error */
+.error-msg { padding: 10px 14px; border-radius: 8px; background: rgba(255,59,48,0.1); border: 1px solid rgba(255,59,48,0.2); color: #ff6b6b; font-size: 13px; margin-top: 12px; display: none; }
+
+/* No services found */
+.no-services { text-align: center; padding: 20px; color: var(--text2, #888); font-size: 13px; }
+</style>
+</head>
+<body>
+<button id="lang-btn" onclick="toggleSetupLocale()" style="position:fixed;top:16px;right:16px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);color:var(--text,#e8e8e0);border-radius:6px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;z-index:100;font-family:inherit">EN</button>
+
+<div class="page">
+  <div class="card" id="card">
+
+    <!-- Progress steps -->
+    <div class="steps" id="steps-bar">
+      <div class="step active" id="step-ind-1"><div class="step-num">1</div><span data-i18n="setup.step1_label">Choose Mode</span></div>
+      <div class="step-sep"></div>
+      <div class="step" id="step-ind-2"><div class="step-num">2</div><span data-i18n="setup.step2_label">Configure</span></div>
+    </div>
+
+    <!-- ── Step 1: Mode selection ── -->
+    <div id="step-1">
+      <div class="step-title" data-i18n="setup.title">Just you, or a team?</div>
+      <div class="step-desc" data-i18n="setup.subtitle">Pick what fits. You can change this any time.</div>
+
+      <div class="mode-cards">
+        <div class="mode-card" id="card-solo" onclick="selectMode('solo')">
+          <span class="mode-icon">🧑‍💻</span>
+          <div class="mode-title" data-i18n="setup.solo.title">Just me</div>
+          <p class="mode-desc" data-i18n="setup.solo.desc">Set up on this computer and start right away. Nothing to share.</p>
+        </div>
+        <div class="mode-card" id="card-host" onclick="selectMode('host')">
+          <span class="mode-icon">📡</span>
+          <span class="mode-badge recommended" data-i18n="setup.host.badge">Team</span>
+          <div class="mode-title" data-i18n="setup.host.title">Me + my team</div>
+          <p class="mode-desc" data-i18n="setup.host.desc">I'll keep Jowork running here, and others on my Wi-Fi can join in.</p>
+        </div>
+        <div class="mode-card" id="card-join" onclick="selectMode('join')">
+          <span class="mode-icon">🔗</span>
+          <div class="mode-title" data-i18n="setup.join.title">Someone set it up for me</div>
+          <p class="mode-desc" data-i18n="setup.join.desc">My teammate already has Jowork running. I just want to connect.</p>
+        </div>
+      </div>
+
+      <div class="error-msg" id="error-1"></div>
+      <div class="btn-row">
+        <button class="btn btn-primary" data-i18n="setup.next" onclick="goConfigureStep()">Next →</button>
+      </div>
+    </div>
+
+    <!-- ── Step 2a: Host configure ── -->
+    <div id="step-host" style="display:none;">
+      <div class="step-title" data-i18n="setup.host.step_title">Share one of these links</div>
+      <div class="step-desc" data-i18n="setup.host.step_desc">Send any of these to your teammates. They'll paste it into Jowork to connect — as long as you're on the same Wi-Fi.</div>
+
+      <div class="info-box" data-i18n-html="setup.host.info_html">
+        <strong>Teammates</strong>: open Jowork → choose <strong>"Someone set it up for me"</strong> → paste the link.
+      </div>
+
+      <div id="ip-list" class="ip-list">
+        <div id="ip-loading-msg" style="color:var(--text2,#888);font-size:13px;" data-i18n="setup.host.ip_loading">Loading your IP addresses…</div>
+      </div>
+
+      <div class="error-msg" id="error-host"></div>
+      <div class="btn-row">
+        <button class="btn btn-secondary" data-i18n="setup.back" onclick="showStep(1)">← Back</button>
+        <button class="btn btn-primary" id="host-save-btn" data-i18n="setup.host.btn" onclick="saveHost()">Done, I'm ready →</button>
+      </div>
+    </div>
+
+    <!-- ── Step 2b: Join configure ── -->
+    <div id="step-join" style="display:none;">
+      <div class="step-title" data-i18n="setup.join.step_title">Find your teammate's Jowork</div>
+      <div class="step-desc" data-i18n="setup.join.step_desc">We're looking on your Wi-Fi right now. Tap to connect when you see it.</div>
+
+      <div class="discover-status" id="discover-status">
+        <div class="spinner"></div>
+        <span data-i18n="setup.join.scanning">Looking on your Wi-Fi…</span>
+      </div>
+
+      <div id="service-list" class="service-list" style="display:none;"></div>
+      <div id="no-services" class="no-services" data-i18n="setup.join.not_found" style="display:none;">Nothing found nearby. Ask your teammate for the link and paste it below.</div>
+
+      <div class="divider" data-i18n="setup.join.divider">or paste the link your teammate sent you</div>
+
+      <div class="field">
+        <label data-i18n="setup.join.label">Link from your teammate</label>
+        <input type="url" id="manual-url" data-i18n-placeholder="setup.join.placeholder" placeholder="http://192.168.1.x:9800" autocomplete="off">
+      </div>
+
+      <div class="error-msg" id="error-join"></div>
+      <div class="btn-row">
+        <button class="btn btn-secondary" data-i18n="setup.back" onclick="showStep(1)">← Back</button>
+        <button class="btn btn-primary" id="join-save-btn" data-i18n="setup.join.btn" onclick="saveJoin()">Connect →</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const API = '';
+let selectedMode = '';
+let selectedServiceUrl = '';
+function t(key) { return (window.__jowork_i18n && window.__jowork_i18n[key]) || key; }
+
+// ── 语言切换 ──
+(function() {
+  const locale = window.__jowork_locale || 'en';
+  const btn = document.getElementById('lang-btn');
+  if (btn) btn.textContent = locale === 'zh' ? 'EN' : '中文';
+})();
+function toggleSetupLocale() {
+  const current = window.__jowork_locale || localStorage.getItem('jowork_locale') || 'en';
+  try { localStorage.setItem('jowork_locale', current === 'zh' ? 'en' : 'zh'); } catch { /* ignore */ }
+  location.reload();
+}
+
+// ── Step indicator ──
+function showStep(n) {
+  document.getElementById('step-1').style.display = n === 1 ? 'block' : 'none';
+  document.getElementById('step-host').style.display = 'none';
+  document.getElementById('step-join').style.display = 'none';
+
+  [1, 2].forEach(i => {
+    const ind = document.getElementById('step-ind-' + i);
+    ind.className = 'step' + (i === n ? ' active' : i < n ? ' done' : '');
+    ind.querySelector('.step-num').textContent = i < n ? '✓' : String(i);
+  });
+}
+
+function showConfigure(mode) {
+  document.getElementById('step-1').style.display = 'none';
+  document.getElementById('step-host').style.display = mode === 'host' ? 'block' : 'none';
+  document.getElementById('step-join').style.display = mode === 'join' ? 'block' : 'none';
+
+  ['step-ind-1', 'step-ind-2'].forEach((id, idx) => {
+    const ind = document.getElementById(id);
+    if (idx === 0) { ind.className = 'step done'; ind.querySelector('.step-num').textContent = '✓'; }
+    else { ind.className = 'step active'; ind.querySelector('.step-num').textContent = '2'; }
+  });
+}
+
+// ── Mode selection ──
+function selectMode(mode) {
+  selectedMode = mode;
+  ['solo', 'host', 'join'].forEach(m => {
+    document.getElementById('card-' + m).classList.toggle('selected', m === mode);
+  });
+}
+
+function goConfigureStep() {
+  if (!selectedMode) { showError('error-1', t('setup.error.pick_mode')); return; }
+
+  if (selectedMode === 'solo') {
+    saveSolo();
+    return;
+  }
+  if (selectedMode === 'host') {
+    showConfigure('host');
+    loadLocalIps();
+    return;
+  }
+  if (selectedMode === 'join') {
+    showConfigure('join');
+    startDiscovery();
+    return;
+  }
+}
+
+// ── Solo mode ──
+async function saveSolo() {
+  try {
+    await fetch(API + '/api/system/setup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode: 'solo', gateway_url: location.origin }),
+    });
+    location.href = '/onboarding.html';
+  } catch (e) {
+    showError('error-1', t('ui.save_failed').replace('{error}', e.message || e));
+  }
+}
+
+// ── Host mode ──
+async function loadLocalIps() {
+  try {
+    const r = await fetch(API + '/api/system/local-ips');
+    const d = await r.json();
+    const ips = d.ips ?? [];
+    const port = location.port || '18800';
+    const list = document.getElementById('ip-list');
+
+    if (ips.length === 0) {
+      list.innerHTML = `<div style="color:var(--text2,#888);font-size:13px;">${t('setup.host.ip_none')}</div>`;
+      return;
+    }
+
+    list.innerHTML = ips.map(ip => {
+      const url = `http://${ip}:${port}`;
+      return `
+        <div class="ip-row">
+          <span class="ip-url">${url}</span>
+          <button class="copy-btn" onclick="copyText(this, '${url}')">${t('setup.host.copy')}</button>
+        </div>
+      `;
+    }).join('');
+  } catch {
+    document.getElementById('ip-list').innerHTML = `<div style="color:var(--text2,#888);font-size:13px;">${t('setup.host.ip_error')}</div>`;
+  }
+}
+
+async function saveHost() {
+  const btn = document.getElementById('host-save-btn');
+  btn.disabled = true; btn.textContent = t('setup.host.saving');
+  try {
+    const port = location.port || '18800';
+    // Get first local IP for gateway_url
+    const r = await fetch(API + '/api/system/local-ips');
+    const d = await r.json();
+    const firstIp = (d.ips ?? [])[0] ?? '127.0.0.1';
+    const gatewayUrl = `http://${firstIp}:${port}`;
+
+    await fetch(API + '/api/system/setup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode: 'host', gateway_url: gatewayUrl }),
+    });
+    location.href = '/onboarding.html';
+  } catch (e) {
+    showError('error-host', t('ui.save_failed').replace('{error}', e.message || e));
+    btn.disabled = false; btn.textContent = t('setup.host.btn');
+  }
+}
+
+// ── Join mode ──
+async function startDiscovery() {
+  const statusEl = document.getElementById('discover-status');
+  const listEl = document.getElementById('service-list');
+  const noEl = document.getElementById('no-services');
+
+  statusEl.style.display = 'flex';
+  listEl.style.display = 'none';
+  noEl.style.display = 'none';
+  selectedServiceUrl = '';
+
+  try {
+    const r = await fetch(API + '/api/system/discover');
+    const d = await r.json();
+    const services = d.services ?? [];
+
+    statusEl.style.display = 'none';
+
+    if (services.length === 0) {
+      noEl.style.display = 'block';
+      return;
+    }
+
+    listEl.innerHTML = services.map(svc => `
+      <div class="service-item" onclick="selectService(this, '${svc.url}')">
+        <div class="service-dot"></div>
+        <div>
+          <div class="service-name">${svc.name}</div>
+          <div class="service-url">${svc.url}</div>
+        </div>
+      </div>
+    `).join('');
+    listEl.style.display = 'flex';
+  } catch {
+    statusEl.style.display = 'none';
+    noEl.style.display = 'block';
+  }
+}
+
+function selectService(el, url) {
+  document.querySelectorAll('.service-item').forEach(e => e.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedServiceUrl = url;
+  document.getElementById('manual-url').value = url;
+}
+
+async function saveJoin() {
+  const manualUrl = (document.getElementById('manual-url').value || '').trim().replace(/\/$/, '');
+  const remoteUrl = manualUrl || selectedServiceUrl;
+
+  if (!remoteUrl) { showError('error-join', t('setup.join.error.empty')); return; }
+  try { new URL(remoteUrl); } catch { showError('error-join', t('setup.join.error.invalid')); return; }
+
+  const btn = document.getElementById('join-save-btn');
+  btn.disabled = true; btn.textContent = t('setup.join.connecting');
+
+  try {
+    await fetch(API + '/api/system/setup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode: 'join', remote_gateway_url: remoteUrl }),
+    });
+    // Redirect directly to remote gateway
+    location.href = remoteUrl + '/shell.html';
+  } catch (e) {
+    showError('error-join', t('ui.save_failed').replace('{error}', e.message || e));
+    btn.disabled = false; btn.textContent = t('setup.join.btn');
+  }
+}
+
+// ── Helpers ──
+function copyText(btn, text) {
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = t('setup.host.copied');
+    setTimeout(() => { btn.textContent = t('setup.host.copy'); }, 1500);
+  });
+}
+
+function showError(id, msg) {
+  const el = document.getElementById(id);
+  el.textContent = msg; el.style.display = 'block';
+  setTimeout(() => { el.style.display = 'none'; }, 6000);
+}
+
+// ── Init: check if setup already done ──
+(async function init() {
+  try {
+    const r = await fetch(API + '/api/system/setup-status', { signal: AbortSignal.timeout(3000) });
+    if (r.ok) {
+      const d = await r.json();
+      if (d.done) {
+        if (d.mode === 'join' && d.remote_gateway_url) {
+          location.href = d.remote_gateway_url + '/shell.html';
+        } else {
+          location.href = '/shell.html';
+        }
+        return;
+      }
+    }
+  } catch { /* gateway offline, show wizard */ }
+  showStep(1);
+})();
+</script>
+</body>
+</html>

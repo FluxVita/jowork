@@ -1,0 +1,26 @@
+{
+  "name": "@jowork/app",
+  "version": "0.1.0",
+  "description": "Jowork — open-source AI work partner (community edition)",
+  "type": "module",
+  "license": "AGPL-3.0",
+  "main": "dist/index.js",
+  "private": true,
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "lint": "tsc --noEmit",
+    "tauri:dev": "tauri dev -c src-tauri/tauri.conf.json",
+    "tauri:build": "tauri build -c src-tauri/tauri.conf.json"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "dependencies": {
+    "@jowork/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.10.0"
+  }
+}

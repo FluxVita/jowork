@@ -172,5 +172,10 @@
     document.documentElement.setAttribute('data-platform', 'tauri');
     // 禁止右键浏览器菜单（原生 App 不应弹出网页右键菜单）
     document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+    // brand-logo 从本地 Tauri bundle 加载，绕过 FRP 隧道延迟
+    document.addEventListener('DOMContentLoaded', function () {
+      var logo = document.getElementById('brand-logo');
+      if (logo) logo.src = 'tauri://localhost/app-icon.png';
+    });
   }
 })();

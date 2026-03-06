@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jowork — App Settings</title>
+<script src="/theme.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; }
+html, body {
+  height: 100%; margin: 0; padding: 0;
+  background: #0f0f12;
+  color: #e8e8e0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.page {
+  min-height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px 16px;
+}
+
+.card {
+  width: 100%; max-width: 480px;
+  background: #1a1a1e;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+}
+
+.card-header {
+  padding: 18px 20px 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  display: flex; align-items: center; gap: 12px;
+}
+.back-btn {
+  background: transparent; border: none; color: #666; cursor: pointer;
+  padding: 4px; border-radius: 6px; display: flex; align-items: center;
+  transition: color .12s, background .12s;
+}
+.back-btn:hover { color: #e8e8e0; background: rgba(255,255,255,0.07); }
+.card-title { font-size: 14px; font-weight: 600; color: #e8e8e0; flex: 1; }
+.logo { width: 26px; height: 26px; border-radius: 7px; }
+
+.card-body { padding: 20px; display: flex; flex-direction: column; gap: 0; }
+
+.section-label {
+  font-size: 10px; font-weight: 600; color: #555; letter-spacing: .6px;
+  text-transform: uppercase; margin-bottom: 10px; margin-top: 4px;
+}
+
+/* Mode cards */
+.mode-options { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
+.mode-option {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 16px; border-radius: 10px; cursor: pointer;
+  border: 1.5px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.02);
+  transition: border-color .15s, background .15s;
+  position: relative;
+}
+.mode-option:hover { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.14); }
+.mode-option.active {
+  border-color: #9DD84A;
+  background: rgba(157,216,74,0.06);
+}
+.mode-dot {
+  width: 16px; height: 16px; border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.25); flex-shrink: 0;
+  transition: border-color .15s, background .15s;
+}
+.mode-option.active .mode-dot { border-color: #9DD84A; background: #9DD84A; }
+.mode-info { flex: 1; }
+.mode-name { font-size: 13px; font-weight: 600; color: #e8e8e0; margin-bottom: 2px; }
+.mode-desc { font-size: 12px; color: #666; line-height: 1.45; }
+.mode-badge {
+  font-size: 10px; font-weight: 600; padding: 2px 8px;
+  border-radius: 4px; background: rgba(157,216,74,0.15); color: #9DD84A;
+}
+
+/* Info row */
+.info-row {
+  padding: 12px 14px; border-radius: 8px;
+  background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);
+  font-size: 12px; color: #666; margin-bottom: 16px; line-height: 1.5;
+}
+.info-row strong { color: #999; }
+
+/* Toast */
+.toast {
+  padding: 10px 14px; border-radius: 8px;
+  background: rgba(157,216,74,0.12); border: 1px solid rgba(157,216,74,0.25);
+  color: #9DD84A; font-size: 12px; display: none; margin-bottom: 16px;
+}
+.toast.visible { display: block; }
+
+/* Buttons */
+.btn-row { display: flex; gap: 8px; margin-top: 4px; }
+.btn {
+  flex: 1; padding: 10px 16px; border-radius: 8px; font-size: 13px;
+  font-weight: 600; cursor: pointer; border: none; transition: opacity .15s;
+  font-family: inherit;
+}
+.btn:hover { opacity: 0.85; }
+.btn-primary { background: #9DD84A; color: #000; }
+.btn-secondary {
+  background: rgba(255,255,255,0.06); color: #e8e8e0;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="card">
+    <div class="card-header">
+      <button class="back-btn" onclick="goBack()" title="Back">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M10 4L6 8l4 4"/>
+        </svg>
+      </button>
+      <img class="logo" src="/app-icon.png" onerror="this.style.display='none'" alt="">
+      <span class="card-title">App Settings</span>
+    </div>
+
+    <div class="card-body">
+      <div class="section-label">Server Mode</div>
+
+      <div class="mode-options">
+        <div class="mode-option" id="opt-saas" onclick="selectMode('saas')">
+          <div class="mode-dot"></div>
+          <div class="mode-info">
+            <div class="mode-name">Jowork Cloud</div>
+            <div class="mode-desc">Connect to jowork.work. Zero setup required.</div>
+          </div>
+          <span class="mode-badge">Default</span>
+        </div>
+
+        <div class="mode-option" id="opt-self_hosted" onclick="selectMode('self_hosted')">
+          <div class="mode-dot"></div>
+          <div class="mode-info">
+            <div class="mode-name">Self-hosted</div>
+            <div class="mode-desc">Run your own Jowork server. Your data stays on your machine.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="info-row" id="info-saas">
+        Connected to: <strong id="gateway-url-display">—</strong>
+      </div>
+
+      <div class="info-row" id="info-self_hosted" style="display:none">
+        The app will start a local server on your machine. You can configure connectors and invite teammates in Self-hosted mode.
+      </div>
+
+      <div class="toast" id="toast">Mode saved. Restart the app to apply changes.</div>
+
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="goBack()">Cancel</button>
+        <button class="btn btn-primary" id="save-btn" onclick="saveMode()">Save & Restart</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const tauri = window.__TAURI__?.core;
+
+let currentMode = 'saas';
+let selectedMode = 'saas';
+
+async function init() {
+  // 读取当前模式
+  if (tauri) {
+    try {
+      currentMode = await tauri.invoke('get_app_mode');
+      const gatewayUrl = await tauri.invoke('get_default_gateway_url');
+      document.getElementById('gateway-url-display').textContent = gatewayUrl;
+    } catch (e) {
+      console.warn('Tauri IPC unavailable:', e);
+    }
+  }
+  selectedMode = currentMode;
+  renderSelection();
+}
+
+function selectMode(mode) {
+  selectedMode = mode;
+  renderSelection();
+}
+
+function renderSelection() {
+  ['saas', 'self_hosted'].forEach(m => {
+    document.getElementById('opt-' + m).classList.toggle('active', m === selectedMode);
+  });
+  document.getElementById('info-saas').style.display = selectedMode === 'saas' ? '' : 'none';
+  document.getElementById('info-self_hosted').style.display = selectedMode === 'self_hosted' ? '' : 'none';
+
+  const changed = selectedMode !== currentMode;
+  document.getElementById('save-btn').disabled = !changed;
+}
+
+async function saveMode() {
+  if (!tauri) {
+    alert('This settings page must be opened from the desktop app.');
+    return;
+  }
+  const btn = document.getElementById('save-btn');
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+
+  try {
+    await tauri.invoke('set_app_mode', { mode: selectedMode });
+    currentMode = selectedMode;
+
+    // 显示成功提示并重启
+    document.getElementById('toast').classList.add('visible');
+    btn.textContent = 'Restarting…';
+
+    setTimeout(() => {
+      // Tauri v2 重启：通过 process plugin
+      if (window.__TAURI__?.process) {
+        window.__TAURI__.process.relaunch();
+      } else {
+        // fallback: navigate to loading page, user restarts manually
+        btn.textContent = 'Restart the app to apply';
+      }
+    }, 800);
+  } catch (e) {
+    btn.disabled = false;
+    btn.textContent = 'Save & Restart';
+    alert('Failed to save: ' + (e?.message || e));
+  }
+}
+
+function goBack() {
+  if (document.referrer && !document.referrer.includes('app-settings')) {
+    history.back();
+  } else {
+    // fallback to shell or remote gateway
+    if (tauri) {
+      tauri.invoke('get_app_mode').then(mode => {
+        if (mode === 'self_hosted') {
+          location.href = 'http://127.0.0.1:18800/shell.html';
+        } else {
+          tauri.invoke('get_default_gateway_url').then(url => { location.href = url; });
+        }
+      });
+    } else {
+      history.back();
+    }
+  }
+}
+
+init();
+</script>
+</body>
+</html>

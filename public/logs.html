@@ -6,6 +6,7 @@
 <title>我的活动日志</title>
 <link rel="stylesheet" href="/styles/tokens.css">
 <script src="/theme.js"></script>
+<script src="/i18n.js"></script>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -77,14 +78,14 @@ tr:hover td { background: var(--surface-hover, rgba(255,255,255,0.03)); }
 </head>
 <body>
 <div class="page">
-  <h1>我的活动日志</h1>
-  <p class="subtitle">查看您的对话历史、工具调用记录和错误日志</p>
+  <h1 data-i18n="logs.title">我的活动日志</h1>
+  <p class="subtitle" data-i18n="logs.subtitle">查看您的对话历史、工具调用记录和错误日志</p>
 
   <div class="toolbar">
     <select id="days-sel" onchange="loadAll()">
-      <option value="7">近 7 天</option>
-      <option value="30" selected>近 30 天</option>
-      <option value="90">近 90 天</option>
+      <option value="7" data-i18n="ui.days_7">近 7 天</option>
+      <option value="30" selected data-i18n="ui.days_30">近 30 天</option>
+      <option value="90" data-i18n="ui.days_90">近 90 天</option>
     </select>
     <span id="user-info" style="font-size:12px;color:var(--text2)"></span>
   </div>
@@ -94,10 +95,10 @@ tr:hover td { background: var(--surface-hover, rgba(255,255,255,0.03)); }
 
   <!-- Tab 切换 -->
   <div class="tabs">
-    <button class="tab active" onclick="switchTab('sessions')">对话历史</button>
-    <button class="tab" onclick="switchTab('tools')">工具调用</button>
-    <button class="tab" onclick="switchTab('chart')">消耗趋势</button>
-    <button class="tab" onclick="switchTab('errors')">错误日志</button>
+    <button class="tab active" onclick="switchTab('sessions')" data-i18n="logs.tab.sessions">对话历史</button>
+    <button class="tab" onclick="switchTab('tools')" data-i18n="logs.tab.tools">工具调用</button>
+    <button class="tab" onclick="switchTab('chart')" data-i18n="logs.tab.chart">消耗趋势</button>
+    <button class="tab" onclick="switchTab('errors')" data-i18n="logs.tab.errors">错误日志</button>
   </div>
 
   <!-- 对话历史 -->
@@ -105,11 +106,11 @@ tr:hover td { background: var(--surface-hover, rgba(255,255,255,0.03)); }
     <div class="card">
       <table>
         <thead><tr>
-          <th>对话标题</th><th>引擎</th>
-          <th style="text-align:right">消息数</th>
+          <th data-i18n="logs.col.title">对话标题</th><th data-i18n="logs.col.engine">引擎</th>
+          <th style="text-align:right" data-i18n="logs.col.messages">消息数</th>
           <th style="text-align:right">Token</th>
-          <th style="text-align:right">费用</th>
-          <th>最近活跃</th>
+          <th style="text-align:right" data-i18n="logs.col.cost">费用</th>
+          <th data-i18n="logs.col.last_active">最近活跃</th>
         </tr></thead>
         <tbody id="sessions-body"><tr><td colspan="6" class="empty">加载中...</td></tr></tbody>
       </table>
@@ -121,35 +122,35 @@ tr:hover td { background: var(--surface-hover, rgba(255,255,255,0.03)); }
     <div class="card">
       <table>
         <thead><tr>
-          <th>工具名</th><th>状态</th>
-          <th style="text-align:right">耗时</th>
+          <th data-i18n="logs.col.tool_name">工具名</th><th data-i18n="logs.col.status">状态</th>
+          <th style="text-align:right" data-i18n="logs.col.duration">耗时</th>
           <th style="text-align:right">Token</th>
-          <th>所属对话</th>
-          <th>时间</th>
+          <th data-i18n="logs.col.session">所属对话</th>
+          <th data-i18n="logs.col.time">时间</th>
         </tr></thead>
         <tbody id="tools-body"><tr><td colspan="6" class="empty">加载中...</td></tr></tbody>
       </table>
     </div>
     <div class="pagination">
-      <button class="btn" id="tools-prev" onclick="toolsPage(-1)" disabled>上一页</button>
+      <button class="btn" id="tools-prev" onclick="toolsPage(-1)" disabled data-i18n="logs.prev_page">上一页</button>
       <span id="tools-pager" style="font-size:12px;color:var(--text2);line-height:32px"></span>
-      <button class="btn" id="tools-next" onclick="toolsPage(1)" disabled>下一页</button>
+      <button class="btn" id="tools-next" onclick="toolsPage(1)" disabled data-i18n="logs.next_page">下一页</button>
     </div>
   </div>
 
   <!-- 消耗趋势图 -->
   <div id="tab-chart" style="display:none">
     <div class="card" style="padding:16px">
-      <h3 style="font-size:13px;color:var(--text2);margin-bottom:14px">Token / 天</h3>
+      <h3 style="font-size:13px;color:var(--text2);margin-bottom:14px" data-i18n="logs.chart.title">Token / 天</h3>
       <div id="chart-bars"></div>
     </div>
     <div class="card" style="margin-top:12px">
       <table>
         <thead><tr>
-          <th>日期</th>
-          <th style="text-align:right">Token 消耗</th>
-          <th style="text-align:right">费用 (USD)</th>
-          <th style="text-align:right">请求次数</th>
+          <th data-i18n="logs.col.date">日期</th>
+          <th style="text-align:right" data-i18n="logs.col.token_usage">Token 消耗</th>
+          <th style="text-align:right" data-i18n="logs.col.cost_usd">费用 (USD)</th>
+          <th style="text-align:right" data-i18n="logs.col.requests">请求次数</th>
         </tr></thead>
         <tbody id="chart-body"></tbody>
       </table>

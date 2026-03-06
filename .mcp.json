@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "fluxvita-feedback": {
+      "command": "node",
+      "args": ["mcp/feedback-server.mjs"],
+      "cwd": "/Users/signalz/Documents/augment-projects/fluxvita_allinone"
+    }
+  }
+}

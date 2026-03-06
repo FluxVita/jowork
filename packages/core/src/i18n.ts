@@ -66,14 +66,27 @@ export function clientI18nScript(messages: Messages, locale: string): string {
   var locale = ${JSON.stringify(locale)};
   window.__jowork_i18n = i18n;
   window.__jowork_locale = locale;
+  window.t = function(key, vars) {
+    var text = i18n[key] !== undefined ? i18n[key] : key;
+    if (vars) {
+      Object.keys(vars).forEach(function(k) {
+        text = text.replace(new RegExp('{' + k + '}', 'g'), String(vars[k]));
+      });
+    }
+    return text;
+  };
   function applyI18n() {
     document.querySelectorAll('[data-i18n]').forEach(function(el) {
       var key = el.getAttribute('data-i18n');
-      if (i18n[key]) el.textContent = i18n[key];
+      if (i18n[key] !== undefined) el.textContent = i18n[key];
+    });
+    document.querySelectorAll('[data-i18n-html]').forEach(function(el) {
+      var key = el.getAttribute('data-i18n-html');
+      if (i18n[key] !== undefined) el.innerHTML = i18n[key];
     });
     document.querySelectorAll('[data-i18n-placeholder]').forEach(function(el) {
       var key = el.getAttribute('data-i18n-placeholder');
-      if (i18n[key]) el.setAttribute('placeholder', i18n[key]);
+      if (i18n[key] !== undefined) el.setAttribute('placeholder', i18n[key]);
     });
   }
   if (document.readyState === 'loading') {
@@ -81,6 +94,7 @@ export function clientI18nScript(messages: Messages, locale: string): string {
   } else {
     applyI18n();
   }
+  window.__applyI18n = applyI18n;
 })();
 `.trim();
 }

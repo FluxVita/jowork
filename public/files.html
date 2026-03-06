@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>文件管理器</title>
 <script src="/theme.js"></script>
+<script src="/i18n.js"></script>
 <script src="/lib/marked.min.js"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -386,8 +387,8 @@ html, body {
     <div id="tab-content" class="hidden"></div>
     <div id="empty-state">
       <div class="empty-icon">📂</div>
-      <div class="empty-text">点击 .html 或 .md 文件在此预览</div>
-      <div class="empty-sub">选中文件后按空格触发 Quick Look</div>
+      <div class="empty-text" data-i18n="files.empty_text">点击 .html 或 .md 文件在此预览</div>
+      <div class="empty-sub" data-i18n="files.empty_sub">选中文件后按空格触发 Quick Look</div>
     </div>
   </div>
 </div>
@@ -425,7 +426,7 @@ window.parent.postMessage({ type: 'REQUEST_TOKEN' }, '*');
 // 降级：直接从 localStorage 读
 setTimeout(() => {
   if (!token) {
-    const stored = localStorage.getItem('jowork_token');
+    const stored = localStorage.getItem('fluxvita_token');
     if (stored) { token = stored; initTree(); }
   }
 }, 600);

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #0f0f12; color: #888;
+  display: flex; align-items: center; justify-content: center;
+  height: 100vh; font-family: -apple-system, sans-serif; font-size: 13px;
+}
+.wrap { text-align: center; }
+img { width: 56px; height: 56px; border-radius: 14px; margin-bottom: 16px; opacity: 0.9; }
+.dot { display: inline-block; animation: blink 1.2s infinite; }
+.dot:nth-child(2) { animation-delay: 0.2s; }
+.dot:nth-child(3) { animation-delay: 0.4s; }
+@keyframes blink { 0%,80%,100%{opacity:0.2} 40%{opacity:1} }
+
+/* Settings FAB — bottom-right corner */
+.settings-fab {
+  position: fixed; bottom: 16px; right: 16px;
+  width: 28px; height: 28px; border-radius: 8px;
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.3); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  text-decoration: none; transition: color .15s, background .15s;
+}
+.settings-fab:hover { color: rgba(255,255,255,0.7); background: rgba(255,255,255,0.1); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <img src="/app-icon.png" onerror="this.style.display='none'">
+  <div>Starting<span class="dot">.</span><span class="dot">.</span><span class="dot">.</span></div>
+</div>
+
+<!-- Settings 入口：始终可访问 -->
+<a class="settings-fab" href="tauri://localhost/app-settings.html" title="App Settings">
+  <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+    <circle cx="8" cy="8" r="2.5"/>
+    <path d="M8 1v1.5M8 13.5V15M1 8h1.5M13.5 8H15M3.2 3.2l1 1M11.8 11.8l1 1M3.2 12.8l1-1M11.8 4.2l1-1"/>
+  </svg>
+</a>
+</body>
+</html>

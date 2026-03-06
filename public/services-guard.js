@@ -14,9 +14,9 @@ window.ServicesGuard = (() => {
   let _resolveReady;
   const _ready = new Promise(r => { _resolveReady = r; });
 
-  // 从 localStorage 取 token（chat 用 jowork_token，admin 用 jw_admin_token）
+  // 从 localStorage 取 token（chat 用 fluxvita_token，admin 用 fv_admin_token）
   function getToken() {
-    return localStorage.getItem('jowork_token') || localStorage.getItem('jw_admin_token');
+    return localStorage.getItem('fluxvita_token') || localStorage.getItem('fv_admin_token');
   }
 
   async function load() {

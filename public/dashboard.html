@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="/styles/tokens.css">
 <link rel="stylesheet" href="/styles/components.css">
 <script src="/theme.js"></script>
+<script src="/i18n.js"></script>
 <style>
 body {
   font-family: var(--font);
@@ -67,13 +68,13 @@ a:hover { text-decoration: underline; }
 
 <div class="subtabs">
   <div class="subtabs-left">
-    <button class="subtab active" data-tab="posthog">产品数据</button>
-    <button class="subtab" data-tab="gitlab">代码仓库</button>
-    <button class="subtab" data-tab="personal">我的数据</button>
+    <button class="subtab active" data-tab="posthog" data-i18n="dashboard.tab.posthog">产品数据</button>
+    <button class="subtab" data-tab="gitlab" data-i18n="dashboard.tab.gitlab">代码仓库</button>
+    <button class="subtab" data-tab="personal" data-i18n="dashboard.tab.personal">我的数据</button>
   </div>
 </div>
 <div class="content" id="content">
-  <div class="loading">加载中...</div>
+  <div class="loading" data-i18n="ui.loading">加载中...</div>
 </div>
 <!-- 我的数据 iframe（懒加载，切 tab 时挂载） -->
 <iframe id="personal-frame" src="about:blank"
@@ -81,7 +82,7 @@ a:hover { text-decoration: underline; }
 
 <script>
 const API = '';
-let authToken = localStorage.getItem('jowork_token') || localStorage.getItem('jw_admin_token') || '';
+let authToken = localStorage.getItem('fluxvita_token') || localStorage.getItem('fv_admin_token') || '';
 let currentTab = 'posthog';
 let currentUserObj = null;
 

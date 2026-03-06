@@ -29,6 +29,7 @@ git status               # 确认工作区干净
 ```bash
 # 每个小步骤完成后
 npm run lint              # 必须无错误
+npm test                  # 必须全绿（这是质量门禁，不能跳过）
 git add <具体文件>        # 不要用 git add .，要明确指定文件
 git commit -m "feat: xxx"
 git push origin master
@@ -41,12 +42,22 @@ git push origin master
 ```bash
 git pull origin master    # ← 提交前再 pull 一次
 npm run lint
+npm test                  # ← pull 后再跑一次，确认合并后仍然全绿
 git add <具体文件>
 git commit -m "feat: xxx"
 git push origin master
 ```
 
-这个顺序固定，不能省略中间的 pull。
+这个顺序固定，不能省略。**lint 只检查语法，test 才能发现逻辑破坏。**
+
+### CI 通过 = 代码可以接受
+
+Aiden 不会逐行 review 代码。质量门禁是：
+- `npm run lint` 无错误
+- `npm test` 全部通过
+- Mac mini CI/CD 部署成功
+
+这三件事都通过，代码就是可接受的。不要等待人工确认。
 
 ---
 
@@ -77,7 +88,54 @@ git push origin master
 
 ---
 
-## 四、高危文件——改之前先看最近的提交记录
+## 四、多 AI 并行工作机制
+
+### 核心原则：任务边界 = 文件边界
+
+**不允许两个 AI 同时修改同一个模块。** 开始任务前，先查 Linear 里有没有"进行中"的任务在动同一批文件：
+
+```bash
+# 查看最近 30 分钟内谁动了哪些文件
+git log --oneline --since="30 minutes ago"
+git show --stat HEAD
+```
+
+如果目标文件在 30 分钟内有其他 AI 的提交，**等对方完成再开始**，或者告知 Aiden 任务有冲突。
+
+### 不需要多分支
+
+所有 AI 在 **master 分支**直接工作。多分支只是把冲突从"提交时"推迟到"合并时"，解决不了根本问题，还会增加复杂度。
+
+例外：任务预计跨天完成，或需要同时修改超过 5 个高危文件，这种情况才创建 feature 分支。
+
+### 数据库 migration 命名规则
+
+**禁止使用顺序编号**（如 `013_xxx`），两个 AI 同时加 migration 会撞号，导致数据库损坏。
+
+**必须使用时间戳命名**：
+
+```
+格式：YYYYMMDD_HHMM_描述
+示例：20260306_1420_user_preferences
+```
+
+Migration 文件名唯一，不会撞号。
+
+### 推送被拒绝（non-fast-forward）时的处理
+
+```bash
+# push 被拒绝时
+git pull --rebase origin master   # rebase 而非 merge，保持历史线性
+npm run lint                      # 重新验证
+npm test                          # rebase 后必须再跑一次测试
+git push origin master
+```
+
+rebase 过程中如果遇到冲突，理解双方改动意图后手动合并，**两边的改动通常都要保留**。
+
+---
+
+## 五、高危文件——改之前先看最近的提交记录
 
 以下文件容易被多个 AI 同时修改，操作前先检查：
 
@@ -89,18 +147,18 @@ git log --oneline -5 -- <文件路径>
 |------|---------|
 | `src/index.ts` | 所有模块的启动注册点 |
 | `src/gateway/server.ts` | 所有路由挂载点 |
-| `src/datamap/db.ts` | 数据库表结构定义 |
+| `src/datamap/db.ts` | 数据库表结构定义 + migration（命名必须用时间戳） |
 | `public/admin.html` | 所有管理功能入口，体积大 |
 | `public/shell.html` | 前端主框架 |
 | `src/auth/settings.ts` | 系统配置白名单 |
 | `package.json` | 依赖声明 |
 | `src-tauri/Cargo.toml` | Rust 依赖声明 |
 
-如果这些文件在 10 分钟内有其他提交，**先 pull 后再改**，不要和别人的改动撞车。
+如果这些文件在 30 分钟内有其他提交，**先 pull 后再改**，不要和别人的改动撞车。
 
 ---
 
-## 五、提交消息格式
+## 六、提交消息格式
 
 ```
 feat: 新功能描述
@@ -124,7 +182,7 @@ git commit -m "fix bug"
 
 ---
 
-## 六、只改任务要求的范围
+## 七、只改任务要求的范围
 
 - **不要顺手"优化"**任务之外的代码
 - **不要顺便修复**不在任务内的 bug（记录下来告知 Aiden）
@@ -133,7 +191,7 @@ git commit -m "fix bug"
 
 ---
 
-## 七、Rust/Tauri 改动的额外要求
+## 八、Rust/Tauri 改动的额外要求
 
 改动 `src-tauri/` 下任何文件后，必须验证编译：
 
@@ -145,7 +203,7 @@ Cargo check 通过后再提交。Tauri 改动不会自动部署，需告知 Aide
 
 ---
 
-## 八、会话结束前检查
+## 九、会话结束前检查
 
 ```bash
 git status       # 确认没有未提交的改动
@@ -156,7 +214,7 @@ git log --oneline -3   # 确认提交已推送到远端
 
 ---
 
-## 九、必须停下来告知 Aiden 的情况
+## 十、必须停下来告知 Aiden 的情况
 
 遇到下列情况，停止操作，说明情况，等 Aiden 决策：
 
@@ -171,8 +229,10 @@ git log --oneline -3   # 确认提交已推送到远端
 ## 快速参考卡
 
 ```
-会话开始：git pull → git log -10 → git status
-工作过程：小步完成 → lint → pull → add(具体文件) → commit → push
-遇到冲突：读懂双方意图 → 手动合并 → lint → commit → push
+会话开始：git pull → git log -10 → git status → 检查 Linear 任务有无文件冲突
+工作过程：小步完成 → lint → test → pull → add(具体文件) → commit → push
+push 被拒：git pull --rebase → lint → test → push
+遇到冲突：读懂双方意图 → 手动合并（两边都保留）→ lint → test → commit → push
 会话结束：git status 确认干净 → git log 确认已推送
+Migration：必须用时间戳命名（20260306_1420_xxx），禁止顺序编号
 ```
