@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+branch="$(git rev-parse --abbrev-ref HEAD)"
+
+if [ "$branch" != "main" ] && [ "$branch" != "master" ]; then
+  exit 0
+fi
+
+echo "[pre-push] Running open-source safety checks for ${branch}..."
+bash scripts/check-opensource.sh --ci
+bash scripts/verify-oss-runnable.sh
+

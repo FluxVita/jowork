@@ -11,7 +11,7 @@
  */
 
 import Database from 'better-sqlite3';
-import { test, describe } from 'node:test';
+import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 
 // ─── 内存 DB + 同 db.ts 的 schema SQL ────────────────────────────────────
@@ -82,9 +82,11 @@ function getFeedback(message_id: number, user_id: string) {
 
 // ─── 测试 ─────────────────────────────────────────────────────────────────
 
-describe('unit-feedback: schema 验证', () => {
+beforeEach(() => {
   setupSchema();
+});
 
+describe('unit-feedback: schema 验证', () => {
   test('message_feedback 表存在', () => {
     const info = db.pragma('table_info(message_feedback)') as { name: string }[];
     const cols = info.map(r => r.name);
@@ -117,7 +119,7 @@ describe('unit-feedback: 插入与 UPSERT', () => {
 
   test('同 message_id/user_id 再插 rating=-1 → UPSERT，行数仍为 1，rating 变 -1', () => {
     const mid = getMessageId();
-    insertFeedback(mid, 'u1', 1);     // 已在上个 test 插入，这里幂等
+    insertFeedback(mid, 'u1', 1);
     insertFeedback(mid, 'u1', -1, '太慢了');  // UPSERT
 
     assert.equal(countFeedback(), 1, 'UPSERT 后行数仍为 1');
@@ -130,7 +132,7 @@ describe('unit-feedback: 插入与 UPSERT', () => {
     const mid = getMessageId();
     insertFeedback(mid, 'u2', 1);
     insertFeedback(mid, 'u3', -1);
-    assert.equal(countFeedback(), 3, '包括前一个 test 的 u1，共 3 条');
+    assert.equal(countFeedback(), 2, '不同 user_id 对同一消息应各有一条');
 
     const r2 = getFeedback(mid, 'u2');
     const r3 = getFeedback(mid, 'u3');

@@ -6,7 +6,7 @@
  */
 
 import Database from 'better-sqlite3';
-import { test, describe } from 'node:test';
+import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 
 // ─── 模拟 DB ───
@@ -170,9 +170,11 @@ function formatTimeAgo(isoString: string): string {
 
 // ─── 测试 ───
 
-describe('Step 1: searchChatMessages 权限过滤', () => {
+beforeEach(() => {
   setupTestDb();
+});
 
+describe('Step 1: searchChatMessages 权限过滤', () => {
   test('不传 allowed_chat_ids → 返回所有群的结果（向后兼容）', () => {
     const results = searchChatMessages({ query: 'API' });
     assert.equal(results.length, 4, '应搜到 4 条包含 API 的消息');

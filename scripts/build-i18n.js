@@ -7,7 +7,7 @@
  * 在 core 包 build 后自动执行（见 package.json postbuild）
  */
 
-import { readFileSync, writeFileSync } from 'fs';
+import { readFileSync, writeFileSync, mkdirSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -89,5 +89,14 @@ const output = `/**
 })();
 `;
 
-writeFileSync(resolve(root, 'public/i18n.js'), output, 'utf8');
-console.log('[build-i18n] Generated public/i18n.js from locales/*.json');
+const targets = [
+  resolve(root, 'public/i18n.js'),
+  resolve(root, 'apps/jowork/public/i18n.js'),
+];
+
+for (const target of targets) {
+  mkdirSync(dirname(target), { recursive: true });
+  writeFileSync(target, output, 'utf8');
+}
+
+console.log('[build-i18n] Generated i18n.js for public/ and apps/jowork/public/');

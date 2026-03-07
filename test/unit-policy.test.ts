@@ -11,7 +11,7 @@
  */
 
 import Database from 'better-sqlite3';
-import { test, describe } from 'node:test';
+import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 
 // ─── 类型 ─────────────────────────────────────────────────────────────────
@@ -141,9 +141,11 @@ function makeObject(id: string, sensitivity: Sensitivity, acl: ACL): DataObject 
 
 // ─── 测试 ─────────────────────────────────────────────────────────────────
 
-describe('unit-policy: filterByAccess', () => {
+beforeEach(() => {
   setupSchema();
+});
 
+describe('unit-policy: filterByAccess', () => {
   test('guest 看不到 sensitivity=restricted 对象（无 ACL）', () => {
     const guest = makeUser('guest');
     const objs = [

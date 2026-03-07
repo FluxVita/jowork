@@ -4,7 +4,7 @@
 #   cp .env.example .env   # 填写必要配置
 #   docker-compose up -d
 #
-# 访问：http://localhost:9800
+# 访问：http://localhost:18800
 #
 # 数据持久化：
 #   ./data/     — SQLite 数据库 + 上传文件
@@ -21,14 +21,14 @@ services:
       dockerfile: Dockerfile
       target: runtime
     ports:
-      - "${JOWORK_PORT:-9800}:9800"
+      - "${JOWORK_PORT:-18800}:18800"
     volumes:
       - ./data:/app/data        # SQLite + 配置持久化
       - ./logs:/app/logs        # 日志（可选，删除此行则不持久化）
       - ./.env:/app/.env:ro     # 环境变量（只读挂载）
     environment:
       NODE_ENV: production
-      GATEWAY_PORT: 9800
+      GATEWAY_PORT: 18800
       JOWORK_EDITION: ${JOWORK_EDITION:-free}
       DATA_DIR: /app/data
       LOG_DIR: /app/logs
@@ -39,7 +39,7 @@ services:
     restart: unless-stopped
     init: true
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:9800/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:18800/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 30s
       timeout: 10s
       retries: 3

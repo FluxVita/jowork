@@ -224,7 +224,7 @@ git clone https://github.com/fluxvita/jowork
 cd jowork
 npm install
 npm run dev       # Start with hot reload
-npm test          # Run test suite (116 cases)
+npm test          # Run test suite
 npm run lint      # TypeScript + ESLint
 ```
 

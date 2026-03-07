@@ -126,46 +126,45 @@ export function startGateway(opts: GatewayOptions = {}) {
     });
   });
 
-  // API 路由
-  app.use('/api/auth', authRoutes);
-  app.use('/api/datamap', datamapRoutes);
-  app.use('/api/policy', policyRoutes);
-  app.use('/api/quota', quotaRoutes);
-  app.use('/api/audit', auditRoutes);
-  app.use('/api/connectors', connectorRoutes);
-  app.use('/api/webhook', webhookRoutes);
-  app.use('/api/models', modelRoutes);
-  app.use('/api/scheduler', schedulerRoutes);
-  app.use('/api/settings', settingsRoutes);
+  const apiRouteMounts: Array<[string, import('express').Router]> = [
+    ['/auth', authRoutes],
+    ['/datamap', datamapRoutes],
+    ['/policy', policyRoutes],
+    ['/quota', quotaRoutes],
+    ['/audit', auditRoutes],
+    ['/connectors', connectorRoutes],
+    ['/webhook', webhookRoutes],
+    ['/models', modelRoutes],
+    ['/scheduler', schedulerRoutes],
+    ['/settings', settingsRoutes],
+    ['/dashboard', dashboardRoutes],
+    ['/onboarding', onboardingRoutes],
+    ['/feedback', feedbackRoutes],
+    ['/agent', agentRoutes],
+    ['/services', servicesRoutes],
+    ['/memory', memoryRoutes],
+    ['/preferences', preferencesRoutes],
+    ['/ai-services', aiServicesRoutes],
+    ['/ai-services', binServerRoutes],
+    ['/group-bindings', groupBindingsRoutes],
+    ['/groups', groupsRoutes],
+    ['/files', filesRoutes],
+    ['/logs', logsRoutes],
+    ['/admin/logs', adminLogsRoutes],
+    ['/context', contextRoutes],
+    ['/system', systemRoutes],
+    ['/billing', billingRoutes],
+    ['/proxy', proxyRoutes],
+    ['/license', licenseRoutes],
+  ];
 
-  // 看板 API（公开，不需要认证）
-  app.use('/api/dashboard', dashboardRoutes);
-  app.use('/api/onboarding', onboardingRoutes);
-  app.use('/api/feedback', feedbackRoutes);
-  app.use('/api/agent', agentRoutes);
-  app.use('/api/services', servicesRoutes);
-  app.use('/api/memory', memoryRoutes);
-  app.use('/api/preferences', preferencesRoutes);
-  app.use('/api/ai-services', aiServicesRoutes);
-  app.use('/api/ai-services', binServerRoutes);  // macmini 端 bin 下载
-  app.use('/api/group-bindings', groupBindingsRoutes);
-  app.use('/api/groups', groupsRoutes);
-  // Klaude 认证代理：替代直接访问 8899，JWT + 飞书认证 + token 记录
+  for (const [path, router] of apiRouteMounts) {
+    app.use(`/api${path}`, router);
+    app.use(`/api/v1${path}`, router);
+  }
+
   app.use('/api/klaude/v1', klaudeProxyRoutes);
-  // 本地文件系统（文件树预览）
-  app.use('/api/files', filesRoutes);
-  // 实时日志（admin only）
-  app.use('/api/logs', logsRoutes);
-  // 持久化日志（admin only）
-  app.use('/api/admin/logs', adminLogsRoutes);
-  // 三层上下文文档管理
-  app.use('/api/context', contextRoutes);
-  // 系统初始化配置（Setup Wizard）
-  app.use('/api/system', systemRoutes);
-  // 订阅计划与积分
-  app.use('/api/billing', billingRoutes);
-  app.use('/api/proxy', proxyRoutes);
-  app.use('/api/license', licenseRoutes);
+  app.use('/api/v1/klaude/v1', klaudeProxyRoutes);
 
   // 静态文件（看板 Web UI）
   const resolvedPublicDir = opts.publicDir ?? join(process.cwd(), 'public');

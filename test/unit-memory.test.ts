@@ -6,7 +6,7 @@
  */
 
 import Database from 'better-sqlite3';
-import { test, describe } from 'node:test';
+import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
 
@@ -102,8 +102,11 @@ function cosineSimilarity(a: Float32Array, b: Float32Array): number {
 
 // ─── 测试 ─────────────────────────────────────────────────────────────────
 
-describe('unit-memory: createMemory', () => {
+beforeEach(() => {
   setupSchema();
+});
+
+describe('unit-memory: createMemory', () => {
 
   test('写入并返回 memory_id', () => {
     const m = createMemory(testDb, { user_id: 'u1', title: '测试标题', content: '测试内容' });
@@ -137,6 +140,7 @@ describe('unit-memory: getMemoryByTitle', () => {
   });
 
   test('标题包含关系不匹配（不是 LIKE）', () => {
+    createMemory(testDb, { user_id: 'u10', title: 'exact-title', content: 'base' });
     createMemory(testDb, { user_id: 'u10', title: 'exact-title-longer', content: 'x' });
     const found = getMemoryByTitle(testDb, 'u10', 'exact-title');
     // 仍然返回完整精确匹配的那条，不会返回 longer 的

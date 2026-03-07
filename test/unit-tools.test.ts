@@ -15,7 +15,7 @@
  */
 
 import Database from 'better-sqlite3';
-import { test, describe } from 'node:test';
+import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
 
@@ -264,10 +264,12 @@ function writeMemory(user_id: string, title: string, content: string, tags?: str
 
 // ─── 测试 ─────────────────────────────────────────────────────────────────
 
-describe('unit-tools: search_data 逻辑', () => {
+beforeEach(() => {
   setupSchema();
   seedData();
+});
 
+describe('unit-tools: search_data 逻辑', () => {
   test('source=gitlab 过滤 → 只返回 gitlab 对象', () => {
     const user = getUserById('u_member')!;
     const raw = searchObjects({ source: 'gitlab' });
@@ -356,6 +358,7 @@ describe('unit-tools: write_memory 逻辑', () => {
   });
 
   test('同标题 → 更新不新建，返回"已更新"', () => {
+    writeMemory(uid, 'Tech Stack', 'SQLite + Express');
     const msg = writeMemory(uid, 'Tech Stack', 'SQLite + Express + TypeScript');
     assert.ok(msg.includes('已更新'), `返回应包含"已更新"，实际：${msg}`);
     assert.equal(countMemories(uid), 1, '行数仍为 1，没有新建');
@@ -365,6 +368,7 @@ describe('unit-tools: write_memory 逻辑', () => {
   });
 
   test('不同标题 → 各自独立新建', () => {
+    writeMemory(uid, 'Tech Stack', 'SQLite + Express');
     writeMemory(uid, 'Deploy Plan', 'Mac mini + PM2');
     assert.equal(countMemories(uid), 2, '不同标题应新建第二条');
   });
