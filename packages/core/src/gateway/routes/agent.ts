@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { createReadStream, statSync } from 'node:fs';
-import { authMiddleware, requireFeishuAuth, requireRole } from '../middleware.js';
+import { authMiddleware, requireRole } from '../middleware.js';
 import { agentChat } from '../../agent/controller.js';
 import { listSessions, searchSessions, getSession, getMessages, archiveSession } from '../../agent/session.js';
 import { getDb } from '../../datamap/db.js';
@@ -25,8 +25,8 @@ const activeControllers = new Map<string, AbortController>();
 // Agent Chat
 // ═══════════════════════════════════════
 
-/** POST /api/agent/chat — SSE streaming 对话（需要飞书认证） */
-router.post('/chat', authMiddleware, requireFeishuAuth, async (req, res) => {
+/** POST /api/agent/chat — SSE streaming 对话 */
+router.post('/chat', authMiddleware, async (req, res) => {
   const { message, session_id, engine, images } = req.body as {
     message?: string;
     session_id?: string;

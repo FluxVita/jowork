@@ -3,15 +3,15 @@ import {
   routeModel, getModelCostDashboard,
   getProvidersStatus, updateProviderConfig, updateProviderApiKey,
 } from '../../models/router.js';
-import { authMiddleware, requireFeishuAuth, requireRole } from '../middleware.js';
+import { authMiddleware, requireRole } from '../middleware.js';
 import { getDb } from '../../datamap/db.js';
 import { getAllModelPricing } from '../../models/tokenizer.js';
 import type { TaskType } from '../../models/router.js';
 
 const router = Router();
 
-/** POST /api/models/chat — 模型对话（需要飞书认证） */
-router.post('/chat', authMiddleware, requireFeishuAuth, async (req, res) => {
+/** POST /api/models/chat — 模型对话 */
+router.post('/chat', authMiddleware, async (req, res) => {
   const { messages, task_type = 'chat', max_tokens } = req.body as {
     messages: { role: string; content: string }[];
     task_type?: TaskType;
