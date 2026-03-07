@@ -37,6 +37,11 @@ data/backups/
 data/tls.key
 data/tls.cert
 
+# Playwright 测试产物
+tests/e2e/.results/
+tests/e2e/.report/
+tests/e2e/.auth/
+
 # Tauri 编译产物
 src-tauri/target/
 
