@@ -26,8 +26,8 @@
   },
   "private": true,
   "dependencies": {
-    "@jowork/core": "workspace:*",
     "@anthropic-ai/claude-agent-sdk": "^0.2.63",
+    "@jowork/core": "workspace:*",
     "@larksuiteoapi/node-sdk": "^1.59.0",
     "@tauri-apps/api": "^2.10.1",
     "ali-oss": "^6.23.0",
@@ -43,6 +43,8 @@
     "ws": "^8.19.0"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.11.1",
+    "@playwright/test": "^1.58.2",
     "@tauri-apps/cli": "^2.10.0",
     "@types/better-sqlite3": "^7.6.13",
     "@types/express": "^5.0.6",
@@ -50,7 +52,9 @@
     "@types/mailparser": "^3.4.6",
     "@types/node": "^25.3.2",
     "@types/ws": "^8.18.1",
+    "axe-core": "^4.11.1",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "zod": "^4.3.6"
   }
 }
