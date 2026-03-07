@@ -35,3 +35,9 @@ src-tauri/icons/android/
 src-tauri/icons/ios/
 src-tauri/icons/Square*.png
 src-tauri/icons/StoreLogo.png
+
+# ── 开源/闭源分离规则 ──────────────────────────────────────────────
+# root public/  = FluxVita SPA（闭源，不同步到 GitHub）
+# apps/jowork/public/ = JoWork SPA（开源，同步到 GitHub）
+# 共享工具（styles/ theme.js i18n.js）可通过 fallback 机制共用，不含品牌信息
+# 所有品牌改动：FluxVita → 改 public/xxx.html; JoWork → 改 apps/jowork/public/xxx.html
