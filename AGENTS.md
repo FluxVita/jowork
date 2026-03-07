@@ -7,6 +7,22 @@
 
 ## 一、会话开始（必须执行）
 
+### 1a. 注册到 Session Bus
+
+```bash
+# 先看看有没有其他 session 在工作
+bash .claude/scripts/session-bus.sh status
+
+# 注册自己（名字简短，如 api / frontend / db / agent / infra）
+export CLAUDE_SESSION_NAME="<name>"
+bash .claude/scripts/session-bus.sh join "<name>" "<任务简述>"
+
+# 声明你要操作的文件/目录范围（可以声明多个）
+bash .claude/scripts/session-bus.sh claim "<name>" "src/agent/"
+```
+
+### 1b. 同步代码
+
 ```bash
 git pull origin master
 git log --oneline -10    # 了解其他 AI 最近改了什么
@@ -17,6 +33,14 @@ git status               # 确认工作区干净
 这是上一个 AI session 的遗留。先读懂是什么，再决定：
 - 如果是完整可用的改动 → `git add . && git commit -m "chore: 提交上个 session 的遗留改动"` → `git push`
 - 如果是明显错误的改动 → 告知 Aiden，等确认后再处理，**不要自行 `git checkout .`**
+
+### 1c. 查看广播消息
+
+```bash
+bash .claude/scripts/session-bus.sh log
+```
+
+如果有其他 session 广播了关于接口变更/重构的消息，先理解再开始工作。
 
 ---
 
@@ -92,15 +116,18 @@ git push origin master
 
 ### 核心原则：任务边界 = 文件边界
 
-**不允许两个 AI 同时修改同一个模块。** 开始任务前，先查 Linear 里有没有"进行中"的任务在动同一批文件：
+**不允许两个 AI 同时修改同一个模块。** 开始编辑前，**必须先检查 Session Bus**：
 
 ```bash
-# 查看最近 30 分钟内谁动了哪些文件
+# 检查目标文件是否被其他 session 占用
+bash .claude/scripts/session-bus.sh check <文件路径>
+
+# 同时检查 git 最近提交
 git log --oneline --since="30 minutes ago"
-git show --stat HEAD
 ```
 
-如果目标文件在 30 分钟内有其他 AI 的提交，**等对方完成再开始**，或者告知 Aiden 任务有冲突。
+- Session Bus 返回 `CONFLICT` → **不要编辑**，告知 Aiden
+- 目标文件在 30 分钟内有其他 AI 的提交 → **先 pull 后再改**
 
 ### 不需要多分支
 
@@ -208,6 +235,12 @@ Cargo check 通过后再提交。Tauri 改动不会自动部署，需告知 Aide
 ```bash
 git status       # 确认没有未提交的改动
 git log --oneline -3   # 确认提交已推送到远端
+
+# 如果改了公共接口/类型，广播通知其他 session
+bash .claude/scripts/session-bus.sh broadcast "<name>" "改了 xxx 的接口签名"
+
+# 注销 session
+bash .claude/scripts/session-bus.sh leave "<name>"
 ```
 
 **不能有未推送的本地提交就结束会话。** 下一个 AI 不会知道本地改动的存在。
@@ -229,10 +262,12 @@ git log --oneline -3   # 确认提交已推送到远端
 ## 快速参考卡
 
 ```
-会话开始：git pull → git log -10 → git status → 检查 Linear 任务有无文件冲突
+会话开始：session-bus status → join → claim → git pull → git log -10 → session-bus log
+编辑前  ：session-bus check <file>（必须 OK 才能编辑）
 工作过程：小步完成 → lint → test → pull → add(具体文件) → commit → push
 push 被拒：git pull --rebase → lint → test → push
 遇到冲突：读懂双方意图 → 手动合并（两边都保留）→ lint → test → commit → push
-会话结束：git status 确认干净 → git log 确认已推送
+重要变更：session-bus broadcast → 通知其他 session
+会话结束：git status 确认干净 → git log 确认已推送 → session-bus leave
 Migration：必须用时间戳命名（20260306_1420_xxx），禁止顺序编号
 ```

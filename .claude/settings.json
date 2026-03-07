@@ -1,0 +1,19 @@
+{
+  "enabledPlugins": {
+    "github@claude-plugins-official": true
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": { "tool_name": "Edit|Write" },
+        "command": "bash .claude/hooks/pre-edit-guard.sh"
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": { "tool_name": "Edit|Write" },
+        "command": "bash .claude/hooks/post-edit-track.sh"
+      }
+    ]
+  }
+}

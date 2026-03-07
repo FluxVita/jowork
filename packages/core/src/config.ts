@@ -5,6 +5,8 @@ import type { GatewayConfig } from './types.js';
 // 使用 process.cwd()（服务器启动目录 = 项目根），而非 import.meta.dirname
 // 确保路径在任何包位置都能正确解析
 const ENV_PATH = resolve(process.cwd(), '.env');
+// 启动时打印 .env 路径，方便排查"加到了错误的 .env"问题
+console.log(`[config] Loading .env from: ${ENV_PATH}${existsSync(ENV_PATH) ? '' : ' (not found)'}`);
 if (existsSync(ENV_PATH)) {
   const lines = readFileSync(ENV_PATH, 'utf-8').split('\n');
   for (const line of lines) {
