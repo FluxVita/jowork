@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { randomBytes } from 'node:crypto';
-import { findOrCreateByFeishu, getUserByFeishuId, listActiveUsers, updateUserRole } from '../../auth/users.js';
+import { findOrCreateByFeishu, getUserByFeishuId, listActiveUsers, updateUserRole, getUserByEmail, createEmailUser, hashPassword, verifyPassword } from '../../auth/users.js';
 import { feishuApi } from '../../connectors/feishu/auth.js';
 import { signToken } from '../../auth/jwt.js';
 import { authMiddleware, requireRole } from '../middleware.js';
@@ -162,6 +162,93 @@ router.post('/local', (req, res) => {
   const token = signToken(user, '30d', { feishu_verified: true });
   log.info('User logged in (local auth)', { user_id: user.user_id, name: user.name });
   res.json({ token, user });
+});
+
+/**
+ * POST /api/auth/signup — 邮箱注册（SaaS 公开注册）
+ *
+ * body: { name, email, password }
+ * 密码最短 8 位，邮箱唯一。注册成功直接返回 token。
+ */
+router.post('/signup', async (req, res) => {
+  const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ?? req.socket.remoteAddress ?? 'unknown';
+  if (!checkIpRateLimit(ip)) {
+    res.status(429).json({ error: 'Too many signup attempts. Please wait.' });
+    return;
+  }
+
+  const { name, email, password } = req.body as { name?: string; email?: string; password?: string };
+
+  if (!name || name.trim().length < 2) {
+    res.status(400).json({ error: 'Name must be at least 2 characters.' });
+    return;
+  }
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    res.status(400).json({ error: 'Valid email required.' });
+    return;
+  }
+  if (!password || password.length < 8) {
+    res.status(400).json({ error: 'Password must be at least 8 characters.' });
+    return;
+  }
+
+  // 检查邮箱是否已注册
+  const existing = getUserByEmail(email);
+  if (existing) {
+    res.status(409).json({ error: 'Email already registered.' });
+    return;
+  }
+
+  try {
+    const passwordHash = await hashPassword(password);
+    const user = createEmailUser({ name: name.trim(), email, passwordHash });
+    const token = signToken(user, '30d');
+    log.info('User signed up (email)', { user_id: user.user_id, email: user.email });
+    res.json({ token, user });
+  } catch (err) {
+    log.error('Signup failed', err);
+    res.status(500).json({ error: 'Signup failed. Please try again.' });
+  }
+});
+
+/**
+ * POST /api/auth/email-login — 邮箱登录
+ *
+ * body: { email, password }
+ */
+router.post('/email-login', async (req, res) => {
+  const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ?? req.socket.remoteAddress ?? 'unknown';
+  if (!checkIpRateLimit(ip)) {
+    res.status(429).json({ error: 'Too many login attempts. Please wait 30 seconds.' });
+    return;
+  }
+
+  const { email, password } = req.body as { email?: string; password?: string };
+
+  if (!email || !password) {
+    res.status(400).json({ error: 'Email and password required.' });
+    return;
+  }
+
+  const user = getUserByEmail(email);
+  if (!user || !user.password_hash) {
+    res.status(401).json({ error: 'Invalid email or password.' });
+    return;
+  }
+
+  try {
+    const ok = await verifyPassword(password, user.password_hash);
+    if (!ok) {
+      res.status(401).json({ error: 'Invalid email or password.' });
+      return;
+    }
+    const token = signToken(user, '30d');
+    log.info('User logged in (email)', { user_id: user.user_id, email: user.email });
+    res.json({ token, user });
+  } catch (err) {
+    log.error('Email login failed', err);
+    res.status(500).json({ error: 'Login failed.' });
+  }
 });
 
 /**
@@ -587,6 +674,147 @@ router.get('/feishu-token-status', authMiddleware, (req, res) => {
   const expiresAt = expiresAtStr ? parseInt(expiresAtStr) : null;
   const authorized = !!token && (!expiresAt || expiresAt > Date.now());
   res.json({ authorized, expires_at: expiresAt });
+});
+
+// ─── Google OAuth ───────────────────────────────────────────────────────────
+
+const GOOGLE_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
+const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
+const GOOGLE_USERINFO_URL = 'https://www.googleapis.com/oauth2/v3/userinfo';
+
+function isGoogleEnabled(): boolean {
+  return !!(config.google?.client_id && config.google?.client_secret);
+}
+
+/**
+ * GET /api/auth/google — 跳转到 Google OAuth 授权页
+ */
+router.get('/google', (req, res) => {
+  if (!isGoogleEnabled()) {
+    res.status(503).json({ error: 'Google OAuth not configured. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.' });
+    return;
+  }
+
+  const state = issueOAuthState();
+  const baseUrl = getGatewayPublicUrl();
+  const redirectUri = `${baseUrl}/api/auth/google/callback`;
+
+  const params = new URLSearchParams({
+    client_id: config.google.client_id,
+    redirect_uri: redirectUri,
+    response_type: 'code',
+    scope: 'openid email profile',
+    state,
+    access_type: 'offline',
+    prompt: 'select_account',
+  });
+
+  res.redirect(`${GOOGLE_AUTH_URL}?${params.toString()}`);
+});
+
+/**
+ * GET /api/auth/google/callback — Google OAuth 回调
+ */
+router.get('/google/callback', async (req, res) => {
+  const code = req.query['code'] as string;
+  const state = req.query['state'] as string;
+  const errorParam = req.query['error'] as string;
+
+  if (errorParam) {
+    res.redirect(`/signup.html?error=${encodeURIComponent('Google login cancelled')}`);
+    return;
+  }
+
+  if (!code || !state) {
+    res.status(400).send('Missing code or state');
+    return;
+  }
+
+  if (!consumeOAuthState(state)) {
+    res.status(400).send('Invalid or expired state. Please try again.');
+    return;
+  }
+
+  const baseUrl = getGatewayPublicUrl();
+  const redirectUri = `${baseUrl}/api/auth/google/callback`;
+
+  try {
+    // 1. 用 code 换 access_token
+    const tokenResp = await httpRequest<{
+      access_token: string;
+      id_token?: string;
+      error?: string;
+    }>(GOOGLE_TOKEN_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        code,
+        client_id: config.google.client_id,
+        client_secret: config.google.client_secret,
+        redirect_uri: redirectUri,
+        grant_type: 'authorization_code',
+      }).toString(),
+    });
+
+    if (tokenResp.data.error || !tokenResp.data.access_token) {
+      log.error('Google token exchange failed', tokenResp.data);
+      res.redirect('/signup.html?error=google_auth_failed');
+      return;
+    }
+
+    // 2. 获取用户信息
+    const userInfoResp = await httpRequest<{
+      sub: string;
+      email: string;
+      email_verified: boolean;
+      name: string;
+      picture?: string;
+      given_name?: string;
+    }>(GOOGLE_USERINFO_URL, {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${tokenResp.data.access_token}` },
+    });
+
+    const googleUser = userInfoResp.data;
+    if (!googleUser.email) {
+      res.redirect('/signup.html?error=google_no_email');
+      return;
+    }
+
+    // 3. 查找或创建用户（以 email 为唯一标识）
+    const existingUser = getUserByEmail(googleUser.email);
+    const isNew = !existingUser;
+
+    const user = existingUser ?? createEmailUser({
+      name: googleUser.name || googleUser.given_name || googleUser.email.split('@')[0],
+      email: googleUser.email,
+      passwordHash: '',  // 空密码 = 只能 OAuth 登录
+    });
+
+    const token = signToken(user, '30d');
+    log.info('User logged in via Google OAuth', { user_id: user.user_id, email: user.email, isNew });
+
+    // 4. 返回 HTML，写入 localStorage 并跳转
+    const tokenKey = config.token_storage_key || 'jowork_token';
+    res.send(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Logging in...</title></head><body>
+      <script>
+        localStorage.setItem(${JSON.stringify(tokenKey)}, ${JSON.stringify(token)});
+        localStorage.setItem(${JSON.stringify(tokenKey + '_user')}, ${JSON.stringify(JSON.stringify(user))});
+        location.href = ${isNew ? '"/onboarding.html"' : '"/shell.html"'};
+      </script>
+      <p style="font-family:system-ui;color:#888;text-align:center;padding:40px">Signing you in...</p>
+    </body></html>`);
+  } catch (err) {
+    log.error('Google OAuth callback error', err);
+    res.redirect('/signup.html?error=google_auth_failed');
+  }
+});
+
+/**
+ * GET /api/auth/google/status — 检查 Google OAuth 是否已配置（供前端判断是否显示按钮）
+ */
+router.get('/google/status', (_req, res) => {
+  res.json({ enabled: isGoogleEnabled() });
 });
 
 export default router;

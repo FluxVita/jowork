@@ -4,6 +4,8 @@ import { getOrgSetting, setScopedValue } from '../../auth/settings.js';
 import { getGatewayPublicUrl } from '../../utils/gateway-url.js';
 import { getDb } from '../../datamap/db.js';
 import { getLocalIps, discoverServices, startAdvertising, stopAdvertising } from '../../discovery/mdns.js';
+import { updateProviderApiKey } from '../../models/router.js';
+import { isCloudHosted } from '../../billing/credits.js';
 import { config } from '../../config.js';
 import type { Role } from '../../types.js';
 
@@ -47,7 +49,14 @@ router.get('/setup-status', (_req, res) => {
     microsoft: `${gatewayUrl}/api/connectors/outlook_v1/oauth/callback`,
   };
 
-  res.json({ done, gateway_url: gatewayUrl, mode, remote_gateway_url: remoteGatewayUrl, oauth_callbacks: oauthCallbacks });
+  res.json({
+    done,
+    gateway_url: gatewayUrl,
+    mode,
+    remote_gateway_url: remoteGatewayUrl,
+    oauth_callbacks: oauthCallbacks,
+    hosting_mode: isCloudHosted() ? 'cloud' : 'self_hosted',
+  });
 });
 
 /**
@@ -86,6 +95,7 @@ router.post('/setup', (req, res, next) => {
     gateway_url,
     mode,              // 'solo' | 'host' | 'join'
     remote_gateway_url, // Join 模式下的远端 gateway 地址
+    openrouter_api_key, // 自部署用户的 OpenRouter API Key（可选）
     // 各连接器 OAuth 凭据（可选）
     feishu_app_id,
     feishu_app_secret,
@@ -164,6 +174,13 @@ router.post('/setup', (req, res, next) => {
     if (val && typeof val === 'string' && val.trim()) {
       setScopedValue('org', 'default', key, val.trim());
     }
+  }
+
+  // 保存自部署 OpenRouter API Key（可选）
+  if (openrouter_api_key && typeof openrouter_api_key === 'string' && openrouter_api_key.trim()) {
+    try {
+      updateProviderApiKey('openrouter', openrouter_api_key.trim());
+    } catch { /* openrouter provider 可能尚未注册，忽略 */ }
   }
 
   // 标记 setup 完成

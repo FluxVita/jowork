@@ -9,7 +9,7 @@ import {
   type ToolUseRequest,
   type StreamDelta,
 } from '../../models/router.js';
-import { checkCreditSufficient, deductCredits, getCreditsBalance, getUpgradeTo } from '../../billing/credits.js';
+import { checkCreditSufficient, deductOneConversation, getCreditsBalance, getUpgradeTo } from '../../billing/credits.js';
 import { hasFeature, featureGateMessage, checkFeatureAccess, type FeatureKey } from '../../billing/features.js';
 import { createSession, getSession, appendMessage, getMessages, updateSessionTitle } from '../session.js';
 import { buildContextWindow, maybeArchiveAndSummarize } from '../context.js';
@@ -329,6 +329,9 @@ export class BuiltinEngine implements AgentEngine {
     let totalTokensIn = 0;
     let totalTokensOut = 0;
     let totalCostUsd = 0;
+    // 非 klaude 路径（open-source）：从 message_start 捕获实际 provider/model/cost
+    let activeProvider: string | undefined;
+    let activeModel: string | undefined;
 
     // 追踪上一轮工具调用名称（用于 behavior 标签）
     let prevRoundToolNames: string[] = [];
@@ -380,6 +383,9 @@ export class BuiltinEngine implements AgentEngine {
           switch (delta.type) {
             case 'message_start':
               tokensIn = delta.tokensIn;
+              // 伪流式路径回传的实际 provider/model/cost（open-source 场景）
+              if (delta.provider) activeProvider = delta.provider;
+              if (delta.model) activeModel = delta.model;
               break;
             case 'text':
               fullText += delta.text;
@@ -412,12 +418,16 @@ export class BuiltinEngine implements AgentEngine {
         return;
       }
 
-      // 成本计算
-      const costPer1k = klaudeInfo?.costPer1kToken ?? 0.003;
+      // 成本计算：klaude 路径用 klaudeInfo 价格；其他路径用伪流式回传的 provider/model/cost
+      const costPer1k = klaudeInfo?.costPer1kToken ?? 0.001; // openrouter 均价兜底
       const roundCost = ((tokensIn + tokensOut) / 1000) * costPer1k;
       totalTokensIn += tokensIn;
       totalTokensOut += tokensOut;
       totalCostUsd += roundCost;
+
+      // 确定本轮实际 provider/model（klaude 优先，否则用 message_start 捕获的）
+      const roundProvider = klaudeInfo?.provider ?? activeProvider;
+      const roundModel = klaudeInfo?.model ?? activeModel;
 
       // behavior 标签：首轮为对话轮次，后续轮次为工具调用
       const behavior = round === 1 ? 'agent_chat_turn' : 'tool_call';
@@ -425,6 +435,8 @@ export class BuiltinEngine implements AgentEngine {
         ? prevRoundToolNames[0]
         : undefined;
 
+      // klaude 路径：cost 在 builtin.ts 记录（streamAnthropicToolUse 不内部记录）
+      // 其他路径：cost 已在 routeModelWithTools 内部记录，此处跳过避免重复
       let costRecordId: number | undefined;
       if (klaudeInfo) {
         costRecordId = recordModelCost({
@@ -441,11 +453,7 @@ export class BuiltinEngine implements AgentEngine {
         });
       }
 
-      // 积分扣减
-      const totalRoundTokens = tokensIn + tokensOut;
-      if (totalRoundTokens > 0) {
-        deductCredits(userId, totalRoundTokens, costRecordId);
-      }
+      // 不在每轮扣减，改为 text_done 时统一扣 1 次对话
 
       // 更新上一轮工具名称（供下一轮使用）
       prevRoundToolNames = toolCalls.map(tc => tc.name);
@@ -455,7 +463,7 @@ export class BuiltinEngine implements AgentEngine {
         data: {
           tokens_in: tokensIn,
           tokens_out: tokensOut,
-          model: klaudeInfo ? `${klaudeInfo.provider}/${klaudeInfo.model}` : 'unknown',
+          model: roundProvider && roundModel ? `${roundProvider}/${roundModel}` : (roundModel ?? 'unknown'),
           cost_usd: roundCost,
         },
       };
@@ -625,10 +633,13 @@ export class BuiltinEngine implements AgentEngine {
         role: 'assistant',
         content: finalContent,
         tokens: totalTokensIn + totalTokensOut,
-        model: klaudeInfo?.model,
-        provider: klaudeInfo?.provider,
+        model: klaudeInfo?.model ?? activeModel,
+        provider: klaudeInfo?.provider ?? activeProvider,
         cost_usd: totalCostUsd,
       });
+
+      // 对话完成：扣 1 次（BYOK 和自托管自动跳过）
+      deductOneConversation(userId);
 
       yield { event: 'text_done', data: { content: finalContent, message_id: savedMsgId } };
 

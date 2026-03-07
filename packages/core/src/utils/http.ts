@@ -32,7 +32,7 @@ export async function httpRequest<T = unknown>(
       signal: controller.signal,
     };
     if (body && method !== 'GET') {
-      fetchOpts.body = JSON.stringify(body);
+      fetchOpts.body = typeof body === 'string' ? body : JSON.stringify(body);
     }
 
     const resp = await fetch(url, fetchOpts);

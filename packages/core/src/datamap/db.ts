@@ -32,6 +32,7 @@ export function initSchema() {
       feishu_open_id TEXT UNIQUE,
       name          TEXT NOT NULL,
       email         TEXT,
+      password_hash TEXT,
       role          TEXT NOT NULL DEFAULT 'member',
       department    TEXT,
       avatar_url    TEXT,
@@ -653,6 +654,39 @@ export function initSchema() {
   db.exec(`CREATE INDEX IF NOT EXISTS idx_app_logs_level     ON app_logs(level)`);
   db.exec(`CREATE INDEX IF NOT EXISTS idx_app_logs_user      ON app_logs(user_id)`);
   db.exec(`CREATE INDEX IF NOT EXISTS idx_app_logs_component ON app_logs(component)`);
+
+  // 向前兼容迁移：为已有数据库添加 password_hash 列（新建 DB 时 CREATE TABLE 已包含）
+  try { db.exec(`ALTER TABLE users ADD COLUMN password_hash TEXT`); } catch { /* 列已存在，忽略 */ }
+  // email 列唯一约束（migration-safe，只对新 DB 生效）
+  try { db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email) WHERE email IS NOT NULL`); } catch { /* ignore */ }
+
+  // ── License Cache（自托管用户本地验证缓存，Phase 4）──
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS license_cache (
+      license_key   TEXT PRIMARY KEY,
+      plan          TEXT NOT NULL DEFAULT 'free',
+      features_json TEXT NOT NULL DEFAULT '[]',
+      expires_at    TEXT,
+      last_verified TEXT,
+      grace_until   TEXT
+    )
+  `);
+
+  // ── user_subscriptions 加 license_key 列（Mac mini License Server 查询用）──
+  try { db.exec(`ALTER TABLE user_subscriptions ADD COLUMN license_key TEXT UNIQUE`); } catch { /* 列已存在 */ }
+
+  // ── proxy_audit：LLM 代理层审计（仅记录 user_id/session_id/model，不存对话内容）──
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS proxy_audit (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id    TEXT NOT NULL,
+      session_id TEXT,
+      model      TEXT NOT NULL,
+      timestamp  TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_proxy_audit_user ON proxy_audit(user_id)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_proxy_audit_ts   ON proxy_audit(timestamp)`);
 
   log.info('Schema initialized');
   seedDefaultPolicies(db);

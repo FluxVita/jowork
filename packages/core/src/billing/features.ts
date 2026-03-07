@@ -1,6 +1,7 @@
 import { getDb } from '../datamap/db.js';
 import { getSubscriptionPlan, normalizePlanPublic, type SubscriptionPlan } from './entitlements.js';
 import { isCloudHosted } from './credits.js';
+import { getCurrentLicense } from './license-client.js';
 
 // ─── Feature Keys ───
 
@@ -44,7 +45,15 @@ function planRank(plan: SubscriptionPlan): number {
 
 /** 获取用户当前计划：优先 user_subscriptions（per-user），再降级到 org-level */
 export function getUserPlan(userId: string): SubscriptionPlan {
-  if (!isCloudHosted()) return 'personal_max'; // 自托管无功能限制
+  if (!isCloudHosted()) {
+    // 自托管：有 License Key 则按 license 计划，否则全功能开放
+    const licenseKey = process.env['JOWORK_LICENSE_KEY'];
+    if (licenseKey) {
+      const license = getCurrentLicense();
+      return normalizePlanPublic(license.plan);
+    }
+    return 'personal_max'; // 无 License Key：自托管全功能（向后兼容）
+  }
 
   try {
     const db = getDb();

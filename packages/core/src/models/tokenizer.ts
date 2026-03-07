@@ -30,6 +30,15 @@ const MODEL_PRICING: Record<string, ModelPricing> = {
   'claude-3-5-sonnet-20241022':  { input: 3.00,  output: 15.00, contextWindow: 200_000 },
   'claude-3-haiku-20240307':     { input: 0.25,  output: 1.25,  contextWindow: 200_000 },
 
+  // ── OpenRouter ──
+  'anthropic/claude-3-5-haiku':  { input: 0.80,  output: 4.00,  contextWindow: 200_000 },
+  'anthropic/claude-sonnet-4-5': { input: 3.00,  output: 15.00, contextWindow: 200_000 },
+  'openai/gpt-4o-mini':          { input: 0.15,  output: 0.60,  contextWindow: 128_000 },
+
+  // ── SiliconFlow ──
+  'Qwen/Qwen3-235B-A22B':        { input: 0.133, output: 0.533, contextWindow: 32_768 },
+  'Qwen/Qwen3-30B-A3B':          { input: 0.035, output: 0.140, contextWindow: 32_768 },
+
   // ── MiniMax ──
   'MiniMax-M2.5-highspeed':      { input: 0.20,  output: 1.10,  contextWindow: 1_000_000 },
 

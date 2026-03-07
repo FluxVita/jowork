@@ -2,6 +2,7 @@ import Stripe from 'stripe';
 import { config } from '../config.js';
 import { getDb } from '../datamap/db.js';
 import { normalizePlanPublic, type SubscriptionPlan } from './entitlements.js';
+import { refreshPlanCredits } from './credits.js';
 import { createLogger } from '../utils/logger.js';
 
 const log = createLogger('stripe');
@@ -73,7 +74,7 @@ export async function createCheckoutSession(opts: {
     line_items: [{ price: opts.stripePriceId, quantity: 1 }],
     success_url: opts.successUrl,
     cancel_url: opts.cancelUrl,
-    metadata: { user_id: opts.userId },
+    metadata: { user_id: opts.userId, stripe_price_id: opts.stripePriceId },
     subscription_data: {
       metadata: { user_id: opts.userId },
     },
@@ -127,18 +128,28 @@ export function handleCheckoutCompleted(session: Stripe.Checkout.Session): void 
     return;
   }
 
+  // 从 metadata 里取 stripe_price_id，反查 billing_prices 表得出计划名
+  const stripePriceId = session.metadata?.['stripe_price_id'] ?? '';
   const db = getDb();
+  const priceRow = stripePriceId
+    ? db.prepare('SELECT plan, seat_level FROM billing_prices WHERE stripe_price_id = ?').get(stripePriceId) as { plan: string; seat_level: string | null } | undefined
+    : undefined;
+  const plan: SubscriptionPlan = priceRow ? normalizePlanPublic(priceRow.plan) : 'personal_basic';
+
   db.prepare(`
     INSERT INTO user_subscriptions (user_id, stripe_customer_id, stripe_subscription_id, plan, status, updated_at)
-    VALUES (?, ?, ?, 'personal_basic', 'active', datetime('now'))
+    VALUES (?, ?, ?, ?, 'active', datetime('now'))
     ON CONFLICT(user_id) DO UPDATE SET
       stripe_customer_id = excluded.stripe_customer_id,
       stripe_subscription_id = excluded.stripe_subscription_id,
+      plan = excluded.plan,
       status = 'active',
       updated_at = datetime('now')
-  `).run(userId, customerId ?? null, subscriptionId ?? null);
+  `).run(userId, customerId ?? null, subscriptionId ?? null, plan);
 
-  log.info('Subscription activated via checkout', { userId, subscriptionId });
+  // 发放本月计划积分
+  refreshPlanCredits(userId, plan);
+  log.info('Subscription activated via checkout', { userId, subscriptionId, plan });
 }
 
 /** 处理 customer.subscription.updated → 同步计划状态 */
@@ -172,6 +183,10 @@ export function handleSubscriptionUpdated(subscription: Stripe.Subscription): vo
       updated_at = datetime('now')
   `).run(userId, subscription.id, plan, seatLevel, status, periodStart, periodEnd, cancelAtPeriodEnd);
 
+  // 同步当月积分配额（升降级即时生效）
+  if (status === 'active') {
+    refreshPlanCredits(userId, plan, seatLevel);
+  }
   log.info('Subscription updated', { userId, plan, status });
 }
 

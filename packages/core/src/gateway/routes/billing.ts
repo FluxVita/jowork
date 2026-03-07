@@ -27,13 +27,23 @@ const router = Router();
 
 // ─── 用户端 ───
 
-/** GET /api/billing/credits — 当前用户积分余量 */
+/** GET /api/billing/credits — 当前用户积分余量（含计划和重置日期） */
 router.get('/credits', authMiddleware, (req: Request, res: Response) => {
   try {
-    const balance = getCreditsBalance(req.user!.user_id);
+    const userId = req.user!.user_id;
+    const balance = getCreditsBalance(userId);
+    const plan = getUserPlan(userId);
+    const billingMonth = new Date().toISOString().slice(0, 7);
+
+    // 下月第一天为积分重置日
+    const now = new Date();
+    const resetDate = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString().slice(0, 10);
+
     res.json({
       ...balance,
-      billing_month: new Date().toISOString().slice(0, 7),
+      plan,
+      billing_month: billingMonth,
+      reset_date: resetDate,
     });
   } catch (err) {
     res.status(500).json({ error: String(err) });

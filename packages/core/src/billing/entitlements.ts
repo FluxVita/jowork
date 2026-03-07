@@ -14,13 +14,16 @@ export type SeatLevel = 'basic' | 'pro' | 'max';
 
 export type SubscriptionPlan = PersonalPlan | TeamTier;
 
-// 月度积分配额（1 积分 = 1K tokens）；null = 无限制（自托管 / owner）
-export const PERSONAL_MONTHLY_CREDITS: Record<PersonalPlan, number | null> = {
-  free: 100,            // 10 万 tokens（TBD — 定价引擎跑完后调整）
-  personal_basic: 500,  // 50 万 tokens（TBD）
-  personal_pro: 2000,   // 200 万 tokens（TBD）
-  personal_max: 8000,   // 800 万 tokens（TBD）
+// 月度对话次数配额（1次 = 1条完整AI响应，含工具调用）；null = 无限制
+export const MONTHLY_CONVERSATIONS: Record<PersonalPlan, number | null> = {
+  free: 50,             // 50 次对话/月
+  personal_basic: 500,  // 500 次对话/月
+  personal_pro: 2000,   // 2000 次对话/月
+  personal_max: null,   // 无限对话
 };
+
+// 向后兼容别名
+export const PERSONAL_MONTHLY_CREDITS = MONTHLY_CONVERSATIONS;
 
 // Team 席位积分（per person per month）
 export const TEAM_SEAT_CREDITS: Record<TeamTier, Record<SeatLevel, number>> = {

@@ -37,20 +37,20 @@ type ModelProvider = ModelProviderDef & { apiKeyEnv: string };
 
 const _BUILTIN_PROVIDERS: ModelProvider[] = [
   {
-    id: 'klaude',
-    name: 'Klaude',
-    endpoint: `${process.env['KLAUDE_URL'] ?? 'http://localhost:8899'}/v1/messages`,
-    apiKeyEnv: 'KLAUDE_API_KEY',
-    apiFormat: 'anthropic',
+    id: 'openrouter',
+    name: 'OpenRouter',
+    endpoint: 'https://openrouter.ai/api/v1/chat/completions',
+    apiKeyEnv: 'OPENROUTER_API_KEY',
+    apiFormat: 'openai',
     models: {
-      code: 'claude-sonnet-4-20250514',
-      analysis: 'claude-opus-4-20250514',
-      chat: 'claude-haiku-4-5-20251001',
-      writing: 'claude-sonnet-4-20250514',
-      sensitive: 'claude-sonnet-4-20250514',
+      chat: 'anthropic/claude-3-5-haiku',
+      code: 'anthropic/claude-sonnet-4-5',
+      analysis: 'anthropic/claude-sonnet-4-5',
+      writing: 'openai/gpt-4o-mini',
+      sensitive: 'anthropic/claude-3-5-haiku',
     },
-    costPer1kToken: 0.003,
-    isSecure: true,
+    costPer1kToken: 0.001,
+    isSecure: false,
     enabled: true,
   },
   {
@@ -65,6 +65,22 @@ const _BUILTIN_PROVIDERS: ModelProvider[] = [
       analysis: 'MiniMax-M2.5-highspeed',
     },
     costPer1kToken: 0.0008,
+    isSecure: false,
+    enabled: true,
+  },
+  {
+    id: 'siliconflow',
+    name: '硅基流动 (SiliconFlow)',
+    endpoint: 'https://api.siliconflow.cn/v1/chat/completions',
+    apiKeyEnv: 'SILICONFLOW_API_KEY',
+    apiFormat: 'openai',
+    models: {
+      chat:     'Qwen/Qwen3-30B-A3B',
+      code:     'Qwen/Qwen3-235B-A22B',
+      analysis: 'Qwen/Qwen3-235B-A22B',
+      writing:  'Qwen/Qwen3-30B-A3B',
+    },
+    costPer1kToken: 0.0003,
     isSecure: false,
     enabled: true,
   },
@@ -94,15 +110,28 @@ function getProviders(): ModelProvider[] {
   return getModelProviders().filter(p => p.enabled !== false) as ModelProvider[];
 }
 
+/**
+ * 将 provider 追加到指定任务类型的优先级列表最前端
+ * 供 premium 模块在注入专有 provider（如 klaude）时调用
+ */
+export function registerProviderPriority(id: string, taskTypes: TaskType[]): void {
+  for (const taskType of taskTypes) {
+    const list = TASK_PRIORITY[taskType];
+    if (!list.includes(id)) {
+      list.unshift(id);
+    }
+  }
+}
+
 // ─── 路由策略 ───
 
-/** 模型选择优先级（静态默认值，可被 DB 配置覆盖） */
+/** 模型选择优先级（可被 registerProviderPriority 动态修改） */
 const TASK_PRIORITY: Record<TaskType, string[]> = {
-  code: ['klaude', 'minimax', 'moonshot'],
-  analysis: ['klaude', 'minimax'],
-  chat: ['klaude', 'minimax', 'moonshot'],
-  writing: ['klaude', 'minimax', 'moonshot'],
-  sensitive: ['klaude'],  // 仅安全 provider
+  code:      ['openrouter', 'siliconflow', 'minimax', 'moonshot'],
+  analysis:  ['openrouter', 'siliconflow', 'minimax'],
+  chat:      ['openrouter', 'minimax', 'siliconflow', 'moonshot'],
+  writing:   ['openrouter', 'siliconflow', 'minimax', 'moonshot'],
+  sensitive: ['openrouter', 'minimax'],  // 优先 openrouter；premium 注入 klaude 后自动排首位
 };
 
 // ─── 动态 Provider 配置（从 DB 读取，30s 缓存）───
@@ -124,9 +153,13 @@ function getProviderRuntimeConfig(): ProviderRuntimeConfig {
       return _configCache;
     }
   } catch { /* use defaults */ }
-  // 默认：全部启用，按注册顺序
+  // 默认：全部启用，按 TASK_PRIORITY['chat'] 顺序（premium 注入 klaude 后自动排首位）
+  const chatOrder = TASK_PRIORITY['chat'];
   const defaults: ProviderRuntimeConfig = {};
-  getProviders().forEach((p, i) => { defaults[p.id] = { enabled: true, priority: i }; });
+  getProviders().forEach((p) => {
+    const idx = chatOrder.indexOf(p.id);
+    defaults[p.id] = { enabled: true, priority: idx >= 0 ? idx : 999 };
+  });
   _configCache = defaults;
   _configCacheExpiry = Date.now() + 30_000;
   return defaults;
@@ -205,8 +238,8 @@ function getProviderApiKeyWithSource(
   // 3. 环境变量 fallback
   const envKey = process.env[provider.apiKeyEnv];
   if (envKey) return { key: envKey, source: 'env' };
-  // 4. klaude 本地不需要 key
-  if (provider.id === 'klaude') return { key: 'not-needed', source: 'org' };
+  // 4. isSecure provider（如 klaude）本地不需要 key
+  if (provider.isSecure) return { key: 'not-needed', source: 'org' };
   return null;
 }
 
@@ -344,9 +377,11 @@ function selectProvider(taskType: TaskType): ModelProvider | null {
     .filter(p => runtimeCfg[p.id]?.enabled !== false)
     .sort((a, b) => (runtimeCfg[a.id]?.priority ?? 999) - (runtimeCfg[b.id]?.priority ?? 999));
 
+  // 对 sensitive 任务：优先 isSecure provider；若无则降级到任意可用 provider
+  const hasSecure = ordered.some(p => p.isSecure && getProviderApiKey(p) !== null && !isCircuitOpen(p.id));
   for (const provider of ordered) {
     if (getProviderApiKey(provider) === null) continue;
-    if (taskType === 'sensitive' && !provider.isSecure) continue;
+    if (taskType === 'sensitive' && !provider.isSecure && hasSecure) continue;
     if (!provider.models[taskType]) continue;
     if (isCircuitOpen(provider.id)) continue;
     return provider;
@@ -378,6 +413,24 @@ async function parseAnthropicSSE(response: Response): Promise<{ content: string;
   return { content, tokensIn, tokensOut };
 }
 
+// ─── OpenRouter 用户速率限制（每用户每分钟最多 20 次请求） ───
+
+const _orRateLimitMap = new Map<string, { count: number; windowStart: number }>();
+
+function checkOpenRouterRateLimit(userId: string): boolean {
+  const now = Date.now();
+  const WINDOW_MS = 60_000;
+  const MAX_REQ = 20;
+  const state = _orRateLimitMap.get(userId) ?? { count: 0, windowStart: now };
+  if (now - state.windowStart >= WINDOW_MS) {
+    state.count = 0;
+    state.windowStart = now;
+  }
+  state.count++;
+  _orRateLimitMap.set(userId, state);
+  return state.count <= MAX_REQ;
+}
+
 /** 调用单个 provider（支持 OpenAI 和 Anthropic 格式） */
 async function callProvider(
   provider: ModelProvider,
@@ -389,17 +442,17 @@ async function callProvider(
   await MODEL_SEMAPHORE.acquire();
   try {
   if (provider.apiFormat === 'anthropic') {
-    // Anthropic Messages API — Klaude 总是返回 SSE 流
+    // Anthropic Messages API（SSE 流）
     const systemMsg = messages.find(m => m.role === 'system');
     const nonSystemMsgs = messages.filter(m => m.role !== 'system');
 
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 60_000);
 
-    // 如果是 Klaude，附加 Gateway 共享密钥（防止绕过 Gateway 直接调用）
-    const klaudeExtra: Record<string, string> = {};
-    if (provider.id === 'klaude' && process.env['KLAUDE_GATEWAY_SECRET']) {
-      klaudeExtra['X-Gateway-Secret'] = process.env['KLAUDE_GATEWAY_SECRET'];
+    // isSecure provider（如 klaude）可附加 Gateway 共享密钥
+    const providerExtra: Record<string, string> = {};
+    if (provider.isSecure && process.env['KLAUDE_GATEWAY_SECRET']) {
+      providerExtra['X-Gateway-Secret'] = process.env['KLAUDE_GATEWAY_SECRET'];
     }
 
     try {
@@ -409,7 +462,7 @@ async function callProvider(
           'Content-Type': 'application/json',
           'x-api-key': apiKey,
           'anthropic-version': '2023-06-01',
-          ...klaudeExtra,
+          ...providerExtra,
         },
         body: JSON.stringify({
           model,
@@ -431,12 +484,17 @@ async function callProvider(
   }
 
   // OpenAI 格式（默认）
+  const openaiHeaders: Record<string, string> = { Authorization: `Bearer ${apiKey}` };
+  if (provider.id === 'openrouter') {
+    openaiHeaders['HTTP-Referer'] = 'https://jowork.work';
+    openaiHeaders['X-Title'] = 'JoWork';
+  }
   const resp = await httpRequest<{
     choices: { message: { content: string } }[];
     usage?: { prompt_tokens: number; completion_tokens: number };
   }>(provider.endpoint, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${apiKey}` },
+    headers: openaiHeaders,
     body: { model, messages, max_tokens: maxTokens },
     timeout: 60_000,
   });
@@ -479,6 +537,11 @@ export async function routeModel(req: ModelRequest): Promise<ModelResponse> {
 
   const model = provider.models[budgetLimited ? 'chat' : taskType] ?? provider.models['chat']!;
   const apiKey = getProviderApiKey(provider) ?? 'not-needed';
+
+  // OpenRouter 用户速率限制
+  if (provider.id === 'openrouter' && !checkOpenRouterRateLimit(userId)) {
+    throw new Error('Rate limit exceeded: too many requests. Please wait a moment and try again.');
+  }
 
   // 预检：本地估算 prompt 大小，超出上下文窗口直接拒绝
   const ctxCheck = checkContextLimit(model, messages, maxTokens);
@@ -852,6 +915,11 @@ export async function routeModelWithTools(req: ToolUseRequest): Promise<ToolCall
   const model = provider.models['chat']!;
   const apiKey = getProviderApiKey(provider) ?? 'not-needed';
 
+  // OpenRouter 用户速率限制（tool_use 同样计入）
+  if (provider.id === 'openrouter' && !checkOpenRouterRateLimit(userId)) {
+    throw new Error('Rate limit exceeded: too many requests. Please wait a moment and try again.');
+  }
+
   log.info(`Tool-use routing to ${provider.name} (${model})`);
 
   const controller = new AbortController();
@@ -880,13 +948,18 @@ export async function routeModelWithTools(req: ToolUseRequest): Promise<ToolCall
 
       result = await parseAnthropicToolSSE(resp);
     } else {
-      // ── OpenAI 格式（MiniMax / Moonshot 等） ──
+      // ── OpenAI 格式（MiniMax / Moonshot / OpenRouter 等） ──
       const openaiMessages = convertMessagesToOpenAI(system, messages);
       const openaiTools = convertToolsToOpenAI(tools);
+      const toolCallHeaders: Record<string, string> = { Authorization: `Bearer ${apiKey}` };
+      if (provider.id === 'openrouter') {
+        toolCallHeaders['HTTP-Referer'] = 'https://jowork.work';
+        toolCallHeaders['X-Title'] = 'JoWork';
+      }
 
       const resp = await httpRequest<Record<string, unknown>>(provider.endpoint, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${apiKey}` },
+        headers: toolCallHeaders,
         body: {
           model,
           messages: openaiMessages,
@@ -948,9 +1021,14 @@ export async function routeModelWithTools(req: ToolUseRequest): Promise<ToolCall
           if (!resp.ok) continue;
           fbResult = await parseAnthropicToolSSE(resp);
         } else {
+          const fbHeaders: Record<string, string> = { Authorization: `Bearer ${fbKey}` };
+          if (fallback.id === 'openrouter') {
+            fbHeaders['HTTP-Referer'] = 'https://jowork.work';
+            fbHeaders['X-Title'] = 'JoWork';
+          }
           const resp = await httpRequest<Record<string, unknown>>(fallback.endpoint, {
             method: 'POST',
-            headers: { Authorization: `Bearer ${fbKey}` },
+            headers: fbHeaders,
             body: {
               model: fallback.models['chat'],
               messages: convertMessagesToOpenAI(system, messages),
@@ -991,7 +1069,7 @@ export type StreamDelta =
   | { type: 'tool_use_start'; id: string; name: string }
   | { type: 'tool_input_delta'; json: string }
   | { type: 'content_block_stop' }
-  | { type: 'message_start'; tokensIn: number }
+  | { type: 'message_start'; tokensIn: number; provider?: string; model?: string; cost_usd?: number }
   | { type: 'message_delta'; tokensOut: number; stopReason: string }
   | { type: 'done' };
 
@@ -1038,7 +1116,8 @@ export async function* streamModelWithTools(req: ToolUseRequest): AsyncGenerator
   // ── 非 Anthropic 或 Anthropic 降级：伪流式（完整调用 → 模拟流事件） ──
   const result = await routeModelWithTools(req);
 
-  yield { type: 'message_start', tokensIn: result.tokens_in };
+  // 将 provider/model/cost 信息随 message_start 传回，供 builtin.ts 展示准确成本
+  yield { type: 'message_start', tokensIn: result.tokens_in, provider: result.provider, model: result.model, cost_usd: result.cost_usd };
 
   if (result.content) {
     const chunkSize = 20;

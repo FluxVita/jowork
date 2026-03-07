@@ -47,6 +47,8 @@ import { requestLogger } from './middleware.js';
 import contextRoutes from './routes/context.js';
 import systemRoutes from './routes/system.js';
 import billingRoutes from './routes/billing.js';
+import proxyRoutes from './routes/proxy.js';
+import licenseRoutes from './routes/license.js';
 import { seedDefaultServices } from '../services/seed.js';
 import { startAdvertising } from '../discovery/mdns.js';
 import { getOrgSetting } from '../auth/settings.js';
@@ -162,6 +164,8 @@ export function startGateway(opts: GatewayOptions = {}) {
   app.use('/api/system', systemRoutes);
   // 订阅计划与积分
   app.use('/api/billing', billingRoutes);
+  app.use('/api/proxy', proxyRoutes);
+  app.use('/api/license', licenseRoutes);
 
   // 静态文件（看板 Web UI）
   const resolvedPublicDir = opts.publicDir ?? join(process.cwd(), 'public');

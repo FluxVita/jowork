@@ -1,5 +1,7 @@
 import * as pty from 'node-pty';
+import { existsSync } from 'node:fs';
 import { createLogger } from '../utils/logger.js';
+import { isWindows } from '../platform.js';
 
 const log = createLogger('terminal');
 
@@ -16,12 +18,24 @@ interface TerminalSession {
 const sessions = new Map<string, TerminalSession>();
 
 function getDefaultShell(): string {
-  if (process.platform === 'win32') return process.env['COMSPEC'] ?? 'cmd.exe';
+  if (isWindows) {
+    // 优先 PowerShell 7（pwsh），其次 Windows PowerShell 5（内置），最后 cmd
+    const pwsh7 = `${process.env['PROGRAMFILES'] ?? 'C:\\Program Files'}\\PowerShell\\7\\pwsh.exe`;
+    if (existsSync(pwsh7)) return pwsh7;
+    const ps5 = `${process.env['SYSTEMROOT'] ?? 'C:\\Windows'}\\System32\\WindowsPowerShell\\v1.0\\powershell.exe`;
+    if (existsSync(ps5)) return ps5;
+    return process.env['COMSPEC'] ?? 'cmd.exe';
+  }
   return process.env['SHELL'] ?? '/bin/zsh';
 }
 
 function resolveSpawn(mode: TerminalMode, tmuxSession?: string): { file: string; args: string[] } {
   if (mode === 'tmux') {
+    if (isWindows) {
+      // tmux 在 Windows 上不可用，回退到默认 shell
+      log.warn('tmux mode is not supported on Windows, falling back to shell');
+      return { file: getDefaultShell(), args: [] };
+    }
     return { file: 'tmux', args: ['new-session', '-A', '-s', tmuxSession || 'jowork'] };
   }
   // core/free: klaude 模式回退为普通 shell，保证基础终端可用
@@ -48,7 +62,7 @@ export function createSession(opts: {
     cols: opts.cols ?? 220,
     rows: opts.rows ?? 50,
     cwd: process.env['HOME'] ?? process.cwd(),
-    env: { ...cleanEnv, TERM: 'xterm-256color' },
+    env: { ...cleanEnv, TERM: 'xterm-256color', TERM_PROGRAM: 'jowork' },
   });
 
   const now = Date.now();

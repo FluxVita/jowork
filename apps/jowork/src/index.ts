@@ -32,6 +32,7 @@ import { telegramChannel } from '@jowork/core/channels/telegram.js';
 import { startScheduler, setTaskExecutor, listCronTasks, createCronTask } from '@jowork/core/scheduler/index.js';
 import { executeTask } from '@jowork/core/scheduler/executor.js';
 import { runDailyMaintenance } from '@jowork/core/resilience/index.js';
+import { initLicenseClient } from '@jowork/core/billing/license-client.js';
 import { createLogger } from '@jowork/core/utils/logger.js';
 
 const log = createLogger('jowork');
@@ -92,6 +93,9 @@ setTimeout(() => runDailyMaintenance(), 60_000);
 setInterval(() => runDailyMaintenance(), 24 * 60 * 60_000);
 
 log.info('Jowork started (community edition)');
+
+// 自托管 License 验证（有 JOWORK_LICENSE_KEY 时向 jowork.work 验证并缓存，无 key 则跳过）
+void initLicenseClient();
 
 /**
  * 预置 Cron 任务（仅通用 Connector，首次启动时创建）
