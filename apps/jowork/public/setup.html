@@ -28,11 +28,13 @@ html, body {
 
 .card {
   width: 100%; max-width: 620px;
-  background: rgba(37,37,40,0.9);
-  border: 1px solid rgba(255,255,255,0.07);
+  background: rgba(28, 28, 30, 0.78);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  border: 0.5px solid rgba(255,255,255,0.08);
   border-radius: 16px;
   padding: 40px 36px 36px;
-  box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+  box-shadow: 0 16px 48px rgba(0,0,0,0.35), 0 1px 0 rgba(255,255,255,0.04) inset;
   position: relative; overflow: hidden;
 }
 .card::before {
@@ -41,9 +43,11 @@ html, body {
   background: linear-gradient(90deg, #9DD84A, #5CC8D8, #C4B8E8, #E8A898);
 }
 [data-theme="light"] .card {
-  background: rgba(255,255,255,0.92);
-  border: 1px solid rgba(0,0,0,0.07);
-  box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+  background: rgba(255,255,255,0.88);
+  backdrop-filter: blur(40px) saturate(160%);
+  -webkit-backdrop-filter: blur(40px) saturate(160%);
+  border: 0.5px solid rgba(0,0,0,0.07);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.08), 0 1px 0 rgba(255,255,255,0.9) inset;
 }
 
 /* Steps */
@@ -57,7 +61,7 @@ html, body {
 }
 .step.active .step-num { background: var(--accent, #9DD84A); border-color: var(--accent, #9DD84A); color: #000; }
 .step.done .step-num { background: rgba(157,216,74,0.2); border-color: rgba(157,216,74,0.4); color: var(--accent, #9DD84A); }
-.step-sep { flex: 1; height: 1px; background: rgba(255,255,255,0.08); }
+.step-sep { flex: 1; height: 0.5px; background: rgba(255,255,255,0.08); }
 [data-theme="light"] .step-sep { background: rgba(0,0,0,0.1); }
 
 /* Section header */
@@ -148,7 +152,7 @@ html, body {
 .service-url { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 11px; color: var(--text2, #888); }
 
 .divider { display: flex; align-items: center; gap: 10px; margin: 16px 0; color: var(--text2, #888); font-size: 12px; }
-.divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: rgba(255,255,255,0.08); }
+.divider::before, .divider::after { content: ''; flex: 1; height: 0.5px; background: rgba(255,255,255,0.08); }
 [data-theme="light"] .divider::before, [data-theme="light"] .divider::after { background: rgba(0,0,0,0.1); }
 
 /* Form */
@@ -156,7 +160,7 @@ html, body {
 .field label { display: block; font-size: 12px; font-weight: 600; color: var(--text2, #888); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
 .field input {
   width: 100%; padding: 10px 12px;
-  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.04); border: 0.5px solid rgba(255,255,255,0.12);
   border-radius: 8px; color: var(--text, #e8e8e0); font-size: 14px;
   outline: none; font-family: inherit; transition: border-color .15s, box-shadow .15s;
 }
@@ -180,6 +184,23 @@ html, body {
 
 /* No services found */
 .no-services { text-align: center; padding: 20px; color: var(--text2, #888); font-size: 13px; }
+
+/* AI Config section */
+.ai-config-section {
+  margin-top: 20px; padding: 16px;
+  background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+}
+[data-theme="light"] .ai-config-section { background: rgba(0,0,0,0.03); border-color: rgba(0,0,0,0.08); }
+.ai-config-toggle {
+  display: flex; align-items: center; gap: 8px;
+  cursor: pointer; font-size: 13px; font-weight: 600; color: var(--text2, #888);
+  background: none; border: none; padding: 0; font-family: inherit; width: 100%; text-align: left;
+}
+.ai-config-toggle:hover { color: var(--text, #e8e8e0); }
+.ai-config-body { margin-top: 12px; display: none; }
+.ai-config-body.open { display: block; }
+.key-hint { font-size: 11px; color: var(--text2, #888); margin-top: 4px; line-height: 1.5; }
 </style>
 </head>
 <body>
@@ -216,6 +237,25 @@ html, body {
           <span class="mode-icon">🔗</span>
           <div class="mode-title" data-i18n="setup.join.title">Someone set it up for me</div>
           <p class="mode-desc" data-i18n="setup.join.desc">My teammate already has Jowork running. I just want to connect.</p>
+        </div>
+      </div>
+
+      <!-- AI 配置（可选，自部署用户填自己的 OpenRouter Key） -->
+      <div class="ai-config-section">
+        <button class="ai-config-toggle" onclick="toggleAiConfig()" id="ai-config-toggle">
+          <span>&#9660;</span>
+          <span data-i18n="setup.ai.title">AI Configuration (optional)</span>
+        </button>
+        <div class="ai-config-body" id="ai-config-body">
+          <div class="field" style="margin-top:4px;">
+            <label data-i18n="setup.ai.key_label">OpenRouter API Key</label>
+            <input type="password" id="openrouter-key" autocomplete="off"
+              data-i18n-placeholder="setup.ai.key_placeholder" placeholder="sk-or-v1-...">
+            <div class="key-hint" data-i18n="setup.ai.key_hint">
+              Leave empty to use the hosted AI service. Fill in your own key for self-hosting.
+              Get one at openrouter.ai
+            </div>
+          </div>
         </div>
       </div>
 
@@ -285,7 +325,7 @@ function t(key) { return (window.__jowork_i18n && window.__jowork_i18n[key]) || 
 (function() {
   const locale = window.__jowork_locale || 'en';
   const btn = document.getElementById('lang-btn');
-  if (btn) btn.textContent = locale === 'zh' ? 'EN' : '中文';
+  if (btn) btn.textContent = locale === 'zh' ? '中文' : 'EN';
 })();
 function toggleSetupLocale() {
   const current = window.__jowork_locale || localStorage.getItem('jowork_locale') || 'en';
@@ -345,13 +385,28 @@ function goConfigureStep() {
   }
 }
 
+// ── AI 配置折叠 ──
+function toggleAiConfig() {
+  const body = document.getElementById('ai-config-body');
+  const btn = document.getElementById('ai-config-toggle');
+  const isOpen = body.classList.toggle('open');
+  btn.querySelector('span').textContent = isOpen ? '▲' : '▼';
+}
+
+function getOpenRouterKey() {
+  return (document.getElementById('openrouter-key').value || '').trim();
+}
+
 // ── Solo mode ──
 async function saveSolo() {
   try {
+    const body = { mode: 'solo', gateway_url: location.origin };
+    const key = getOpenRouterKey();
+    if (key) body.openrouter_api_key = key;
     await fetch(API + '/api/system/setup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mode: 'solo', gateway_url: location.origin }),
+      body: JSON.stringify(body),
     });
     location.href = '/onboarding.html';
   } catch (e) {
@@ -398,10 +453,13 @@ async function saveHost() {
     const firstIp = (d.ips ?? [])[0] ?? '127.0.0.1';
     const gatewayUrl = `http://${firstIp}:${port}`;
 
+    const hostBody = { mode: 'host', gateway_url: gatewayUrl };
+    const key = getOpenRouterKey();
+    if (key) hostBody.openrouter_api_key = key;
     await fetch(API + '/api/system/setup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mode: 'host', gateway_url: gatewayUrl }),
+      body: JSON.stringify(hostBody),
     });
     location.href = '/onboarding.html';
   } catch (e) {

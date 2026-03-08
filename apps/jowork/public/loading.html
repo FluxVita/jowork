@@ -2,10 +2,17 @@
 <html>
 <head>
 <meta charset="UTF-8">
+<script>
+(function(){
+  const t = localStorage.getItem('jowork_theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', t);
+})();
+</script>
+<link rel="stylesheet" href="/styles/tokens.css">
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
-  background: #0f0f12; color: #888;
+  background: var(--bg, #0f0f12); color: var(--text2, #888);
   display: flex; align-items: center; justify-content: center;
   height: 100vh; font-family: -apple-system, sans-serif; font-size: 13px;
 }
@@ -20,12 +27,12 @@ img { width: 56px; height: 56px; border-radius: 14px; margin-bottom: 16px; opaci
 .settings-fab {
   position: fixed; bottom: 16px; right: 16px;
   width: 28px; height: 28px; border-radius: 8px;
-  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
-  color: rgba(255,255,255,0.3); cursor: pointer;
+  background: var(--surface2, rgba(255,255,255,0.05)); border: 0.5px solid var(--border, rgba(255,255,255,0.12));
+  color: var(--text3, rgba(255,255,255,0.3)); cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   text-decoration: none; transition: color .15s, background .15s;
 }
-.settings-fab:hover { color: rgba(255,255,255,0.7); background: rgba(255,255,255,0.1); }
+.settings-fab:hover { color: var(--text2, rgba(255,255,255,0.7)); background: var(--surface-hover, rgba(255,255,255,0.1)); }
 </style>
 </head>
 <body>

@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>订阅与计划</title>
+<link rel="stylesheet" href="/styles/tokens.css">
+<script src="/theme.js"></script>
+<script src="/i18n.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg, #0f0f12);
+  color: var(--text, #e8e8e8);
+  font-family: var(--font, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif);
+  font-size: 14px;
+  padding: 32px 24px 60px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+h1 { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+.subtitle { color: var(--text2, #888); font-size: 13px; margin-bottom: 32px; }
+
+/* 当前计划卡片 */
+.current-plan-card {
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: 12px;
+  padding: 20px 24px;
+  margin-bottom: 32px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+.plan-badge {
+  background: var(--accent, #9dd84a);
+  color: #111;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.plan-badge.free { background: var(--border); color: var(--text2, #888); }
+.credits-section { flex: 1; min-width: 200px; }
+.credits-label { font-size: 12px; color: var(--text2, #888); margin-bottom: 6px; }
+.credits-bar-wrap { background: rgba(255,255,255,0.07); border-radius: 4px; height: 6px; overflow: hidden; margin-bottom: 4px; }
+.credits-bar { height: 100%; border-radius: 4px; background: var(--accent, #9dd84a); transition: width 0.4s; }
+.credits-bar.warn { background: #f59e0b; }
+.credits-bar.danger { background: #ef4444; }
+.credits-text { font-size: 12px; color: var(--text2, #888); }
+.plan-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn { padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; transition: opacity 0.15s; }
+.btn:hover { opacity: 0.85; }
+.btn-primary { background: var(--accent, #9dd84a); color: #111; }
+.btn-secondary { background: rgba(255,255,255,0.08); color: var(--text, #e8e8e8); border: 0.5px solid var(--border); }
+[data-theme="light"] .btn-secondary { background: rgba(0,0,0,0.06); color: var(--text); }
+
+/* 计费周期切换 */
+.billing-toggle { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; font-size: 13px; }
+.toggle-wrap { display: flex; background: rgba(255,255,255,0.07); border-radius: 8px; padding: 3px; }
+.toggle-btn { padding: 5px 14px; border-radius: 6px; cursor: pointer; border: none; background: transparent; color: var(--text2, #888); font-size: 13px; font-weight: 500; transition: all 0.15s; }
+.toggle-btn.active { background: var(--surface2); color: var(--text, #e8e8e8); box-shadow: 0 1px 4px rgba(0,0,0,0.2); }
+.save-badge { background: #22c55e; color: #fff; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 12px; }
+
+/* 价格卡片 */
+.plans-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 16px;
+  margin-bottom: 32px;
+}
+.plan-card {
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: relative;
+  transition: border-color 0.2s;
+}
+.plan-card.current { border-color: var(--accent, #9dd84a); }
+.plan-card.popular::before {
+  content: '最受欢迎';
+  position: absolute; top: -11px; left: 50%; transform: translateX(-50%);
+  background: var(--accent, #9dd84a); color: #111;
+  font-size: 10px; font-weight: 700; padding: 2px 10px; border-radius: 10px;
+}
+.plan-name { font-size: 15px; font-weight: 600; }
+.plan-price { font-size: 28px; font-weight: 700; line-height: 1; }
+.plan-price span { font-size: 13px; font-weight: 400; color: var(--text2, #888); }
+.plan-credits { font-size: 12px; color: var(--text2, #888); }
+.plan-divider { height: 0.5px; background: var(--border); }
+.plan-features { list-style: none; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+.plan-features li { font-size: 12px; color: var(--text2, #888); display: flex; align-items: center; gap: 6px; }
+.plan-features li::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: var(--accent, #9dd84a); flex-shrink: 0; }
+.plan-features li.locked { color: rgba(255,255,255,0.25); }
+.plan-features li.locked::before { background: rgba(255,255,255,0.15); }
+.btn-plan { width: 100%; margin-top: auto; }
+.btn-plan.current-plan { background: rgba(157,216,74,0.1); color: var(--accent, #9dd84a); border: 1px solid rgba(157,216,74,0.25); cursor: default; }
+
+/* 提示区 */
+.info-box { background: rgba(157,216,74,0.07); border: 1px solid rgba(157,216,74,0.2); border-radius: 10px; padding: 14px 16px; font-size: 13px; color: var(--text2, #888); line-height: 1.6; }
+
+/* 加载中 */
+.loading { color: var(--text2, #888); font-size: 13px; }
+
+/* stripe 禁用时提示 */
+.stripe-disabled { background: rgba(255,255,255,0.04); border: 1px dashed rgba(255,255,255,0.1); border-radius: 10px; padding: 16px; font-size: 13px; color: var(--text2, #888); text-align: center; }
+</style>
+</head>
+<body>
+<h1>订阅与计划</h1>
+<p class="subtitle">管理你的 JoWork 订阅</p>
+
+<div id="current-plan-section" class="loading">加载中...</div>
+
+<div class="billing-toggle" id="billing-toggle" style="display:none">
+  <div class="toggle-wrap">
+    <button class="toggle-btn active" id="btn-monthly" onclick="setBillingCycle('monthly')">月付</button>
+    <button class="toggle-btn" id="btn-annual" onclick="setBillingCycle('annual')">年付 <span class="save-badge">省 30%</span></button>
+  </div>
+</div>
+
+<div class="plans-grid" id="plans-grid"></div>
+
+<div id="extra-info"></div>
+
+<script>
+const API = '';
+let token = localStorage.getItem('jowork_token');
+
+// 接收 shell 注入的 token
+window.addEventListener('message', (e) => {
+  if (e.data?.type === 'SHELL_TOKEN' && e.data.token) {
+    token = e.data.token;
+    localStorage.setItem('jowork_token', token);
+    if (!initDone) init();
+  }
+});
+
+// 向 shell 请求 token（首次加载时）
+if (!token && window.parent !== window) {
+  window.parent.postMessage({ type: 'REQUEST_TOKEN' }, '*');
+}
+
+let billingCycle = 'monthly';
+let currentPlan = 'free';
+let stripeEnabled = false;
+let prices = [];
+let balance = { total: 0, used: 0, remaining: 0 };
+let initDone = false;
+
+const PLAN_META = {
+  free:            { name: 'Free',    order: 0, credits: 100,  popular: false },
+  personal_basic:  { name: 'Basic',   order: 1, credits: 500,  popular: false },
+  personal_pro:    { name: 'Pro',     order: 2, credits: 2000, popular: true  },
+  personal_max:    { name: 'Max',     order: 3, credits: 8000, popular: false },
+};
+
+const PLAN_FEATURES = {
+  free:            ['100 积分 / 月', '基础 AI 对话', '3 个数据源'],
+  personal_basic:  ['500 积分 / 月', '高级搜索', 'MCP 工具', '5 个数据源'],
+  personal_pro:    ['2,000 积分 / 月', 'Shell 执行', 'GitLab MR', 'Workspace 管理', '无限数据源'],
+  personal_max:    ['8,000 积分 / 月', '全部功能', '优先支持', '无限数据源'],
+};
+
+const PLAN_LOCKED = {
+  free:            ['高级搜索', 'MCP 工具', 'Shell 执行'],
+  personal_basic:  ['Shell 执行', 'GitLab MR', 'Workspace 管理'],
+  personal_pro:    [],
+  personal_max:    [],
+};
+
+async function apiFetch(path, opts = {}) {
+  const res = await fetch(API + path, {
+    ...opts,
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token, ...(opts.headers || {}) }
+  });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  return res.json();
+}
+
+function setBillingCycle(cycle) {
+  billingCycle = cycle;
+  document.getElementById('btn-monthly').classList.toggle('active', cycle === 'monthly');
+  document.getElementById('btn-annual').classList.toggle('active', cycle === 'annual');
+  renderPlans();
+}
+
+function getPrice(planId) {
+  const suffix = billingCycle === 'annual' ? '_y' : '_m';
+  const key = planId.replace('personal_', 'price_') + suffix;
+  const match = prices.find(p => p.id === key);
+  return match || null;
+}
+
+function formatPrice(cents, cycle) {
+  if (cents === 0) return '免费';
+  const dollars = (cents / 100).toFixed(0);
+  return '$' + dollars + (cycle === 'annual' ? ' / 年' : ' / 月');
+}
+
+function renderCurrentPlan() {
+  const section = document.getElementById('current-plan-section');
+  const meta = PLAN_META[currentPlan] || { name: currentPlan, credits: 0 };
+  const pct = balance.total > 0 ? Math.min((balance.used / balance.total) * 100, 100) : 0;
+  const barClass = pct > 90 ? 'danger' : pct > 70 ? 'warn' : '';
+  const isFree = currentPlan === 'free';
+
+  section.innerHTML = `
+    <div class="current-plan-card">
+      <div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:6px">当前计划</div>
+        <span class="plan-badge ${isFree ? 'free' : ''}">${meta.name}</span>
+      </div>
+      ${balance.total > 0 ? `
+      <div class="credits-section">
+        <div class="credits-label">本月积分用量</div>
+        <div class="credits-bar-wrap">
+          <div class="credits-bar ${barClass}" style="width:${pct}%"></div>
+        </div>
+        <div class="credits-text">${balance.used.toLocaleString()} / ${balance.total.toLocaleString()} 积分已使用（剩余 ${balance.remaining.toLocaleString()}）</div>
+      </div>
+      ` : '<div class="credits-section"><div class="credits-text" style="color:var(--text2)">积分不限</div></div>'}
+      <div class="plan-actions">
+        ${!isFree && stripeEnabled ? `<button class="btn btn-secondary" onclick="openPortal()">管理订阅</button>` : ''}
+        ${isFree ? `<button class="btn btn-primary" onclick="document.getElementById('billing-toggle').scrollIntoView({behavior:'smooth'})">查看升级方案</button>` : ''}
+      </div>
+    </div>
+  `;
+}
+
+function renderPlans() {
+  const grid = document.getElementById('plans-grid');
+  const plans = Object.entries(PLAN_META).sort((a, b) => a[1].order - b[1].order);
+
+  grid.innerHTML = plans.map(([planId, meta]) => {
+    const isCurrent = planId === currentPlan;
+    const priceObj = planId === 'free' ? null : getPrice(planId);
+    const priceText = planId === 'free' ? '免费' : (priceObj ? formatPrice(priceObj.amount_cents, billingCycle) : '—');
+    const features = PLAN_FEATURES[planId] || [];
+    const locked = PLAN_LOCKED[planId] || [];
+
+    const btnText = isCurrent ? '当前计划' : '升级';
+    const btnClass = isCurrent ? 'btn btn-plan current-plan' : 'btn btn-plan btn-primary';
+    const canUpgrade = !isCurrent && stripeEnabled && priceObj?.stripe_price_id;
+
+    return `
+      <div class="plan-card ${isCurrent ? 'current' : ''} ${meta.popular ? 'popular' : ''}">
+        <div>
+          <div class="plan-name">${meta.name}</div>
+        </div>
+        <div class="plan-price">${priceText.replace(' / 月','').replace(' / 年','')}<span>${planId === 'free' ? '' : (billingCycle === 'annual' ? ' / 年' : ' / 月')}</span></div>
+        <div class="plan-credits">${meta.credits ? meta.credits.toLocaleString() + ' 积分 / 月' : '不限积分'}</div>
+        <div class="plan-divider"></div>
+        <ul class="plan-features">
+          ${features.map(f => `<li>${f}</li>`).join('')}
+          ${locked.map(f => `<li class="locked">${f}</li>`).join('')}
+        </ul>
+        <button class="${btnClass}" ${isCurrent ? 'disabled' : ''} onclick="${canUpgrade ? `checkout('${priceObj?.id}')` : 'showStripeDisabled()'}">
+          ${btnText}
+        </button>
+      </div>
+    `;
+  }).join('');
+}
+
+async function checkout(priceId) {
+  try {
+    const { url } = await apiFetch('/api/billing/checkout', {
+      method: 'POST',
+      body: JSON.stringify({ price_id: priceId })
+    });
+    window.open(url, '_blank');
+  } catch (e) {
+    alert('创建支付链接失败：' + e.message);
+  }
+}
+
+async function openPortal() {
+  try {
+    const { url } = await apiFetch('/api/billing/portal', { method: 'POST' });
+    window.open(url, '_blank');
+  } catch (e) {
+    alert('打开订阅管理失败：' + e.message);
+  }
+}
+
+function showStripeDisabled() {
+  document.getElementById('extra-info').innerHTML = `
+    <div class="stripe-disabled">
+      付款功能尚未配置（Stripe 未接入）。如需升级，请联系管理员。
+    </div>
+  `;
+}
+
+async function init() {
+  initDone = true;
+  if (!token) {
+    document.getElementById('current-plan-section').textContent = '请先登录';
+    return;
+  }
+  try {
+    const [planData, creditsData, pricesData] = await Promise.all([
+      apiFetch('/api/billing/plan'),
+      apiFetch('/api/billing/credits'),
+      apiFetch('/api/billing/prices'),
+    ]);
+
+    currentPlan = planData.plan || 'free';
+    stripeEnabled = pricesData.stripe_enabled || false;
+    prices = pricesData.prices || [];
+    balance = creditsData;
+
+    renderCurrentPlan();
+    renderPlans();
+
+    document.getElementById('billing-toggle').style.display = stripeEnabled ? 'flex' : 'none';
+
+    if (!stripeEnabled) {
+      document.getElementById('extra-info').innerHTML = `
+        <div class="info-box">
+          当前为本地部署版本，付款功能尚未启用。积分与功能限制仍然生效，付款接入后可自动解锁对应计划。
+        </div>
+      `;
+    }
+  } catch (e) {
+    document.getElementById('current-plan-section').textContent = '加载失败：' + e.message;
+  }
+}
+
+if (token) init();
+</script>
+</body>
+</html>

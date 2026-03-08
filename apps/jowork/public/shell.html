@@ -128,14 +128,20 @@ html, body {
    ═══════════════════════════════════════ */
 .sidebar {
   width: 220px; flex-shrink: 0;
-  background: var(--sh-sidebar);
-  border-right: 1px solid var(--sh-sep);
+  background: var(--glass-sidebar-dark, rgba(28,28,30,0.72));
+  backdrop-filter: var(--glass-blur, blur(20px) saturate(180%));
+  -webkit-backdrop-filter: var(--glass-blur, blur(20px) saturate(180%));
+  border-right: 0.5px solid rgba(255,255,255,0.06);
   display: flex; flex-direction: column;
   position: relative;
-  transition: width .22s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: width .22s var(--ease-spring, cubic-bezier(0.16, 1, 0.3, 1));
   z-index: 10;
   -webkit-user-select: none;
   user-select: none;
+}
+[data-theme="light"] .sidebar {
+  background: var(--glass-sidebar-light, rgba(242,242,239,0.82));
+  border-right: 0.5px solid rgba(0,0,0,0.06);
 }
 .sidebar.collapsed { width: 54px; }
 
@@ -147,14 +153,22 @@ html, body {
 .sidebar-resize-handle.dragging { background: rgba(157,216,74,0.25); }
 .sidebar.collapsed .sidebar-resize-handle { display: none; }
 
+/* ── 专用拖拽覆盖层：覆盖侧边栏顶部 44px，让 macOS traffic light 旁边可以拖拽 ── */
+.drag-zone {
+  position: absolute; top: 0; left: 0; right: 0; height: 44px;
+  -webkit-app-region: drag;
+  z-index: 2;
+  display: none; /* 非 Tauri 时隐藏 */
+  pointer-events: auto;
+}
+html[data-platform="tauri"]:not(.fullscreen) .drag-zone { display: block; }
+
 /* Brand */
 .sidebar-brand {
   display: flex; align-items: center; gap: 10px;
   padding: 14px 14px 12px; flex-shrink: 0;
-  -webkit-app-region: drag;
 }
 html[data-platform="tauri"]:not(.fullscreen) .sidebar-brand { padding-top: 44px; }
-html[data-platform="tauri"]:not(.fullscreen) .sidebar-brand * { -webkit-app-region: no-drag; }
 html[data-platform="tauri"].fullscreen .sidebar-brand { padding-top: 14px; }
 html[data-platform="tauri"]:not(.fullscreen) .sidebar-brand {
   -webkit-backdrop-filter: blur(40px) saturate(1.5);
@@ -191,17 +205,17 @@ html[data-platform="tauri"][data-theme="light"]:not(.fullscreen) .sidebar-brand 
 .sidebar.collapsed .brand-text { display: none; }
 .sidebar.collapsed .collapse-btn { display: none; }
 
-.sidebar-divider { height: 1px; background: var(--sh-sep); margin: 0 10px; flex-shrink: 0; }
+.sidebar-divider { height: 0.5px; background: var(--sh-sep); margin: 0 10px; flex-shrink: 0; }
 .sidebar.collapsed .sidebar-divider { margin: 0 8px; }
 
 /* Nav */
 .sidebar-nav { flex: 1; overflow-y: auto; padding: 8px 8px; scrollbar-width: none; }
-.sidebar-nav::-webkit-scrollbar { display: none; }
+/* ::-webkit-scrollbar 移除 → WKWebView 恢复原生覆盖式滚动条；scrollbar-width:none 已隐藏侧边栏滚动条 */
 
 .nav-group { margin-bottom: 4px; }
 .nav-group-label {
   font-size: 10px; font-weight: 600; color: var(--text2); opacity: 0.5;
-  letter-spacing: 0.04em; text-transform: uppercase;
+  letter-spacing: 0.06em; text-transform: uppercase;
   padding: 8px 8px 4px; display: block;
 }
 .sidebar.collapsed .nav-group-label { display: none; }
@@ -244,7 +258,7 @@ html[data-platform="tauri"][data-theme="light"]:not(.fullscreen) .sidebar-brand 
 .sidebar-footer { flex-shrink: 0; padding: 6px 8px 10px; }
 .sidebar-actions {
   display: flex; gap: 3px; margin-bottom: 6px;
-  border-top: 1px solid var(--sh-sep); padding-top: 8px;
+  border-top: var(--separator, 0.5px solid rgba(255,255,255,0.07)); padding-top: 8px;
 }
 .action-btn {
   display: flex; align-items: center; justify-content: center; gap: 5px;
@@ -303,13 +317,15 @@ html[data-platform="tauri"][data-theme="light"]:not(.fullscreen) .sidebar-brand 
 /* Tooltip */
 .nav-tooltip {
   position: fixed; z-index: 9999;
-  background: rgba(52, 52, 56, 0.97);
-  border: none;
+  background: rgba(30, 30, 32, 0.85);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  border: 0.5px solid rgba(255,255,255,0.08);
   color: var(--text); font-size: 12px; font-weight: 500;
-  padding: 4px 9px; border-radius: 5px;
+  padding: 4px 9px; border-radius: 6px;
   pointer-events: none; opacity: 0; transition: opacity .12s;
   white-space: nowrap;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.55), 0 0 0 0.5px rgba(255,255,255,0.07);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.28);
   transform: translateY(-50%);
 }
 .nav-tooltip.visible { opacity: 1; }
@@ -333,14 +349,17 @@ html[data-platform="tauri"][data-theme="light"]:not(.fullscreen) .sidebar-brand 
 #file-tree-panel {
   width: 0; flex-shrink: 0; overflow: hidden;
   border-right: 0px solid var(--sh-sep);
-  transition: width .22s cubic-bezier(0.16, 1, 0.3, 1);
-  background: var(--sh-sidebar); position: relative;
+  transition: width .22s var(--ease-spring, cubic-bezier(0.16, 1, 0.3, 1));
+  background: var(--glass-sidebar-dark, rgba(28,28,30,0.72));
+  backdrop-filter: var(--glass-blur, blur(20px) saturate(180%));
+  -webkit-backdrop-filter: var(--glass-blur, blur(20px) saturate(180%));
+  position: relative;
 }
-#file-tree-panel.open { width: 260px; border-right-width: 1px; }
+#file-tree-panel.open { width: 260px; border-right-width: 0.5px; }
 #file-tree-panel > iframe { width: 260px; height: 100%; border: none; display: block; }
 
-/* Content area */
-.content-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+/* Content area — must stay opaque so sidebar glass shows through to desktop */
+.content-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; background: var(--sh-bg); }
 
 /* Tab bar (file tabs only) */
 .panel-tabbar {
@@ -604,6 +623,8 @@ html[data-platform="tauri"][data-theme="light"]:not(.fullscreen) .sidebar-brand 
 
   <!-- Sidebar -->
   <div class="sidebar">
+    <!-- Tauri 专用拖拽区：覆盖顶部 44px，traffic light 旁边可拖拽移动窗口 -->
+    <div class="drag-zone"></div>
     <div class="sidebar-resize-handle" id="sidebar-resize"></div>
 
     <!-- Brand -->
@@ -652,6 +673,15 @@ html[data-platform="tauri"][data-theme="light"]:not(.fullscreen) .sidebar-brand 
 
       <div class="nav-group">
         <span class="nav-group-label">Settings</span>
+        <button class="nav-item" :class="{ active: shellState.activePanel === 'billing' }" data-panel="billing" @click="onNavClick('billing')" title="Billing">
+          <span class="nav-item-icon">
+            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="1.5" y="3.5" width="13" height="9" rx="1.5"/>
+              <path d="M1.5 6.5h13"/>
+              <path d="M4.5 10h2M10 10h1.5"/>
+            </svg>
+          </span>{{ tl('nav.billing') || '订阅计划' }}
+        </button>
         <button class="nav-item" :class="{ active: shellState.activePanel === 'aiservices' }" data-panel="aiservices" @click="onNavClick('aiservices')" data-service="svc_page_ai_services" title="AI Services">
           <span class="nav-item-icon">
             <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -758,6 +788,7 @@ html[data-platform="tauri"][data-theme="light"]:not(.fullscreen) .sidebar-brand 
       <iframe class="panel-frame" id="frame-aiservices" data-src="/ai-services.html" src="about:blank" data-service="svc_page_ai_services"></iframe>
       <iframe class="panel-frame" id="frame-admin" data-src="/admin.html" src="about:blank" data-service="svc_page_admin"></iframe>
       <iframe class="panel-frame" id="frame-logs" data-src="/logs.html" src="about:blank"></iframe>
+      <iframe class="panel-frame" id="frame-billing" data-src="/billing.html" src="about:blank"></iframe>
       <iframe
         v-for="t in shellState.fileTabs"
         :key="t.id"
@@ -1132,7 +1163,27 @@ async function enterApp() {
       .catch(() => {});
   }
 
-  switchPanel('chat');
+  // 从 Stripe 付款页返回时的处理
+  const urlParams = new URLSearchParams(location.search);
+  const billingResult = urlParams.get('billing');
+  if (billingResult === 'success') {
+    switchPanel('billing');
+    history.replaceState(null, '', location.pathname); // 清除 query string
+    setTimeout(() => {
+      const bar = document.getElementById('update-bar');
+      if (bar) {
+        bar.querySelector('.update-version') && (bar.querySelector('.update-version').textContent = '');
+        bar.innerHTML = '<span style="color:#9dd84a">✓ 订阅成功！积分已更新，可以开始使用了。</span><button class="update-dismiss" onclick="this.parentElement.classList.add(\'hidden\')">关闭</button>';
+        bar.classList.remove('hidden');
+        setTimeout(() => bar.classList.add('hidden'), 6000);
+      }
+    }, 500);
+  } else if (billingResult === 'cancel') {
+    switchPanel('chat');
+    history.replaceState(null, '', location.pathname);
+  } else {
+    switchPanel('chat');
+  }
   updateThemeBtn();
   startGatewayMonitor();
   if (shellState.fileTreeOpen) toggleFileTree(true);
@@ -1307,5 +1358,62 @@ if (window.Vue) {
 }
 </script>
 <script src="/feedback-widget.js"></script>
+<script>
+// ── macOS 窗口失焦变暗 ──
+(function() {
+  window.addEventListener('focus', () => document.documentElement.classList.remove('window-inactive'));
+  window.addEventListener('blur',  () => document.documentElement.classList.add('window-inactive'));
+})();
+
+// ── NSVisualEffectView vibrancy 检测 ──
+(function() {
+  if (!window.__TAURI__) return;
+  window.__TAURI__.core.invoke('is_vibrancy_active').then(active => {
+    if (active) document.documentElement.setAttribute('data-vibrancy', '');
+  }).catch(() => {});
+})();
+
+// ── 菜单栏事件处理 ──
+(function() {
+  if (!window.__TAURI__) return;
+  window.__TAURI__.event.listen('menu-action', ({ payload }) => {
+    if (payload === 'toggle_sidebar') {
+      if (typeof toggleSidebar === 'function') toggleSidebar();
+    }
+  });
+})();
+
+// ── 右键菜单：shell 层（侧边栏 + 空白区域）──
+(function() {
+  if (!window.__TAURI__) return;
+  const invoke = window.__TAURI__.core.invoke;
+  const listen = window.__TAURI__.event.listen;
+
+  document.addEventListener('contextmenu', e => {
+    e.preventDefault();
+    // iframe 内部的 contextmenu 不会冒泡到这里，各页面自己处理
+
+    // 可编辑区（如搜索框）→ 原生 Cut/Copy/Paste
+    if (e.target.closest('input, textarea, [contenteditable]')) {
+      invoke('show_context_menu', { contextType: 'editable', data: null });
+      return;
+    }
+
+    // 有文字选中 → 原生 Copy
+    const sel = window.getSelection()?.toString().trim();
+    if (sel) {
+      invoke('show_context_menu', { contextType: 'selection', data: { text: sel } });
+      return;
+    }
+    // 其他区域：仅拦截不展示菜单（消除浏览器默认菜单即可）
+  });
+
+  listen('context-menu-action', ({ payload }) => {
+    if (payload.action === 'copy_sel' && payload.data?.text) {
+      navigator.clipboard.writeText(payload.data.text);
+    }
+  });
+})();
+</script>
 </body>
 </html>

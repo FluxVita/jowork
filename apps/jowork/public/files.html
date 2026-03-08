@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>文件管理器</title>
+<link rel="stylesheet" href="/styles/tokens.css">
+<script src="/theme.js"></script>
+<script src="/i18n.js"></script>
+<script src="/lib/marked.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%; overflow: hidden;
+  font-family: var(--font, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif);
+  font-size: 13px;
+  background: var(--bg, #141416);
+  color: var(--text, #fff);
+  user-select: none;
+}
+
+/* ═══ 根布局 ═══ */
+#root {
+  display: flex;
+  height: 100vh;
+}
+
+/* ═══ 左侧文件树 ═══ */
+#tree-panel {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface, #1c1c1e);
+  border-right: 0.5px solid rgba(255,255,255,0.07);
+  overflow: hidden;
+}
+
+/* 工具栏 */
+#tree-toolbar {
+  flex-shrink: 0;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px;
+  border-bottom: 0.5px solid rgba(255,255,255,0.06);
+}
+
+.toolbar-btn {
+  width: 26px; height: 26px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: rgba(255,255,255,0.45);
+  font-size: 14px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .1s, color .1s;
+  flex-shrink: 0;
+}
+.toolbar-btn:hover { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.85); }
+
+#tree-path {
+  flex: 1;
+  font-size: 11px;
+  color: rgba(255,255,255,0.3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 树滚动区 */
+#tree-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 4px 0;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.1) transparent;
+}
+/* scrollbar-width: thin 已设置，移除 webkit 规则恢复原生覆盖式滚动条 */
+
+/* 树节点 */
+.tree-node { outline: none; }
+
+.tree-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 26px;
+  padding-right: 8px;
+  cursor: pointer;
+  border-radius: 0;
+  transition: background .08s;
+  position: relative;
+}
+.tree-row:hover { background: rgba(255,255,255,0.05); }
+.tree-node.selected > .tree-row { background: rgba(157,216,74,0.12); }
+.tree-node:focus > .tree-row { outline: 1px solid rgba(157,216,74,0.4); outline-offset: -1px; }
+
+.tree-toggle {
+  width: 14px;
+  flex-shrink: 0;
+  font-size: 9px;
+  color: rgba(255,255,255,0.3);
+  text-align: center;
+  transition: transform .15s;
+  line-height: 1;
+}
+.tree-toggle.open { transform: rotate(90deg); }
+
+.tree-icon {
+  font-size: 13px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.tree-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12.5px;
+  color: rgba(255,255,255,0.75);
+  line-height: 1;
+}
+.tree-node.is-dir > .tree-row .tree-name { color: rgba(255,255,255,0.88); }
+
+.tree-children { }
+
+/* 加载中节点 */
+.tree-loading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  color: rgba(255,255,255,0.25);
+  font-size: 11.5px;
+}
+
+/* 错误节点 */
+.tree-error {
+  padding: 4px 8px;
+  color: rgba(255,100,100,0.7);
+  font-size: 11.5px;
+}
+
+/* ═══ 右侧内容区（侧边栏模式下隐藏）═══ */
+#content-panel {
+  display: none;
+}
+
+/* Tab bar */
+#tab-bar {
+  flex-shrink: 0;
+  height: 36px;
+  display: flex;
+  align-items: flex-end;
+  padding: 0 8px;
+  gap: 2px;
+  background: #1a1a1c;
+  border-bottom: 0.5px solid rgba(255,255,255,0.07);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+/* scrollbar-width: none 已设置，移除 webkit 规则 */
+#tab-bar.hidden { display: none; }
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 10px 0 8px;
+  height: 28px;
+  border-radius: 6px 6px 0 0;
+  background: rgba(255,255,255,0.04);
+  border: 0.5px solid rgba(255,255,255,0.07);
+  border-bottom: none;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background .1s;
+  max-width: 180px;
+}
+.tab:hover { background: rgba(255,255,255,0.08); }
+.tab.active {
+  background: #141416;
+  border-color: rgba(255,255,255,0.1);
+  border-bottom-color: #141416;
+}
+
+.tab-icon { font-size: 12px; line-height: 1; flex-shrink: 0; }
+.tab-name {
+  font-size: 12px;
+  color: rgba(255,255,255,0.6);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+}
+.tab.active .tab-name { color: rgba(255,255,255,0.92); }
+
+.tab-close {
+  width: 16px; height: 16px;
+  border-radius: 3px;
+  border: none;
+  background: transparent;
+  color: rgba(255,255,255,0.3);
+  font-size: 14px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  line-height: 1;
+  transition: background .1s, color .1s;
+  padding: 0;
+}
+.tab-close:hover { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.8); }
+
+/* Tab 内容区 */
+#tab-content {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+#tab-content.hidden { display: none; }
+
+.tab-panel {
+  position: absolute;
+  inset: 0;
+  display: none;
+  overflow: auto;
+}
+.tab-panel.active { display: block; }
+
+/* MD 渲染 */
+.md-body {
+  padding: 24px 32px;
+  max-width: 800px;
+  margin: 0 auto;
+  color: rgba(255,255,255,0.85);
+  line-height: 1.7;
+  user-select: text;
+}
+.md-body h1, .md-body h2, .md-body h3,
+.md-body h4, .md-body h5, .md-body h6 {
+  color: #fff;
+  margin: 1.5em 0 0.6em;
+  line-height: 1.3;
+  font-weight: 600;
+}
+.md-body h1 { font-size: 1.8em; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.4em; }
+.md-body h2 { font-size: 1.4em; border-bottom: 1px solid rgba(255,255,255,0.07); padding-bottom: 0.3em; }
+.md-body h3 { font-size: 1.15em; }
+.md-body p { margin: 0.8em 0; }
+.md-body a { color: #9DD84A; text-decoration: none; }
+.md-body a:hover { text-decoration: underline; }
+.md-body code {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-family: 'JetBrains Mono', 'Menlo', monospace;
+  font-size: 0.88em;
+  color: #9DD84A;
+}
+.md-body pre {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  padding: 16px;
+  overflow-x: auto;
+  margin: 1em 0;
+}
+.md-body pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  color: rgba(255,255,255,0.85);
+  font-size: 0.9em;
+}
+.md-body blockquote {
+  border-left: 3px solid rgba(157,216,74,0.5);
+  padding: 4px 0 4px 16px;
+  margin: 1em 0;
+  color: rgba(255,255,255,0.5);
+}
+.md-body ul, .md-body ol { padding-left: 1.5em; margin: 0.6em 0; }
+.md-body li { margin: 0.25em 0; }
+.md-body table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+.md-body th, .md-body td {
+  border: 1px solid rgba(255,255,255,0.1);
+  padding: 8px 12px;
+  text-align: left;
+}
+.md-body th { background: rgba(255,255,255,0.06); font-weight: 600; }
+.md-body img { max-width: 100%; border-radius: 6px; }
+.md-body hr { border: none; border-top: 1px solid rgba(255,255,255,0.1); margin: 2em 0; }
+
+/* HTML iframe */
+.html-frame {
+  width: 100%; height: 100%;
+  border: none;
+  background: #fff;
+}
+
+/* 加载状态 */
+.panel-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: rgba(255,255,255,0.25);
+  font-size: 13px;
+  gap: 8px;
+}
+
+/* 空状态 */
+#empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: rgba(255,255,255,0.2);
+  background: #1c1c1e;
+}
+#empty-state.hidden { display: none; }
+.empty-icon { font-size: 40px; opacity: 0.6; }
+.empty-text { font-size: 13px; }
+.empty-sub { font-size: 11.5px; color: rgba(255,255,255,0.15); }
+
+/* 初始化错误 */
+#init-error {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: rgba(255,100,100,0.7);
+  font-size: 13px;
+  display: none;
+}
+
+/* ═══ 日间模式覆盖 ═══ */
+[data-theme="light"] body { background: #e8e8e4; color: #1a1a1e; }
+[data-theme="light"] #tree-panel { background: #e8e8e4; border-right-color: rgba(0,0,0,0.08); }
+[data-theme="light"] #tree-toolbar { border-bottom-color: rgba(0,0,0,0.07); }
+[data-theme="light"] .toolbar-btn { color: rgba(0,0,0,0.35); }
+[data-theme="light"] .toolbar-btn:hover { background: rgba(0,0,0,0.06); color: rgba(0,0,0,0.7); }
+[data-theme="light"] #tree-path { color: rgba(0,0,0,0.3); }
+[data-theme="light"] #tree-scroll { scrollbar-color: rgba(0,0,0,0.1) transparent; }
+[data-theme="light"] #tree-scroll::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); }
+[data-theme="light"] .tree-row:hover { background: rgba(0,0,0,0.05); }
+[data-theme="light"] .tree-node.selected > .tree-row { background: rgba(90,138,26,0.1); }
+[data-theme="light"] .tree-node:focus > .tree-row { outline-color: rgba(90,138,26,0.4); }
+[data-theme="light"] .tree-toggle { color: rgba(0,0,0,0.3); }
+[data-theme="light"] .tree-name { color: rgba(0,0,0,0.7); }
+[data-theme="light"] .tree-node.is-dir > .tree-row .tree-name { color: rgba(0,0,0,0.85); }
+[data-theme="light"] .tree-loading { color: rgba(0,0,0,0.25); }
+[data-theme="light"] #empty-state { background: #e8e8e4; color: rgba(0,0,0,0.2); }
+[data-theme="light"] .empty-sub { color: rgba(0,0,0,0.15); }
+</style>
+</head>
+<body>
+
+<div id="root">
+  <!-- 左侧文件树 -->
+  <div id="tree-panel">
+    <div id="tree-toolbar">
+      <button class="toolbar-btn" id="home-btn" title="回到主目录">⌂</button>
+      <span id="tree-path">加载中...</span>
+    </div>
+    <div id="tree-scroll">
+      <div id="tree-root"></div>
+    </div>
+  </div>
+
+  <!-- 右侧内容区 -->
+  <div id="content-panel">
+    <div id="tab-bar" class="hidden"></div>
+    <div id="tab-content" class="hidden"></div>
+    <div id="empty-state">
+      <div class="empty-icon">📂</div>
+      <div class="empty-text" data-i18n="files.empty_text">点击 .html 或 .md 文件在此预览</div>
+      <div class="empty-sub" data-i18n="files.empty_sub">选中文件后按空格触发 Quick Look</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══ 状态 ═══
+let token = null;
+let homePath = null;
+let selectedNode = null;
+
+// ═══ 树状态持久化 ═══
+const TREE_STATE_KEY = 'fv_files_tree_state';
+
+function loadTreeState() {
+  try { return JSON.parse(localStorage.getItem(TREE_STATE_KEY) || '{}'); }
+  catch { return {}; }
+}
+function saveTreeState(update) {
+  const s = loadTreeState();
+  localStorage.setItem(TREE_STATE_KEY, JSON.stringify({ ...s, ...update }));
+}
+
+// 展开目录集合（从持久化状态初始化）
+const expandedDirs = new Set(loadTreeState().expandedDirs || []);
+
+// ═══ Token 获取（从 shell iframe 消息接收） ═══
+window.addEventListener('message', (e) => {
+  if (e.data?.type === 'SHELL_TOKEN' && e.data.token) {
+    token = e.data.token;
+    if (!homePath) initTree();
+  }
+});
+window.parent.postMessage({ type: 'REQUEST_TOKEN' }, '*');
+
+// 降级：直接从 localStorage 读
+setTimeout(() => {
+  if (!token) {
+    const stored = localStorage.getItem('jowork_token');
+    if (stored) { token = stored; initTree(); }
+  }
+}, 600);
+
+// ═══ API 工具 ═══
+async function apiFetch(path, opts = {}) {
+  const resp = await fetch(path, {
+    ...opts,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      ...(opts.headers || {}),
+    },
+  });
+  if (!resp.ok) {
+    const text = await resp.text();
+    throw new Error(text || `HTTP ${resp.status}`);
+  }
+  return resp.json();
+}
+
+// ═══ 文件图标 ═══
+function fileIcon(entry) {
+  if (entry.is_dir) return '📁';
+  const icons = {
+    html: '🌐', htm: '🌐',
+    md: '📝', markdown: '📝',
+    ts: '⚡', tsx: '⚡', js: '⚡', jsx: '⚡',
+    css: '🎨', scss: '🎨', less: '🎨',
+    json: '📋', yaml: '📋', yml: '📋', toml: '📋',
+    png: '🖼', jpg: '🖼', jpeg: '🖼', gif: '🖼', svg: '🖼', webp: '🖼',
+    pdf: '📕',
+    zip: '📦', gz: '📦', tar: '📦',
+    sh: '⚙️', bash: '⚙️',
+    rs: '🦀', go: '🐹', py: '🐍', rb: '💎',
+    txt: '📄', log: '📄', csv: '📄',
+  };
+  return icons[entry.ext] || '📄';
+}
+
+// ═══ 树初始化 ═══
+async function initTree() {
+  try {
+    const { path } = await apiFetch('/api/files/home');
+    homePath = path;
+    await loadDirInto(document.getElementById('tree-root'), path, 0);
+    setTreePath(path);
+    // 恢复展开状态（按层级递归展开）
+    await restoreExpandedDirs(document.getElementById('tree-root'));
+    // 恢复滚动位置
+    const state = loadTreeState();
+    if (state.scrollTop) {
+      document.getElementById('tree-scroll').scrollTop = state.scrollTop;
+    }
+    // 恢复选中高亮
+    if (state.selectedPath) {
+      const node = document.querySelector(`.tree-node[data-path="${CSS.escape(state.selectedPath)}"]`);
+      if (node) selectNode(node);
+    }
+  } catch (e) {
+    document.getElementById('tree-root').innerHTML =
+      `<div class="tree-error">加载失败: ${e.message}</div>`;
+  }
+}
+
+// 递归按 expandedDirs 集合恢复展开状态
+async function restoreExpandedDirs(container) {
+  const nodes = container.querySelectorAll(':scope > .tree-node.is-dir');
+  for (const node of nodes) {
+    const path = node.dataset.path;
+    if (!expandedDirs.has(path)) continue;
+    const toggle = node.querySelector(':scope > .tree-row .tree-toggle');
+    const children = node.querySelector(':scope > .tree-children');
+    if (!toggle || !children || !children.hidden) continue;
+    children.hidden = false;
+    toggle.classList.add('open');
+    node.querySelector(':scope > .tree-row .tree-icon').textContent = '📂';
+    if (!children._loaded) {
+      children._loaded = true;
+      await loadDirInto(children, path, parseInt(node.dataset.depth || '0') + 1);
+    }
+    await restoreExpandedDirs(children);
+  }
+}
+
+document.getElementById('home-btn').addEventListener('click', () => {
+  if (!homePath) return;
+  // 清除展开/选中/滚动状态
+  expandedDirs.clear();
+  saveTreeState({ expandedDirs: [], scrollTop: 0, selectedPath: null });
+  const root = document.getElementById('tree-root');
+  root.innerHTML = '';
+  loadDirInto(root, homePath, 0);
+  setTreePath(homePath);
+});
+
+// 滚动位置（debounce 300ms）
+let _scrollTimer = null;
+document.getElementById('tree-scroll').addEventListener('scroll', () => {
+  clearTimeout(_scrollTimer);
+  _scrollTimer = setTimeout(() => {
+    saveTreeState({ scrollTop: document.getElementById('tree-scroll').scrollTop });
+  }, 300);
+});
+
+function setTreePath(path) {
+  const parts = path.split('/').filter(Boolean);
+  const display = parts.length > 2 ? `…/${parts.slice(-2).join('/')}` : path;
+  document.getElementById('tree-path').textContent = display;
+  document.getElementById('tree-path').title = path;
+}
+
+// ═══ 加载目录 ═══
+async function loadDirInto(container, dirPath, depth) {
+  container.innerHTML = '<div class="tree-loading">加载中...</div>';
+  try {
+    const { entries } = await apiFetch(`/api/files/dir?path=${encodeURIComponent(dirPath)}`);
+    container.innerHTML = '';
+    if (entries.length === 0) {
+      container.innerHTML = '<div class="tree-loading" style="color:rgba(255,255,255,0.15)">空目录</div>';
+      return;
+    }
+    entries.forEach(entry => {
+      container.appendChild(createTreeNode(entry, depth));
+    });
+  } catch (e) {
+    container.innerHTML = `<div class="tree-error">读取失败: ${e.message}</div>`;
+  }
+}
+
+// ═══ 创建树节点 ═══
+function createTreeNode(entry, depth) {
+  const node = document.createElement('div');
+  node.className = 'tree-node' + (entry.is_dir ? ' is-dir' : '');
+  node.dataset.path = entry.path;
+  node.dataset.ext = entry.ext;
+  node.dataset.depth = depth;
+  node.tabIndex = 0;
+
+  const row = document.createElement('div');
+  row.className = 'tree-row';
+  row.style.paddingLeft = (depth * 16 + 6) + 'px';
+
+  const toggle = document.createElement('span');
+  toggle.className = 'tree-toggle';
+  toggle.textContent = entry.is_dir ? '▶' : '';
+  toggle.style.visibility = entry.is_dir ? 'visible' : 'hidden';
+
+  const icon = document.createElement('span');
+  icon.className = 'tree-icon';
+  icon.textContent = fileIcon(entry);
+
+  const name = document.createElement('span');
+  name.className = 'tree-name';
+  name.textContent = entry.name;
+  name.title = entry.name;
+
+  row.append(toggle, icon, name);
+  node.appendChild(row);
+
+  if (entry.is_dir) {
+    const children = document.createElement('div');
+    children.className = 'tree-children';
+    children.hidden = true;
+    node.appendChild(children);
+
+    row.addEventListener('click', () => toggleDir(node, toggle, children, entry.path, depth + 1));
+  } else {
+    row.addEventListener('click', () => selectNode(node));
+    row.addEventListener('dblclick', () => openFile(entry));
+  }
+
+  // 键盘操作
+  node.addEventListener('keydown', (e) => {
+    if (e.code === 'Space') {
+      e.preventDefault();
+      quickLook(entry.path);
+    }
+    if (e.code === 'Enter') {
+      e.preventDefault();
+      if (entry.is_dir) {
+        const toggle = node.querySelector('.tree-toggle');
+        const children = node.querySelector('.tree-children');
+        if (toggle && children) toggleDir(node, toggle, children, entry.path, depth + 1);
+      } else {
+        openFile(entry);
+      }
+    }
+    if (e.code === 'ArrowDown') {
+      e.preventDefault();
+      focusNextNode(node, 1);
+    }
+    if (e.code === 'ArrowUp') {
+      e.preventDefault();
+      focusNextNode(node, -1);
+    }
+  });
+
+  return node;
+}
+
+// ═══ 目录展开/折叠 ═══
+async function toggleDir(node, toggle, children, dirPath, depth) {
+  selectNode(node);
+  const isOpen = !children.hidden;
+  if (isOpen) {
+    children.hidden = true;
+    toggle.classList.remove('open');
+    node.querySelector('.tree-icon').textContent = '📁';
+    // 折叠：移除该目录及其所有子目录的展开记录
+    for (const p of [...expandedDirs]) {
+      if (p === dirPath || p.startsWith(dirPath + '/')) expandedDirs.delete(p);
+    }
+  } else {
+    children.hidden = false;
+    toggle.classList.add('open');
+    node.querySelector('.tree-icon').textContent = '📂';
+    if (!children._loaded) {
+      children._loaded = true;
+      await loadDirInto(children, dirPath, depth);
+    }
+    expandedDirs.add(dirPath);
+  }
+  saveTreeState({ expandedDirs: [...expandedDirs] });
+}
+
+// ═══ 选中节点 ═══
+function selectNode(node) {
+  if (selectedNode) selectedNode.classList.remove('selected');
+  selectedNode = node;
+  node.classList.add('selected');
+  node.focus();
+  saveTreeState({ selectedPath: node.dataset.path });
+}
+
+// ═══ 键盘上下导航 ═══
+function focusNextNode(current, dir) {
+  const allNodes = [...document.querySelectorAll('.tree-node[tabindex]')].filter(n => {
+    // 只选可见节点（父节点未折叠的）
+    let el = n.parentElement;
+    while (el && el.id !== 'tree-root') {
+      if (el.classList.contains('tree-children') && el.hidden) return false;
+      el = el.parentElement;
+    }
+    return true;
+  });
+  const idx = allNodes.indexOf(current);
+  const next = allNodes[idx + dir];
+  if (next) { next.focus(); selectNode(next); }
+}
+
+// ═══ 打开文件（双击或 Enter） ═══
+function openFile(entry) {
+  if (entry.ext === 'html' || entry.ext === 'htm' || entry.ext === 'md' || entry.ext === 'markdown') {
+    openInTab(entry);
+  } else {
+    quickLook(entry.path);
+  }
+}
+
+// ═══ Quick Look ═══
+async function quickLook(path) {
+  try {
+    await apiFetch('/api/files/quicklook', {
+      method: 'POST',
+      body: JSON.stringify({ path }),
+    });
+  } catch (e) {
+    console.warn('[QuickLook] failed:', e.message);
+  }
+}
+
+// ═══ 通知 shell 在主工作区打开文件 tab ═══
+function openInTab(entry) {
+  window.parent.postMessage({ type: 'OPEN_FILE', path: entry.path, name: entry.name, ext: entry.ext }, '*');
+}
+</script>
+<script>
+// ── 右键菜单：files 文件树 ──
+(function() {
+  if (!window.__TAURI__) return;
+  const invoke = window.__TAURI__.core.invoke;
+  const listen = window.__TAURI__.event.listen;
+
+  document.addEventListener('contextmenu', e => {
+    e.preventDefault();
+
+    const node = e.target.closest('.tree-node');
+    if (!node) return;
+
+    const path = node.dataset.path;
+    if (!path) return;
+
+    const isDir = node.classList.contains('is-dir');
+    const name = path.split('/').pop();
+    const ext = name.includes('.') ? name.split('.').pop().toLowerCase() : '';
+
+    invoke('show_context_menu', {
+      contextType: isDir ? 'file_dir' : 'file_item',
+      data: { path, name, ext, isDir },
+    });
+  });
+
+  listen('context-menu-action', ({ payload }) => {
+    const { action, data } = payload;
+    if (!data) return;
+    switch (action) {
+      case 'file_open':
+        openFile({ path: data.path, name: data.name, ext: data.ext });
+        break;
+      case 'reveal_finder':
+        invoke('reveal_in_finder', { path: data.path });
+        break;
+      case 'copy_path':
+        navigator.clipboard.writeText(data.path);
+        break;
+    }
+  });
+})();
+</script>
+</body>
+</html>

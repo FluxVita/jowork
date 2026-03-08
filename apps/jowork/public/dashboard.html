@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jowork Dashboard</title>
+<link rel="stylesheet" href="/styles/tokens.css">
+<link rel="stylesheet" href="/styles/components.css">
+<script src="/theme.js"></script>
+<script src="/i18n.js"></script>
+<style>
+body {
+  font-family: var(--font);
+  background: var(--bg); color: var(--text);
+  min-height: 100vh;
+}
+/* ─── 内部 tab 栏（数据看板子视图） ─── */
+.subtabs {
+  display: flex; gap: 4px;
+  padding: 10px 24px;
+  border-bottom: 0.5px solid var(--border);
+  background: var(--surface);
+  position: sticky; top: 0; z-index: 10;
+  align-items: center; justify-content: space-between;
+}
+.subtabs-left { display: flex; gap: 4px; }
+.subtab {
+  padding: 6px 14px; border-radius: 6px; cursor: pointer;
+  font-size: 13px; color: var(--text2);
+  border: none; background: transparent; transition: all .25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.subtab:hover { color: var(--text); background: var(--surface2); }
+.subtab.active { color: var(--accent-text); background: var(--surface2); font-weight: 500; }
+.meta-info { font-size: 11px; color: var(--text2); font-family: var(--font-mono); }
+/* ─── 内容区 ─── */
+.content { padding: 24px; max-width: 1400px; }
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px; margin-bottom: 24px;
+}
+.card { background: var(--surface); border: 0.5px solid var(--border); border-radius: 10px; padding: 20px; transition: border-color .25s cubic-bezier(0.16, 1, 0.3, 1), transform .25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow .25s cubic-bezier(0.16, 1, 0.3, 1); }
+.card:hover { border-color: var(--accent-border); transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.card h3 { font-size: 11px; color: var(--text2); letter-spacing: 0.5px; margin-bottom: 8px; text-transform: uppercase; font-family: var(--font-mono); }
+.card .value { font-size: 30px; font-weight: 700; color: var(--accent); font-family: var(--font-mono); letter-spacing: -0.02em; }
+.card .sub { font-size: 12px; color: var(--text2); margin-top: 4px; }
+.table-wrap { background: var(--surface); border: 0.5px solid var(--border); border-radius: 10px; overflow: hidden; margin-bottom: 24px; }
+.table-wrap h3 { padding: 14px 20px 10px; font-size: 14px; font-weight: 600; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; padding: 8px 20px; color: var(--text2); font-weight: 500; border-bottom: 0.5px solid var(--border); font-size: 11px; letter-spacing: 0.5px; }
+td { padding: 10px 20px; border-bottom: 0.5px solid var(--border); color: var(--text); }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--surface-hover); }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; font-family: var(--font-mono); }
+.badge-green { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-bg); }
+.badge-orange { background: var(--orange-bg); color: var(--orange); border: 1px solid var(--orange-bg); }
+.badge-red { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-bg); }
+.badge-blue { background: var(--blue-bg); color: var(--blue); border: 1px solid var(--blue-bg); }
+.badge-purple { background: var(--purple-bg); color: var(--purple); border: 1px solid var(--purple-border); }
+.badge-gray { background: var(--surface2); color: var(--text2); border: 0.5px solid var(--border); }
+a { color: var(--blue); text-decoration: none; }
+a:hover { text-decoration: underline; }
+.loading { text-align: center; padding: 40px; color: var(--text2); }
+.error-msg { color: var(--red); padding: 20px; text-align: center; }
+</style>
+</head>
+<body>
+
+<div class="subtabs">
+  <div class="subtabs-left">
+    <button class="subtab active" data-tab="posthog" data-i18n="dashboard.tab.posthog">产品数据</button>
+    <button class="subtab" data-tab="gitlab" data-i18n="dashboard.tab.gitlab">代码仓库</button>
+    <button class="subtab" data-tab="personal" data-i18n="dashboard.tab.personal">我的数据</button>
+  </div>
+</div>
+<div class="content" id="content">
+  <div class="loading" data-i18n="ui.loading">加载中...</div>
+</div>
+<!-- 我的数据 iframe（懒加载，切 tab 时挂载） -->
+<iframe id="personal-frame" src="about:blank"
+  style="display:none;width:100%;height:calc(100vh - 45px);border:none;background:var(--bg)"></iframe>
+
+<script>
+const API = '';
+let authToken = localStorage.getItem('jowork_token') || localStorage.getItem('jowork_token') || '';
+let currentTab = 'posthog';
+let currentUserObj = null;
+
+// ─── 接收 shell 注入的 token ───
+window.addEventListener('message', (e) => {
+  if (e.data?.type === 'SHELL_TOKEN' && e.data.token) {
+    authToken = e.data.token;
+    currentUserObj = e.data.user || null;
+    loadTab(currentTab);
+  }
+});
+
+// ─── 如果直接访问（非 iframe），请求 shell 发 token ───
+if (window.parent !== window) {
+  window.parent.postMessage({ type: 'REQUEST_TOKEN' }, '*');
+} else {
+  // 直接访问模式，用 localStorage token
+  if (authToken) loadTab(currentTab);
+}
+
+// ─── 子 Tab 切换 ───
+document.querySelectorAll('.subtab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.subtab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentTab = btn.dataset.tab;
+
+    const contentEl = document.getElementById('content');
+    const personalFrame = document.getElementById('personal-frame');
+
+    if (currentTab === 'personal') {
+      contentEl.style.display = 'none';
+      personalFrame.style.display = '';
+      // 首次切入时加载，并注入 token
+      if (personalFrame.src === 'about:blank') {
+        personalFrame.src = '/data-config.html#personal';
+        personalFrame.onload = () => {
+          personalFrame.contentWindow?.postMessage({ type: 'SHELL_TOKEN', token: authToken, user: currentUserObj }, '*');
+        };
+      }
+    } else {
+      contentEl.style.display = '';
+      personalFrame.style.display = 'none';
+      loadTab(currentTab);
+    }
+  });
+});
+
+async function fetchJSON(path) {
+  const resp = await fetch(API + path, {
+    headers: authToken ? { Authorization: 'Bearer ' + authToken } : {}
+  });
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  return resp.json();
+}
+
+function timeAgo(dateStr) {
+  if (!dateStr) return '-';
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return '刚刚';
+  if (mins < 60) return `${mins}分钟前`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}小时前`;
+  return `${Math.floor(hours / 24)}天前`;
+}
+
+async function loadTab(tab) {
+  if (tab === 'personal') return; // iframe 模式，不走这里
+  const el = document.getElementById('content');
+  el.innerHTML = '<div class="loading">加载中...</div>';
+  try {
+    switch(tab) {
+      case 'posthog':  await renderPostHog(el); break;
+      case 'gitlab':   await renderGitLab(el); break;
+    }
+  } catch(e) {
+    el.innerHTML = `<div class="error-msg">加载失败：${e.message}</div>`;
+  }
+}
+
+async function renderPostHog(el) {
+  const data = await fetchJSON('/api/dashboard/posthog');
+  el.innerHTML = `
+    <div class="grid">
+      <div class="card"><h3>数据分析总数</h3><div class="value">${data.insights.total}</div></div>
+      <div class="card"><h3>数据看板</h3><div class="value">${data.dashboards.length}</div></div>
+      ${data.insights.by_type.slice(0,3).map(t => `<div class="card"><h3>${t.insight_type||'其他'}</h3><div class="value">${t.n}</div><div class="sub">条分析</div></div>`).join('')}
+    </div>
+    <div class="table-wrap">
+      <h3>数据看板</h3>
+      <table>
+        <tr><th>名称</th><th>置顶</th><th>链接</th></tr>
+        ${data.dashboards.map(d => `<tr><td>${d.title}</td><td>${d.pinned?'<span class="badge badge-green">已置顶</span>':''}</td><td>${d.external_url?`<a href="${d.external_url}" target="_blank">打开</a>`:'-'}</td></tr>`).join('')}
+      </table>
+    </div>
+    <div class="table-wrap">
+      <h3>最近数据分析</h3>
+      <table>
+        <tr><th>名称</th><th>类型</th><th>链接</th><th>更新时间</th></tr>
+        ${data.insights.recent.map(i => `<tr><td>${i.title}</td><td><span class="badge badge-purple">${i.insight_type||'-'}</span></td><td>${i.external_url?`<a href="${i.external_url}" target="_blank">打开</a>`:'-'}</td><td>${timeAgo(i.updated_at)}</td></tr>`).join('')}
+      </table>
+    </div>`;
+}
+
+async function renderGitLab(el) {
+  const data = await fetchJSON('/api/dashboard/gitlab');
+  el.innerHTML = `
+    <div class="grid">
+      <div class="card"><h3>代码仓库</h3><div class="value">${data.repositories.length}</div></div>
+      ${data.merge_requests.by_state.map(s => `<div class="card"><h3>MR · ${s.state==='opened'?'进行中':s.state==='merged'?'已合并':s.state==='closed'?'已关闭':s.state||'未知'}</h3><div class="value">${s.n}</div></div>`).join('')}
+    </div>
+    <div class="table-wrap">
+      <h3>代码仓库</h3>
+      <table>
+        <tr><th>名称</th><th>链接</th><th>更新时间</th></tr>
+        ${data.repositories.map(r => `<tr><td>${r.title}</td><td>${r.external_url?`<a href="${r.external_url}" target="_blank">打开</a>`:'-'}</td><td>${timeAgo(r.updated_at)}</td></tr>`).join('')}
+      </table>
+    </div>
+    <div class="table-wrap">
+      <h3>最近合并请求</h3>
+      <table>
+        <tr><th>标题</th><th>状态</th><th>提交人</th><th>链接</th><th>更新时间</th></tr>
+        ${data.merge_requests.recent.map(m => {
+          const s = (m.state||'').toLowerCase();
+          const cls = ['merged','closed'].some(k=>s.includes(k))?'badge-green':['opened','open'].some(k=>s.includes(k))?'badge-blue':'badge-gray';
+          const label = {opened:'进行中',merged:'已合并',closed:'已关闭'}[m.state]||m.state||'-';
+          return `<tr><td>${m.title}</td><td><span class="badge ${cls}">${label}</span></td><td>${m.owner||'-'}</td><td>${m.external_url?`<a href="${m.external_url}" target="_blank">打开</a>`:'-'}</td><td>${timeAgo(m.updated_at)}</td></tr>`;
+        }).join('')}
+      </table>
+    </div>`;
+}
+
+// 每 60 秒自动刷新当前 tab
+setInterval(() => { if (authToken) loadTab(currentTab); }, 60000);
+</script>
+</body>
+</html>

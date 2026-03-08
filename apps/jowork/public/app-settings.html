@@ -4,14 +4,16 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Jowork — App Settings</title>
+<link rel="stylesheet" href="/styles/tokens.css">
 <script src="/theme.js"></script>
+<script src="/i18n.js"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; }
 html, body {
   height: 100%; margin: 0; padding: 0;
-  background: #0f0f12;
-  color: #e8e8e0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg, #0f0f12);
+  color: var(--text, #e8e8e0);
+  font-family: var(--font, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -23,16 +25,18 @@ html, body {
 
 .card {
   width: 100%; max-width: 480px;
-  background: #1a1a1e;
-  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(26, 26, 30, 0.82);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  border: 0.5px solid rgba(255,255,255,0.08);
   border-radius: 14px;
   overflow: hidden;
-  box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+  box-shadow: 0 16px 48px rgba(0,0,0,0.35), 0 1px 0 rgba(255,255,255,0.04) inset;
 }
 
 .card-header {
   padding: 18px 20px 16px;
-  border-bottom: 1px solid rgba(255,255,255,0.07);
+  border-bottom: 0.5px solid rgba(255,255,255,0.07);
   display: flex; align-items: center; gap: 12px;
 }
 .back-btn {
@@ -41,13 +45,13 @@ html, body {
   transition: color .12s, background .12s;
 }
 .back-btn:hover { color: #e8e8e0; background: rgba(255,255,255,0.07); }
-.card-title { font-size: 14px; font-weight: 600; color: #e8e8e0; flex: 1; }
+.card-title { font-size: 14px; font-weight: 600; color: var(--text, #e8e8e0); letter-spacing: -0.2px; flex: 1; }
 .logo { width: 26px; height: 26px; border-radius: 7px; }
 
 .card-body { padding: 20px; display: flex; flex-direction: column; gap: 0; }
 
 .section-label {
-  font-size: 10px; font-weight: 600; color: #555; letter-spacing: .6px;
+  font-size: 10px; font-weight: 600; color: var(--text2, #666); letter-spacing: 0.06em;
   text-transform: uppercase; margin-bottom: 10px; margin-top: 4px;
 }
 
@@ -73,8 +77,8 @@ html, body {
 }
 .mode-option.active .mode-dot { border-color: #9DD84A; background: #9DD84A; }
 .mode-info { flex: 1; }
-.mode-name { font-size: 13px; font-weight: 600; color: #e8e8e0; margin-bottom: 2px; }
-.mode-desc { font-size: 12px; color: #666; line-height: 1.45; }
+.mode-name { font-size: 13px; font-weight: 600; color: var(--text, #e8e8e0); margin-bottom: 2px; letter-spacing: -0.1px; }
+.mode-desc { font-size: 12px; color: var(--text2, #666); line-height: 1.45; }
 .mode-badge {
   font-size: 10px; font-weight: 600; padding: 2px 8px;
   border-radius: 4px; background: rgba(157,216,74,0.15); color: #9DD84A;
@@ -106,8 +110,8 @@ html, body {
 .btn:hover { opacity: 0.85; }
 .btn-primary { background: #9DD84A; color: #000; }
 .btn-secondary {
-  background: rgba(255,255,255,0.06); color: #e8e8e0;
-  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.06); color: var(--text, #e8e8e0);
+  border: 0.5px solid rgba(255,255,255,0.12);
 }
 .btn:disabled { opacity: 0.4; cursor: not-allowed; }
 </style>
@@ -122,44 +126,44 @@ html, body {
         </svg>
       </button>
       <img class="logo" src="/app-icon.png" onerror="this.style.display='none'" alt="">
-      <span class="card-title">App Settings</span>
+      <span class="card-title" data-i18n="appsettings.title">App Settings</span>
     </div>
 
     <div class="card-body">
-      <div class="section-label">Server Mode</div>
+      <div class="section-label" data-i18n="appsettings.server_mode">Server Mode</div>
 
       <div class="mode-options">
         <div class="mode-option" id="opt-saas" onclick="selectMode('saas')">
           <div class="mode-dot"></div>
           <div class="mode-info">
-            <div class="mode-name">Jowork Cloud</div>
-            <div class="mode-desc">Connect to jowork.work. Zero setup required.</div>
+            <div class="mode-name" data-i18n="appsettings.saas.name">Jowork Cloud</div>
+            <div class="mode-desc" data-i18n="appsettings.saas.desc">Connect to jowork.work. Zero setup required.</div>
           </div>
-          <span class="mode-badge">Default</span>
+          <span class="mode-badge" data-i18n="appsettings.saas.badge">Default</span>
         </div>
 
         <div class="mode-option" id="opt-self_hosted" onclick="selectMode('self_hosted')">
           <div class="mode-dot"></div>
           <div class="mode-info">
-            <div class="mode-name">Self-hosted</div>
-            <div class="mode-desc">Run your own Jowork server. Your data stays on your machine.</div>
+            <div class="mode-name" data-i18n="appsettings.selfhosted.name">Self-hosted</div>
+            <div class="mode-desc" data-i18n="appsettings.selfhosted.desc">Run your own Jowork server. Your data stays on your machine.</div>
           </div>
         </div>
       </div>
 
       <div class="info-row" id="info-saas">
-        Connected to: <strong id="gateway-url-display">—</strong>
+        <span data-i18n="appsettings.connected_to">Connected to:</span> <strong id="gateway-url-display">—</strong>
       </div>
 
-      <div class="info-row" id="info-self_hosted" style="display:none">
+      <div class="info-row" id="info-self_hosted" style="display:none" data-i18n="appsettings.selfhosted.info">
         The app will start a local server on your machine. You can configure connectors and invite teammates in Self-hosted mode.
       </div>
 
-      <div class="toast" id="toast">Mode saved. Restart the app to apply changes.</div>
+      <div class="toast" id="toast" data-i18n="appsettings.saved">Mode saved. Restart the app to apply changes.</div>
 
       <div class="btn-row">
-        <button class="btn btn-secondary" onclick="goBack()">Cancel</button>
-        <button class="btn btn-primary" id="save-btn" onclick="saveMode()">Save & Restart</button>
+        <button class="btn btn-secondary" onclick="goBack()" data-i18n="ui.cancel">Cancel</button>
+        <button class="btn btn-primary" id="save-btn" onclick="saveMode()" data-i18n="appsettings.save_btn">Save & Restart</button>
       </div>
     </div>
   </div>
@@ -204,12 +208,12 @@ function renderSelection() {
 
 async function saveMode() {
   if (!tauri) {
-    alert('This settings page must be opened from the desktop app.');
+    alert(t('appsettings.err.desktop_only'));
     return;
   }
   const btn = document.getElementById('save-btn');
   btn.disabled = true;
-  btn.textContent = 'Saving…';
+  btn.textContent = t('appsettings.saving');
 
   try {
     await tauri.invoke('set_app_mode', { mode: selectedMode });
@@ -217,7 +221,7 @@ async function saveMode() {
 
     // 显示成功提示并重启
     document.getElementById('toast').classList.add('visible');
-    btn.textContent = 'Restarting…';
+    btn.textContent = t('appsettings.restarting');
 
     setTimeout(() => {
       // Tauri v2 重启：通过 process plugin
@@ -225,13 +229,13 @@ async function saveMode() {
         window.__TAURI__.process.relaunch();
       } else {
         // fallback: navigate to loading page, user restarts manually
-        btn.textContent = 'Restart the app to apply';
+        btn.textContent = t('appsettings.restart_manually');
       }
     }, 800);
   } catch (e) {
     btn.disabled = false;
-    btn.textContent = 'Save & Restart';
-    alert('Failed to save: ' + (e?.message || e));
+    btn.textContent = t('appsettings.save_btn');
+    alert(t('ui.save_failed', {error: e?.message || e}));
   }
 }
 
