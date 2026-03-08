@@ -9,14 +9,8 @@
   },
   "app": {
     "withGlobalTauri": true,
-    "windows": [
-      {
-        "title": "Jowork",
-        "width": 1360,
-        "height": 860,
-        "url": "tauri://localhost/loading.html"
-      }
-    ]
+    "macOSPrivateApi": true,
+    "windows": []
   },
   "bundle": {
     "active": true,

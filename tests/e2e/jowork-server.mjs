@@ -62,6 +62,11 @@ const server = createServer((req, res) => {
   } else if (existsSync(fallbackPath) && statSync(fallbackPath).isFile()) {
     serveFile(res, fallbackPath);
   } else {
+    if (extname(filePath)) {
+      res.writeHead(404);
+      res.end('Not found');
+      return;
+    }
     // SPA fallback → shell.html
     const shellPath = join(JOWORK_DIR, 'shell.html');
     if (existsSync(shellPath)) serveFile(res, shellPath);

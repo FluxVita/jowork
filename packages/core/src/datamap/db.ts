@@ -688,6 +688,37 @@ export function initSchema() {
   db.exec(`CREATE INDEX IF NOT EXISTS idx_proxy_audit_user ON proxy_audit(user_id)`);
   db.exec(`CREATE INDEX IF NOT EXISTS idx_proxy_audit_ts   ON proxy_audit(timestamp)`);
 
+  // ── user_id_mappings：跨系统用户标识映射（PostHog / OSS / SLS / App）──
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS user_id_mappings (
+      canonical_id      TEXT PRIMARY KEY,
+      posthog_person_id TEXT,
+      jovida_uid        TEXT,
+      sls_user_id       TEXT,
+      email             TEXT,
+      device_id         TEXT,
+      updated_at        TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `);
+  db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_uim_posthog ON user_id_mappings(posthog_person_id) WHERE posthog_person_id IS NOT NULL`);
+  db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_uim_jovida  ON user_id_mappings(jovida_uid)        WHERE jovida_uid IS NOT NULL`);
+  db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_uim_sls     ON user_id_mappings(sls_user_id)       WHERE sls_user_id IS NOT NULL`);
+  db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_uim_email   ON user_id_mappings(email)             WHERE email IS NOT NULL`);
+  db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_uim_device  ON user_id_mappings(device_id)         WHERE device_id IS NOT NULL`);
+
+  // ── telemetry_events：开源版遥测（opt-in，默认关闭）──
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS telemetry_events (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      timestamp    TEXT NOT NULL DEFAULT (datetime('now')),
+      event_name   TEXT NOT NULL,
+      user_id      TEXT,
+      payload_json TEXT
+    )
+  `);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_telemetry_ts    ON telemetry_events(timestamp)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_telemetry_event ON telemetry_events(event_name)`);
+
   log.info('Schema initialized');
   seedDefaultPolicies(db);
 }

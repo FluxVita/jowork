@@ -4,22 +4,22 @@ import { checkConnectorQuota, getConnectorEntitlements, getSubscriptionPlan } fr
 import { setScopedValue } from '../packages/core/dist/auth/settings.js';
 
 describe('unit-entitlements: connector quota', () => {
-  test('free 计划最多 3 个连接器', () => {
+  test('free 计划最多 5 个连接器', () => {
     const denied = checkConnectorQuota('jira_v1', {
       plan: 'free',
-      connectedConnectorIds: ['gitlab_v1', 'linear_v1', 'github_v1'],
+      connectedConnectorIds: ['gitlab_v1', 'linear_v1', 'github_v1', 'notion_v1', 'slack_v1'],
     });
     assert.equal(denied.allowed, false);
     assert.equal(denied.reason, 'limit_reached');
-    assert.equal(denied.connector_limit, 3);
-    assert.equal(denied.connected, 3);
+    assert.equal(denied.connector_limit, 5);
+    assert.equal(denied.connected, 5);
     assert.equal(denied.upgrade_to, 'personal_basic');
   });
 
   test('同一连接器已连接时允许重连（即使已满）', () => {
     const allowed = checkConnectorQuota('github_v1', {
       plan: 'free',
-      connectedConnectorIds: ['gitlab_v1', 'linear_v1', 'github_v1'],
+      connectedConnectorIds: ['gitlab_v1', 'linear_v1', 'github_v1', 'notion_v1', 'slack_v1'],
     });
     assert.equal(allowed.allowed, true);
     assert.equal(allowed.reason, 'already_connected');
@@ -62,9 +62,9 @@ describe('unit-entitlements: connector quota', () => {
       connectedConnectorIds: ['a', 'b'],
     });
     assert.equal(s.plan, 'free');
-    assert.equal(s.connector_limit, 3);
+    assert.equal(s.connector_limit, 5);
     assert.equal(s.connected, 2);
-    assert.equal(s.remaining, 1);
+    assert.equal(s.remaining, 3);
   });
 
   test('旧计划名 pro/team/business 向后兼容', () => {

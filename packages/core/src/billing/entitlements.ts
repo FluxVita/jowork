@@ -37,7 +37,7 @@ export const TEAM_MAX_USERS = 100;
 
 // Connector 数量限制（null = 无限）
 export const CONNECTOR_LIMITS: Record<SubscriptionPlan, number | null> = {
-  free: 3,
+  free: 5,
   personal_basic: 5,
   personal_pro: null,
   personal_max: null,

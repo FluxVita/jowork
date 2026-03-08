@@ -24,6 +24,8 @@ test.describe('Auth API Contract @contract', () => {
       data: { feishu_open_id: devId, name: 'Contract-Step1' },
     });
 
+    // 可能 429（全局 setup 消耗了 rate limit 配额）
+    if (res.status() === 429) { test.skip(true, 'IP rate limited'); return; }
     expect(res.status()).toBe(200);
     const body = await res.json();
 
@@ -41,6 +43,7 @@ test.describe('Auth API Contract @contract', () => {
     const step1 = await request.post(`${BASE}/api/auth/login`, {
       data: { feishu_open_id: devId, name: 'Contract-Step2' },
     });
+    if (step1.status() === 429) { test.skip(true, 'IP rate limited'); return; }
     expect(step1.status()).toBe(200);
     const { challenge_id, dev_code } = await step1.json();
 
@@ -111,6 +114,7 @@ test.describe('Auth API Contract @contract', () => {
     const res = await request.post(`${BASE}/api/auth/login`, {
       data: { feishu_open_id: devId, challenge_id, code: 'wrong-code' },
     });
+    if (res.status() === 429) { test.skip(true, 'IP rate limited'); return; }
     expect(res.status()).toBe(401);
   });
 });

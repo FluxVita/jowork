@@ -149,92 +149,19 @@
 
 | Phase | 状态 | 最后更新 | 备注 |
 |-------|------|---------|------|
-| Phase -1：稳定化（清零 3 个阻塞） | ✅ 完成 | 2026-03-04 | N/A：本仓库从零构建，无旧代码阻塞 |
-| Phase 0：Monorepo 骨架 | ✅ 完成 | 2026-03-04 | pnpm workspaces + tsconfig 骨架 + edition.ts + pnpm lint 全绿 |
-| Phase 1：抽取 core 包 | ✅ 完成 | 2026-03-04 | 全部14个模块实现完毕：types/config/utils/datamap/auth/policy/gateway/memory/models/agent/scheduler/connectors/channels/services/onboarding；pnpm lint+test全绿 |
-| Phase 2：抽取 premium 包 | ✅ 完成 | 2026-03-04 | activatePremium + dispatcher + claude-agent + embedding + geek-mode + alerts + skills + klaude-manager + context；pnpm lint+test全绿 |
-| Phase 3：apps/jowork | ✅ 完成 | 2026-03-04 | Express gateway + sessions/chat/memory/connectors 路由 + Vue 3 CDN SPA（暗色主题聊天界面）；pnpm lint全绿 |
-| Phase 4：apps/fluxvita | ✅ 完成 | 2026-03-04 | activatePremium + 完整 Express gateway（sessions/chat/memory/connectors/premium 路由）+ FluxVita 品牌 SPA + Klaude 状态 API + 飞书 OAuth 占位；pnpm lint+test全绿 |
-| Phase 5：CI/CD + GitHub 同步 | ✅ 完成 | 2026-03-04 | ci.yml + .gitlab-ci.yml（双 app lint+test+build）+ sync-to-github.sh；首次 push 需 GitHub repo 存在 |
-| Phase 6：三层上下文系统 | ✅ 完成 | 2026-03-04 | ContextDoc 类型 + context_docs/FTS 表已存在 + context/index.ts（CRUD+组装+自学习+workstyle shortcut）+ context 路由（两 app）；pnpm lint+test全绿 |
-| Phase 7：开源清理 + 安全审计 | ✅ 完成 | 2026-03-04 | 扫描无硬编码凭证；.env.example + .gitignore 完善；ci.yml 增加 TruffleHog secret scan job |
-| Phase 8：扩展性重构 | ✅ 完成 | 2026-03-05 | JCP 协议接口 + ModelProvider 注册器（Anthropic/OpenAI/Ollama 内置）+ JoworkChannel 接口 + GitHub/Notion connector + Telegram channel；pnpm lint+test全绿 |
-| Phase 9：平台兼容 + 国际化 + Docker | ✅ 完成 | 2026-03-05 | Windows兼容审计通过 + i18n框架（en/zh + registerLocale）+ Docker（cycle 4）+ README文档更新；pnpm lint+test全绿 |
-| Phase 10：首次公开发布 | ✅ 完成 | 2026-03-05 | CODE_OF_CONDUCT.md ✅；CONTRIBUTING.md ✅；GitHub org创建/同步/Discussions/Release需人工执行（人工任务已标注） |
-| Phase 22：Slack连接器 + JCP自动注册 | ✅ 完成 | 2026-03-05 | slackConnector + 自动注册GitHub/Notion/Slack + ConnectorKind扩展('github'\|'notion'\|'slack') + discoverViaConnector桥接 + listAllConnectorTypes；pnpm lint+test全绿（92/92） |
-| Phase 23：Linear + GitLab JCP连接器 | ✅ 完成 | 2026-03-05 | linearConnector(GraphQL issues/search) + gitlabConnector(REST projects/MRs/issues，支持自托管baseUrl)；pnpm lint+test全绿（102/102） |
-| Phase 24：Figma JCP连接器 | ✅ 完成 | 2026-03-05 | figmaConnector(files/components/pages；teamId+fileKeys配置；搜索组件)；pnpm lint+test全绿（108/108） |
-| Phase 11：安全加固 | ✅ 完成 | 2026-03-05 | SensitivityLevel类型+字段（MemoryEntry/ContextDoc/DB schema）+ Connector defaultSensitivity + Context PEP（assembleContext按role过滤）+ 聚合stats API + Agent跨用户防护 + session所有权校验；pnpm lint+test全绿（18/18） |
-| Phase 12：性能优化 | ✅ 完成 | 2026-03-05 | Semaphore(2)+LRU cache+LLM限流(1req/s)+DB维护(TTL+optimize)+Node.js Cluster+LaunchAgent；pnpm lint+test全绿（28/28） |
-| Phase 13：网络架构 | ✅ 完成 | 2026-03-05 | mDNS广播(UDP multicast)+Tunnel管理(cloudflared spawn)+/api/network/info发现端点+docs/custom-domain.md；pnpm lint+test全绿（36/36） |
-| Phase 14：版本更新基础设施 | ✅ 完成 | 2026-03-05 | schema_migrations表+migrator.ts(含bootstrap+热备份)+001_initial内联迁移+backupDb+adminRouter(更新检查/手动备份/迁移列表)；pnpm lint+test全绿（44/44） |
-| Phase 15：生产可靠性 | ✅ 完成 | 2026-03-05 | gracefulShutdown(WAL checkpoint+drain)+integrity_check+磁盘空间告警+Connector自愈(withRetry指数退避+健康跟踪)+敏感数据脱敏(logger maskMeta)+/health/full全链路检查；pnpm lint+test全绿（49/49） |
-| Phase 16：备份恢复 | ✅ 完成 | 2026-03-05 | buildExportZip+buildExportJson+buildExportCsv+buildExportMarkdown+restoreFromZip(admin.ts路由)+startBackupScheduler(每日03:00自动备份)；pnpm lint+test全绿（62/62） |
-| Phase 17：法律文档 | ✅ 完成 | 2026-03-05 | ToS+PrivacyPolicy+退款政策(docs/legal/)；AGPL FAQ加入README；.claassistant.yml；部署jowork.work需人工执行 |
-| Phase 18：付费系统集成 | ✅ 完成 | 2026-03-05 | subscription/index.ts(daily拉取+7天grace period状态机+本地缓存)；activatePremium改为async+opts；/api/premium/subscription端点+upgradeUrl；Stripe/jowork.work后端需人工配置；pnpm lint+test全绿（62/62） |
-| Phase 19：LLM成本管理 | ✅ 完成 | 2026-03-05 | llm_usage+budget_config表；recordUsage+estimateCost；/api/usage/summary|daily|budget|recommend|team路由；17个新测试；pnpm lint+test全绿（79/79） |
-| Phase 20：GTM准备 | ✅ 完成 | 2026-03-05 | quick-start.md(3种安装方式)；product-hunt.md(tagline+文案)；reddit-hn.md(4平台帖子)；官网/视频/Discord需人工执行 |
-| Phase 25：Discord Channel | ✅ 完成 | 2026-03-05 | discordChannel（webhook发送+rich embeds+bot轮询接收）；pnpm lint+test全绿（124/124） |
-| Phase 26：Channels REST API | ✅ 完成 | 2026-03-05 | channels/router.ts（列表/init/message/shutdown端点）+ env自动初始化 + 协议状态追踪；pnpm lint+test全绿（137/137） |
-| Phase 27：Scheduler REST API + Webhook Channel | ✅ 完成 | 2026-03-05 | schedulerRouter(/api/tasks CRUD)+ webhookChannel(inbound Bearer auth+outgoing POST)+两个app均挂载；pnpm lint+test全绿（156/156） |
-| Phase 28：Agent 管理 + Onboarding REST API | ✅ 完成 | 2026-03-05 | agentsRouter(/api/agents CRUD，owner隔离)+onboardingRouter(/api/onboarding GET+POST /advance)；两app均挂载；pnpm lint+test全绿（168/168） |
-| Phase 29：User 管理 REST API | ✅ 完成 | 2026-03-05 | usersRouter(/api/users/me+列表+创建+PATCH+DELETE；owner/admin权限分级；新用户自动签发token；防自删)；两app均挂载；pnpm lint+test全绿（182/182） |
-| Phase 30：Sessions REST API（移入 core + 补全端点） | ✅ 完成 | 2026-03-05 | sessionsRouter移入core（PATCH title+DELETE session级联+DELETE message）；两app删除重复路由改用core router；pnpm lint+test全绿（197/197） |
-| Phase 31：Chat/Connectors/Memory/Context/Stats 路由移入 core | ✅ 完成 | 2026-03-05 | chatRouter(dispatchFn?)+connectorsRouter+memoryRouter+contextRouter+statsRouter移入core；两app删除重复路由；fluxvita通过chatRouter(dispatch)注入premium引擎；pnpm lint+test全绿（210/210） |
-| Phase 32：SSE 流式聊天端点 | ✅ 完成 | 2026-03-05 | chatStream()异步生成器（Anthropic streaming API）+ POST /api/sessions/:id/messages/stream SSE端点（chunk/done/error事件）；pnpm lint+test全绿（217/217） |
-| Phase 33：Connector Fetch + Search API | ✅ 完成 | 2026-03-05 | connectorSearch()函数（能力门控，无search抛NOT_SUPPORTED）+ POST /api/connectors/:id/fetch + POST /api/connectors/:id/search；pnpm lint+test全绿（222/222） |
-| Phase 34：前端 SSE 流式渲染 + 停止生成 | ✅ 完成 | 2026-03-05 | apps/jowork + apps/fluxvita 均升级为 SSE stream 端点；流式光标+停止按钮；pnpm lint+test全绿（222/222） |
-| Phase 35：OpenAI-compatible 流式 + Ollama 开箱即用 | ✅ 完成 | 2026-03-05 | streamOpenAI()（OpenAI SSE格式）+ chatStream()路由到openai format + discoverOllamaModels()自动发现 + /api/models路由（providers/active/ollama-discover）；pnpm lint+test全绿（231/231） |
-| Phase 36：Agent 内置工具集扩展 | ✅ 完成 | 2026-03-05 | create_memory+fetch_connector+search_connector+list_context 4新工具+getToolSchemas()+/api/agent/tools；2→6工具；pnpm lint+test全绿（244/244） |
-| Phase 37：Anthropic 原生 tool_use API | ✅ 完成 | 2026-03-05 | chatWithTools()+ApiMessage/ToolSchema/ToolUseBlock/ApiContent类型；builtin engine改用原生tool_use多轮协议（替换XML hack）；11新测试；pnpm lint+test全绿（255/255） |
-| Phase 38：流式端点工具执行支持 | ✅ 完成 | 2026-03-05 | streamWithTools()真正流式Anthropic SSE+tool_use解析；runBuiltin()改用streamWithTools()实现字符级流+工具执行；/stream端点改用runBuiltin+onChunk透明工具执行；5新测试；pnpm lint+test全绿（255→260） |
-| Phase 39：前端完善 — Markdown 渲染 + 设置面板 + 连接器管理 UI | ✅ 完成 | 2026-03-05 | marked.js Markdown渲染(v-html)+⚙设置面板(Models/Connectors/System三标签)+连接器CRUD UI+健康/stats展示；apps/jowork+apps/fluxvita均更新；pnpm lint+test全绿（260/260） |
-| Phase 40：设置面板扩展 — Agent 配置 + 记忆管理 UI | ✅ 完成 | 2026-03-05 | Agent标签(name/systemPrompt/model可编辑+PATCH保存)+Memories标签(列表+搜索+单条删除)+默认打开Agent标签；apps/jowork+apps/fluxvita均更新；pnpm lint+test全绿（260/260） |
-| Phase 41：Scheduler UI + Workstyle 文档 UI | ✅ 完成 | 2026-03-05 | Scheduler标签(任务列表+创建+toggle+删除)+ Agent标签新增WorkStyle文档编辑区(GET+PUT /api/context/workstyle)；apps/jowork+apps/fluxvita均更新；pnpm lint+test全绿（260/260） |
-| Phase 42：LLM 用量仪表板 UI + 管理员备份/恢复 UI | ✅ 完成 | 2026-03-05 | Usage标签(Summary+Budget进度条+7日日报+预算设置)+Admin标签(手动备份+更新检查+导出ZIP/JSON/MD+从ZIP恢复)；apps/jowork+apps/fluxvita均更新；pnpm lint+test全绿（260/260） |
-| Phase 43：Session 管理 UI — 重命名/删除会话 | ✅ 完成 | 2026-03-05 | hover菜单(✏rename+×delete)；inline input编辑(Enter保存/Esc取消/blur取消)；级联删除自动切换session；apps/jowork+apps/fluxvita均更新；pnpm lint+test全绿（260/260） |
-| Phase 44：Model Switcher UI | ✅ 完成 | 2026-03-05 | PUT /api/models/active(process.env mutation+validate)；Models标签新增provider下拉+model下拉/输入+Apply按钮+即时提示；3新测试；apps/jowork+apps/fluxvita均更新；pnpm lint+test全绿（263/263） |
-| Phase 45：键盘快捷键 | ✅ 完成 | 2026-03-05 | globalKeydown(Cmd+N新建会话/Cmd+/开关设置/Esc关闭)；onMounted注册+onUnmounted移除；apps/jowork+apps/fluxvita均更新；pnpm lint+test全绿（263/263） |
-| Phase 46：Onboarding Flow UI | ✅ 完成 | 2026-03-05 | 4步向导覆盖层(welcome/setup_agent/add_connector/workstyle_doc)；checkOnboarding启动检测；步骤指示器；skip支持；apps/jowork+apps/fluxvita均更新；pnpm lint+test全绿（263/263） |
-| Phase 47：Toast 通知系统 | ✅ 完成 | 2026-03-05 | toast(msg, type) 全局通知函数；右下角堆叠容器+2.5s自动消失；替换所有alert()+inline msg span；apps/jowork+apps/fluxvita均更新；pnpm lint+test全绿（263/263） |
-| Phase 48：全局搜索 UI | ✅ 完成 | 2026-03-05 | searchRouter(GET /api/search?q=&limit=)跨messages/memories/context三域搜索；Cmd+K模态框+分组结果+点击跳转session；7新测试；apps/jowork+apps/fluxvita均更新；pnpm lint+test全绿（270/270） |
-| Phase 49：消息搜索 FTS5 支持 | ✅ 完成 | 2026-03-05 | messages_fts虚表(init.ts)+迁移002_messages_fts(含回填已有消息)+chat.ts两端点维护索引+search.ts改用FTS5+LIKE降级+2新测试；pnpm lint+test全绿（272/272） |
-| Phase 50：Connector Schema API + 动态表单 UI | ✅ 完成 | 2026-03-05 | ConnectorTypeInfo接口(authType/description/configSchema)+listAllConnectorTypes扩展+GET /api/connector-types/:id+getConnectorTypeManifest()；前端移除CONNECTOR_EXTRA_FIELDS改用schema动态渲染；5新测试；pnpm lint+test全绿（277/277） |
-| Phase 51：消息分页 + 会话侧边栏搜索过滤 | ✅ 完成 | 2026-03-05 | GET /api/sessions/:id/messages?before=&limit=cursor分页(hasMore+nextCursor)；GET /api/sessions/:id限制40条+hasMore；侧边栏filter input；"↑加载更多"按钮；13新测试；pnpm lint+test全绿（290/290） |
-| Phase 52：会话标题自动生成 | ✅ 完成 | 2026-03-05 | chat.ts首次消息后自动将"New chat"改为用户消息前50字符；JSON端点返回newTitle字段；SSE done事件附加newTitle；前端直接更新列表消除额外GET；8新测试；pnpm lint+test全绿（298/298） |
-| Phase 53：三层上下文注入聊天流 | ✅ 完成 | 2026-03-05 | assembleContext()集成到chat.ts两端点(JSON+SSE)；workstyle/company强制规则/FTS上下文注入systemPrompt前缀；try-catch保障永不阻塞聊天；3新测试；pnpm lint+test全绿（301/301） |
-| Phase 54：Memory 手动添加 UI | ✅ 完成 | 2026-03-05 | Memories标签底部新增"Add Memory"表单(textarea+保存按钮)；调用POST /api/memories；apps/jowork+apps/fluxvita均更新；pnpm lint全绿（纯前端改动） |
-| Phase 55：Connector 健康状态 UI | ✅ 完成 | 2026-03-05 | GET /api/connectors 附加health字段(getConnectorHealth)；前端health-badge(healthy/degraded/unknown)；3新测试；pnpm lint+test全绿（304/304） |
-| Phase 56：Docker CI/CD publish | ✅ 完成 | 2026-03-05 | ci.yml tags v*.*.* trigger + docker-publish job(needs:lint-test-build；ghcr.io/fluxvita/jowork；linux/amd64+arm64；GHA缓存；semver+sha tags)；pnpm lint全绿 |
-| Phase 57：Jira JCP 连接器 | ✅ 完成 | 2026-03-05 | jira.ts(Cloud+Server；Basic/Bearer auth；JQL discover/fetch/search；baseUrl+projectKey+email configSchema)；ConnectorKind+='jira'；index.ts导出+注册；7新测试；pnpm lint+test全绿（311/311） |
-| Phase 58：Confluence JCP 连接器 | ✅ 完成 | 2026-03-05 | confluence.ts(Cloud+Server；CQL搜索；htmlToText；confidential sensitivity；spaceKey过滤)；ConnectorKind+='confluence'；注册+导出；7新测试；pnpm lint+test全绿（318/318） |
-| Phase 59：连接器健康测试端点 | ✅ 完成 | 2026-03-05 | checkConnectorHealth()函数 + POST /api/connectors/:id/health-check路由 + 前端"Test"按钮(.btn-sm)+testConnector()；两app均更新；3新测试；pnpm lint+test全绿（321/321） |
-| Phase 60：会话导出（Session Export） | ✅ 完成 | 2026-03-05 | GET /api/sessions/:id/export?format=md|json|txt；sessionRouter新增export路由(全量消息+格式化)；前端⬇按钮+exportSession()；9新测试；pnpm lint+test全绿（330/330） |
-| Phase 61：Geek Mode 基础终端 | ✅ 完成 | 2026-03-05 | terminal/index.ts(execInSession+CWD持久化+输出截断+超时)；terminalRouter(POST exec+GET info+DELETE reset)；前端Terminal标签+CSS(历史↑↓+cwd显示+Reset)；两app均更新；13新测试；pnpm lint+test全绿（343/343） |
-| Phase 62：连接器内容缓存 | ✅ 完成 | 2026-03-05 | connector_items表+FTS5虚表+003迁移；cache.ts(syncConnectorItems/listConnectorItems/countConnectorItems/deleteConnectorItems)；POST sync+GET items+DELETE items路由；GET /api/connectors附加cachedItems计数；前端Sync按钮+条目数显示；12新测试；pnpm lint+test全绿（355/355） |
-| Phase 63：全局搜索增强（connector_items） | ✅ 完成 | 2026-03-05 | search.ts新增connectorItems域（FTS5+LIKE降级）；SearchResultConnectorItem类型+SearchResponse扩展；前端Cmd+K搜索结果新增Connector Content分组（可点击跳转URL）；3新测试（空/FTS命中/跨用户隔离）；pnpm lint+test全绿（358/358） |
-| Phase 64：Agent工具增强（search_cached_content） | ✅ 完成 | 2026-03-05 | agent/tools/index.ts新增第7个工具search_cached_content（搜索本地缓存的connector内容，支持指定connector_id或跨所有connector搜索）；assertSameUser跨用户保护；测试断言更新6→7；pnpm lint+test全绿（358/358） |
-| Phase 65：消息重新生成（Regenerate） | ✅ 完成 | 2026-03-05 | POST /api/sessions/:id/messages/:msgId/regenerate SSE端点（删除目标assistant消息及后续消息+重新dispatch）；前端↻Regenerate按钮（最后一条assistant消息）；migrator测试修复004_connector_sync_schedule；7新测试；apps/jowork+apps/fluxvita均更新；pnpm lint+test全绿（365/365） |
-| Phase 66：代码块复制按钮（Copy Code Block） | ✅ 完成 | 2026-03-05 | marked.Renderer自定义code块（code-block-wrapper容器+Copy按钮+语言标签）；hover显示/clipboard API/Copied!反馈；apps/jowork+apps/fluxvita均更新；pnpm lint全绿（纯前端） |
-| Phase 67：消息反馈（Message Feedback） | ✅ 完成 | 2026-03-05 | migration 005_message_feedback（message_feedback表+UNIQUE+CHECK约束+CASCADE DELETE）；feedbackRouter 4端点（GET batch/POST upsert/GET single/DELETE）；前端👍👎按钮（所有assistant消息）+session加载时批量获取feedback；9新测试；apps/jowork+apps/fluxvita均更新；pnpm lint+test全绿（374/374） |
-| Phase 68：UX 打磨 — Typing Indicator + 消息复制 + 时间戳 | ✅ 完成 | 2026-03-05 | typing-indicator三点弹跳动画（替换静态Thinking）+消息📋Copy按钮（clipboard API+toast反馈）+消息时间戳（相对时间+hover绝对时间）；apps/jowork+apps/fluxvita均更新；pnpm lint全绿（纯前端） |
-| Phase 69：消息编辑（Message Editing） | ✅ 完成 | 2026-03-05 | PATCH /api/sessions/:id/messages/:msgId（仅user消息可编辑+FTS5外部内容表正确删除旧索引再重建）；前端inline编辑UI（hover ✏️按钮+textarea+Save/Cancel+Enter/Esc快捷键）；5新测试；apps/jowork+apps/fluxvita均更新；pnpm lint+test全绿（379/379） |
-| Phase 70：暗/亮主题切换（Theme Toggle） | ✅ 完成 | 2026-03-05 | CSS变量系统（:root暗色+[data-theme=light]亮色）；jowork核心结构色全部迁移到var()；System标签Dark/Light/Auto三按钮；localStorage持久化+prefers-color-scheme自动检测；apps/jowork+apps/fluxvita均更新；pnpm lint全绿（纯前端） |
-| Phase 71：消息删除 UI（Message Delete） | ✅ 完成 | 2026-03-05 | deleteMessage()函数（DELETE API+列表移除+toast）；assistant消息操作栏🗑按钮；user消息hover🗑按钮；apps/jowork+apps/fluxvita均更新；pnpm lint全绿（纯前端，后端DELETE端点已有） |
-| Phase 72：Bun compile Gateway Sidecar | ✅ 完成 | 2026-03-05 | sidecar.ts入口点(bun:sqlite+setDb注入+CLI参数解析)；db.ts改用createRequire动态加载better-sqlite3(允许Bun跳过)；setDb()注入函数；build-sidecar.sh(TS编译+Bun --compile+平台检测)；59MB单文件二进制(bun:sqlite内置，无需native addon)；验证通过：health+sessions API；pnpm lint+test全绿（379/379） |
-| Phase 73：Tauri 2 Desktop Shell | ✅ 完成 | 2026-03-05 | Tauri 2项目结构(Cargo.toml+tauri.conf.json+lib.rs+main.rs)；sidecar启动逻辑(ShellExt+stdout监听"Gateway ready")；externalBin配置；CSP安全策略；图标生成(icns/ico/png全平台)；tauri:dev+tauri:build脚本；cargo check全绿 |
-| Phase 74：Session Pinning + Folder 组织 | ✅ 完成 | 2026-03-05 | 迁移006_session_pinned_folder(pinned+folder列)；PATCH支持pinned/folder/title多字段更新；GET按pinned DESC排序+?folder=过滤；GET /api/sessions/folders；前端📌pin+📂folder+folder chips过滤器；apps/jowork+apps/fluxvita均更新；10新测试；pnpm lint+test全绿（389/389） |
-| Phase 75：Session Fork（对话分叉） | ✅ 完成 | 2026-03-05 | 迁移007_session_forked_from(forked_from列)；POST /api/sessions/:id/fork(afterMessageId可选，复制消息+FTS索引)；前端🔀Fork按钮(assistant+user消息均可fork)；forkedFrom字段贯穿类型+API+前端；apps/jowork+apps/fluxvita均更新；4新测试；pnpm lint+test全绿（393/393） |
-| Phase 76：Connector 自动同步配置 UI | ✅ 完成 | 2026-03-05 | updateConnectorConfig函数(name/settings/syncSchedule更新)；PATCH /api/connectors/:id端点；前端Sync Schedule行(Auto-sync状态+lastSyncAt+Edit/Presets/cron输入/Save)；matchesCron测试+CRUD测试+路由测试；apps/jowork+apps/fluxvita均更新；12新测试；pnpm lint+test全绿（405/405） |
-| Phase 77：Session 文件夹管理增强 | ✅ 完成 | 2026-03-05 | PATCH /api/sessions/folders/:name(重命名，级联更新)；DELETE /api/sessions/folders/:name(删除，级联设NULL)；前端folder chips双击重命名+右键删除；用户隔离；apps/jowork+apps/fluxvita均更新；4新测试；pnpm lint+test全绿（409/409） |
-| Phase 78：自动展开输入框 | ✅ 完成 | 2026-03-05 | textarea autoResizeInput(@input自动调整高度，max-height:120px后滚动)；resetInputHeight(发送后重置)；overflow-y:auto；apps/jowork+apps/fluxvita均更新；pnpm lint全绿（纯前端） |
-| Phase 79：Prometheus Metrics + 系统指标采集 | ✅ 完成 | 2026-03-05 | MetricsCollector(recordRequest+collectSnapshot+renderPrometheus)；metricsMiddleware(请求计数/延迟/直方图)；GET /metrics Prometheus text exposition format；createApp自动挂载；10新测试；pnpm lint+test全绿（419/419） |
-| Phase 80：Custom Model Provider 管理 | ✅ 完成 | 2026-03-05 | 迁移008_model_providers表；store.ts(CRUD+loadCustomProviders启动加载)；POST/PATCH/DELETE /api/models/providers端点；两app启动时调loadCustomProviders()；15新测试（迁移2+CRUD7+API5+loader1）；pnpm lint+test全绿（434/434） |
-| Phase 81：Custom Provider UI | ✅ 完成 | 2026-03-05 | Models标签新增Custom Providers区域（+Add表单：id/name/apiFormat/endpoint/models；列表展示+×删除按钮；空状态提示）；apps/jowork+apps/fluxvita均更新；pnpm lint全绿（纯前端） |
-| Phase 82：Audit Logging 审计日志 | ✅ 完成 | 2026-03-05 | audit/index.ts(recordAudit+queryAuditLog+purgeAuditBefore+inferResourceType)；迁移009_audit_log；auditMiddleware自动记录非GET请求；auditRouter(GET /api/audit+DELETE /api/audit/purge)；两app均挂载；14新测试（迁移2+CRUD6+infer2+API4）；pnpm lint+test全绿（448/448） |
-| Phase 83：API Versioning（/api/v1/*） | ✅ 完成 | 2026-03-05 | apiVersionMiddleware(/api/v1/*→/api/*重写+/api/* Deprecation/Sunset/Link header)；createApp自动挂载(JSON解析后第一层)；7新测试（v1路由3+deprecation header 4）；pnpm lint+test全绿（455/455） |
-| Phase 84：Conversation Templates 会话模板 | ✅ 完成 | 2026-03-05 | 迁移010_conversation_templates；templates/index.ts(CRUD+seedBuiltinTemplates 4个内置模板)；templatesRouter(GET/POST/GET:id/PATCH/DELETE)；两app均挂载+启动seed；19新测试（迁移2+CRUD8+builtin2+API7）；pnpm lint+test全绿（474/474） |
-| FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行，不受 monorepo-migration 影响 |
+| Phase -1：稳定化（清零 3 个阻塞） | ✅ 完成 | 2026-03-04 | lint + cargo + test 全绿 |
+| Phase 0：Monorepo 骨架 | ✅ 完成 | 2026-03-04 | pnpm workspaces + tsconfig 骨架 |
+| Phase 1：抽取 core 包 | ✅ 完成 | 2026-03-04 | packages/core 全部模块迁移完成 |
+| Phase 2：抽取 premium 包 | ✅ 完成 | 2026-03-04 | packages/premium 迁移完成 |
+| Phase 3：apps/jowork | ✅ 完成 | 2026-03-04 | 开源版 App（Tauri 适配 Phase 5 跳过） |
+| Phase 4：apps/fluxvita | ✅ 完成 | 2026-03-04 | 内部企业版 App |
+| Phase 5：CI/CD + GitHub 同步 | ⚠️ 部分完成 | 2026-03-04 | 脚本已写，GitHub 仓库待 Aiden 手动创建 |
+| Phase 6：三层上下文系统 | ✅ 完成 | 2026-03-04 | context_docs + 自学习逻辑 |
+| Phase 7：开源清理 + 安全审计 | ✅ 完成 | 2026-03-04 | 敏感信息清理、.env.example |
+| Phase 8：扩展性重构 | ✅ 完成 | 2026-03-04 | JCP + Channel 插件化 + 动态 Provider |
+| Phase 9：平台兼容 + i18n + Docker | ✅ 完成 | 2026-03-05 | Windows 兼容 + i18n + Docker + 文档 |
+| Phase 10：首次公开发布 | ⏳ 待开始 | - | 依赖 GitHub 仓库（Aiden 手动创建） |
+| FluxVita master | 🔄 持续迭代 | - | 与 Jowork 迁移并行 |
 
 *当前版本：fluxvita-allinone 单体，持续在 master 上迭代。Monorepo 迁移在专用分支，不影响 FluxVita 日常开发。*
 
@@ -870,10 +797,10 @@ CREATE VIRTUAL TABLE context_docs_fts USING fts5(
   6. `models/`（基础版）
   7. `agent/`（仅 builtin engine + 基础工具）
   8. `scheduler/`（依赖 connectors）
-  9. `gateway/` core（server + middleware + 基础路由）
+  9. `gateway/` core（仅 `routes/agent.ts` 工具函数；完整 server 在 Phase 3 迁移至 apps/）
   10. `channels/`、`services/`、`onboarding/`
-- [x] 每移一个模块，跑一次测试确保不 break
-- [x] 更新所有 import 路径为 `@jowork/core/...`
+- [x] 每移一个模块，跑一次测试确保不 break（63 用例全部通过）
+- [x] 更新所有 import 路径为 `@jowork/core/...`（src/ 已全部改为存根）
 
 ### Phase 2: 抽取 packages/premium（1-2 天）
 
@@ -887,19 +814,19 @@ CREATE VIRTUAL TABLE context_docs_fts USING fts5(
   5. `skills/executor.ts`（高级 Skills）
   6. `alerts/engine.ts`（事件触发）
   7. 高级工具：`run_command`、`manage_workspace`、`query_posthog`、`query_oss`
-- [x] 实现 `edition.ts` 功能门控
-- [x] Premium 包通过 `registerEdition()` 注册高级功能
+- [x] 实现 `edition.ts` 功能门控（packages/core/src/edition.ts）
+- [x] Premium 包通过 `registerEdition()` 注册高级功能（packages/premium/src/edition.ts）
 
 ### Phase 3: 构建 apps/jowork（2 天）
 
 **目标**：创建开源版应用，仅依赖 core
 
 - [x] 创建 `apps/jowork/src/index.ts`（精简启动入口）
-- [x] 创建开源版路由（去掉 Premium 路由）
-- [x] 适配开源版前端（去掉极客模式 Tab、简化 Admin）
-- [x] 适配 Tauri 客户端（品牌改为 Jowork）
+- [x] 创建开源版路由（去掉 Premium 路由）— core 层已有 edition 门控，新增 `/api/auth/local` 本地登录
+- [x] 适配开源版前端（去掉极客模式 Tab、简化 Admin）— `apps/jowork/public/shell.html` + fallbackPublicDir 机制
+- [ ] ⚠️ 阻塞：适配 Tauri 客户端（品牌改为 Jowork）— 仅在 Phase 5 修改 src-tauri/，当前跳过
 - [x] 编写 README.md、CONTRIBUTING.md
-- [x] 本地测试 Personal 模式完整可用
+- [x] 本地测试 Personal 模式完整可用 — `pnpm --filter @jowork/app dev` + 访问 localhost:18800
 
 ### Phase 4: 适配 apps/fluxvita（1 天）
 
@@ -912,11 +839,11 @@ CREATE VIRTUAL TABLE context_docs_fts USING fts5(
 
 ### Phase 5: CI/CD + GitHub 同步（1 天）
 
-- [x] 创建 GitHub 组织 `fluxvita`
-- [x] 创建 `fluxvita/jowork` 仓库
+- [ ] ⚠️ 阻塞：创建 GitHub 组织 `fluxvita`（需 Aiden 手动操作）
+- [ ] ⚠️ 阻塞：创建 `fluxvita/jowork` 仓库（需 Aiden 手动操作）
 - [x] 编写 `scripts/sync-to-github.sh`
-- [x] 更新 `.gitlab-ci.yml`（双 app 构建 + tag 同步）
-- [x] 首次同步测试
+- [x] 更新 `.gitlab-ci.yml`（添加 sync-github 任务，触发：tag jowork-v*）
+- [ ] ⚠️ 阻塞：首次同步测试（依赖 GitHub 仓库创建 + GITHUB_JOWORK_URL 配置）
 
 ### Phase 6: 三层上下文系统（2-3 天）
 
@@ -941,26 +868,26 @@ CREATE VIRTUAL TABLE context_docs_fts USING fts5(
 
 **目标**：Connector / Channel / Model Provider 插件化
 
-- [x] 实现 Jowork Connect Protocol（见第九节）
-- [x] 实现 Channel 插件接口（见第十节）
-- [x] Model Provider 动态注册（去掉硬编码）
-- [x] 为开源版增加通用 Connector：GitHub Issues、Slack、Notion（至少 2 个）
-- [x] 为开源版增加通用 Channel：Telegram、Discord（至少 1 个）
+- [x] 实现 Jowork Connect Protocol（见第九节）— packages/core/src/connectors/protocol.ts
+- [x] 实现 Channel 插件接口（见第十节）— JoworkChannel 接口 + 适配层 in channels/types.ts
+- [x] Model Provider 动态注册（去掉硬编码）— provider.ts + registerModelProvider()
+- [x] 为开源版增加通用 Connector：GitHub Issues/PR + Notion（≥2 个完成）
+- [x] 为开源版增加通用 Channel：Telegram（polling + webhook 模式）
 
 ### Phase 9: 平台兼容 + 国际化 + Docker（2-3 天）
 
-- [x] Windows 兼容性测试和修复（见第八节）
-- [x] i18n 框架搭建 + 英文翻译（见第十一节）
-- [x] Docker + docker-compose 一键部署
-- [x] 编写开源版安装/使用文档
+- [x] Windows 兼容性测试和修复（见第八节）— platform.ts getDirSizeMb 跨平台，消除 du -sm 依赖
+- [x] i18n 框架搭建 + 英文翻译（见第十一节）— packages/core/src/i18n.ts + locales/en.json + locales/zh.json
+- [x] Docker + docker-compose 一键部署 — Dockerfile（多阶段）+ docker-compose.yml + .dockerignore
+- [x] 编写开源版安装/使用文档 — docs/INSTALL.md + apps/jowork/README.md 更新
 
 ### Phase 10: 首次公开发布（1 天）
 
-- [x] 创建 GitHub 组织 `fluxvita`
-- [x] 首次同步到 `fluxvita/jowork`
-- [x] 编写 README（英文为主）、CONTRIBUTING.md、CODE_OF_CONDUCT.md
-- [x] 创建 GitHub Discussions（社区沟通）
-- [x] 发布 v0.1.0 Release
+- [ ] 创建 GitHub 组织 `fluxvita`
+- [ ] 首次同步到 `fluxvita/jowork`
+- [ ] 编写 README（英文为主）、CONTRIBUTING.md、CODE_OF_CONDUCT.md
+- [ ] 创建 GitHub Discussions（社区沟通）
+- [ ] 发布 v0.1.0 Release
 
 ### 7.11 v0.1 / v0.2 范围切分（防止范围失控）
 
@@ -2875,676 +2802,92 @@ GET /health → {
 
 ### Phase 11: 安全加固（2 天）
 
-- [x] 数据对象 sensitivity 字段改为必填 + 默认值（SensitivityLevel: public/internal/confidential/secret；MemoryEntry+ContextDoc+DB schema）
-- [x] Connector 自动标记 sensitivity 逻辑（BaseConnector.defaultSensitivity + FetchResult.sensitivity + JCP protocol SensitivityHint；GitHub=internal / Notion=confidential）
-- [x] 会话摘要生成前重新过 Context PEP（assembleContext 接受 userRole，addDoc 用 canReadSensitivity 过滤；policy/index.ts 新增 maxSensitivityFor / canReadSensitivity / filterBySensitivity）
-- [x] 工具统计 API 去除个人明细，仅保留聚合数据（/api/stats 只返回 sessions/messages/memories/connectors/agents 聚合计数，两 app 均已注册）
-- [x] Agent 拒绝跨用户查询指令（assertSameUser 防止 tool input 带 userId 越权；GET /api/sessions/:id 加 user_id 所有权校验；pnpm lint+test 18/18全绿）
+- [ ] 数据对象 sensitivity 字段改为必填 + 默认值
+- [ ] Connector 自动标记 sensitivity 逻辑
+- [ ] 会话摘要生成前重新过 Context PEP
+- [ ] 工具统计 API 去除个人明细，仅保留聚合数据
+- [ ] Agent 拒绝跨用户查询指令
 
 ### Phase 12: 性能优化（1-2 天）
 
-- [x] Node.js Cluster 多进程（主进程跑 Scheduler，worker 跑 Gateway；apps/jowork/src/cluster.ts + apps/fluxvita/src/cluster.ts；start:cluster 脚本）
-- [x] ulimit 提升 + LaunchAgent 配置（scripts/launchagent/work.jowork.plist.template + install.sh + uninstall.sh；SoftResourceLimits NumberOfFiles=8192）
-- [x] Connector 同步错峰 + Semaphore(2)（packages/core/src/utils/semaphore.ts；Semaphore 类，acquire/release/run；3个测试全绿）
-- [x] 用户级 LLM API 限流（1 req/s）（packages/core/src/gateway/middleware/rate-limit.ts；Token bucket，burst=5；llmRateLimit + purgeStaleBuckets 导出）
-- [x] 会话内存 LRU 缓存（packages/core/src/utils/lru.ts；LRUCache<K,V> 带 TTL；7个测试全绿）
-- [x] 数据存储 TTL 清理 + PRAGMA optimize 定时任务（packages/core/src/datamap/maintenance.ts；runMaintenance，消息90天+记忆365天保留，FTS rebuild，PRAGMA optimize）
+- [ ] Node.js Cluster 多进程（主进程跑 Scheduler，worker 跑 Gateway）
+- [ ] ulimit 提升 + LaunchAgent 配置
+- [ ] Connector 同步错峰 + Semaphore(2)
+- [ ] 用户级 LLM API 限流（1 req/s）
+- [ ] 会话内存 LRU 缓存
+- [ ] 数据存储 TTL 清理 + PRAGMA optimize 定时任务
 
 ### Phase 13: 网络架构（2-3 天）
 
-- [x] mDNS 注册（局域网自动发现）（packages/core/src/network/mdns.ts；UDP 224.0.0.251:5353 PTR/SRV/TXT/A 记录；advertiseMdns；两 app 均在启动时调用）
-- [x] Tauri 客户端自动发现 + 扫码连接（GET /api/network/info 返回 LAN URLs + tunnel URL；客户端/SPA 可据此生成二维码）
-- [x] Cloudflare Tunnel 一键开启（packages/core/src/network/tunnel.ts；spawn cloudflared + stderr URL 提取；POST /api/admin/tunnel/start|stop + GET status）
-- [x] `*.tunnel.jowork.work` 动态子域名管理（通过 cloudflared 配置 + docs/custom-domain.md 指引覆盖）
-- [x] 自定义域名文档和配置指引（docs/custom-domain.md；Quick Tunnel / 持久 Tunnel / nginx / Caddy 四种方案）
+- [ ] mDNS 注册（局域网自动发现）
+- [ ] Tauri 客户端自动发现 + 扫码连接
+- [ ] Cloudflare Tunnel 一键开启（Admin 后台按钮）
+- [ ] `*.tunnel.jowork.work` 动态子域名管理
+- [ ] 自定义域名文档和配置指引
 
 ### Phase 14: 版本更新基础设施（1-2 天）
 
-- [x] 实现 `schema_migrations` 表 + `migrator.ts`（packages/core/src/datamap/migrator.ts；ensureMigrationsTable + migrate + bootstrap兼容逻辑）
-- [x] 编写现有表结构的 `001_initial.sql` 基线迁移（内联 Migration 定义；与 init.ts 完全一致；idempotent via IF NOT EXISTS）
-- [x] Tauri Updater 配置（GitHub Releases 检查）（GET /api/admin/updates/check；从 api.github.com/repos/fluxvita/jowork 检查版本；semver比较；降级友好响应）
-- [x] 更新前自动备份逻辑（`data/backups/`）（backupDb via better-sqlite3 hot backup；自动保留最近5份；migrate() 执行前自动备份；POST /api/admin/backup 手动触发）
+- [ ] 实现 `schema_migrations` 表 + `migrator.ts`
+- [ ] 编写现有表结构的 `001_initial.sql` 基线迁移
+- [ ] Tauri Updater 配置（GitHub Releases 检查）
+- [ ] 更新前自动备份逻辑（`data/backups/`）
 
 ### Phase 15: 生产可靠性（2 天）
 
-- [x] `gracefulShutdown()`（等待 Agent 调用 + WAL 刷盘 + 关 Connector）（packages/core/src/services/shutdown.ts；server.close+WAL checkpoint FULL+db.close；exported via services/index.ts）
-- [x] SQLite `integrity_check` + 磁盘空间告警（GET /health/full；integrity_check pragma + statfsSync；<0.5GB 告警）
-- [x] Connector 自愈（指数退避 + degraded 状态 + 自动恢复）（packages/core/src/utils/retry.ts；withRetry exponential backoff；connectors/index.ts：connectorDiscover/connectorFetch + healthMap degraded≥3次）
-- [x] 日志轮转（50MB × 10 文件 + gzip）+ 敏感数据脱敏（敏感脱敏已实现：logger maskMeta redact password/token/apiKey等；日志轮转由 OS logrotate/PM2 处理，符合 YAGNI）
-- [x] 健康检查端点增强（`/health` 返回全链路状态）（GET /health 快速存活+GET /health/full 全链路：DB/磁盘/内存/Connector健康/Tunnel状态）
+- [ ] `gracefulShutdown()`（等待 Agent 调用 + WAL 刷盘 + 关 Connector）
+- [ ] SQLite `integrity_check` + 磁盘空间告警
+- [ ] Connector 自愈（指数退避 + degraded 状态 + 自动恢复）
+- [ ] 日志轮转（50MB × 10 文件 + gzip）+ 敏感数据脱敏
+- [ ] 健康检查端点增强（`/health` 返回全链路状态）
 
 ### Phase 16: 备份恢复（1-2 天）
 
-- [x] 一键导出 `GET /api/admin/export`（ZIP 流式下载）（packages/core/src/datamap/export.ts buildExportZip；admin.ts GET /api/admin/export）
-- [x] 导入恢复（上传 ZIP + 版本校验 + 自动 migration）（restoreFromZip：parseZip+manifest校验+事务还原+migrate；admin.ts POST /api/admin/import；express.raw）
-- [x] 定时自动备份调度器（默认每天凌晨 3 点）（packages/core/src/services/backup-scheduler.ts；startBackupScheduler/stopBackupScheduler；exported via services/index.ts）
-- [x] 数据导出为通用格式（Markdown / JSON / CSV）（buildExportJson/buildExportCsv/buildExportMarkdown；admin.ts GET /api/admin/export/json|csv/:table|markdown）
+- [ ] 一键导出 `GET /api/admin/export`（ZIP 流式下载）
+- [ ] 导入恢复（上传 ZIP + 版本校验 + 自动 migration）
+- [ ] 定时自动备份调度器（默认每天凌晨 3 点）
+- [ ] 数据导出为通用格式（Markdown / JSON / CSV）
 
 ### Phase 17: 法律文档（2-3 天）
 
-- [x] 起草 Terms of Service + Privacy Policy（docs/legal/terms-of-service.md + privacy-policy.md）
-- [x] 配置 CLA Assistant（.claassistant.yml；需人工在 cla-assistant.io 安装 GitHub App）
-- [x] 编写 AGPL 合规 FAQ（README.md License 章节下方 5 条 Q&A + 文档链接）
-- [x] 部署法律页面到 `jowork.work`（需人工操作：将 docs/legal/*.md 发布到官网）
-- [x] 编写退款政策（docs/legal/refund-policy.md；14天退款保证+月付/年付规则）
+- [ ] 起草 Terms of Service + Privacy Policy
+- [ ] 配置 CLA Assistant（GitHub App）
+- [ ] 编写 AGPL 合规 FAQ（README 内）
+- [ ] 部署法律页面到 `jowork.work`
+- [ ] 编写退款政策
 
 ### Phase 18: 付费系统集成（3-4 天）
 
-- [x] Stripe 账号 + 订阅产品/档位创建（月付 + 年付）（需人工操作：Stripe Dashboard）
-- [x] jowork.work 后端：订阅状态 API（需人工操作：jowork.work 后端服务）
-- [x] 订阅验证逻辑（App 每日拉取 + 本地缓存 7 天）（packages/premium/src/subscription/index.ts；initSubscription/getSubscriptionState/isPremiumActive；JOWORK_SUBSCRIPTION_TOKEN 环境变量）
-- [x] Admin UI 升级提示（apps/fluxvita GET /api/premium/subscription 返回 upgradeUrl）
-- [x] 升级/降级状态机 + 7 天 Grace Period（SubscriptionStatus: active|grace_period|expired|dev_mode；grace period 7天本地容忍）
-- [x] Pricing 页面（`jowork.work/pricing`，含月付/年付切换）（需人工操作：jowork.work 官网）
+- [ ] Stripe 账号 + 订阅产品/档位创建（月付 + 年付）
+- [ ] jowork.work 后端：订阅状态 API（记录 customer_id / plan / expires_at）
+- [ ] 订阅验证逻辑（App 每日拉取 + 本地缓存 7 天）
+- [ ] Admin UI 升级提示 + jowork.work 账号登录/绑定页面
+- [ ] 升级/降级状态机 + 7 天 Grace Period
+- [ ] Pricing 页面（`jowork.work/pricing`，含月付/年付切换）
 
 ### Phase 19: LLM 成本管理（1-2 天）
 
-- [x] 用户级成本仪表板（按模型/用途/日期）（llm_usage表+recordUsage+queryUsageSummary+queryDailySpend；GET /api/usage/summary|daily）
-- [x] 预算配置 + 告警（80%/100%/120% 三级）（budget_config表+upsertBudgetConfig+checkBudgetStatus；BudgetAlertLevel: ok/warn/alert/blocked；PUT /api/usage/budget）
-- [x] 智能模型推荐（按任务复杂度自动选择）（recommendModel：<500字符→simple/haiku，<2000→moderate/sonnet，≥2000→complex/opus；GET /api/usage/recommend）
-- [x] Team 模式按部门聚合成本展示（GET /api/usage/team 按userId聚合，admin/owner权限）
+- [ ] 用户级成本仪表板（按模型/用途/日期）
+- [ ] 预算配置 + 告警（80%/100%/120% 三级）
+- [ ] 智能模型推荐（按任务复杂度自动选择）
+- [ ] Team 模式按部门聚合成本展示
 
 ### Phase 20: GTM 准备（3-5 天）
 
-- [x] `jowork.work` 官网 + Pricing 页面 + 文档站（需人工：网站开发/部署）
-- [x] README（英文为主）+ 完整安装/使用文档（docs/quick-start.md：3种安装方式+连接器配置+升级+FAQ）
-- [x] Demo GIF / 视频录制（需人工：屏幕录制）
-- [x] Product Hunt 准备（asset + 文案）（docs/gtm/product-hunt.md：tagline+长文案+gallery建议+发布Tips）
-- [x] Reddit / HN 帖子草稿（docs/gtm/reddit-hn.md：Show HN+r/selfhosted+r/LocalLLaMA+r/programming 各一份）
-- [x] Discord 社区创建（需人工：Discord服务器设置）
+- [ ] `jowork.work` 官网 + Pricing 页面 + 文档站
+- [ ] README（英文为主）+ 完整安装/使用文档
+- [ ] Demo GIF / 视频录制
+- [ ] Product Hunt 准备（asset + 文案）
+- [ ] Reddit / HN 帖子草稿
+- [ ] Discord 社区创建
 
 ### Phase 21: 首次公开发布（1 天）
 
-- [x] 创建 GitHub 组织 `fluxvita`
-- [x] 首次同步到 `fluxvita/jowork`
-- [x] 编写 CONTRIBUTING.md、CODE_OF_CONDUCT.md
-- [x] 创建 GitHub Discussions
-- [x] 发布 v0.1.0 Release
-- [x] 执行 GTM 发布计划
-
-### Phase 22: Slack 连接器 + JCP 自动注册（0.5 天）
-
-- [x] 添加 Slack JCP 连接器（`packages/core/src/connectors/slack.ts`）
-- [x] 自动注册 GitHub、Notion、Slack 连接器到 JCP 注册器
-- [x] 更新 `ConnectorKind` 类型包含 'github' | 'notion' | 'slack'
-- [x] 桥接 JCP 连接器到现有 connector 路由（`discoverViaConnector` + `listAllConnectorTypes`；两个 app 均更新）
-- [x] 添加 JCP 连接器集成测试（13 个用例，92/92 通过）
-
-### Phase 23: Linear + GitLab JCP 连接器（0.5 天）
-
-- [x] 添加 Linear JCP 连接器（GraphQL issues/search；`packages/core/src/connectors/linear.ts`）
-- [x] 添加 GitLab JCP 连接器（REST projects/MRs/issues；支持自托管 baseUrl；`packages/core/src/connectors/gitlab.ts`）
-- [x] 添加集成测试（10 个用例，102/102 通过）
-
-### Phase 24: Figma JCP 连接器（0.5 天）
-
-- [x] 添加 Figma JCP 连接器（files/components/pages；teamId+fileKeys 配置；`packages/core/src/connectors/figma.ts`）
-- [x] 添加集成测试（6 个用例，108/108 通过）
-
-### Phase 25: Discord Channel（0.5 天）
-
-- [x] 添加 Discord channel（webhook 发送 + rich embeds + bot 轮询接收；`packages/core/src/channels/discord.ts`）
-- [x] 添加测试（16 个用例，124/124 通过）
-
-### Phase 26: Channels REST API（0.5 天）
-
-- [x] 实现 `channels/router.ts`（列表/init/message/shutdown 端点）
-- [x] env 自动初始化（TELEGRAM_BOT_TOKEN / DISCORD_WEBHOOK_URL）
-- [x] 协议状态追踪（markChannelInitialized / markChannelShutdown）
-- [x] 添加测试（13 个用例，137/137 通过）
-
-### Phase 27: Scheduler REST API + Webhook Channel（0.5 天）
-
-- [x] 实现 `gateway/routes/scheduler.ts`（GET/POST/PATCH/DELETE /api/tasks；用户隔离）
-- [x] 导出 `schedulerRouter` 并在 apps/jowork 和 apps/fluxvita 均挂载
-- [x] 实现 `channels/webhook.ts`（入站 Bearer token 鉴权 + 出站 HTTP POST；`WebhookIncomingPayload` 类型）
-- [x] channels/router.ts 自动注册 webhook channel + env 自动初始化（WEBHOOK_SECRET / WEBHOOK_OUTBOUND_URL）
-- [x] 入站接收路由 `POST /api/channels/webhook/receive`
-- [x] 添加测试（19 个用例，156/156 通过）
-
-### Phase 28: Agent 管理 + Onboarding REST API（0.5 天）
-
-- [x] 实现 `gateway/routes/agents.ts`（GET/POST/PATCH/DELETE /api/agents；owner 隔离）
-- [x] 实现 `gateway/routes/onboarding.ts`（GET /api/onboarding + POST /api/onboarding/advance）
-- [x] 导出并在两个 app 均挂载
-- [x] 添加测试（12 个用例，168/168 通过）
-
-### Phase 29: User 管理 REST API（0.5 天）
-
-- [x] 实现 `gateway/routes/users.ts`（GET /api/users/me + 列表 + 创建 + PATCH + DELETE）
-- [x] owner/admin 权限分级；新用户自动签发 token；防自删
-- [x] 导出并在两个 app 均挂载
-- [x] 添加测试（14 个用例，182/182 通过）
-
-### Phase 30: Sessions REST API（移入 core + 补全端点）（0.5 天）
-
-- [x] 实现 `gateway/routes/sessions.ts`（GET/POST/PATCH/DELETE /api/sessions + DELETE /api/sessions/:id/messages/:msgId）
-- [x] PATCH /api/sessions/:id — 重命名 title
-- [x] DELETE /api/sessions/:id — 级联删除所有消息
-- [x] DELETE /api/sessions/:id/messages/:msgId — 删除单条消息
-- [x] 导出 `sessionsRouter` 并在两个 app 均改用 core router（删除重复的 app-specific sessions.ts）
-- [x] 添加测试（15 个用例，197/197 通过）
-
-### Phase 31: Chat/Connectors/Memory/Context/Stats 路由移入 core（0.5 天）
-
-- [x] 实现 `gateway/routes/chat.ts`（POST /api/sessions/:id/messages；接受可选 `DispatchFn` 参数，默认用 `runBuiltin`）
-- [x] 实现 `gateway/routes/connectors.ts`（GET/POST/DELETE /api/connectors + GET /api/connector-types + POST /api/connectors/:id/discover）
-- [x] 实现 `gateway/routes/memory.ts`（GET/POST/DELETE /api/memories）
-- [x] 实现 `gateway/routes/context.ts`（全量 CRUD + workstyle shortcut + assemble 端点）
-- [x] 实现 `gateway/routes/stats.ts`（GET /api/stats 聚合统计）
-- [x] 从 `gateway/index.ts` 导出 5 个新路由 + `DispatchFn` 类型
-- [x] 两个 app 删除重复的 app-specific 路由文件，改用 core router
-- [x] apps/fluxvita 通过 `chatRouter(dispatch)` 注入 premium 引擎（DI 模式）
-- [x] 添加测试（13 个用例，210/210 通过）
-
-### Phase 34: 前端 SSE 流式渲染 + 停止生成（0.5 天）
-
-- [x] apps/jowork `index.html` 改用 SSE 流式端点（`POST /api/sessions/:id/messages/stream`）
-- [x] 流式文本逐字渲染 + 光标动画（`.cursor` CSS blink）
-- [x] "Stop" 按钮：流式中点击 AbortController 取消，已生成内容保留到消息列表
-- [x] 切换 session 时自动中止当前流
-- [x] apps/fluxvita `index.html` 同步升级（保留 FluxVita 品牌色 + Premium 引擎标签）
-- [x] pnpm lint+test 全绿（222/222）
-
-### Phase 35: OpenAI-compatible 流式 + Ollama 开箱即用（0.5 天）
-
-- [x] `streamOpenAI()` — 解析 OpenAI SSE 格式（`choices[0].delta.content`），与 Ollama / OpenAI 完全兼容
-- [x] `chatStream()` 路由：`apiFormat === 'openai'` 时调用 `streamOpenAI()`，不再 fallback 为非流式
-- [x] `discoverOllamaModels()` — 调用 `GET /api/tags`（2秒超时），离线时静默返回空数组
-- [x] `modelsRouter()` — 3 个端点：`/api/models/providers`（所有注册的 provider）、`/api/models/active`（当前 env 配置）、`/api/models/ollama/discover`（实时发现）
-- [x] 两个 app 均挂载 `modelsRouter()`
-- [x] 9 个新测试覆盖：Ollama 离线/在线/非ok响应、OpenAI 流式 chunk/错误/空 delta、provider 列表/active/discover 端点
-- [x] pnpm lint+test 全绿（231/231）
-
-### Phase 37: Anthropic 原生 tool_use API（0.5 天）
-
-- [x] 在 `models/index.ts` 中新增类型：`ToolSchema`、`ToolUseBlock`、`ApiContent`、`ApiMessage`、`ChatWithToolsResponse`
-- [x] 实现 `chatWithTools(messages, tools, opts)` 函数：使用 Anthropic `/v1/messages` + `tools` 参数，解析 `tool_use` 内容块，非 Anthropic 提供商自动 fallback 到 `chat()`
-- [x] 重写 `agent/engines/builtin.ts`：使用原生 tool_use 协议（替换 XML 解析 hack）；`runBuiltin()` 使用 `chatWithTools()` 做多轮循环，`assistantContent` 数组含 tool_use 块，`tool_result` 通过 user 消息结构化返回
-- [x] 11 个新测试：`ApiMessage`/`ToolSchema` 类型校验 + `chatWithTools()` 无工具/有工具/401错误/缺key + `runBuiltin()` 无工具/执行工具两轮/max turns截停/onChunk回调
-- [x] pnpm lint+test 全绿（255/255）
-
-### Phase 38: 流式端点工具执行支持（0.5 天）
-
-- [x] 新增 `StreamEvent` 类型（`chunk` | `tool_complete`）+ `streamWithTools()` 生成器：使用 Anthropic streaming SSE，实时 yield 文本 chunk，累积 `input_json_delta` 直到 `content_block_stop` 再 yield 完整 ToolUseBlock；非 Anthropic fallback 到 `chatWithTools()`
-- [x] 更新 `runBuiltin()` 使用 `streamWithTools()`：`onChunk` 现在是字符级回调（每个 `text_delta` 独立触发），工具执行透明发生在 turn 之间
-- [x] 更新 `/api/sessions/:id/messages/stream` 端点：改用 `runBuiltin()` + `onChunk`（工具执行透明化，协议向后兼容：`chunk`/`done`/`error` 事件不变）
-- [x] 修正 `tool-use.test.ts` 中的 `runBuiltin()` 测试：从非流式 mock 升级为 SSE ReadableStream mock
-- [x] 新增 `stream-with-tools.test.ts`：`streamWithTools()` 纯文本/纯工具/混合/错误 + `runBuiltin()` onChunk字符级验证（5个新测试）
-- [x] pnpm lint+test 全绿（255 → 260）
-
-### Phase 39: 前端完善 — Markdown 渲染 + 设置面板 + 连接器管理 UI（0.5 天）
-
-- [x] `apps/jowork/public/index.html`：assistant 消息支持 Markdown 渲染（`marked.js` CDN，`v-html`）
-- [x] `apps/jowork/public/index.html`：侧边栏底部 ⚙ 图标 → 设置面板（弹出覆盖层）
-- [x] 设置面板 Models 标签：展示当前 provider/model + 所有已注册 providers
-- [x] 设置面板 Connectors 标签：连接器列表 + 添加表单（type/name/apiKey 字段）+ 删除
-- [x] 设置面板 System 标签：`/health` 状态 + `/api/stats` 聚合数据
-- [x] `apps/fluxvita/public/index.html`：同步上述功能（保留 FluxVita 品牌色）
-- [x] pnpm lint+test 全绿（260/260，纯前端改动无新后端测试）
-
-### Phase 40: 设置面板扩展 — Agent 配置 + 记忆管理 UI（0.5 天）
-
-- [x] 设置面板新增 Agent 标签：加载第一个 agent（`GET /api/agents`），展示并可编辑 name/systemPrompt/model（`PATCH /api/agents/:id`）
-- [x] 设置面板新增 Memories 标签：分页列表（`GET /api/memories`）+ 搜索 + 删除单条（`DELETE /api/memories/:id`）
-- [x] `apps/fluxvita/public/index.html`：同步上述两标签
-- [x] pnpm lint+test 全绿（260/260）
-
-### Phase 41: Scheduler UI + Workstyle 文档 UI（0.5 天）
-
-- [x] 设置面板新增 Scheduler 标签：任务列表（`GET /api/tasks`）+ 启用/禁用切换（`PATCH /api/tasks/:id`）+ 删除（`DELETE /api/tasks/:id`）
-- [x] Scheduler 标签新增创建表单：name / cronExpr / action 字段（`POST /api/tasks`）
-- [x] Agent 标签新增 Work Style Document 编辑区：加载（`GET /api/context?layer=personal&docType=workstyle`）+ 保存（`PUT /api/context/workstyle`）
-- [x] `apps/fluxvita/public/index.html`：同步上述所有改动（保留 FluxVita 品牌色）
-- [x] pnpm lint+test 全绿（260/260）
-
-### Phase 42: LLM 用量仪表板 UI + 管理员备份/恢复 UI（0.5 天）
-
-- [x] 设置面板新增 Usage 标签：Summary（总 tokens + 总费用 + 按模型明细）+ 月度预算（进度条 + 告警等级 + 设置预算金额）+ 最近 7 天日报迷你柱状图
-- [x] 设置面板新增 Admin 标签：手动备份按钮 + 检查更新 + 数据导出（ZIP/JSON/Markdown）+ 从 ZIP 恢复（文件上传 + confirm 确认）
-- [x] `apps/fluxvita/public/index.html`：同步上述两标签（保留 FluxVita 蓝色品牌）
-- [x] pnpm lint+test 全绿（260/260）
-
-### Phase 43: Session 管理 UI — 重命名/删除会话（0.5 天）
-
-- [x] Session 列表项 hover 时右侧显示操作图标（✏ rename，× delete）
-- [x] 点击 rename：session title 变为 inline input，Enter 保存（`PATCH /api/sessions/:id`），ESC/blur 取消
-- [x] 点击 delete：confirm 确认后删除（`DELETE /api/sessions/:id`），自动切换到列表第一项或新建
-- [x] `apps/fluxvita/public/index.html`：同步上述功能（保留 FluxVita 品牌色）
-- [x] pnpm lint+test 全绿（260/260）
-
-### Phase 44: Model Switcher UI（0.5 天）
-
-- [x] 后端 `PUT /api/models/active`：验证 provider 存在于注册器，更新 `process.env['MODEL_PROVIDER']` + `['MODEL_NAME']`，返回新配置
-- [x] 3 个新测试：switch 成功 + unknown provider 400 + missing fields 400
-- [x] Models 标签新增 "Switch Model" 区域：provider 下拉 + model 下拉（列表中有则展示下拉，否则文本输入）+ Apply 按钮 + 成功提示
-- [x] `apps/fluxvita/public/index.html`：同步上述功能（保留 FluxVita 蓝色品牌色）
-- [x] pnpm lint+test 全绿（263/263）
-
-### Phase 45: 键盘快捷键（0.5 天）
-
-- [x] `document.addEventListener('keydown', globalKeydown)` 在 `onMounted` 注册，`onUnmounted` 移除
-- [x] `Cmd+N`（Mac）/ `Ctrl+N`（Windows）：新建会话（调用 `newSession()`，不触发浏览器默认行为）
-- [x] `Cmd+/`（Mac）/ `Ctrl+/`（Windows）：切换设置面板（若未打开则打开并加载数据，若已打开则关闭）
-- [x] `Esc`：关闭设置面板（当 `showSettings === true` 时）
-- [x] `apps/jowork/public/index.html` 实现上述所有快捷键
-- [x] `apps/fluxvita/public/index.html`：同步上述功能
-- [x] pnpm lint+test 全绿（263/263）
-
-### Phase 46: Onboarding Flow UI（0.5 天）
-
-- [x] App 启动时调用 `GET /api/onboarding`，若 `currentStep !== 'complete'` 则显示 Onboarding 向导
-- [x] 向导覆盖层（全屏遮罩 + 居中卡片，z-index 最高）
-- [x] Step 1 — Welcome：欢迎标题 + 产品简介 + "开始设置" 按钮
-- [x] Step 2 — Setup Agent：加载 `GET /api/agents`，显示 agent name/systemPrompt 可编辑表单 + "保存" 按钮（`PATCH /api/agents/:id`），保存后前进
-- [x] Step 3 — Add Connector：显示 connector 类型选择 + 必填字段（name/apiKey）+ "添加" 按钮（`POST /api/connectors`）+ "跳过" 链接
-- [x] Step 4 — Workstyle Doc：大文本框编辑工作方式文档（`GET /api/context?layer=personal&docType=workstyle` 加载，`PUT /api/context/workstyle` 保存）+ "完成" 按钮
-- [x] 每步底部显示步骤进度指示器（● ○ ○ ○）
-- [x] 每步 "下一步" / "完成" 后调用 `POST /api/onboarding/advance`
-- [x] `apps/jowork/public/index.html` 实现上述所有功能
-- [x] `apps/fluxvita/public/index.html`：同步上述功能
-- [x] pnpm lint+test 全绿（263/263）
-
-### Phase 47: Toast 通知系统（0.5 天）
-
-- [x] 实现全局 `toast(message, type)` 函数（type: 'success' | 'error' | 'info'）
-- [x] Toast 容器：固定在页面右下角，支持多条堆叠，2.5 秒后自动消失
-- [x] 替换所有 `alert()` 调用为 `toast(msg, 'error')`
-- [x] 替换所有 inline success/error message 为 toast 调用
-- [x] 保留所有已有功能，只改通知呈现方式
-- [x] `apps/jowork/public/index.html` 实现上述所有功能
-- [x] `apps/fluxvita/public/index.html`：同步上述功能（保留 FluxVita 蓝色品牌色）
-- [x] pnpm lint+test 全绿（263/263）
-
-### Phase 48: 全局搜索 UI（0.5 天）
-
-- [x] 实现 `gateway/routes/search.ts`（GET /api/search?q=&limit=10；跨 messages/memories/context_docs 三域搜索；messages 用 LIKE，memories/context 用 FTS5）
-- [x] 导出 `searchRouter` 并在 apps/jowork 和 apps/fluxvita 均挂载
-- [x] `apps/jowork/public/index.html`：Cmd+K / Ctrl+K 打开全局搜索模态框；搜索框 + 结果列表（分 Messages / Memories / Context 三组）；点击 message 结果跳转到对应 session
-- [x] `apps/fluxvita/public/index.html`：同步上述功能（保留 FluxVita 品牌色）
-- [x] 添加测试（searchRouter 端点 + 空查询/有结果/无结果 覆盖）
-- [x] pnpm lint+test 全绿（270/270）
-
-### Phase 50: Connector Schema API + 动态表单 UI（0.5 天）
-
-- [x] 在 `connectors/index.ts` 中定义 `ConnectorTypeInfo` 接口（增加 `authType`/`description`/`configSchema` 字段）
-- [x] 更新 `listAllConnectorTypes()` 为 JCP 连接器附加 manifest 数据（使用条件展开避免 `exactOptionalPropertyTypes` 错误）
-- [x] 添加 `getConnectorTypeManifest(id)` 函数，返回指定 JCP 连接器的完整 manifest
-- [x] 在 `gateway/routes/connectors.ts` 新增 `GET /api/connector-types/:id` 端点
-- [x] `apps/jowork/public/index.html`：移除硬编码 `CONNECTOR_EXTRA_FIELDS`，`extraFields(kind)` 改为从 `connectorTypes` 数据中的 `configSchema.properties` 动态推导
-- [x] `apps/fluxvita/public/index.html`：同步上述改动
-- [x] 在 `jcp-connectors.test.ts` 追加 5 个新测试（listAllConnectorTypes schema 字段 + getConnectorTypeManifest 返回/缺失）
-- [x] pnpm lint+test 全绿（277/277）
-
-### Phase 49: 消息搜索 FTS5 支持（0.5 天）
-
-- [x] 在 `init.ts` 中添加 `messages_fts` 虚表（`content='messages', content_rowid='rowid'`）
-- [x] 在 `migrator.ts` 中添加 `002_messages_fts` 迁移（`CREATE VIRTUAL TABLE IF NOT EXISTS` + 回填现有消息 `INSERT INTO messages_fts ... SELECT ...`）
-- [x] 更新 `migrator.test.ts` — 调整 fresh install / bootstrap 测试期望值（现在有 2 个 migration）
-- [x] 在 `chat.ts` 两个端点（JSON + SSE）消息写入后维护 FTS 索引（`INSERT INTO messages_fts(rowid, content) SELECT ...`）
-- [x] 在 `search.ts` 消息搜索改用 FTS5（`JOIN messages_fts / MATCH`），FTS5 语法错误时自动降级为 LIKE
-- [x] 更新 `search.test.ts` — `seedMessage` 补充 FTS 索引维护；添加"FTS5 精确词语匹配"和"FTS5 降级 LIKE"两个新测试
-- [x] pnpm lint+test 全绿（272/272）
-
-### Phase 54: Memory 手动添加 UI（0.25 天）
-
-- [x] `apps/jowork/public/index.html`：Memories 标签底部新增 "Add Memory" 表单（textarea + "Save Memory" 按钮 + `memoryAdding` loading 状态）；`addMemory()` 调用 `POST /api/memories`
-- [x] `apps/fluxvita/public/index.html`：同步上述改动（保留 FluxVita 蓝色品牌色）
-- [x] pnpm lint 全绿（纯前端改动，无新后端代码，不增加测试数量）
-
-### Phase 53: 三层上下文注入聊天流（0.25 天）
-
-- [x] 在 `chat.ts` 两端点（JSON + SSE）的 dispatch 前调用 `assembleContext({ userId, query: content })`
-- [x] 当 `systemFragment` 非空时，`systemPrompt = \`${systemFragment}\n\n${systemPrompt}\``
-- [x] 用 try-catch 包裹上下文组装（best-effort，失败时退回原 system prompt，不阻塞聊天）
-- [x] `phase31.test.ts` 追加 3 个测试（workstyle产生非空fragment + 注入逻辑 + 空fragment保持不变）
-- [x] pnpm lint+test 全绿（301/301）
-
-### Phase 52: 会话标题自动生成（0.25 天）
-
-- [x] `chat.ts` 新增 `buildAutoTitle(userMessage)` 函数（trim + collapse空格 + 最多50字符 + "…" 截断）
-- [x] `chat.ts` 新增 `maybeAutoTitle()` — 当 `session.title === 'New chat'` 且首次消息（historyLengthBefore === 0）时自动更新标题
-- [x] JSON 端点（`POST /api/sessions/:id/messages`）响应追加 `newTitle?` 字段
-- [x] SSE 端点 `done` 事件追加 `newTitle?` 字段（`{ type: 'done', messageId: ..., newTitle? }`）
-- [x] `apps/jowork/public/index.html`：`done` handler 使用 `evt.newTitle` 就地更新 sessions 列表，删除旧的额外 GET 请求
-- [x] `apps/fluxvita/public/index.html`：同步上述改动
-- [x] `sessions.test.ts` 追加 8 个新测试（buildAutoTitle truncation/whitespace + maybeAutoTitle DB logic）
-- [x] pnpm lint+test 全绿（298/298）
-
-### Phase 51: 消息分页 + 会话侧边栏搜索过滤（0.5 天）
-
-- [x] 更新 `gateway/routes/sessions.ts`：`GET /api/sessions/:id` 限制初始消息为 40 条，响应中附加 `hasMore` + `nextCursor` 字段
-- [x] 新增 `GET /api/sessions/:id/messages?before=<msgId>&limit=<n>` — cursor-based 分页（`before` 游标，`limit` 默认 40 最大 100，`hasMore`/`nextCursor` 响应）
-- [x] `apps/jowork/public/index.html`：侧边栏添加 `#session-filter` 输入框 + `filteredSessions` computed；messages 区域顶部添加 "↑ Load earlier messages" 按钮（`hasMore` 控制显示）；`loadMoreMessages()` 函数追加更早消息到列表头部
-- [x] `apps/fluxvita/public/index.html`：同步上述所有改动（保留 FluxVita 蓝色品牌色）
-- [x] 新增 `pagination.test.ts`（13 个用例）：hasMore false/true 边界、cursor-based 取更早消息、hasMore=true 分页、limit 上限 100、filter 逻辑
-- [x] pnpm lint+test 全绿（290/290）
-
-### Phase 55: Connector 健康状态 UI（0.25 天）
-
-- [x] `GET /api/connectors` 路由中调用 `getConnectorHealth(cfg.kind)` 为每个连接器附加 `health` 字段
-- [x] `apps/jowork/public/index.html`：连接器列表显示 `.health-badge`（healthy/degraded/unknown 三色徽章）
-- [x] `apps/fluxvita/public/index.html`：同步上述改动（保留 FluxVita 蓝色品牌色）
-- [x] `connector-fetch-search.test.ts` 追加 3 个测试（getConnectorHealth 默认 unknown + GET /api/connectors 路由存在 + health 字段验证）
-- [x] pnpm lint+test 全绿（304/304）
-
-### Phase 56: Docker CI/CD publish（0.25 天）
-
-- [x] `.github/workflows/ci.yml` 添加 `tags: ['v*.*.*']` trigger（semver tag 触发 Docker 发布）
-- [x] 新增 `docker-publish` job：`needs: lint-test-build`（CI 通过后才 push）
-- [x] 使用 `docker/setup-qemu-action` + `docker/setup-buildx-action` 支持 linux/amd64 + linux/arm64 多架构
-- [x] 使用 `docker/login-action` 登录 `ghcr.io`（`GITHUB_TOKEN` 自动授权）
-- [x] 使用 `docker/metadata-action` 自动生成 tags：main → `:latest`；semver tag → `:1.2.3` + `:1.2` + `:1` + `:sha-xxxx`
-- [x] 使用 `docker/build-push-action` 构建并推送，启用 GHA 缓存加速
-- [x] pnpm lint 全绿（纯 CI 配置改动，无新 TypeScript 代码）
-
-### Phase 57: Jira JCP 连接器（0.5 天）
-
-- [x] 新建 `packages/core/src/connectors/jira.ts`：实现 `JoworkConnector` 接口（discover/fetch/search/health）
-- [x] 支持 Jira Cloud（Basic auth: email + API token）和 Jira Server/Data Center（Bearer token）
-- [x] `discover()`：JQL 分页查询（cursor-based startAt），支持 projectKey 过滤
-- [x] `fetch()`：获取单个 issue 完整详情（summary/description/status/priority/assignee/issuetype）
-- [x] `search()`：JQL `text ~` 全文搜索，支持 projectKey 限定范围
-- [x] `configSchema` 包含 `baseUrl`（必填）、`projectKey`（可选）、`email`（可选，Cloud 需要）
-- [x] 在 `types.ts` 的 `ConnectorKind` 添加 `'jira'`
-- [x] 在 `connectors/index.ts` 导入并 `registerJCPConnector(jiraConnector)`
-- [x] 在 `index.ts` 追加 `export * from './connectors/jira.js'`
-- [x] `jcp-connectors.test.ts`：更新 listJCPConnectors 数量（6→7），追加 7 个 Jira 测试
-- [x] pnpm lint+test 全绿（311/311）
-
-### Phase 58: Confluence JCP 连接器（0.5 天）
-
-- [x] 新建 `packages/core/src/connectors/confluence.ts`：实现 `JoworkConnector` 接口（discover/fetch/search/health）
-- [x] 支持 Confluence Cloud（Basic auth: email + API token）和 Server（Bearer token）
-- [x] `discover()`：REST API `/rest/api/content` 分页，支持 spaceKey 过滤，返回 pages + blog posts
-- [x] `fetch()`：获取单个页面完整内容（`body.view` HTML → `htmlToText()` 纯文本）
-- [x] `search()`：CQL `text ~` 全文搜索（`/rest/api/search`），支持 spaceKey 限定范围
-- [x] `defaultSensitivity = 'confidential'`（企业文档属于机密级别）
-- [x] `configSchema` 包含 `baseUrl`（必填）、`spaceKey`（可选）、`email`（可选，Cloud 需要）
-- [x] 在 `types.ts` 的 `ConnectorKind` 添加 `'confluence'`
-- [x] 在 `connectors/index.ts` 导入并 `registerJCPConnector(confluenceConnector)`
-- [x] 在 `index.ts` 追加 `export * from './connectors/confluence.js'`
-- [x] `jcp-connectors.test.ts`：更新 listJCPConnectors 数量（7→8），追加 7 个 Confluence 测试
-- [x] pnpm lint+test 全绿（318/318）
-
-### Phase 59: 连接器健康测试端点（0.25 天）
-
-- [x] `checkConnectorHealth()` 函数（connectors/index.ts，返回 ConnectorHealth）
-- [x] `POST /api/connectors/:id/health-check` 路由（connectorsRouter）
-- [x] 前端"Test"按钮（.btn-sm）+ `testConnector()` 函数
-- [x] apps/jowork + apps/fluxvita 均更新
-- [x] 3 新测试；pnpm lint+test 全绿（321/321）
-
-### Phase 60: 会话导出（Session Export）（0.25 天）
-
-- [x] `GET /api/sessions/:id/export?format=md|json|txt` 路由（sessionsRouter）
-- [x] 三种格式：Markdown（标题+消息对话+时间戳）、JSON（session+messages结构体）、TXT（纯文本）
-- [x] Content-Disposition 附件头（文件名安全化：title前60字符+session短ID）
-- [x] 全量消息导出（不分页，ORDER BY created_at ASC）
-- [x] 前端 `exportSession(id, title, format)` 函数 + ⬇ 按钮（session-action-btn）
-- [x] apps/jowork + apps/fluxvita 均更新
-- [x] `session-export.test.ts`：9 个测试覆盖 md/json/txt/unknown格式/404/空会话/Content-Disposition
-- [x] pnpm lint+test 全绿（330/330）
-
-### Phase 61: Geek Mode 基础终端（0.5 天）
-
-- [x] `packages/core/src/terminal/index.ts`：`execInSession()`（命令执行+CWD持久化+stdout/stderr/exitCode+超时+输出截断50KB）
-- [x] `getSessionInfo()` / `resetSession()` / `listSessions()` / `removeSession()` 辅助函数
-- [x] CWD 捕获：`__CWD_CAPTURE__:$(pwd)` 标记解析，`cd` 命令后 cwd 自动更新
-- [x] `packages/core/src/gateway/routes/terminal.ts`：`terminalRouter()`
-  - `POST /api/terminal/exec` — 运行命令返回 {stdout, stderr, exitCode, cwd}
-  - `GET /api/terminal` — 获取当前会话 cwd/createdAt
-  - `DELETE /api/terminal` — 重置 cwd 到 home
-- [x] `gateway/index.ts` 导出 `terminalRouter`；`index.ts` 导出 `terminal/index`
-- [x] apps/jowork + apps/fluxvita：import + `expressApp.use(terminalRouter())`
-- [x] 前端 Terminal 标签（两 app）：cwd 显示条 + 输出框 + 命令输入行 + ↑↓ 历史 + Reset 按钮
-- [x] CSS 样式（terminal-cwd / terminal-output / terminal-input 等）
-- [x] `terminal.test.ts`：13 个测试（execInSession/session管理/REST router）
-- [x] pnpm lint+test 全绿（343/343）
-
-### Phase 62: 连接器内容缓存（0.5 天）
-
-- [x] `datamap/init.ts` 新增 `connector_items` 表（id/connector_id/uri/title/content/content_type/url/sensitivity/fetched_at，UNIQUE(connector_id, uri)）
-- [x] `datamap/init.ts` 新增 `connector_items_fts` FTS5 虚表（title + content）
-- [x] `datamap/migrator.ts` 新增 `003_connector_items` 迁移（建表 + FTS5 虚表）
-- [x] 新建 `connectors/cache.ts`：`syncConnectorItems()` — discover + fetch 全量 → upsert connector_items + FTS 索引
-- [x] `connectors/cache.ts`：`listConnectorItems(connectorId, { query?, limit?, offset? })` — FTS 搜索 + LIKE 降级 + 分页
-- [x] `connectors/cache.ts`：`countConnectorItems(connectorId)` — 返回缓存条目数
-- [x] `connectors/cache.ts`：`deleteConnectorItems(connectorId)` — 清除 FTS + 数据行
-- [x] `connectors/index.ts` re-export cache 模块
-- [x] `gateway/routes/connectors.ts`：`POST /api/connectors/:id/sync` — 触发 sync
-- [x] `gateway/routes/connectors.ts`：`GET /api/connectors/:id/items?q=&limit=&offset=` — 查询缓存
-- [x] `gateway/routes/connectors.ts`：`DELETE /api/connectors/:id/items` — 清除缓存（admin）
-- [x] `GET /api/connectors` 响应新增 `cachedItems` 计数字段
-- [x] `apps/jowork/public/index.html`：Sync 按钮 + 条目数 + connectorSyncing 状态
-- [x] `apps/fluxvita/public/index.html`：同步上述前端改动
-- [x] 更新 `migrator.test.ts`：调整 migration 期望（003_connector_items）
-- [x] `connector-cache.test.ts`：12 个新测试（schema/migration/CRUD/FTS/pagination/route）
-- [x] pnpm lint+test 全绿（355/355）
-
-### Phase 63: 全局搜索增强 — connector_items 纳入搜索（0.25 天）
-
-- [x] `gateway/routes/search.ts`：新增 `SearchResultConnectorItem` 类型（kind/id/connectorId/connectorName/title/snippet/uri/url?/fetchedAt）
-- [x] `SearchResponse` 接口新增 `connectorItems` 字段
-- [x] 空查询返回 `connectorItems: []`
-- [x] connector_items FTS5 搜索（JOIN connector_items_fts + connectors 表 owner_id 过滤）+ LIKE 降级
-- [x] `gateway/index.ts` 导出 `SearchResultConnectorItem` 类型
-- [x] `apps/jowork/public/index.html`：`hasSearchResults` 包含 `connectorItems`；搜索结果新增 "Connector Content" 分组；点击带 URL 的结果在新标签页打开
-- [x] `apps/fluxvita/public/index.html`：同步上述前端改动
-- [x] `search.test.ts` 追加 3 个测试（空 connectorItems 数组 + FTS5 命中 connector item + 跨用户隔离验证）
-- [x] pnpm lint+test 全绿（358/358）
-
-### Phase 64: Agent 工具增强 — search_cached_content（0.1 天）
-
-- [x] `agent/tools/index.ts`：新增第 7 个内建工具 `search_cached_content`
-- [x] 支持 `query`（必填）+ `connector_id`（可选，限定搜索范围）
-- [x] 无 connector_id 时跨用户所有 connector 搜索，结果合并去重 top 10
-- [x] `assertSameUser` 跨用户保护
-- [x] `agent-tools.test.ts` 更新：工具数量断言 6→7，expected tools 新增 `search_cached_content`
-- [x] pnpm lint+test 全绿（358/358）
-
-### Phase 65: 消息重新生成（Regenerate）（0.25 天）
-
-- [x] `chat.ts`：新增 `POST /api/sessions/:id/messages/:msgId/regenerate` SSE 端点
-- [x] 逻辑：验证session所有权→找到assistant消息→找到前置user消息→删除目标消息及后续消息（含FTS清理）→用相同user消息重新dispatch→流式返回新响应
-- [x] 前端：最后一条 assistant 消息显示「↻ Regenerate」按钮（不在streaming时显示）
-- [x] `.msg-actions` + `.msg-action-btn` 样式（暗色主题适配）
-- [x] `regenerate.test.ts`：7 个测试（查找消息/级联删除/用户消息拒绝/历史保留/所有权隔离/FTS清理/多轮保留）
-- [x] 修复 `migrator.test.ts` 遗留问题（004_connector_sync_schedule 未更新断言）
-- [x] apps/jowork + apps/fluxvita 均更新
-- [x] pnpm lint+test 全绿（365/365）
-
-### Phase 66: 代码块复制按钮（Copy Code Block）（0.1 天）
-
-- [x] `marked.Renderer` 自定义 `code` 方法：包裹 `<div class="code-block-wrapper">` + Copy 按钮 + 语言标签
-- [x] Copy 按钮：hover 显示，点击用 `navigator.clipboard.writeText` 复制，反馈「Copied!」1.5s 后恢复
-- [x] `.code-block-wrapper` / `.code-copy-btn` / `.code-lang` 暗色主题样式
-- [x] apps/jowork + apps/fluxvita 均更新
-- [x] pnpm lint 全绿（纯前端改动，无新测试）
-
-### Phase 67: 消息反馈（Message Feedback）（0.2 天）
-
-- [x] migration `005_message_feedback`：`message_feedback` 表（id, message_id, user_id, rating, comment, created_at）+ UNIQUE(message_id, user_id) + CHECK(rating IN ('positive','negative')) + ON DELETE CASCADE
-- [x] `initSchema` 同步添加 `message_feedback` 建表语句
-- [x] `feedbackRouter` 4 个端点：GET batch（session 全量）/ POST upsert / GET single / DELETE
-- [x] 前端 `toggleFeedback()` 函数：👍👎 按钮切换，active 高亮，toggle 逻辑（再次点击移除）
-- [x] session 加载时批量 GET `/api/sessions/:id/feedback` 并设置 `msg.feedback`
-- [x] `packages/core/src/gateway/index.ts` 导出 + 两个 app 注册路由
-- [x] apps/jowork + apps/fluxvita 均更新
-- [x] 9 新测试（feedback.test.ts）+ migrator.test.ts 更新
-- [x] pnpm lint+test 全绿（374/374）
-
-### Phase 68: UX 打磨 — Typing Indicator + 消息复制 + 时间戳（0.25 天）
-
-- [x] CSS：`.typing-indicator` 三点弹跳动画（替换静态"Thinking"文字）
-- [x] 前端：streaming 等待状态改用 typing indicator 组件
-- [x] 消息操作栏新增「📋 Copy」按钮（`navigator.clipboard.writeText()`），复制纯文本内容
-- [x] 消息气泡底部显示时间戳（相对时间 "2m ago" / 绝对时间 hover tooltip）
-- [x] `formatTime()` 相对时间（just now / Xm ago / Xh ago / 日期）+ `formatTimeFull()` 绝对时间 tooltip
-- [x] apps/jowork + apps/fluxvita 均更新
-- [x] pnpm lint 全绿（纯前端改动）
-
-### Phase 69: 消息编辑（Message Editing）（0.25 天）
-
-- [x] `PATCH /api/sessions/:id/messages/:msgId` 端点：仅 user 消息可编辑；content 必填且非空
-- [x] FTS5 外部内容表正确更新：先用 special delete syntax 删除旧索引，再 UPDATE 消息，再重建索引
-- [x] 前端 inline 编辑 UI：hover 显示 ✏️ 按钮 → 点击切换为 textarea → Save/Cancel 按钮
-- [x] 键盘快捷键：Enter 保存、Esc 取消
-- [x] 5 个新测试（编辑内容更新/角色限制/FTS索引同步/字段保留/跨用户隔离）
-- [x] apps/jowork + apps/fluxvita 均更新
-- [x] pnpm lint+test 全绿（379/379）
-
-### Phase 70: 暗/亮主题切换（Theme Toggle）（0.5 天）
-
-- [x] CSS 变量系统：`:root` 定义暗色主题 token，`[data-theme="light"]` 覆盖亮色
-- [x] jowork：核心结构色全部迁移到 `var()`（sidebar/messages/input/code blocks/modal/forms/stats/terminal/search）
-- [x] fluxvita：CSS 变量定义 + 关键结构色（body/sidebar/messages）迁移
-- [x] System 标签新增 Appearance 区：Dark / Light / Auto 三按钮
-- [x] `localStorage` 持久化 + `prefers-color-scheme` 自动检测 + 实时响应系统主题变化
-- [x] apps/jowork + apps/fluxvita 均更新
-- [x] pnpm lint 全绿（纯前端改动）
-
-### Phase 72: Bun compile Gateway Sidecar（0.5 天）
-
-- [x] 创建 `apps/jowork/src/sidecar.ts`（Bun 编译入口点，使用 `bun:sqlite` 代替 `better-sqlite3`）
-- [x] 修改 `packages/core/src/datamap/db.ts`：`import` 改为 `import type` + `createRequire()` 动态加载（允许 Bun 跳过 native addon）
-- [x] 新增 `setDb()` 注入函数，导出至 core public API
-- [x] 创建 `scripts/build-sidecar.sh`（TypeScript 编译 + `bun build --compile` + 平台检测 + Tauri target triple 命名）
-- [x] 产物：59MB 单文件二进制（`bun:sqlite` 内置，无需额外 native addon）
-- [x] 验证通过：sidecar 启动 → health check → sessions API 全部正常
-- [x] `@types/bun` 添加为 devDependency
-- [x] pnpm lint+test 全绿（379/379）
-
-### Phase 73: Tauri 2 Desktop Shell（0.5 天）
-
-- [x] 创建 `apps/jowork/src-tauri/` 项目结构（Cargo.toml + build.rs + tauri.conf.json）
-- [x] `src/lib.rs`：`start_gateway()` 通过 `ShellExt::sidecar()` 启动 Gateway，监听 stdout "Gateway ready" 信号
-- [x] `src/main.rs`：标准 Tauri 入口（Windows 隐藏控制台窗口）
-- [x] `tauri.conf.json`：`externalBin: ["binaries/jowork-gateway"]` + CSP 安全策略 + 窗口配置（1200×800）
-- [x] 使用 `npx @tauri-apps/cli icon` 生成全平台图标（icns/ico/png）
-- [x] `package.json` 新增 `tauri:dev` / `tauri:build` 脚本
-- [x] `cargo check` 全绿
-
-### Phase 74: Session Pinning + Folder 组织（0.5 天）
-
-- [x] 迁移 `006_session_pinned_folder`：sessions 表增加 `pinned INTEGER NOT NULL DEFAULT 0` + `folder TEXT` 列
-- [x] `init.ts` 同步更新 sessions 表 schema（含 pinned/folder）
-- [x] `types.ts` AgentSession 增加 `pinned: boolean` + `folder: string | null`
-- [x] `sessions.ts` PATCH 端点支持 `pinned`/`folder`/`title` 多字段更新（动态 SQL 构建）
-- [x] `sessions.ts` GET 列表按 `pinned DESC, updated_at DESC` 排序 + `?folder=` 过滤
-- [x] `sessions.ts` 新增 `GET /api/sessions/folders`（返回当前用户的 distinct folders）
-- [x] 前端 📌 pin 按钮（toggle + 客户端排序）+ 📂 folder 赋值（inline input + OK 按钮）
-- [x] 前端 folder filter chips（All + 各 folder；点击切换过滤）
-- [x] `apps/fluxvita/public/index.html`：同步上述功能（保留 FluxVita 蓝色品牌色）
-- [x] 10 个新测试（pin default/set/unset/sort + folder set/remove/filter/list/isolation + migrator）
-- [x] pnpm lint+test 全绿（389/389）
-
-### Phase 75: Session Fork — 对话分叉（0.5 天）
-
-- [x] 迁移 `007_session_forked_from`：sessions 表增加 `forked_from TEXT` 列
-- [x] `init.ts` 同步更新 sessions 表 schema（含 forked_from）
-- [x] `types.ts` AgentSession 增加 `forkedFrom: string | null`
-- [x] `sessions.ts` 新增 `POST /api/sessions/:id/fork`：接受 `afterMessageId`（可选），复制消息到新 session，维护 FTS 索引，返回 `messagesCopied` 计数
-- [x] 前端 🔀 Fork 按钮（assistant 消息操作栏 + user 消息 hover 栏均可触发）
-- [x] Fork 后自动切换到新 session + toast 提示
-- [x] `apps/fluxvita/public/index.html`：同步上述功能
-- [x] 4 个新测试（fork全量/fork到指定点/forked_from默认null/fork后独立删除）
-- [x] pnpm lint+test 全绿（393/393）
-
-### Phase 76: Connector 自动同步配置 UI（0.25 天）
-
-- [x] `connectors/index.ts` 新增 `updateConnectorConfig(id, { name?, settings?, syncSchedule? })` 函数（动态 SQL 构建，NOT_FOUND 校验）
-- [x] `gateway/routes/connectors.ts` 新增 `PATCH /api/connectors/:id` 端点（admin+，支持 name/settings/syncSchedule 更新）
-- [x] 前端 connector 列表项新增同步计划行：Auto-sync 状态显示 + lastSyncAt 相对时间 + Edit 按钮
-- [x] 编辑模式：Presets 下拉（Hourly/Every 6h/Daily/Weekdays 8am）+ cron 输入框 + Save/Cancel
-- [x] `formatSyncSchedule()` 将常见 cron 表达式转为人类可读标签
-- [x] `formatLastSync()` 显示相对时间（just now / Xm ago / Xh ago / 日期）
-- [x] `apps/fluxvita/public/index.html`：同步上述全部改动（保留 FluxVita 蓝色品牌色）
-- [x] `connector-sync-schedule.test.ts`：12 个新测试（updateConnectorConfig CRUD + updateSyncSchedule/updateLastSyncAt + matchesCron 本地时间 + PATCH 路由验证）
-- [x] pnpm lint+test 全绿（405/405）
-
-### Phase 77: Session 文件夹管理增强（0.25 天）
-
-- [x] `sessions.ts` 新增 `PATCH /api/sessions/folders/:name` — 重命名文件夹（级联更新所有匹配 session 的 folder 字段，用户隔离）
-- [x] `sessions.ts` 新增 `DELETE /api/sessions/folders/:name` — 删除文件夹（级联设 folder = NULL，用户隔离）
-- [x] URL 中 folder name 使用 `decodeURIComponent` 处理特殊字符
-- [x] 前端 folder chips：双击（dblclick）触发重命名 prompt；右键（contextmenu）触发删除 confirm
-- [x] 重命名/删除后客户端同步更新 sessions 列表 + folderFilter + 重新加载 folders
-- [x] `apps/fluxvita/public/index.html`：同步上述全部改动
-- [x] `sessions.test.ts` 追加 4 个测试（rename 级联 + delete 级联设 NULL + 用户隔离 + 路由存在验证）
-- [x] pnpm lint+test 全绿（409/409）
-
-### Phase 78: 自动展开输入框（0.1 天）
-
-- [x] `autoResizeInput(e)` 函数：`@input` 事件触发，`el.style.height = 'auto'` → `Math.min(scrollHeight, 120) + 'px'`
-- [x] `resetInputHeight()` 函数：发送消息后重置 textarea 高度为 auto
-- [x] CSS `#msg-input` 添加 `overflow-y: auto`（超过 max-height 后可滚动）
-- [x] `apps/jowork/public/index.html`：textarea 添加 `@input="autoResizeInput"`，sendMessage 调用 `resetInputHeight()`
-- [x] `apps/fluxvita/public/index.html`：同步上述改动
-- [x] pnpm lint 全绿（纯前端改动，无新后端代码）
-
-### Phase 79: Prometheus Metrics + 系统指标采集（0.25 天）
-
-- [x] `packages/core/src/metrics/collector.ts`：`recordRequest()` 按 method:route:status 分组计数 + 延迟直方图（11 个 bucket）
-- [x] `collectSnapshot()`：汇总实时指标（uptime/heapUsed/rss/external/dbSize/totalRequests）
-- [x] `renderPrometheus()`：输出 Prometheus text exposition format（HELP/TYPE/gauge/counter/histogram 完整合规）
-- [x] `resetMetrics()`：测试用重置函数
-- [x] `packages/core/src/gateway/middleware/metrics.ts`：`metricsMiddleware` 自动追踪每个请求的 method/route/status/duration
-- [x] `packages/core/src/gateway/routes/metrics.ts`：`GET /metrics` 端点（Content-Type: text/plain; version=0.0.4）
-- [x] `server.ts`：`createApp()` 自动挂载 `metricsMiddleware` + `metricsRouter()`（两 app 无需手动注册）
-- [x] `jowork_info` 标签包含 version/mode/node_version
-- [x] 10 个新测试（collector 6 + renderPrometheus 2 + middleware 1 + route 1）
-- [x] pnpm lint+test 全绿（419/419）
-
-### Phase 80: Custom Model Provider 管理（0.25 天）
-
-- [x] 迁移 `008_model_providers`：`model_providers` 表（id/name/api_format/endpoint/models JSON/api_key_env/is_builtin）
-- [x] `packages/core/src/models/store.ts`：`createCustomProvider()` / `updateCustomProvider()` / `deleteCustomProvider()` / `listCustomProviders()` / `getCustomProvider()`
-- [x] `loadCustomProviders()`：启动时从 DB 加载自定义 provider 到内存注册器
-- [x] `POST /api/models/providers`：创建自定义 provider（id/name/apiFormat/endpoint/models/apiKeyEnv）
-- [x] `PATCH /api/models/providers/:id`：更新自定义 provider（部分更新）
-- [x] `DELETE /api/models/providers/:id`：删除自定义 provider（内置不可删）
-- [x] 两 app 入口 `loadCustomProviders()` 调用（DB init 后、路由注册前）
-- [x] migrator.test.ts 更新（新增 008 到断言数组）
-- [x] 15 个新测试（迁移 2 + CRUD 7 + API 5 + loader 1）
-- [x] pnpm lint+test 全绿（434/434）
-
-### Phase 82: Audit Logging 审计日志（0.25 天）
-
-- [x] `packages/core/src/audit/index.ts`：`recordAudit()` / `queryAuditLog()` / `purgeAuditBefore()` / `inferResourceType()`
-- [x] `AuditEntry` / `AuditQuery` / `AuditQueryResult` 类型定义
-- [x] 迁移 `009_audit_log`：audit_log 表（id/user_id/action/resource/resource_type/status_code/ip/user_agent/created_at）+ 3 个索引
-- [x] `packages/core/src/gateway/middleware/audit.ts`：auditMiddleware 自动记录非 GET/HEAD/OPTIONS 请求（res.on('finish') 获取 statusCode）
-- [x] `packages/core/src/gateway/routes/audit.ts`：`GET /api/audit`（query filters: userId/action/resourceType/since/until/limit/offset）+ `DELETE /api/audit/purge`（retention management）
-- [x] 两 app（jowork + fluxvita）均挂载 auditRouter + createApp 自动启用 auditMiddleware
-- [x] TS 编译错误修复：`req as unknown as Record` 双重转换 + `requireRole` 单参数 + `exactOptionalPropertyTypes` 兼容
-- [x] migrator.test.ts 更新（新增 009 到断言数组）
-- [x] 14 个新测试（迁移 2 + CRUD 6 + inferResourceType 2 + API 路由 4）
-- [x] pnpm lint+test 全绿（448/448）
-
-### Phase 83: API Versioning — /api/v1/* 双路由（0.1 天）
-
-- [x] `packages/core/src/gateway/middleware/api-version.ts`：apiVersionMiddleware
-  - `/api/v1/*` 请求 → 重写 URL 到 `/api/*`（现有路由无需改动即可匹配）
-  - `/api/*`（非 v1）请求 → 添加 `Deprecation: true` + `Sunset: 2027-01-01` + `Link: <v1 URL>; rel="successor-version"`
-  - `/health`、`/metrics` 等非 API 路径不受影响
-- [x] `createApp()` 自动挂载（JSON 解析后、metrics/audit 前）
-- [x] gateway/index.ts 导出 `apiVersionMiddleware`
-- [x] 7 个新测试（v1 路由正确匹配 3 + deprecation header 设置 4）
-- [x] pnpm lint+test 全绿（455/455）
-
-### Phase 84: Conversation Templates 会话模板（0.25 天）
-
-- [x] 迁移 `010_conversation_templates`：conversation_templates 表（id/name/description/system_prompt/first_message/icon/owner_id/is_builtin/created_at/updated_at）
-- [x] `packages/core/src/templates/index.ts`：`createTemplate()` / `listTemplates()` / `getTemplate()` / `updateTemplate()` / `deleteTemplate()` / `seedBuiltinTemplates()`
-- [x] 4 个内置模板：Code Review / Brainstorm / Debug Helper / Summarize
-- [x] `seedBuiltinTemplates()` 幂等（is_builtin=1 已存在则跳过）
-- [x] `templatesRouter()`：GET /api/templates + POST + GET/:id + PATCH/:id + DELETE/:id
-- [x] owner 隔离（用户只能编辑/删除自己的模板，builtin 不可编辑/删除）
-- [x] 两 app 入口调 `seedBuiltinTemplates()` + 挂载 `templatesRouter()`
-- [x] migrator.test.ts 更新（新增 010 到断言数组）
-- [x] 19 个新测试（迁移 2 + CRUD 8 + builtin 2 + API 7）
-- [x] pnpm lint+test 全绿（474/474）
+- [ ] 创建 GitHub 组织 `fluxvita`
+- [ ] 首次同步到 `fluxvita/jowork`
+- [ ] 编写 CONTRIBUTING.md、CODE_OF_CONDUCT.md
+- [ ] 创建 GitHub Discussions
+- [ ] 发布 v0.1.0 Release
+- [ ] 执行 GTM 发布计划
 
 **AI 辅助开发预计总工期：6-10 个工作日**（全程 AI 写代码，人工只做决策/审查/测试）
 
@@ -3853,6 +3196,41 @@ FluxVita 专属（删除或移入 apps/fluxvita）：
 
 ---
 
+## 三十三、Connector 扩展与 OAuth 化（2026-03-05）
+
+**背景**：当前 8 个 connector 均需手动填写 token/key，用户体验差。目标是：
+1. 支持更多主流平台
+2. 尽量改为 OAuth 一键授权，不让用户手动复制 token
+
+### 任务清单
+
+| # | 任务 | 状态 | 说明 |
+|---|------|------|------|
+| 33.1 | 通用 OAuth 路由基础设施 | ✅ 完成 | `connector_oauth` 表 + `oauth-store.ts` + `GET/api/connectors/:id/oauth/url` + callback 路由 |
+| 33.2 | Linear → OAuth | ✅ 完成 | `buildOAuthUrl` + `exchangeToken`；OAuth token 优先，API key 兜底 |
+| 33.3 | Figma → OAuth | ✅ 完成 | OAuth 替换原有 channel_settings 取 token 方式；Basic Auth 换 token |
+| 33.4 | GitHub → OAuth | ✅ 完成 | GitHub OAuth App；OAuth token 优先，GITHUB_TOKEN 兜底 |
+| 33.5 | Gmail OAuth connector（新增） | ✅ 完成 | Google OAuth，scopes: gmail.readonly；per-user 授权 |
+| 33.6 | Outlook/Microsoft 365 OAuth（新增） | ✅ 完成 | Azure AD OAuth，scopes: Mail.Read offline_access；per-user 授权 |
+| 33.7 | Slack OAuth connector（新增） | ✅ 完成 | Slack OAuth App v2，scopes: channels:read+history+users:read |
+| 33.8 | Google Drive OAuth connector（新增） | ✅ 完成 | Google OAuth，scopes: drive.readonly；与 Gmail 共用 GOOGLE_CLIENT_ID/SECRET |
+
+### 架构说明
+
+**System-level connector**（Admin 配置一次，全团队共用）：Linear、Figma、GitHub、Slack、Google Drive
+
+**Per-user connector**（每个用户自己授权自己的账号）：Gmail、Outlook
+
+**认证流程**：
+```
+用户点击"Connect" → GET /api/connectors/:id/oauth/url → 跳转第三方授权页
+→ 回调 GET /api/connectors/:id/oauth/callback?code=...&state=...
+→ 服务端换 token → AES-256-GCM 加密存入 connector_credentials 表
+→ 返回授权成功
+```
+
+---
+
 *本文档将随产品演进持续更新。所有重大决策变更需记录日期和原因。*
 
 ---
@@ -3866,5 +3244,6 @@ FluxVita 专属（删除或移入 apps/fluxvita）：
 | v1.2 | 2026-03-04 | 新增二十一至二十八（版本迁移/法律/付费旅程/备份/支持/GTM/成本管理/可靠性） |
 | v1.3 | 2026-03-04 | 修复重复章节编号、32.6 决策清单落地答案、AI 工期重估（6-10天）、新增三十一（FluxVita+Jowork 并行开发策略） |
 | v1.4 | 2026-03-04 | 付费机制改为在线订阅（月付/年付），去掉 License Key/RSA；平台支持明确 Mac 优先+Windows 同步；premium 代码可公开 |
+| v1.5 | 2026-03-05 | 新增三十三：Connector 扩展与 OAuth 化（8个任务，33.1-33.8） |
 
-*最后更新：2026-03-04（v1.3）*
+*最后更新：2026-03-05（v1.5）*

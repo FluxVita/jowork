@@ -7,6 +7,8 @@ import { getLocalIps, discoverServices, startAdvertising, stopAdvertising } from
 import { updateProviderApiKey } from '../../models/router.js';
 import { isCloudHosted } from '../../billing/credits.js';
 import { config } from '../../config.js';
+import { isTelemetryEnabled, setTelemetryEnabled, listTelemetryEvents, trackTelemetryEvent, getTelemetryPolicy } from '../../telemetry/index.js';
+import { listUserIdMappings, upsertUserIdMapping, getMappingByAnyIdentity } from '../../datamap/user-id-mappings.js';
 import type { Role } from '../../types.js';
 
 const router = Router();
@@ -74,6 +76,86 @@ router.get('/local-ips', (_req, res) => {
 router.get('/discover', async (_req, res) => {
   const services = await discoverServices(3000);
   res.json({ services });
+});
+
+router.get('/telemetry', (req, res, next) => {
+  if (isBootstrapMode()) { next(); return; }
+  authMiddleware(req, res, next);
+}, (req, res) => {
+  if (!isBootstrapMode() && (!req.user || !isAdmin(req.user.role))) {
+    res.status(403).json({ error: 'Admin role required' });
+    return;
+  }
+
+  const enabled = isTelemetryEnabled();
+  const sample = enabled ? listTelemetryEvents(20) : [];
+  const policy = getTelemetryPolicy();
+  res.json({
+    enabled,
+    retention_days: policy.retention_days,
+    allowed_events: policy.allowed_events,
+    source: getOrgSetting('telemetry_opt_in') ?? 'default_off',
+    sample_count: sample.length,
+    sample,
+  });
+});
+
+router.post('/telemetry', (req, res, next) => {
+  if (isBootstrapMode()) { next(); return; }
+  authMiddleware(req, res, next);
+}, (req, res) => {
+  if (!isBootstrapMode() && (!req.user || !isAdmin(req.user.role))) {
+    res.status(403).json({ error: 'Admin role required' });
+    return;
+  }
+  const enabled = req.body?.enabled === true;
+  setTelemetryEnabled(enabled);
+  trackTelemetryEvent('telemetry_opt_in_changed', req.user?.user_id, { enabled });
+  res.json({ ok: true, enabled });
+});
+
+router.get('/id-mappings', (req, res, next) => {
+  if (isBootstrapMode()) { next(); return; }
+  authMiddleware(req, res, next);
+}, (req, res) => {
+  if (!isBootstrapMode() && (!req.user || !isAdmin(req.user.role))) {
+    res.status(403).json({ error: 'Admin role required' });
+    return;
+  }
+  const identity = typeof req.query['identity'] === 'string' ? req.query['identity'].trim() : '';
+  if (identity) {
+    const mapping = getMappingByAnyIdentity(identity);
+    res.json({ items: mapping ? [mapping] : [] });
+    return;
+  }
+  res.json({ items: listUserIdMappings(500) });
+});
+
+router.post('/id-mappings', (req, res, next) => {
+  if (isBootstrapMode()) { next(); return; }
+  authMiddleware(req, res, next);
+}, (req, res) => {
+  if (!isBootstrapMode() && (!req.user || !isAdmin(req.user.role))) {
+    res.status(403).json({ error: 'Admin role required' });
+    return;
+  }
+
+  const canonicalId = typeof req.body?.canonical_id === 'string' ? req.body.canonical_id.trim() : '';
+  if (!canonicalId) {
+    res.status(400).json({ error: 'canonical_id is required' });
+    return;
+  }
+
+  upsertUserIdMapping({
+    canonical_id: canonicalId,
+    posthog_person_id: req.body?.posthog_person_id,
+    jovida_uid: req.body?.jovida_uid,
+    sls_user_id: req.body?.sls_user_id,
+    email: req.body?.email,
+    device_id: req.body?.device_id,
+  });
+  trackTelemetryEvent('user_id_mapping_upserted', req.user?.user_id, { canonical_id: canonicalId });
+  res.json({ ok: true, canonical_id: canonicalId });
 });
 
 /**
@@ -185,6 +267,7 @@ router.post('/setup', (req, res, next) => {
 
   // 标记 setup 完成
   setScopedValue('org', 'default', 'system_setup_done', 'true');
+  trackTelemetryEvent('system_setup_completed', req.user?.user_id, { mode: validMode });
 
   res.json({ ok: true, gateway_url: trimmed });
 });

@@ -29,7 +29,7 @@ import { ConfluenceConnector } from '@jowork/core/connectors/confluence/index.js
 import { DiscordConnector } from '@jowork/core/connectors/discord/index.js';
 import { GoogleCalendarConnector } from '@jowork/core/connectors/google-calendar/index.js';
 import { telegramChannel } from '@jowork/core/channels/telegram.js';
-import { startScheduler, setTaskExecutor, listCronTasks, createCronTask } from '@jowork/core/scheduler/index.js';
+import { startScheduler, stopScheduler, setTaskExecutor, listCronTasks, createCronTask } from '@jowork/core/scheduler/index.js';
 import { executeTask } from '@jowork/core/scheduler/executor.js';
 import { runDailyMaintenance } from '@jowork/core/resilience/index.js';
 import { initLicenseClient } from '@jowork/core/billing/license-client.js';
@@ -69,7 +69,7 @@ if (process.env['TELEGRAM_BOT_TOKEN']) {
 }
 
 // 启动 Gateway（Jowork 版前端 + 回退到共享 public/）
-startGateway({
+const gatewayServer = startGateway({
   publicDir: joworkPublicDir,
   fallbackPublicDir,
 });
@@ -96,6 +96,29 @@ log.info('Jowork started (community edition)');
 
 // 自托管 License 验证（有 JOWORK_LICENSE_KEY 时向 jowork.work 验证并缓存，无 key 则跳过）
 void initLicenseClient();
+
+let shuttingDown = false;
+async function gracefulShutdown(signal: string) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  log.warn(`Received ${signal}, graceful shutdown started`);
+
+  try { stopScheduler(); } catch (err) { log.error('stopScheduler failed', err); }
+  try { await telegramChannel.shutdown(); } catch (err) { log.error('telegram shutdown failed', err); }
+
+  await new Promise<void>((resolve) => {
+    gatewayServer.close((err) => {
+      if (err) log.error('Gateway close failed', err);
+      resolve();
+    });
+  });
+
+  log.warn('Graceful shutdown finished');
+  process.exit(0);
+}
+
+process.on('SIGINT', () => { void gracefulShutdown('SIGINT'); });
+process.on('SIGTERM', () => { void gracefulShutdown('SIGTERM'); });
 
 /**
  * 预置 Cron 任务（仅通用 Connector，首次启动时创建）

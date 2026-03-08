@@ -53,6 +53,7 @@ When the user asks a question:
 - **write_memory**: Save important info to memory (preferences, decisions, key facts)
 - **query_posthog**: Query PostHog user behavior data (profiles / events / analytics / HogQL)
 - **query_oss_sessions**: Query raw AI conversation logs (use only when analyzing specific user conversations)
+- **query_aliyun_logs**: Query Aliyun SLS logs / resolve identity mapping for SLS users
 - **create_gitlab_mr**: Create a branch, commit file changes, and open an MR for code fixes
 - **run_command**: Run a whitelisted shell command on the Gateway server (npm test, tsc, git status, etc.)
 - **manage_workspace**: Manage a temporary workspace — clone, apply fixes, commit+push to a new branch
@@ -217,6 +218,17 @@ function getToolProgressMessage(name: string, input: Record<string, unknown>): s
       };
       const label = action ? (actionLabel[action] ?? action) : 'OSS 查询';
       return uid ? `正在 ${label}: uid=${uid}` : `正在${label}...`;
+    }
+    case 'query_aliyun_logs': {
+      const action = input['action'] as string | undefined;
+      const identity = (input['identity'] as string | undefined)?.slice(0, 30)
+        ?? (input['sls_user_id'] as string | undefined)?.slice(0, 30);
+      const actionLabel: Record<string, string> = {
+        resolve_only: '解析 SLS 用户映射',
+        check_config: '检查 SLS 配置',
+      };
+      const label = action ? (actionLabel[action] ?? action) : 'SLS 查询';
+      return identity ? `正在 ${label}: ${identity}` : `正在${label}...`;
     }
     case 'create_gitlab_mr': {
       const action = input['action'] as string | undefined;

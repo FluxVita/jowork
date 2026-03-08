@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-const BASE = process.env['GATEWAY_URL'] || 'http://localhost:18800';
+const BASE = process.env['FLUXVITA_URL'] || 'http://localhost:18800';
 
 /**
  * System API 契约测试
@@ -26,5 +26,19 @@ test.describe('System API Contract @contract', () => {
     expect(typeof body.version).toBe('string');
     expect(body).toHaveProperty('uptime');
     expect(typeof body.uptime).toBe('number');
+    expect(body).toHaveProperty('connectors');
+    expect(typeof body.connectors).toBe('number');
+    expect(body).toHaveProperty('db_size');
+    expect(typeof body.db_size).toBe('number');
+  });
+
+  test('旧版 /api/* 响应包含弃用头，/api/v1/* 不包含', async ({ request }) => {
+    const oldApi = await request.get(`${BASE}/api/auth/me`);
+    expect(oldApi.headers()['deprecation']).toBe('true');
+    expect(oldApi.headers()['sunset']).toBeTruthy();
+    expect(oldApi.headers()['link']).toContain('/api/v1');
+
+    const v1Api = await request.get(`${BASE}/api/v1/auth/me`);
+    expect(v1Api.headers()['deprecation']).toBeUndefined();
   });
 });

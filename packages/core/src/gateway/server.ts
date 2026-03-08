@@ -2,6 +2,7 @@ import express from 'express';
 import { createServer as createHttpServer } from 'node:http';
 import { createServer as createHttpsServer } from 'node:https';
 import { existsSync, readFileSync } from 'node:fs';
+import { statSync } from 'node:fs';
 import { WebSocketServer, WebSocket } from 'ws';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -13,7 +14,7 @@ import { getUserById } from '../auth/users.js';
 import { routeModel } from '../models/router.js';
 import { searchObjects } from '../datamap/objects.js';
 import { filterByAccess } from '../policy/engine.js';
-import { getConnectorBySource } from '../connectors/registry.js';
+import { getConnectorBySource, getConnectors } from '../connectors/registry.js';
 import { logAudit } from '../audit/logger.js';
 import { createLogger } from '../utils/logger.js';
 import type { User } from '../types.js';
@@ -117,13 +118,26 @@ export function startGateway(opts: GatewayOptions = {}) {
 
   // 健康检查（无需认证）
   app.get('/health', (_req, res) => {
+    let dbSize = 0;
+    try { dbSize = statSync(config.db_path).size; } catch { dbSize = 0; }
     res.json({
       status: 'ok',
       service: 'jowork-gateway',
       version: '0.1.0',
       uptime: process.uptime(),
       timestamp: new Date().toISOString(),
+      connectors: getConnectors().length,
+      db_size: dbSize,
     });
+  });
+
+  app.use('/api', (req, res, next) => {
+    if (!req.path.startsWith('/v1/')) {
+      res.setHeader('Deprecation', 'true');
+      res.setHeader('Sunset', 'Wed, 31 Dec 2026 23:59:59 GMT');
+      res.setHeader('Link', '</api/v1>; rel="successor-version"');
+    }
+    next();
   });
 
   const apiRouteMounts: Array<[string, import('express').Router]> = [

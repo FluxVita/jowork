@@ -21,6 +21,7 @@
     "test:pw:contract": "playwright test --grep @contract",
     "test:pw:headed": "playwright test --headed",
     "test:pw:ui": "playwright test --ui",
+    "e2e:full": "bash scripts/e2e-full.sh",
     "lint": "tsc --noEmit",
     "verify:oss": "bash scripts/verify-oss-runnable.sh",
     "hooks:install": "bash scripts/install-git-hooks.sh",

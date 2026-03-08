@@ -130,13 +130,11 @@ Requirements: Node.js 22+, pnpm 10+, macOS/Linux/Windows
 
 ## 📦 Packages
 
-Jowork is a monorepo. You can use the core packages in your own projects:
+Jowork is a monorepo. The currently published/runtime packages are:
 
 ```bash
 npm install @jowork/core        # Core Gateway + Agent engine
-npm install @jowork/connector-github   # GitHub connector
-npm install @jowork/connector-linear   # Linear connector
-# ... more connectors at npmjs.com/search?q=%40jowork
+npm install @jowork/premium     # Premium extension package (commercial)
 ```
 
 ---
@@ -282,7 +280,7 @@ UI 支持中英双语，点击侧边栏底部的 **「中 / EN」** 按钮即可
 
 - **Core** (`packages/core`, `apps/jowork`): [AGPL-3.0](./LICENSE)
 - **Premium** (`packages/premium`): [Commercial License](./LICENSE-PREMIUM)
-- **Connectors** (`packages/connector-*`): MIT
+- **Connectors**: bundled in `@jowork/core` (no standalone `packages/connector-*` in this repo)
 
 AGPL-3.0 means: you can use, modify, and distribute Jowork for free — including commercially — as long as you open-source your modifications under the same license. If you need a proprietary license, [contact us](mailto:hello@jowork.work).
 

@@ -7,6 +7,7 @@ import { readMemoryTool } from './read_memory.js';
 import { writeMemoryTool } from './write_memory.js';
 import { queryPosthogTool } from './query_posthog.js';
 import { queryOssTool } from './query_oss.js';
+import { queryAliyunLogsTool } from './query_aliyun_logs.js';
 import { createGitlabMrTool } from './create_gitlab_mr.js';
 import { runCommandTool } from './run_command.js';
 import { manageWorkspaceTool } from './manage_workspace.js';
@@ -22,8 +23,17 @@ const builtinTools = new Map<string, Tool>();
 const externalToolDefs: AnthropicToolDef[] = [];
 
 function register(tool: Tool) {
+  if (builtinTools.has(tool.name)) {
+    log.info(`Skipped tool registration (already exists): ${tool.name}`);
+    return;
+  }
   builtinTools.set(tool.name, tool);
   log.info(`Registered tool: ${tool.name}`);
+}
+
+export function registerToolOverride(tool: Tool) {
+  builtinTools.set(tool.name, tool);
+  log.info(`Overrode tool: ${tool.name}`);
 }
 
 /** 获取内置工具（用于 controller 执行） */
@@ -71,6 +81,7 @@ export function initTools() {
   register(writeMemoryTool);
   register(queryPosthogTool);
   register(queryOssTool);
+  register(queryAliyunLogsTool);
   register(createGitlabMrTool);
   register(runCommandTool);
   register(manageWorkspaceTool);

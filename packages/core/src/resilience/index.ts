@@ -11,6 +11,7 @@ import { join, resolve } from 'node:path';
 import { config } from '../config.js';
 import { getConnectors } from '../connectors/registry.js';
 import { createLogger } from '../utils/logger.js';
+import { cleanupTelemetryEvents } from '../telemetry/index.js';
 
 const log = createLogger('resilience');
 
@@ -251,5 +252,13 @@ export function runDailyMaintenance() {
       log.info(`Clearing stale degrade status for ${id}`);
       connectorDegradeMap.delete(id);
     }
+  }
+
+  // 3. 清理遥测历史（按 retention 策略）
+  try {
+    const deleted = cleanupTelemetryEvents();
+    if (deleted > 0) log.info(`Telemetry cleanup: removed ${deleted} old events`);
+  } catch (err) {
+    log.error('Telemetry cleanup failed', err);
   }
 }
