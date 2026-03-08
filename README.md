@@ -126,6 +126,12 @@ node apps/jowork/dist/index.js
 
 Requirements: Node.js 22+, pnpm 10+, macOS/Linux/Windows
 
+### End-to-end Tests
+
+- Contract tests: `npm run test:pw:contract`
+- Full suite: start the server and run `npm run test:pw`
+- Or use one-click script: `npm run e2e:full` (build → start :18800 → run → shutdown)
+
 ---
 
 ## 📦 Packages
@@ -180,6 +186,33 @@ Jowork core is **free and open-source** (AGPL-3.0). Premium features are availab
 [View full pricing →](https://jowork.work/pricing)
 
 Self-hosted forever free for personal use. No usage limits, no phone home.
+
+---
+
+## 🔍 Aliyun SLS Tool (Premium)
+
+Use the built-in `query_aliyun_logs` tool with safe defaults.
+
+Actions:
+- `check_config` — verify env vars
+- `resolve_only` — map identity → `sls_user_id`
+- `preview_query` — output curl example (no network)
+- `query` — real request (requires `ALIYUN_SLS_ENABLE_NETWORK=true`)
+
+Required env:
+- `ALIYUN_SLS_ENDPOINT` (e.g. `cn-hangzhou.log.aliyuncs.com`)
+- `ALIYUN_SLS_PROJECT`, `ALIYUN_SLS_LOGSTORE`
+- `ALIYUN_SLS_ACCESS_KEY_ID`, `ALIYUN_SLS_ACCESS_KEY_SECRET`
+- `ALIYUN_SLS_ENABLE_NETWORK=true` (only for real request)
+
+Via Admin API (admin role or bootstrap):
+- GET `/api/system/sls` (optional `?identity=alice@example.com`)
+- POST `/api/system/sls` with JSON body, for example:
+  `{ "action": "preview_query", "identity": "alice@example.com", "query": "status:>=500", "from": "now-3600", "to": "now" }`
+  And for real query (after enabling network):
+  `{ "action": "query", "identity": "alice@example.com", "query": "status:>=500 AND __topic__:api", "from": "now-3600", "to": "now" }`
+
+Tip: start with `check_config` and `preview_query`, then enable real network when ready.
 
 ---
 

@@ -18,7 +18,7 @@ import { getConnectorBySource, getConnectors } from '../connectors/registry.js';
 import { logAudit } from '../audit/logger.js';
 import { createLogger } from '../utils/logger.js';
 import type { User } from '../types.js';
-import { createSession, destroySession, resizeSession, getSession } from './terminal.js';
+import { createSession, detachSession, destroySession, reattachSession, resizeSession, getSession, setWsExitHandler } from './terminal.js';
 import authRoutes from './routes/auth.js';
 import datamapRoutes from './routes/datamap.js';
 import policyRoutes from './routes/policy.js';
@@ -221,6 +221,21 @@ export function startGateway(opts: GatewayOptions = {}) {
   // 连接的认证用户映射
   const wsClients = new Map<WebSocket, User>();
 
+  // ─── PTY WebSocket 心跳检测（60s 发 ping，未回 pong 则断开）───
+  // 防止 TCP 静默断开导致 PTY 会话泄漏
+  const termAlive = new WeakMap<WebSocket, boolean>();
+  setInterval(() => {
+    wssTerm.clients.forEach((ws) => {
+      if (termAlive.get(ws) === false) {
+        // 上一个心跳周期没有回应，强制断开（触发 ws.on('close') → destroySession）
+        ws.terminate();
+        return;
+      }
+      termAlive.set(ws, false);
+      ws.ping();
+    });
+  }, 60_000);
+
   // Upgrade 时做 JWT 认证
   server.on('upgrade', (req, socket, head) => {
     const { pathname, query } = parseUrl(req.url ?? '', true);
@@ -271,9 +286,27 @@ export function startGateway(opts: GatewayOptions = {}) {
   });
 
   // ─── PTY Terminal WebSocket ───
+  // 设计：PTY 生命周期与 WebSocket 解耦（VSCode 风格）
+  //   - 连接时携带 resumeId → 重连到已有 PTY，回放 ring buffer
+  //   - 断开时 detach（PTY 继续运行），而非 destroy
+  //   - 用户主动关闭（发 close 消息）才 destroy
   wssTerm.on('connection', (ws: WebSocket, _req: unknown, user: User) => {
     log.info(`Terminal WS connected: ${user.name}`);
     let sessionId: string | null = null;
+
+    // 注册心跳 pong 响应（与上方 setInterval ping 配合）
+    termAlive.set(ws, true);
+    ws.on('pong', () => { termAlive.set(ws, true); });
+
+    // 向客户端发送控制消息（\x00 前缀区分 PTY 输出）
+    const sendCtrl = (msg: Record<string, unknown>) => {
+      if (ws.readyState === ws.OPEN) ws.send('\x00' + JSON.stringify(msg));
+    };
+
+    // PTY 输出 → WebSocket
+    const sendFn = (chunk: string) => {
+      if (ws.readyState === ws.OPEN) ws.send(chunk);
+    };
 
     ws.on('message', (data) => {
       const raw = data.toString();
@@ -281,33 +314,56 @@ export function startGateway(opts: GatewayOptions = {}) {
       // 控制消息（JSON）
       if (raw.startsWith('{')) {
         try {
-          const msg = JSON.parse(raw) as { type: string; mode?: string; tmuxSession?: string; cols?: number; rows?: number; data?: string };
+          const msg = JSON.parse(raw) as {
+            type: string;
+            resumeId?: string;
+            mode?: string;
+            tmuxSession?: string;
+            cols?: number;
+            rows?: number;
+            data?: string;
+          };
 
           if (msg.type === 'init') {
-            // 创建 PTY session
+            // ① 尝试重连到已有会话（用户刷新页面 / 网络抖动恢复）
+            if (msg.resumeId) {
+              const result = reattachSession(msg.resumeId, user.user_id, sendFn);
+              if (result) {
+                sessionId = result.session.id;
+                // 回放断开期间的 ring buffer 输出
+                if (result.bufferedOutput && ws.readyState === ws.OPEN) {
+                  ws.send(result.bufferedOutput);
+                }
+                // setWsExitHandler 先 dispose 旧监听器再注册新的，防止重连累积泄漏
+                setWsExitHandler(sessionId, () => {
+                  sendCtrl({ type: 'session_exit' });
+                  if (ws.readyState === ws.OPEN) ws.close();
+                });
+                sendCtrl({ type: 'session_ready', sessionId, resumed: true });
+                return;
+              }
+              // resumeId 对应的会话已不存在，正常新建
+            }
+
+            // ② 新建 PTY 会话
             try {
               const session = createSession({
                 userId: user.user_id,
-                mode: (msg.mode as 'klaude' | 'tmux' | 'shell') ?? 'klaude',
+                mode: (msg.mode as 'klaude' | 'tmux' | 'shell') ?? 'shell',
                 tmuxSession: msg.tmuxSession,
                 cols: msg.cols ?? 220,
                 rows: msg.rows ?? 50,
+                sendFn,
               });
               sessionId = session.id;
 
-              // PTY 输出 → WebSocket
-              session.pty.onData((chunk: string) => {
-                if (ws.readyState === ws.OPEN) ws.send(chunk);
+              // 新会话也用 setWsExitHandler，保持统一
+              setWsExitHandler(sessionId, () => {
+                sendCtrl({ type: 'session_exit' });
+                if (ws.readyState === ws.OPEN) ws.close();
               });
 
-              session.pty.onExit(() => {
-                if (ws.readyState === ws.OPEN) {
-                  ws.send('\r\n\x1b[33m[进程已退出，连接关闭]\x1b[0m\r\n');
-                  ws.close();
-                }
-              });
-
-              ws.send(`\x1b[32m[极客模式已就绪 — ${msg.mode ?? 'klaude'}]\x1b[0m\r\n`);
+              sendCtrl({ type: 'session_ready', sessionId, resumed: false });
             } catch (err) {
               ws.send(`\x1b[31m[启动失败: ${String(err)}]\x1b[0m\r\n`);
               ws.close();
@@ -318,6 +374,12 @@ export function startGateway(opts: GatewayOptions = {}) {
 
           } else if (msg.type === 'input' && sessionId && msg.data) {
             getSession(sessionId)?.pty.write(msg.data);
+
+          } else if (msg.type === 'close' && sessionId) {
+            // 用户主动关闭终端 Tab → 真正销毁 PTY
+            destroySession(sessionId);
+            sessionId = null;
+            ws.close();
           }
         } catch { /* not JSON, treat as raw input */ }
         return;
@@ -330,8 +392,12 @@ export function startGateway(opts: GatewayOptions = {}) {
     });
 
     ws.on('close', () => {
-      if (sessionId) destroySession(sessionId);
-      log.debug(`Terminal WS disconnected: ${user.name}`);
+      // WebSocket 断开 → detach（PTY 继续运行，等待重连）
+      // 注意：用户主动 close 已在 msg.type==='close' 里 destroy，此处 sessionId 为 null
+      if (sessionId) {
+        detachSession(sessionId);
+        log.debug(`Terminal WS detached (PTY still running): ${user.name} session=${sessionId}`);
+      }
     });
   });
 

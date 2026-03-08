@@ -10,6 +10,7 @@ import { config } from '../../config.js';
 import { isTelemetryEnabled, setTelemetryEnabled, listTelemetryEvents, trackTelemetryEvent, getTelemetryPolicy } from '../../telemetry/index.js';
 import { listUserIdMappings, upsertUserIdMapping, getMappingByAnyIdentity } from '../../datamap/user-id-mappings.js';
 import type { Role } from '../../types.js';
+import { getBuiltinTool } from '../../agent/tools/registry.js';
 
 const router = Router();
 
@@ -112,6 +113,71 @@ router.post('/telemetry', (req, res, next) => {
   setTelemetryEnabled(enabled);
   trackTelemetryEvent('telemetry_opt_in_changed', req.user?.user_id, { enabled });
   res.json({ ok: true, enabled });
+});
+
+/**
+ * GET /api/system/sls — SLS 配置/映射自检（admin 或 bootstrap）
+ * 可选 query 参数：identity
+ */
+router.get('/sls', (req, res, next) => {
+  if (isBootstrapMode()) { next(); return; }
+  authMiddleware(req, res, next);
+}, async (req, res) => {
+  if (!isBootstrapMode() && (!req.user || !isAdmin(req.user.role))) {
+    res.status(403).json({ error: 'Admin role required' });
+    return;
+  }
+
+  const tool = getBuiltinTool('query_aliyun_logs');
+  if (!tool) {
+    res.status(501).json({ error: 'query_aliyun_logs tool not available' });
+    return;
+  }
+
+  const identity = typeof req.query['identity'] === 'string' ? String(req.query['identity']).trim() : '';
+  const checks: { type: string; result: string }[] = [];
+  try {
+    const r1 = await tool.execute({ action: 'check_config' }, { user_id: req.user?.user_id ?? 'system', role: req.user?.role ?? 'owner' } as any);
+    checks.push({ type: 'check_config', result: String(r1) });
+  } catch (err) {
+    checks.push({ type: 'check_config', result: `ERROR: ${String(err)}` });
+  }
+  if (identity) {
+    try {
+      const r2 = await tool.execute({ action: 'resolve_only', identity }, { user_id: req.user?.user_id ?? 'system', role: req.user?.role ?? 'owner' } as any);
+      checks.push({ type: 'resolve_only', result: String(r2) });
+    } catch (err) {
+      checks.push({ type: 'resolve_only', result: `ERROR: ${String(err)}` });
+    }
+  }
+  res.json({ items: checks });
+});
+
+/**
+ * POST /api/system/sls — 触发 SLS 工具（admin 或 bootstrap）
+ * body: { action: 'preview_query'|'query'|'check_config'|'resolve_only', identity?, sls_user_id?, query?, from?, to? }
+ */
+router.post('/sls', (req, res, next) => {
+  if (isBootstrapMode()) { next(); return; }
+  authMiddleware(req, res, next);
+}, async (req, res) => {
+  if (!isBootstrapMode() && (!req.user || !isAdmin(req.user.role))) {
+    res.status(403).json({ error: 'Admin role required' });
+    return;
+  }
+
+  const tool = getBuiltinTool('query_aliyun_logs');
+  if (!tool) {
+    res.status(501).json({ error: 'query_aliyun_logs tool not available' });
+    return;
+  }
+  const input = req.body ?? {};
+  try {
+    const result = await tool.execute(input, { user_id: req.user?.user_id ?? 'system', role: req.user?.role ?? 'owner' } as any);
+    res.json({ ok: true, action: input.action, result });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: String(err) });
+  }
 });
 
 router.get('/id-mappings', (req, res, next) => {
