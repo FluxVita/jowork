@@ -176,6 +176,11 @@ export function detachSession(id: string): void {
   session.state = 'detached';
   session.detachedAt = Date.now();
   session.attachedSend = null;
+  // 清理 WS exit handler — 它引用已死的 WebSocket，不 dispose 会阻止 GC
+  if (session.wsExitDisposable) {
+    session.wsExitDisposable.dispose();
+    session.wsExitDisposable = null;
+  }
   log.info('PTY session detached (PTY still running)', { id, userId: session.userId });
 }
 
@@ -183,9 +188,28 @@ export function detachSession(id: string): void {
 export function destroySession(id: string): void {
   const session = sessions.get(id);
   if (!session) return;
+  // 先清理 WS exit handler
+  if (session.wsExitDisposable) {
+    session.wsExitDisposable.dispose();
+    session.wsExitDisposable = null;
+  }
+  const pid = session.pty.pid;
   try { session.pty.kill(); } catch { /* already dead */ }
+  // 兜底：SIGHUP 可能被 tmux/shell 忽略，2 秒后 SIGKILL 强杀
+  setTimeout(() => {
+    try { process.kill(pid, 'SIGKILL'); } catch { /* already dead */ }
+  }, 2000);
   sessions.delete(id);
   log.info('PTY session destroyed', { id });
+}
+
+// ─── 销毁所有会话（graceful shutdown 时调用）───
+export function destroyAllSessions(): void {
+  const count = sessions.size;
+  for (const id of [...sessions.keys()]) {
+    destroySession(id);
+  }
+  if (count > 0) log.info(`Destroyed all ${count} PTY sessions`);
 }
 
 // ─── 其他工具 ───

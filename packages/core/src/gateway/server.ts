@@ -297,6 +297,9 @@ export function startGateway(opts: GatewayOptions = {}) {
     // 注册心跳 pong 响应（与上方 setInterval ping 配合）
     termAlive.set(ws, true);
     ws.on('pong', () => { termAlive.set(ws, true); });
+    ws.on('error', (err) => {
+      log.warn('Terminal WS error', { user: user.name, error: String(err) });
+    });
 
     // 向客户端发送控制消息（\x00 前缀区分 PTY 输出）
     const sendCtrl = (msg: Record<string, unknown>) => {
