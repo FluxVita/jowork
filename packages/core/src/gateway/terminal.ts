@@ -17,10 +17,6 @@ interface TerminalSession {
 
 const sessions = new Map<string, TerminalSession>();
 
-// PTY 会话上限
-const MAX_SESSIONS_TOTAL = 50;
-const MAX_SESSIONS_PER_USER = 5;
-
 function getDefaultShell(): string {
   if (isWindows) {
     // 优先 PowerShell 7（pwsh），其次 Windows PowerShell 5（内置），最后 cmd
@@ -54,17 +50,6 @@ export function createSession(opts: {
   rows?: number;
 }): { id: string; pty: pty.IPty } {
   const mode = opts.mode ?? 'shell';
-
-  // 全局上限
-  if (sessions.size >= MAX_SESSIONS_TOTAL) {
-    throw new Error(`PTY 会话已达全局上限 (${MAX_SESSIONS_TOTAL})，请关闭未使用的终端`);
-  }
-  // 每用户上限
-  const userCount = [...sessions.values()].filter(s => s.userId === opts.userId).length;
-  if (userCount >= MAX_SESSIONS_PER_USER) {
-    throw new Error(`当前用户 PTY 会话已达上限 (${MAX_SESSIONS_PER_USER})，请关闭未使用的终端`);
-  }
-
   const { file, args } = resolveSpawn(mode, opts.tmuxSession);
   const id = `term_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
@@ -120,14 +105,14 @@ export function destroySession(id: string): void {
   sessions.delete(id);
 }
 
-// 每 5 分钟清理空闲超过 30 分钟的会话（防 PTY 泄漏）
+// 清理 2 小时无活动会话
 setInterval(() => {
   const now = Date.now();
-  const idleLimit = 30 * 60 * 1000; // 30 分钟
+  const idleLimit = 2 * 60 * 60 * 1000;
   for (const [id, s] of sessions.entries()) {
     if (now - s.lastActivityAt > idleLimit) {
       destroySession(id);
-      log.warn('Terminal session cleaned (idle >30min)', { id, userId: s.userId });
+      log.warn('Terminal session cleaned (idle)', { id, userId: s.userId });
     }
   }
-}, 5 * 60 * 1000);
+}, 10 * 60 * 1000);
