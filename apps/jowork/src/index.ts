@@ -31,6 +31,7 @@ import { GoogleCalendarConnector } from '@jowork/core/connectors/google-calendar
 import { telegramChannel } from '@jowork/core/channels/telegram.js';
 import { startScheduler, stopScheduler, setTaskExecutor, listCronTasks, createCronTask } from '@jowork/core/scheduler/index.js';
 import { executeTask } from '@jowork/core/scheduler/executor.js';
+import { startHeartbeat, stopHeartbeat } from '@jowork/core/scheduler/heartbeat.js';
 import { runDailyMaintenance } from '@jowork/core/resilience/index.js';
 import { initLicenseClient } from '@jowork/core/billing/license-client.js';
 import { createLogger } from '@jowork/core/utils/logger.js';
@@ -83,6 +84,9 @@ seedCronTasks();
 // 启动调度器
 startScheduler();
 
+// 启动心跳（30 分钟间隔，处理 wake 事件 + 健康检查）
+startHeartbeat();
+
 // 定期清理过期缓存（每30分钟）
 setInterval(() => {
   try { cacheCleanup(); } catch (err) { log.error('Cache cleanup failed', err); }
@@ -104,6 +108,7 @@ async function gracefulShutdown(signal: string) {
   log.warn(`Received ${signal}, graceful shutdown started`);
 
   try { stopScheduler(); } catch (err) { log.error('stopScheduler failed', err); }
+  try { stopHeartbeat(); } catch (err) { log.error('stopHeartbeat failed', err); }
   try { await telegramChannel.shutdown(); } catch (err) { log.error('telegram shutdown failed', err); }
 
   await new Promise<void>((resolve) => {

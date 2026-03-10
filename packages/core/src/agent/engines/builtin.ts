@@ -28,10 +28,11 @@ import {
 } from '../../policy/context-pep.js';
 import { getUserPreferences, formatPrefsForPrompt } from '../../preferences/user-preferences.js';
 import type { AgentEvent, AgentEngine, AgentEngineOpts, ToolContext, AnthropicToolDef, StructuredResult, ImageAttachment } from '../types.js';
+import { config as gatewayConfig } from '../../config.js';
+import { createLoopDetectionState, detectToolCallLoop, recordToolCall, recordToolCallOutcome } from '../loop-detection.js';
 
 const log = createLogger('builtin-engine');
 
-const MAX_TOOL_ROUNDS = 35;
 const MODEL_RETRY_MAX = 2;
 const MODEL_RETRY_BASE_MS = 2000;
 
@@ -408,26 +409,44 @@ export class BuiltinEngine implements AgentEngine {
     // 追踪上一轮工具调用名称（用于 behavior 标签）
     let prevRoundToolNames: string[] = [];
 
-    // 反循环：多维度检测
-    const toolCallCounts = new Map<string, number>(); // 每个工具的总调用次数
-    let consecutiveEmptyTool = '';
-    let consecutiveEmptyCount = 0;
-    let lastToolResultHash = '';       // 上一次工具结果的 hash（前 500 字符）
-    let consecutiveSameResultTool = '';
-    let consecutiveSameResultCount = 0;
-    const LOOP_THRESHOLD = 3;       // 连续 3 次空结果 → 移除
-    const SAME_RESULT_THRESHOLD = 3; // 连续 3 次相同结果 → 移除
-    const TOTAL_CALL_CAP = 6;       // 任一工具总调用 6 次 → 移除
+    // ── Phase 1: Token budget + timeout（替代 MAX_TOOL_ROUNDS 硬限制）──
+    const tokenBudget = gatewayConfig.agent.tokenBudget;
+    const timeoutMs = gatewayConfig.agent.timeoutMs;
+    const budgetWarnThreshold = gatewayConfig.agent.budgetWarnThreshold;
+    const budgetHardMin = gatewayConfig.agent.budgetHardMin;
+    let remainingBudget = tokenBudget;
+    const startTime = Date.now();
+    let budgetWarned = false;
 
-    const removeToolFromDefs = (toolName: string, reason: string) => {
-      toolDefs = toolDefs.filter(t => t.name !== toolName);
-      const remaining = toolDefs.map(t => t.name).join(', ');
-      const hint = `[SYSTEM] ${toolName} 已被禁用（${reason}）。剩余可用工具：${remaining}。请选择合适的工具继续任务。如果需要查询 PostHog 行为数据请用 query_posthog（action=hogql）。如果任务已无法完成，请直接回复说明情况。`;
-      appendMessage({ session_id: sessionId, role: 'user', content: hint });
-      log.warn(`Anti-loop: removed ${toolName} (${reason}). Remaining: ${remaining}`);
-    };
+    // ── Phase 1: Loop detection state（替代旧的反循环硬规则）──
+    const loopState = createLoopDetectionState();
 
-    for (let round = 1; round <= MAX_TOOL_ROUNDS; round++) {
+    let round = 0;
+    while (true) {
+      round++;
+      // ── Token budget 硬限制 ──
+      if (remainingBudget < budgetHardMin) {
+        log.warn(`Token budget exhausted (remaining: ${remainingBudget})`);
+        yield { event: 'error', data: { message: `Token 预算已耗尽（${tokenBudget - remainingBudget}/${tokenBudget} tokens used），对话自动终止。` } };
+        return;
+      }
+
+      // ── Timeout 硬限制 ──
+      if (Date.now() - startTime > timeoutMs) {
+        log.warn(`Agent timeout after ${Math.round((Date.now() - startTime) / 1000)}s`);
+        yield { event: 'error', data: { message: `Agent 执行超时（${Math.round(timeoutMs / 1000)}s），对话自动终止。` } };
+        return;
+      }
+
+      // ── Token budget 软警告 ──
+      if (!budgetWarned && remainingBudget < budgetWarnThreshold) {
+        budgetWarned = true;
+        const warnMsg = `You have ${remainingBudget} tokens remaining out of ${tokenBudget}. Wrap up your current task concisely.`;
+        yield { event: 'budget_warning', data: { remaining_tokens: remainingBudget, message: warnMsg } };
+        // 注入到 system prompt 让 agent 知道
+        systemPrompt += `\n\n[BUDGET WARNING] ${warnMsg}`;
+      }
+
       // 检查中断
       if (signal?.aborted) {
         yield { event: 'stopped', data: {} };
@@ -546,6 +565,9 @@ export class BuiltinEngine implements AgentEngine {
 
       // 不在每轮扣减，改为 text_done 时统一扣 1 次对话
 
+      // ── Phase 1: 从 token budget 中扣减 ──
+      remainingBudget -= (tokensIn + tokensOut);
+
       // 更新上一轮工具名称（供下一轮使用）
       prevRoundToolNames = toolCalls.map(tc => tc.name);
 
@@ -653,6 +675,11 @@ export class BuiltinEngine implements AgentEngine {
           return { result, duration_ms: Date.now() - startMs, structured };
         };
 
+        // ── Phase 1: Loop detection — 记录工具调用（在执行前）──
+        for (const tc of parsedCalls) {
+          recordToolCall(loopState, tc.name, tc.parsedInput, tc.id);
+        }
+
         const rawResults = await Promise.all(parsedCalls.map(executeOne));
 
         for (let i = 0; i < parsedCalls.length; i++) {
@@ -701,63 +728,30 @@ export class BuiltinEngine implements AgentEngine {
             duration_ms,
           });
 
-          // --- 反循环多维度检测 ---
-          // 维度1：总调用次数
-          toolCallCounts.set(tc.name, (toolCallCounts.get(tc.name) || 0) + 1);
-
-          // 维度2：连续空结果
-          const isEmpty = toolResult.includes('未找到') || toolResult.includes('No results') || isError;
-          if (isEmpty && tc.name === consecutiveEmptyTool) {
-            consecutiveEmptyCount++;
-          } else if (isEmpty) {
-            consecutiveEmptyTool = tc.name;
-            consecutiveEmptyCount = 1;
-          } else {
-            consecutiveEmptyTool = '';
-            consecutiveEmptyCount = 0;
-          }
-
-          // 维度3：连续相同结果（即使非空）
-          const resultHash = toolResult.slice(0, 500);
-          if (tc.name === consecutiveSameResultTool && resultHash === lastToolResultHash) {
-            consecutiveSameResultCount++;
-          } else {
-            consecutiveSameResultTool = tc.name;
-            lastToolResultHash = resultHash;
-            consecutiveSameResultCount = 1;
-          }
+          // ── Phase 1: Loop detection — 记录结果（调用记录已在 executeOne 前完成） ──
+          recordToolCallOutcome(loopState, tc.name, tc.parsedInput, toolResult, tc.id);
         }
 
-        // 反循环干预（按优先级检查）
-        const toolsToRemove = new Set<string>();
-
-        // Check 1: 连续空结果
-        if (consecutiveEmptyCount >= LOOP_THRESHOLD) {
-          toolsToRemove.add(consecutiveEmptyTool);
-          consecutiveEmptyTool = '';
-          consecutiveEmptyCount = 0;
-        }
-
-        // Check 2: 连续相同结果
-        if (consecutiveSameResultCount >= SAME_RESULT_THRESHOLD) {
-          toolsToRemove.add(consecutiveSameResultTool);
-          consecutiveSameResultTool = '';
-          consecutiveSameResultCount = 0;
-          lastToolResultHash = '';
-        }
-
-        // Check 3: 总调用次数超限
-        for (const [name, count] of toolCallCounts) {
-          if (count >= TOTAL_CALL_CAP && toolDefs.some(t => t.name === name)) {
-            toolsToRemove.add(name);
-          }
-        }
-
-        // 执行移除
-        for (const name of toolsToRemove) {
-          if (toolDefs.some(t => t.name === name)) {
-            const count = toolCallCounts.get(name) || 0;
-            removeToolFromDefs(name, `已调用 ${count} 次，触发反循环保护`);
+        // ── Phase 1: Loop detection 检测（对所有本轮调用） ──
+        for (const tc of parsedCalls) {
+          const loopResult = detectToolCallLoop(loopState, tc.name, tc.parsedInput);
+          if (loopResult.stuck) {
+            yield {
+              event: 'loop_warning',
+              data: {
+                detector: loopResult.detector ?? 'unknown',
+                count: loopResult.count ?? 0,
+                level: loopResult.level ?? 'warning',
+                message: loopResult.message ?? '',
+              },
+            };
+            // Agent-Centric: 注入警告到消息历史让 agent 看到，而不是移除工具
+            appendMessage({
+              session_id: sessionId,
+              role: 'user',
+              content: `[LOOP DETECTION] ${loopResult.message}`,
+            });
+            log.warn(`Loop detected: ${loopResult.detector} level=${loopResult.level} count=${loopResult.count}`);
           }
         }
 
@@ -808,7 +802,9 @@ export class BuiltinEngine implements AgentEngine {
       return;
     }
 
-    yield { event: 'error', data: { message: '工具调用轮数超限（35轮），请简化问题后重试。' } };
+    // while(true) 应从内部 return 退出（end_turn / budget exhausted / timeout）
+    // 此处仅作安全兜底，理论上不可达
+    yield { event: 'error', data: { message: 'Agent loop exited unexpectedly. This should not happen.' } };
   }
 }
 

@@ -50,6 +50,7 @@ import systemRoutes from './routes/system.js';
 import billingRoutes from './routes/billing.js';
 import proxyRoutes from './routes/proxy.js';
 import licenseRoutes from './routes/license.js';
+import hooksRoutes from './routes/hooks.js';
 import { seedDefaultServices } from '../services/seed.js';
 import { startAdvertising } from '../discovery/mdns.js';
 import { getOrgSetting } from '../auth/settings.js';
@@ -170,6 +171,7 @@ export function startGateway(opts: GatewayOptions = {}) {
     ['/billing', billingRoutes],
     ['/proxy', proxyRoutes],
     ['/license', licenseRoutes],
+    ['/hooks', hooksRoutes],
   ];
 
   for (const [path, router] of apiRouteMounts) {

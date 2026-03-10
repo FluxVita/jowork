@@ -1,4 +1,6 @@
-import type { Tool, AnthropicToolDef } from '../types.js';
+import type { Tool, AnthropicToolDef, ToolContext } from '../types.js';
+import type { ToolProvider } from './provider.js';
+import { globalToolRegistry } from './provider.js';
 import { searchDataTool } from './search_data.js';
 import { fetchContentTool } from './fetch_content.js';
 import { listSourcesTool } from './list_sources.js';
@@ -16,6 +18,15 @@ import { larkSendMessageTool } from './lark/send_message.js';
 import { larkListChatsTool } from './lark/list_chats.js';
 import { larkCreateCalendarEventTool } from './lark/create_calendar_event.js';
 import { checkGitlabCiTool } from './check_gitlab_ci.js';
+import { cronTool } from './cron.js';
+import { fsReadTool } from './fs_read.js';
+import { fsWriteTool } from './fs_write.js';
+import { fsEditTool } from './fs_edit.js';
+import { webSearchTool } from './web_search.js';
+import { webFetchTool } from './web_fetch.js';
+import { sessionsTool } from './sessions.js';
+import { processTool } from './process.js';
+import { gatewayTool } from './gateway.js';
 import { createLogger } from '../../utils/logger.js';
 
 const log = createLogger('tool-registry');
@@ -91,5 +102,44 @@ export function initTools() {
   register(larkListChatsTool);
   register(larkCreateCalendarEventTool);
   register(listChatMessagesTool);
+  // ─── Phase 2: New Agent Tools ───
+  register(cronTool);
+  register(fsReadTool);
+  register(fsWriteTool);
+  register(fsEditTool);
+  register(webSearchTool);
+  register(webFetchTool);
+  register(sessionsTool);
+  register(processTool);
+  register(gatewayTool);
   log.info(`${builtinTools.size} tools registered`);
+
+  // ─── Phase 2.11: 注册 BuiltinToolProvider 到全局 ToolRegistry ───
+  globalToolRegistry.registerProvider(builtinToolProvider);
 }
+
+// ─── BuiltinToolProvider: 桥接旧 Map<string,Tool> 到新 ToolProvider 抽象 ───
+
+const builtinToolProvider: ToolProvider = {
+  type: 'builtin',
+  id: 'builtin',
+  name: 'Built-in Tools',
+
+  async listTools(): Promise<AnthropicToolDef[]> {
+    return getAllTools().map(t => ({
+      name: t.name,
+      description: t.description,
+      input_schema: t.input_schema,
+    }));
+  },
+
+  async executeTool(name: string, input: Record<string, unknown>, ctx: ToolContext): Promise<string> {
+    const tool = builtinTools.get(name);
+    if (!tool) throw new Error(`Unknown builtin tool: ${name}`);
+    return tool.execute(input, ctx);
+  },
+
+  async healthCheck(): Promise<boolean> {
+    return builtinTools.size > 0;
+  },
+};

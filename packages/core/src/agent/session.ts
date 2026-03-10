@@ -1,6 +1,6 @@
 import { getDb } from '../datamap/db.js';
 import { genId } from '../utils/id.js';
-import type { Session, SessionMessage, EngineType } from './types.js';
+import type { Session, SessionMessage, EngineType, SessionType } from './types.js';
 
 // ─── Row → Object ───
 
@@ -14,6 +14,9 @@ function rowToSession(row: Record<string, unknown>): Session {
     total_cost: row['total_cost'] as number,
     summary: row['summary'] as string | null,
     engine: (row['engine'] as EngineType) ?? 'builtin',
+    parent_session_id: (row['parent_session_id'] as string | null) ?? null,
+    session_type: (row['session_type'] as SessionType) ?? 'main',
+    agent_config_json: (row['agent_config_json'] as string | null) ?? null,
     created_at: row['created_at'] as string,
     updated_at: row['updated_at'] as string,
     archived_at: row['archived_at'] as string | null,
@@ -41,16 +44,24 @@ function rowToMessage(row: Record<string, unknown>): SessionMessage {
 
 // ─── CRUD ───
 
-export function createSession(userId: string, title?: string, engine?: EngineType): Session {
+export function createSession(
+  userId: string,
+  title?: string,
+  engine?: EngineType,
+  opts?: { sessionType?: SessionType; parentSessionId?: string; agentConfig?: Record<string, unknown> },
+): Session {
   const db = getDb();
   const sessionId = genId('ses');
   const now = new Date().toISOString();
   const eng = engine ?? 'builtin';
+  const sessionType = opts?.sessionType ?? 'main';
+  const parentSessionId = opts?.parentSessionId ?? null;
+  const agentConfigJson = opts?.agentConfig ? JSON.stringify(opts.agentConfig) : null;
 
   db.prepare(`
-    INSERT INTO sessions (session_id, user_id, title, engine, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `).run(sessionId, userId, title ?? '新对话', eng, now, now);
+    INSERT INTO sessions (session_id, user_id, title, engine, parent_session_id, session_type, agent_config_json, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(sessionId, userId, title ?? '新对话', eng, parentSessionId, sessionType, agentConfigJson, now, now);
 
   return {
     session_id: sessionId,
@@ -61,6 +72,9 @@ export function createSession(userId: string, title?: string, engine?: EngineTyp
     total_cost: 0,
     summary: null,
     engine: eng,
+    parent_session_id: parentSessionId,
+    session_type: sessionType,
+    agent_config_json: agentConfigJson,
     created_at: now,
     updated_at: now,
     archived_at: null,

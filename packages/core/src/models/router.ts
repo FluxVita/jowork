@@ -165,14 +165,25 @@ function getProviderRuntimeConfig(): ProviderRuntimeConfig {
   return defaults;
 }
 
-// ─── Klaude 断路器 ───
-// Klaude 不可达时，开路 5 分钟，避免每次请求都白白等 fetch 失败超时
+// ─── Provider 断路器（Phase 1.5: 增强 — 支持 auth/billing/network 三类错误） ───
+// 参考 OpenClaw: profile chain + independent cooldown per provider
+//
+// 错误分类：
+// - network: ECONNREFUSED/fetch failed → 2 次开路 5 分钟
+// - auth: 401/403 → 立即开路 10 分钟（auth 错误不会自愈，等待 key 刷新）
+// - billing: 402/429 → 立即开路 30 分钟（配额恢复需要更长时间）
 
-const CIRCUIT_OPEN_MS = 5 * 60 * 1000; // 5 分钟
+const CIRCUIT_OPEN_NETWORK_MS = 5 * 60 * 1000;  // 5 分钟
+const CIRCUIT_OPEN_AUTH_MS = 10 * 60 * 1000;     // 10 分钟
+const CIRCUIT_OPEN_BILLING_MS = 30 * 60 * 1000;  // 30 分钟
+const NETWORK_FAILURE_THRESHOLD = 2;              // 连续 2 次网络错误才开路
+
+type FailureReason = 'network' | 'auth' | 'billing';
 
 interface CircuitState {
   openUntil: number;  // timestamp，0 表示闭路（正常）
   failures: number;
+  lastReason?: FailureReason;
 }
 
 const circuits = new Map<string, CircuitState>();
@@ -183,22 +194,57 @@ function isCircuitOpen(providerId: string): boolean {
   if (Date.now() > state.openUntil) {
     // 冷却结束，半开路：允许一次尝试
     state.openUntil = 0;
+    state.failures = 0;
     return false;
   }
   return true;
 }
 
+function classifyError(err: unknown): FailureReason | null {
+  const msg = String(err);
+  // Auth errors: 401, 403
+  if (/\b40[13]\b/.test(msg) || msg.includes('Unauthorized') || msg.includes('Forbidden')) {
+    return 'auth';
+  }
+  // Billing errors: 402, 429
+  if (/\b402\b/.test(msg) || (/\b429\b/.test(msg) && msg.includes('billing'))) {
+    return 'billing';
+  }
+  // Network errors
+  if ((err instanceof TypeError && msg.includes('fetch failed')) || msg.includes('ECONNREFUSED') || msg.includes('ENOTFOUND') || msg.includes('ETIMEDOUT')) {
+    return 'network';
+  }
+  return null;
+}
+
 function recordProviderFailure(providerId: string, err: unknown) {
-  const isNetworkError = err instanceof TypeError && String(err).includes('fetch failed');
-  const isConnRefused = String(err).includes('ECONNREFUSED');
-  if (!isNetworkError && !isConnRefused) return; // 非网络错误不开路
+  const reason = classifyError(err);
+  if (!reason) return;
 
   const state = circuits.get(providerId) ?? { openUntil: 0, failures: 0 };
   state.failures++;
-  if (state.failures >= 2) {
-    state.openUntil = Date.now() + CIRCUIT_OPEN_MS;
-    log.warn(`[circuit] ${providerId} 不可达，断路 ${CIRCUIT_OPEN_MS / 60000} 分钟`);
+  state.lastReason = reason;
+
+  switch (reason) {
+    case 'auth':
+      // Auth 错误立即开路
+      state.openUntil = Date.now() + CIRCUIT_OPEN_AUTH_MS;
+      log.warn(`[circuit] ${providerId} auth error, open for ${CIRCUIT_OPEN_AUTH_MS / 60000}min`);
+      break;
+    case 'billing':
+      // Billing 错误立即开路
+      state.openUntil = Date.now() + CIRCUIT_OPEN_BILLING_MS;
+      log.warn(`[circuit] ${providerId} billing/rate limit, open for ${CIRCUIT_OPEN_BILLING_MS / 60000}min`);
+      break;
+    case 'network':
+      // 网络错误需要连续 N 次
+      if (state.failures >= NETWORK_FAILURE_THRESHOLD) {
+        state.openUntil = Date.now() + CIRCUIT_OPEN_NETWORK_MS;
+        log.warn(`[circuit] ${providerId} network unreachable, open for ${CIRCUIT_OPEN_NETWORK_MS / 60000}min`);
+      }
+      break;
   }
+
   circuits.set(providerId, state);
 }
 

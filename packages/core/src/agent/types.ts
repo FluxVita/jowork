@@ -38,6 +38,8 @@ export interface AgentEngine {
 
 // ─── Session ───
 
+export type SessionType = 'main' | 'subagent' | 'cron' | 'hook' | 'webhook';
+
 export interface Session {
   session_id: string;
   user_id: string;
@@ -47,6 +49,12 @@ export interface Session {
   total_cost: number;
   summary: string | null;
   engine: EngineType;
+  /** 父 session ID（sub-agent 场景） */
+  parent_session_id: string | null;
+  /** session 类型 */
+  session_type: SessionType;
+  /** agent 配置覆盖（model/thinking 等） */
+  agent_config_json: string | null;
   created_at: string;
   updated_at: string;
   archived_at: string | null;
@@ -124,6 +132,8 @@ export type AgentEvent =
   | { event: 'tool_update'; data: { id: string; status: string; message?: string } }
   | { event: 'text_done'; data: { content: string; message_id?: number } }
   | { event: 'file_attachment'; data: { filename: string; download_token: string; size_bytes: number; mime?: string } }
+  | { event: 'budget_warning'; data: { remaining_tokens: number; message: string } }
+  | { event: 'loop_warning'; data: { detector: string; count: number; level: string; message: string } }
   | { event: 'usage'; data: { tokens_in: number; tokens_out: number; model: string; cost_usd: number } }
   | { event: 'engine_info'; data: { engine: EngineType; model?: string } }
   | { event: 'stopped'; data: Record<string, never> }
@@ -159,4 +169,60 @@ export interface ToolCallResult {
   tool_calls: { id: string; name: string; input: Record<string, unknown> }[];
   tokens_in: number;
   tokens_out: number;
+}
+
+// ─── OpenClaw Phase 0: Sub-agent / Cron / Loop Detection 类型 ───
+
+export interface SubagentSpawnOpts {
+  task: string;
+  label?: string;
+  model?: string;
+  thinking?: 'off' | 'low' | 'medium' | 'high';
+  timeoutSeconds?: number;
+  /** run=一次性, session=持久 */
+  mode?: 'run' | 'session';
+  parentSessionId: string;
+  parentUserId: string;
+}
+
+export interface SubagentResult {
+  sessionId: string;
+  status: 'success' | 'error' | 'timeout';
+  output: string;
+  usage: { tokens_in: number; tokens_out: number; cost_usd: number };
+}
+
+export interface CronDelivery {
+  mode: 'none' | 'announce' | 'webhook';
+  channel?: string;
+  to?: string;
+  webhookUrl?: string;
+}
+
+export interface CronAgentTurnOpts {
+  taskId: string;
+  message: string;
+  model?: string;
+  thinking?: string;
+  delivery: CronDelivery;
+}
+
+export interface ToolCallRecord {
+  toolName: string;
+  paramsHash: string;
+  resultHash?: string;
+  timestamp: number;
+}
+
+export interface LoopDetectionState {
+  toolCallHistory: ToolCallRecord[];
+  lastResults: Map<string, string[]>;
+}
+
+export interface LoopDetectionResult {
+  stuck: boolean;
+  level?: 'warning' | 'critical';
+  detector?: 'generic_repeat' | 'poll_no_progress' | 'ping_pong';
+  count?: number;
+  message?: string;
 }

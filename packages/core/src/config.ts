@@ -102,6 +102,25 @@ export const config: GatewayConfig = {
   tailscale: {
     enabled: env('TAILSCALE_ENABLED', 'true') === 'true',
   },
+  // ─── Agent 增强配置（Phase 0 — OpenClaw 集成） ───
+  agent: {
+    tokenBudget: parseInt(env('AGENT_TOKEN_BUDGET', '100000'), 10),
+    timeoutMs: parseInt(env('AGENT_TIMEOUT_MS', '300000'), 10),
+    budgetWarnThreshold: parseInt(env('AGENT_BUDGET_WARN_THRESHOLD', '5000'), 10),
+    budgetHardMin: parseInt(env('AGENT_BUDGET_HARD_MIN', '500'), 10),
+    subagentMaxDepth: parseInt(env('SUBAGENT_MAX_DEPTH', '2'), 10),
+    subagentMaxConcurrent: parseInt(env('SUBAGENT_MAX_CONCURRENT', '5'), 10),
+  },
+  cron: {
+    maxConcurrentRuns: parseInt(env('CRON_MAX_CONCURRENT_RUNS', '2'), 10),
+    sessionRetentionHours: parseInt(env('CRON_SESSION_RETENTION_HOURS', '24'), 10),
+  },
+  webhookSecret: env('WEBHOOK_SECRET', ''),
+  hooksEnabled: env('HOOKS_ENABLED', 'true') === 'true',
+  braveSearchApiKey: env('BRAVE_SEARCH_API_KEY', ''),
+  firecrawlApiKey: env('FIRECRAWL_API_KEY', ''),
+  memoryEmbeddingProvider: env('MEMORY_EMBEDDING_PROVIDER', 'none'),
+  memoryEmbeddingModel: env('MEMORY_EMBEDDING_MODEL', ''),
   email: {
     accounts: [
       {

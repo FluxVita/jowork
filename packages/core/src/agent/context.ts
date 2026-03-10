@@ -6,6 +6,7 @@ import { getDb } from '../datamap/db.js';
 import { createLogger } from '../utils/logger.js';
 import { getUserById } from '../auth/users.js';
 import { sanitizeToolResult, sanitizeOutput } from '../policy/context-pep.js';
+import { config as gatewayConfig } from '../config.js';
 import type { SessionMessage, ImageAttachment } from './types.js';
 import type { ToolUseMessage } from '../models/router.js';
 import type { ContextPepOpts } from '../policy/context-pep.js';
@@ -13,7 +14,12 @@ import type { ContextPepOpts } from '../policy/context-pep.js';
 const log = createLogger('agent-context');
 
 const MAX_CONTEXT_TOKENS = 100_000;
-const MAX_TOOL_RESULT_TOKENS = 16_000;
+/** 单条 tool result 最大占上下文窗口的比例（OpenClaw: 30%） */
+const MAX_TOOL_RESULT_CONTEXT_SHARE = 0.30;
+/** 单条 tool result 绝对硬上限 tokens */
+const HARD_MAX_TOOL_RESULT_TOKENS = 50_000;
+/** 单条 tool result 绝对下限 tokens（至少保留这么多） */
+const MIN_TOOL_RESULT_TOKENS = 1_000;
 
 // 归档阈值
 const ARCHIVE_MESSAGE_THRESHOLD = 40;
@@ -25,11 +31,32 @@ export function estimateTokens(text: string): number {
   return Math.ceil(text.length / 2);
 }
 
-/** 截断单条内容到 token 上限 */
+/**
+ * 动态计算 tool result 的最大 token 数（基于剩余上下文预算）
+ *
+ * 参考 OpenClaw: 30% of remaining context window, clamped to hard limits
+ */
+export function calculateMaxToolResultTokens(remainingContextTokens: number): number {
+  const dynamic = Math.floor(remainingContextTokens * MAX_TOOL_RESULT_CONTEXT_SHARE);
+  return Math.max(MIN_TOOL_RESULT_TOKENS, Math.min(dynamic, HARD_MAX_TOOL_RESULT_TOKENS));
+}
+
+/**
+ * Newline-aware 截断：在换行符处断开，避免截在行中间
+ *
+ * 参考 OpenClaw tool-result-truncation.ts: 在 80% 安全区域的最后一个换行符处断开
+ */
 function truncateContent(text: string, maxTokens: number): string {
   const maxChars = maxTokens * 2;
   if (text.length <= maxChars) return text;
-  return text.slice(0, maxChars) + '\n...(内容过长，已截断)';
+
+  // 在 80% 位置附近找最后一个换行符
+  const safeZone = Math.floor(maxChars * 0.8);
+  const lastNewline = text.lastIndexOf('\n', maxChars);
+  const cutPoint = lastNewline > safeZone ? lastNewline : maxChars;
+
+  const originalSize = Math.ceil(text.length / 2); // 估算原始 token 数
+  return text.slice(0, cutPoint) + `\n\n[Content truncated — original ~${originalSize} tokens, kept ~${maxTokens} tokens]`;
 }
 
 function getArchivePepOpts(userId: string): ContextPepOpts {
@@ -82,6 +109,16 @@ export async function maybeArchiveAndSummarize(sessionId: string, userId: string
   // 保留最近 N 条消息，其余归档
   const toArchive = messages.slice(0, messages.length - KEEP_RECENT_MESSAGES);
   if (toArchive.length === 0) return;
+
+  // ── Phase 1.4: Memory flush before compaction ──
+  // 在归档前尝试用模型提取关键信息存入记忆库
+  if (gatewayConfig.hooksEnabled) {
+    try {
+      await flushMemoryBeforeArchive(toArchive, userId, sessionId);
+    } catch (err) {
+      log.warn(`Memory flush failed for session ${sessionId}, continuing with archive`, String(err));
+    }
+  }
 
   // 1. 写入归档文件
   const archiveDir = resolve(dirname(import.meta.url.replace('file://', '')), '..', '..', 'data', 'archives');
@@ -167,13 +204,16 @@ export function buildContextWindow(
   sessionSummary: string | null,
 ): ToolUseMessage[] {
   // 从最新消息向前扫描，估算 token
+  // Phase 1.2: 动态 tool result 截断 — 基于剩余预算的 30%
   let totalTokens = 0;
   let cutoffIdx = 0;
 
   for (let i = messages.length - 1; i >= 0; i--) {
     const msg = messages[i];
+    const remainingBudget = MAX_CONTEXT_TOKENS - totalTokens;
+    const toolResultLimit = calculateMaxToolResultTokens(remainingBudget);
     const content = msg.role === 'tool_result'
-      ? truncateContent(msg.content, MAX_TOOL_RESULT_TOKENS)
+      ? truncateContent(msg.content, toolResultLimit)
       : msg.content;
     const tokens = estimateTokens(content);
     if (totalTokens + tokens > MAX_CONTEXT_TOKENS) {
@@ -239,8 +279,9 @@ export function buildContextWindow(
         input: parsedInput,
       }]);
     } else if (msg.role === 'tool_result') {
-      // tool_result 属于 user
-      const truncated = truncateContent(msg.content, MAX_TOOL_RESULT_TOKENS);
+      // tool_result 属于 user — 动态截断
+      const dynamicLimit = calculateMaxToolResultTokens(MAX_CONTEXT_TOKENS - totalTokens);
+      const truncated = truncateContent(msg.content, dynamicLimit);
       pushOrMerge(result, 'user', [{
         type: 'tool_result',
         tool_use_id: msg.tool_call_id!,
@@ -284,5 +325,72 @@ function pushOrMerge(
     }
   } else {
     result.push({ role, content: blocks });
+  }
+}
+
+/**
+ * Phase 1.4: Memory flush before compaction
+ *
+ * 在归档前用模型提取关键信息，自动存入用户记忆库。
+ * 参考 OpenClaw: hooks/session-memory — compacting 前自动 write_memory
+ */
+async function flushMemoryBeforeArchive(
+  toArchive: SessionMessage[],
+  userId: string,
+  sessionId: string,
+): Promise<void> {
+  // 构建归档对话的简短摘要用于提取
+  const pepOpts = getArchivePepOpts(userId);
+  const lines: string[] = [];
+  for (const m of toArchive.slice(-20)) { // 只取最近 20 条
+    if (m.role === 'user') lines.push(`User: ${m.content.slice(0, 200)}`);
+    if (m.role === 'assistant') lines.push(`Assistant: ${m.content.slice(0, 200)}`);
+  }
+  const conversationSnippet = lines.join('\n');
+  if (conversationSnippet.length < 50) return; // 对话太短，不需要提取
+
+  const EXTRACT_PROMPT = `Analyze this conversation excerpt and extract ONLY confirmed facts worth remembering long-term. Output as JSON array of objects: [{"title":"...","content":"...","tags":["..."]}]. If nothing worth saving, return [].
+
+Rules:
+- Only extract confirmed decisions, preferences, key facts with URIs/numbers
+- Do NOT extract temporary/session-specific information
+- Keep each item concise (1-2 sentences)
+- Maximum 3 items`;
+
+  try {
+    const result = await routeModel({
+      messages: [
+        { role: 'user', content: `${EXTRACT_PROMPT}\n\n---\n${conversationSnippet.slice(0, 4000)}` },
+      ],
+      taskType: 'chat',
+      userId,
+      maxTokens: 500,
+    });
+
+    // 解析 JSON 数组
+    const jsonMatch = result.content.match(/\[[\s\S]*\]/);
+    if (!jsonMatch) return;
+
+    const items = JSON.parse(jsonMatch[0]) as { title: string; content: string; tags?: string[] }[];
+    if (!Array.isArray(items) || items.length === 0) return;
+
+    const db = getDb();
+    const { genId } = await import('../utils/id.js');
+    const now = new Date().toISOString();
+
+    for (const item of items.slice(0, 3)) {
+      if (!item.title || !item.content) continue;
+      db.prepare(`
+        INSERT INTO user_memories (memory_id, user_id, title, content, tags_json, scope, source, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, 'personal', 'session_flush', ?, ?)
+      `).run(
+        genId('mem'), userId, item.title, item.content,
+        JSON.stringify(item.tags ?? []), now, now,
+      );
+    }
+
+    log.info(`Memory flush: saved ${Math.min(items.length, 3)} memories for session ${sessionId}`);
+  } catch (err) {
+    log.debug(`Memory flush extraction failed: ${err}`);
   }
 }

@@ -3,6 +3,7 @@ import { genId } from '../utils/id.js';
 import { createLogger } from '../utils/logger.js';
 import { runAlertChecks } from '../alerts/engine.js';
 import { runDailyMaintenance } from '../resilience/index.js';
+import { executeAgentTurn } from './agent-turn.js';
 
 const log = createLogger('scheduler');
 
@@ -187,6 +188,16 @@ export function stopScheduler() {
   }
 }
 
+// ─── Phase 3.2: Retry Backoff ───
+
+const BACKOFF_SCHEDULE_MS = [30_000, 60_000, 300_000, 900_000, 3600_000];
+
+function getBackoffMs(consecutiveErrors: number): number {
+  if (consecutiveErrors <= 0) return 0;
+  const idx = Math.min(consecutiveErrors - 1, BACKOFF_SCHEDULE_MS.length - 1);
+  return BACKOFF_SCHEDULE_MS[idx];
+}
+
 /** 单次调度检查 */
 async function tick() {
   const db = getDb();
@@ -209,22 +220,54 @@ async function tick() {
       if (now.getTime() - lastRun.getTime() < 55_000) continue;
     }
 
+    // 跳过正在 retry backoff 中的任务
+    const retryAfter = row['retry_after_at'] as string | null;
+    if (retryAfter && new Date(retryAfter).getTime() > now.getTime()) continue;
+
     log.info(`Executing cron task: ${task.name}`);
 
     try {
-      if (executor) {
+      // Phase 3: agent_turn 类型任务直接用 executeAgentTurn
+      const isAgentTurn = (row['payload_type'] as string) === 'agent_turn' || task.action_type === 'custom';
+      if (isAgentTurn) {
+        await executeAgentTurn({
+          task_id: task.task_id,
+          name: task.name,
+          created_by: task.created_by,
+          action_config: task.action_config,
+          payload_config_json: row['payload_config_json'] as string | undefined,
+          delivery_mode: (row['delivery_mode'] as string) ?? 'none',
+          delivery_config_json: row['delivery_config_json'] as string | undefined,
+        });
+      } else if (executor) {
         await executor(task);
       } else {
         log.warn(`No executor registered, skipping task: ${task.name}`);
       }
 
-      // 更新执行时间
+      // 成功：重置错误计数，更新执行时间
       db.prepare(`
-        UPDATE cron_tasks SET last_run_at = ?, next_run_at = ? WHERE task_id = ?
+        UPDATE cron_tasks SET last_run_at = ?, next_run_at = ?, consecutive_errors = 0, last_error = NULL, retry_after_at = NULL WHERE task_id = ?
       `).run(now.toISOString(), nextRunTime(task.cron_expr), task.task_id);
 
     } catch (err) {
+      const errMsg = err instanceof Error ? err.message : String(err);
       log.error(`Cron task failed: ${task.name}`, err);
+
+      // Phase 3.2: Retry policy
+      const consecutiveErrors = ((row['consecutive_errors'] as number) ?? 0) + 1;
+      const backoff = getBackoffMs(consecutiveErrors);
+      const retryAt = backoff > 0 ? new Date(now.getTime() + backoff).toISOString() : null;
+
+      db.prepare(`
+        UPDATE cron_tasks SET consecutive_errors = ?, last_error = ?, retry_after_at = ?, next_run_at = ? WHERE task_id = ?
+      `).run(consecutiveErrors, errMsg.slice(0, 500), retryAt, nextRunTime(task.cron_expr), task.task_id);
+
+      // 永久失败（连续 5 次）→ 自动禁用
+      if (consecutiveErrors >= 5) {
+        db.prepare('UPDATE cron_tasks SET enabled = 0 WHERE task_id = ?').run(task.task_id);
+        log.error(`Cron task auto-disabled after ${consecutiveErrors} consecutive failures: ${task.name}`);
+      }
     }
   }
 

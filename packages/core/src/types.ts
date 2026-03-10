@@ -273,4 +273,37 @@ export interface GatewayConfig {
       feedback_minutes: number;
     };
   };
+  // ─── Agent 增强配置（Phase 0 — OpenClaw 集成） ───
+  agent: {
+    /** 单次 session token 预算（默认 100K） */
+    tokenBudget: number;
+    /** Agent 超时（ms，默认 5min） */
+    timeoutMs: number;
+    /** 剩余 token 低于此值时 warning */
+    budgetWarnThreshold: number;
+    /** 剩余 token 低于此值时强制停止 */
+    budgetHardMin: number;
+    /** Sub-agent 最大嵌套深度 */
+    subagentMaxDepth: number;
+    /** 并发 sub-agent 上限 */
+    subagentMaxConcurrent: number;
+  };
+  cron: {
+    /** 并发 cron agent turn 上限 */
+    maxConcurrentRuns: number;
+    /** Cron session 保留时间（小时） */
+    sessionRetentionHours: number;
+  };
+  /** Webhook 认证 secret */
+  webhookSecret: string;
+  /** Hooks 事件系统开关 */
+  hooksEnabled: boolean;
+  /** Brave Search API Key（web_search tool） */
+  braveSearchApiKey: string;
+  /** Firecrawl API Key（web_fetch fallback） */
+  firecrawlApiKey: string;
+  /** Memory embedding provider: 'openai' | 'local' | 'none' */
+  memoryEmbeddingProvider: string;
+  /** Memory embedding model ID */
+  memoryEmbeddingModel: string;
 }

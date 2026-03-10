@@ -749,6 +749,68 @@ export function initSchema() {
     WHERE status IN ('pending', 'running')
   `);
 
+  // ── OpenClaw Phase 0: Sub-agent session 扩展 ──
+  try { db.exec(`ALTER TABLE sessions ADD COLUMN parent_session_id TEXT`); } catch { /* 列已存在 */ }
+  try { db.exec(`ALTER TABLE sessions ADD COLUMN session_type TEXT DEFAULT 'main'`); } catch { /* 列已存在 */ }
+  try { db.exec(`ALTER TABLE sessions ADD COLUMN agent_config_json TEXT`); } catch { /* 列已存在 */ }
+
+  // ── OpenClaw Phase 0: Cron 增强 ──
+  try { db.exec(`ALTER TABLE cron_tasks ADD COLUMN schedule_type TEXT DEFAULT 'cron'`); } catch { /* 列已存在 */ }
+  try { db.exec(`ALTER TABLE cron_tasks ADD COLUMN schedule_config_json TEXT`); } catch { /* 列已存在 */ }
+  try { db.exec(`ALTER TABLE cron_tasks ADD COLUMN payload_type TEXT DEFAULT 'sync'`); } catch { /* 列已存在 */ }
+  try { db.exec(`ALTER TABLE cron_tasks ADD COLUMN payload_config_json TEXT`); } catch { /* 列已存在 */ }
+  try { db.exec(`ALTER TABLE cron_tasks ADD COLUMN delivery_mode TEXT DEFAULT 'none'`); } catch { /* 列已存在 */ }
+  try { db.exec(`ALTER TABLE cron_tasks ADD COLUMN delivery_config_json TEXT`); } catch { /* 列已存在 */ }
+  try { db.exec(`ALTER TABLE cron_tasks ADD COLUMN consecutive_errors INTEGER DEFAULT 0`); } catch { /* 列已存在 */ }
+  try { db.exec(`ALTER TABLE cron_tasks ADD COLUMN last_error TEXT`); } catch { /* 列已存在 */ }
+  try { db.exec(`ALTER TABLE cron_tasks ADD COLUMN retry_after_at TEXT`); } catch { /* 列已存在 */ }
+
+  // ── OpenClaw Phase 0: Memory 来源标记 ──
+  try { db.exec(`ALTER TABLE user_memories ADD COLUMN source TEXT DEFAULT 'manual'`); } catch { /* 列已存在 */ }
+
+  // ── OpenClaw Phase 0: Webhook tokens ──
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS webhook_tokens (
+      token_id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      token_hash TEXT NOT NULL,
+      scopes_json TEXT DEFAULT '["agent"]',
+      created_by TEXT,
+      expires_at TEXT,
+      created_at TEXT DEFAULT (datetime('now'))
+    )
+  `);
+
+  // ── OpenClaw Phase 0: Hook 配置 ──
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS hooks (
+      hook_id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      event_pattern TEXT NOT NULL,
+      handler_type TEXT NOT NULL,
+      handler_config_json TEXT,
+      enabled INTEGER DEFAULT 1,
+      created_at TEXT DEFAULT (datetime('now'))
+    )
+  `);
+
+  // ── OpenClaw Phase 0: Skill 注册 ──
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS skills (
+      skill_id TEXT PRIMARY KEY,
+      name TEXT NOT NULL UNIQUE,
+      description TEXT,
+      source TEXT NOT NULL,
+      manifest_json TEXT,
+      prompt_text TEXT,
+      tools_json TEXT,
+      enabled INTEGER DEFAULT 1,
+      config_json TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT
+    )
+  `);
+
   log.info('Schema initialized');
   seedDefaultPolicies(db);
 }
