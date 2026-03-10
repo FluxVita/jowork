@@ -242,6 +242,12 @@ createServer((req, res) => {
 
   if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
 
+  if (req.method === 'GET' && req.url === '/health') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ status: 'ok', service: 'feedback-mcp-relay' }));
+    return;
+  }
+
   if (req.method === 'POST' && req.url === '/api/feedback/batch') {
     let body = '';
     req.on('data', chunk => { body += chunk; });
