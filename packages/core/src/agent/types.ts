@@ -135,7 +135,7 @@ export type AgentEvent =
   | { event: 'budget_warning'; data: { remaining_tokens: number; message: string } }
   | { event: 'loop_warning'; data: { detector: string; count: number; level: string; message: string } }
   | { event: 'usage'; data: { tokens_in: number; tokens_out: number; model: string; cost_usd: number } }
-  | { event: 'engine_info'; data: { engine: EngineType; model?: string } }
+  | { event: 'engine_info'; data: { engine: EngineType; model?: string; mcp_servers?: string[] } }
   | { event: 'stopped'; data: Record<string, never> }
   | { event: 'error'; data: { message: string } }
   | { event: 'learn_suggestion'; data: { title: string; content: string; user_id: string } }
