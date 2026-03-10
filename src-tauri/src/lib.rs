@@ -1,7 +1,8 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::io::BufRead;
 use std::sync::{Arc, Mutex, OnceLock};
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::time::Duration;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tauri::{
@@ -751,6 +752,187 @@ async fn handle_pty_ws(stream: tokio::net::TcpStream) {
     log_event("[pty-ws] 连接关闭");
 }
 
+// ── Claude Code Local ────────────────────────────────
+
+struct ClaudeCodeManager {
+    active_child: Mutex<Option<std::process::Child>>,
+    has_conversation: Arc<AtomicBool>,
+}
+
+impl ClaudeCodeManager {
+    fn new() -> Self {
+        Self {
+            active_child: Mutex::new(None),
+            has_conversation: Arc::new(AtomicBool::new(false)),
+        }
+    }
+}
+
+fn find_claude_binary() -> Option<std::path::PathBuf> {
+    let home = std::env::var("HOME").unwrap_or_default();
+    let candidates = [
+        format!("{}/.local/bin/claude", home),
+        format!("{}/.npm-global/bin/claude", home),
+        "/usr/local/bin/claude".to_string(),
+        "/opt/homebrew/bin/claude".to_string(),
+    ];
+    for c in &candidates {
+        let p = std::path::PathBuf::from(c);
+        if p.exists() {
+            return Some(std::fs::canonicalize(&p).unwrap_or(p));
+        }
+    }
+    std::process::Command::new("which")
+        .arg("claude")
+        .output()
+        .ok()
+        .and_then(|o| {
+            if o.status.success() {
+                let s = String::from_utf8_lossy(&o.stdout).trim().to_string();
+                if !s.is_empty() {
+                    let p = std::path::PathBuf::from(&s);
+                    return Some(std::fs::canonicalize(&p).unwrap_or(p));
+                }
+            }
+            None
+        })
+}
+
+#[tauri::command]
+fn claude_code_check() -> serde_json::Value {
+    match find_claude_binary() {
+        Some(path) => {
+            let version = std::process::Command::new(&path)
+                .arg("--version")
+                .output()
+                .ok()
+                .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+                .unwrap_or_default();
+            serde_json::json!({
+                "installed": true,
+                "version": version,
+                "path": path.to_string_lossy()
+            })
+        }
+        None => serde_json::json!({
+            "installed": false,
+            "version": "",
+            "path": ""
+        }),
+    }
+}
+
+#[tauri::command]
+fn claude_code_query(
+    app: AppHandle,
+    manager: tauri::State<'_, ClaudeCodeManager>,
+    prompt: String,
+    cwd: Option<String>,
+) -> Result<(), String> {
+    use std::process::{Command, Stdio};
+
+    // Kill previous process if any
+    {
+        let mut guard = manager.active_child.lock().unwrap();
+        if let Some(child) = guard.as_mut() {
+            let _ = child.kill();
+            let _ = child.wait();
+        }
+        *guard = None;
+    }
+
+    let claude_bin = find_claude_binary().ok_or("Claude CLI not found")?;
+
+    let mut args = vec![
+        "-p".to_string(),
+        "--output-format".to_string(),
+        "stream-json".to_string(),
+        "--verbose".to_string(),
+    ];
+
+    if manager.has_conversation.load(Ordering::SeqCst) {
+        args.push("--continue".to_string());
+    }
+
+    args.push(prompt);
+
+    let working_dir = cwd.unwrap_or_else(|| {
+        std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string())
+    });
+
+    let mut child = Command::new(&claude_bin)
+        .args(&args)
+        .current_dir(&working_dir)
+        .env_remove("CLAUDECODE")
+        .env_remove("CLAUDE_CODE_ENTRYPOINT")
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|e| format!("Failed to spawn claude: {}", e))?;
+
+    let stdout = child.stdout.take().ok_or("Failed to capture stdout")?;
+    let stderr = child.stderr.take().ok_or("Failed to capture stderr")?;
+
+    {
+        let mut guard = manager.active_child.lock().unwrap();
+        *guard = Some(child);
+    }
+
+    let app_clone = app.clone();
+    let has_conv = manager.has_conversation.clone();
+    std::thread::spawn(move || {
+        let reader = std::io::BufReader::new(stdout);
+        for line in reader.lines() {
+            match line {
+                Ok(l) if !l.is_empty() => {
+                    if let Ok(json) = serde_json::from_str::<serde_json::Value>(&l) {
+                        let _ = app_clone.emit("claude_code_event", &json);
+                    }
+                }
+                Err(_) => break,
+                _ => {}
+            }
+        }
+        has_conv.store(true, Ordering::SeqCst);
+        let _ = app_clone.emit("claude_code_done", serde_json::json!({}));
+    });
+
+    let app_err = app.clone();
+    std::thread::spawn(move || {
+        let reader = std::io::BufReader::new(stderr);
+        let mut err_text = String::new();
+        for line in reader.lines() {
+            if let Ok(l) = line {
+                if !l.is_empty() {
+                    err_text.push_str(&l);
+                    err_text.push('\n');
+                }
+            }
+        }
+        if !err_text.is_empty() {
+            let _ = app_err.emit("claude_code_error", serde_json::json!({ "error": err_text.trim() }));
+        }
+    });
+
+    Ok(())
+}
+
+#[tauri::command]
+fn claude_code_stop(manager: tauri::State<'_, ClaudeCodeManager>) -> Result<(), String> {
+    let mut guard = manager.active_child.lock().unwrap();
+    if let Some(child) = guard.as_mut() {
+        let _ = child.kill();
+        let _ = child.wait();
+    }
+    *guard = None;
+    Ok(())
+}
+
+#[tauri::command]
+fn claude_code_new_conversation(manager: tauri::State<'_, ClaudeCodeManager>) {
+    manager.has_conversation.store(false, Ordering::SeqCst);
+}
+
 // ── Tauri Commands ──
 
 #[tauri::command]
@@ -840,8 +1022,13 @@ pub fn run() {
             pty_write,
             pty_resize,
             pty_kill,
+            claude_code_check,
+            claude_code_query,
+            claude_code_stop,
+            claude_code_new_conversation,
         ])
         .manage(PtyManager::new())
+        .manage(ClaudeCodeManager::new())
         .setup(|app| {
             let handle = app.handle().clone();
 

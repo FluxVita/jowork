@@ -98,5 +98,62 @@ router.get('/agent-browser/status', authMiddleware, (_req, res) => {
   });
 });
 
+/** POST /api/ai-services/agent-browser/install — 一键安装 agent-browser */
+router.post('/agent-browser/install', authMiddleware, requireRole('owner', 'admin'), (_req, res) => {
+  const cmd = 'npm install -g agent-browser && agent-browser install';
+  log.info('Installing agent-browser...');
+  exec(cmd, { timeout: 120_000 }, (err, stdout, stderr) => {
+    if (err) {
+      log.error('agent-browser install failed', stderr || String(err));
+      res.status(500).json({ ok: false, error: stderr?.trim() || String(err) });
+      return;
+    }
+    // 验证安装成功
+    exec('agent-browser --version 2>/dev/null', (verErr, verOut) => {
+      if (verErr) {
+        res.status(500).json({ ok: false, error: 'Install completed but verification failed' });
+        return;
+      }
+      const version = verOut.trim().replace(/^agent-browser\s+/, '') || null;
+      log.info(`agent-browser installed: ${version}`);
+      res.json({ ok: true, version });
+    });
+  });
+});
+
+/** GET /api/ai-services/claude-cli/status — 检测 Claude Code CLI 是否已安装 */
+router.get('/claude-cli/status', authMiddleware, (_req, res) => {
+  exec('claude --version 2>/dev/null', (err, stdout) => {
+    if (err) {
+      res.json({ installed: false, version: null });
+    } else {
+      const version = stdout.trim() || null;
+      res.json({ installed: true, version });
+    }
+  });
+});
+
+/** POST /api/ai-services/claude-cli/install — 一键安装 Claude Code CLI */
+router.post('/claude-cli/install', authMiddleware, requireRole('owner', 'admin'), (_req, res) => {
+  const cmd = 'npm install -g @anthropic-ai/claude-code';
+  log.info('Installing Claude Code CLI...');
+  exec(cmd, { timeout: 180_000 }, (err, _stdout, stderr) => {
+    if (err) {
+      log.error('Claude CLI install failed', stderr || String(err));
+      res.status(500).json({ ok: false, error: stderr?.trim() || String(err) });
+      return;
+    }
+    exec('claude --version 2>/dev/null', (verErr, verOut) => {
+      if (verErr) {
+        res.status(500).json({ ok: false, error: 'Install completed but verification failed' });
+        return;
+      }
+      const version = verOut.trim() || null;
+      log.info(`Claude CLI installed: ${version}`);
+      res.json({ ok: true, version });
+    });
+  });
+});
+
 export default router;
 
