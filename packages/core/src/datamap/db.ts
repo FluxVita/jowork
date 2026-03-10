@@ -719,6 +719,36 @@ export function initSchema() {
   db.exec(`CREATE INDEX IF NOT EXISTS idx_telemetry_ts    ON telemetry_events(timestamp)`);
   db.exec(`CREATE INDEX IF NOT EXISTS idx_telemetry_event ON telemetry_events(event_name)`);
 
+  // ── 后台 Agent 任务表 ──
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS agent_tasks (
+      task_id        TEXT PRIMARY KEY,
+      title          TEXT NOT NULL,
+      status         TEXT NOT NULL DEFAULT 'pending',
+      trigger_type   TEXT NOT NULL DEFAULT 'manual',
+      trigger_by     TEXT NOT NULL,
+      prompt         TEXT NOT NULL,
+      session_id     TEXT,
+      result_summary TEXT,
+      mr_url         TEXT,
+      error_message  TEXT,
+      phase          TEXT,
+      tool_rounds    INTEGER NOT NULL DEFAULT 0,
+      started_at     TEXT,
+      completed_at   TEXT,
+      created_at     TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at     TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_agent_tasks_status  ON agent_tasks(status)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_agent_tasks_created ON agent_tasks(created_at DESC)`);
+
+  // Gateway 重启时将中断的任务标记为失败
+  db.exec(`
+    UPDATE agent_tasks SET status = 'failed', error_message = 'Gateway restarted', updated_at = datetime('now')
+    WHERE status IN ('pending', 'running')
+  `);
+
   log.info('Schema initialized');
   seedDefaultPolicies(db);
 }

@@ -15,6 +15,9 @@ import { createLogger } from '../../utils/logger.js';
 const log = createLogger('proxy');
 const router = Router();
 
+// 次数耗尽时的降级模型（OpenRouter 免费 tier）
+const FALLBACK_FREE_MODEL = 'meta-llama/llama-3.2-3b-instruct:free';
+
 // ─── 速率限制（per-IP，每分钟最多 20 次代理请求）───
 const _ipRateMap = new Map<string, { count: number; windowStart: number }>();
 
@@ -53,15 +56,6 @@ router.post('/chat', authMiddleware, async (req: Request, res: Response) => {
 
   const userId = req.user!.user_id;
 
-  // 检查对话次数余量
-  if (!checkCreditSufficient(userId)) {
-    res.status(402).json({
-      error: 'quota_exhausted',
-      message: 'Monthly conversation quota exceeded. Please upgrade your plan.',
-    });
-    return;
-  }
-
   const { messages, model_preference, session_id } = req.body as {
     messages: Array<{ role: string; content: string }>;
     model_preference?: string;
@@ -73,6 +67,10 @@ router.post('/chat', authMiddleware, async (req: Request, res: Response) => {
     return;
   }
 
+  // 检查对话次数余量：不足时降级到免费模型，而非直接阻断
+  const quotaSufficient = checkCreditSufficient(userId);
+  const isDowngraded = !quotaSufficient;
+
   // 获取平台 OpenRouter Key（org 级，不是用户 key）
   const apiKey = getOrgSetting('model_api_key_openrouter') ?? process.env['OPENROUTER_API_KEY'];
   if (!apiKey) {
@@ -80,11 +78,17 @@ router.post('/chat', authMiddleware, async (req: Request, res: Response) => {
     return;
   }
 
-  const model = model_preference ?? 'anthropic/claude-3-5-haiku';
+  const model = isDowngraded ? FALLBACK_FREE_MODEL : (model_preference ?? 'anthropic/claude-3-5-haiku');
 
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
+
+  // 降级时通知前端
+  if (isDowngraded) {
+    res.write(`data: ${JSON.stringify({ type: 'quota_warning', model: FALLBACK_FREE_MODEL, message: 'Monthly quota exceeded. Using free model.' })}\n\n`);
+    log.warn(`Proxy: user=${userId} quota exhausted, downgraded to ${FALLBACK_FREE_MODEL}`);
+  }
 
   let completionReceived = false;
 

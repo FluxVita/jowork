@@ -15,6 +15,7 @@ import { listChatMessagesTool } from './list_chat_messages.js';
 import { larkSendMessageTool } from './lark/send_message.js';
 import { larkListChatsTool } from './lark/list_chats.js';
 import { larkCreateCalendarEventTool } from './lark/create_calendar_event.js';
+import { checkGitlabCiTool } from './check_gitlab_ci.js';
 import { createLogger } from '../../utils/logger.js';
 
 const log = createLogger('tool-registry');
@@ -85,6 +86,7 @@ export function initTools() {
   register(createGitlabMrTool);
   register(runCommandTool);
   register(manageWorkspaceTool);
+  register(checkGitlabCiTool);
   register(larkSendMessageTool);
   register(larkListChatsTool);
   register(larkCreateCalendarEventTool);

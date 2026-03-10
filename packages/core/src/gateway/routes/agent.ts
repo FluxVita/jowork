@@ -13,6 +13,7 @@ import { assembleContextPrompt } from '../../context/docs.js';
 import { isCrossUserConversationQuery, CROSS_USER_QUERY_DENIED_MESSAGE } from '../../agent/security.js';
 import type { SkillManifest } from '../../skills/types.js';
 import type { EngineType } from '../../agent/types.js';
+import { createAgentTask, getAgentTask, listAgentTasks, runAgentTaskBackground } from '../../agent/tasks.js';
 import { createLogger } from '../../utils/logger.js';
 
 const log = createLogger('agent-route');
@@ -529,6 +530,72 @@ router.get('/tool-stats', authMiddleware, requireRole('owner', 'admin'), (req, r
   }), { calls: 0, successes: 0, errors: 0 });
 
   res.json({ days, since, totals, rows, recent, daily });
+});
+
+// ═══════════════════════════════════════
+// Background Tasks
+// ═══════════════════════════════════════
+
+/** POST /api/agent/tasks — 创建后台任务，立即返回 task_id */
+router.post('/tasks', authMiddleware, requireRole('owner', 'admin'), (req, res) => {
+  const { title, prompt } = req.body as { title?: string; prompt?: string };
+
+  if (!title?.trim() || !prompt?.trim()) {
+    res.status(400).json({ error: 'title and prompt are required' });
+    return;
+  }
+
+  const taskId = createAgentTask({
+    title: title.trim(),
+    prompt: prompt.trim(),
+    trigger_by: req.user!.user_id,
+  });
+
+  // fire-and-forget
+  runAgentTaskBackground(taskId).catch(err => {
+    log.error(`Background task ${taskId} unhandled error`, err);
+  });
+
+  res.status(201).json({ task_id: taskId });
+});
+
+/** GET /api/agent/tasks — 列出最近 50 条任务 */
+router.get('/tasks', authMiddleware, requireRole('owner', 'admin'), (req, res) => {
+  const limit = Math.min(parseInt(req.query['limit'] as string) || 50, 200);
+  const tasks = listAgentTasks(limit);
+  res.json({ tasks });
+});
+
+/** GET /api/agent/tasks/:id — 查询单条任务状态 */
+router.get('/tasks/:id', authMiddleware, requireRole('owner', 'admin'), (req, res) => {
+  const task = getAgentTask(req.params['id'] as string);
+  if (!task) {
+    res.status(404).json({ error: 'Task not found' });
+    return;
+  }
+  res.json({ task });
+});
+
+/** DELETE /api/agent/tasks/:id — 取消任务 */
+router.delete('/tasks/:id', authMiddleware, requireRole('owner', 'admin'), (req, res) => {
+  const task = getAgentTask(req.params['id'] as string);
+  if (!task) {
+    res.status(404).json({ error: 'Task not found' });
+    return;
+  }
+
+  if (task.status === 'completed' || task.status === 'failed') {
+    res.status(400).json({ error: 'Cannot cancel a finished task' });
+    return;
+  }
+
+  const db = getDb();
+  db.prepare(`
+    UPDATE agent_tasks SET status = 'cancelled', updated_at = datetime('now')
+    WHERE task_id = ? AND status IN ('pending', 'running')
+  `).run(task.task_id);
+
+  res.json({ ok: true });
 });
 
 export default router;

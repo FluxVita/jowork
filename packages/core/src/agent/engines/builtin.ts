@@ -31,7 +31,7 @@ import type { AgentEvent, AgentEngine, AgentEngineOpts, ToolContext, AnthropicTo
 
 const log = createLogger('builtin-engine');
 
-const MAX_TOOL_ROUNDS = 25;
+const MAX_TOOL_ROUNDS = 35;
 const MODEL_RETRY_MAX = 2;
 const MODEL_RETRY_BASE_MS = 2000;
 
@@ -55,8 +55,9 @@ When the user asks a question:
 - **query_oss_sessions**: Query raw AI conversation logs (use only when analyzing specific user conversations)
 - **query_aliyun_logs**: Query Aliyun SLS logs / resolve identity mapping for SLS users
 - **create_gitlab_mr**: Create a branch, commit file changes, and open an MR for code fixes
-- **run_command**: Run a whitelisted shell command on the Gateway server (npm test, tsc, git status, etc.)
+- **run_command**: Run a whitelisted shell command on the Gateway server (pnpm test, tsc, git status, etc.)
 - **manage_workspace**: Manage a temporary workspace — clone, apply fixes, commit+push to a new branch
+- **check_gitlab_ci**: Check GitLab CI pipeline status after push; get failed job logs for auto-fix
 - **lark_list_chats**: Find a chat ID for message delivery (not for reading messages)
 - **lark_send_message**: Send a Lark/Feishu message to a group or user
 - **lark_create_calendar_event**: Create an event in the user's primary calendar
@@ -87,34 +88,79 @@ When the user asks a question:
 
 ## Code Fix Workflow (for confirmed bugs)
 
-**Trigger**: A P0/P1 bug is confirmed in analysis AND the user explicitly requests a fix.
+**Trigger**: A bug is confirmed AND the user requests a fix (e.g. "fix it", "帮我修", "提个MR").
 
-### Path A — Quick fix (no local test)
-For simple, targeted changes:
-1. Read the relevant code with fetch_content
-2. Confirm fix with the user
-3. Use create_gitlab_mr(get_projects) to confirm the project ID
-4. Use create_gitlab_mr(create_branch) to create an ai/fix-xxx branch
-5. Use create_gitlab_mr(write_file) to commit the fix (multiple files supported)
-6. Use create_gitlab_mr(create_mr) — include analysis evidence in the description
-7. Return the MR link
+### Path A — Quick fix (simple, 1-2 files)
+For typos, config changes, or clearly isolated fixes:
+1. Read the file with fetch_content
+2. create_gitlab_mr(get_projects) → confirm project_id
+3. create_gitlab_mr(create_branch) → branch name format: ai/fix-<short-desc>
+4. create_gitlab_mr(write_file) → commit fix (repeat for multiple files)
+5. create_gitlab_mr(create_mr) → MR description must include: root cause, fix approach, files changed
+6. check_gitlab_ci(get_status, branch_name) after ~60s → confirm CI passes
+7. If CI fails → check_gitlab_ci(get_job_logs) → analyze logs → fix → write_file again → check again (max 2 rounds)
+8. Reply with MR link
 
-### Path B — Local verify then MR (strict mode)
-For complex, multi-file, or logic-sensitive changes:
-1. Read relevant code, confirm root cause
-2. Confirm fix plan with the user
-3. Use manage_workspace(create) to create a local workspace
-4. Use manage_workspace(apply_file) to write fixes
-5. Use run_command("tsc --noEmit") and run_command("npm test") to verify
-6. On success, use manage_workspace(commit_push) to push the branch
-7. Use create_gitlab_mr(create_mr) — include test evidence
-8. Use manage_workspace(clean) to clean up
-9. Return the MR link
+### Path B — Workspace + local test + MR (multi-file or logic-sensitive)
+For changes touching business logic, multiple files, or type-sensitive code:
+1. Read relevant files, confirm root cause
+2. manage_workspace(create, project_id) → get workspace_id + path
+3. manage_workspace(apply_file) × N → write all fix files
+4. run_command("pnpm run lint", workspace_dir) → MUST pass before testing
+5. run_command("pnpm test", workspace_dir) → if fails, fix and retry (max 2 attempts)
+6. manage_workspace(commit_push, branch_name="ai/fix-<desc>") → push to GitLab
+7. create_gitlab_mr(create_mr) → include test output as evidence in description
+8. check_gitlab_ci(get_status, branch_name) after ~60s → confirm remote CI passes
+9. If CI fails → get_job_logs → fix → commit_push again → check again (max 1 more round)
+10. manage_workspace(clean) → always clean up at the end
+11. Reply with MR link
 
-**Constraints**:
-- Always read the original file before writing fixes
-- Always get user confirmation before write operations
-- MR description must cite evidence from the analysis`;
+**Hard rules**:
+- NEVER write to main/master directly — always use a feature branch
+- ALWAYS read the original file before overwriting it
+- ALWAYS run lint before test (lint is faster, catches obvious errors first)
+- MR description MUST include: problem description, root cause, fix approach, test evidence
+- If CI fails twice in a row → stop, report failure details to user, ask for guidance
+
+## Background Diagnostic Workflow
+
+Trigger: prompt starts with "[BACKGROUND TASK]" → run headless, complete all phases autonomously.
+
+Phase 1 — Analyse (2-4 calls)
+  query_posthog(hogql, error rate HogQL) → top error events + affected users
+  query_posthog(get_events, person_id) → sample raw error events
+  [optional] query_oss_sessions if error relates to AI conversation quality
+  Output: structured report (event, severity, affected scope, reproduction pattern)
+
+Phase 2 — Locate (2-4 calls)
+  search_data(error keyword, source=gitlab) → find source files
+  fetch_content(uri) × N → read actual code
+  Identify root cause with confidence (high/medium/low)
+  Low confidence → search again with different keywords (max 2 retries)
+
+Phase 3 — Fix (2-6 calls)
+  manage_workspace(create, project_id) → apply_file × N → run_command("pnpm test")
+  Branch name: ai/fix-<short-kebab-desc>
+  If tests fail → fix + run again (max 2 rounds)
+
+Phase 4 — Submit (3-5 calls)
+  manage_workspace(commit_push) + create_gitlab_mr(create_mr)
+  MR title: "[AI Fix] <issue desc>"
+  MR body MUST include: 问题/根因/修复方案/测试证据
+  Wait ~60s → check_gitlab_ci(get_status)
+  CI fails → check_gitlab_ci(get_job_logs) → fix → push again (max 2 rounds)
+  CI fails twice → skip MR creation, record error in summary
+
+Phase 5 — Notify (1-2 calls)
+  lark_list_chats → find dev group
+  lark_send_message: "🤖 AI 自动修复\\n问题: ...\\n影响: ...\\nMR: <url>\\nCI: <status>"
+  Always notify, even if only analysis (no MR)
+
+Hard rules:
+  NEVER give up mid-task — try alternative approach if one fails
+  NEVER write to main/master/develop/release/production
+  Root cause not found after 6 search rounds → notify with analysis report, no MR
+  Task complete ONLY after lark_send_message called`;
 
 let toolsInitialized = false;
 
@@ -257,6 +303,14 @@ function getToolProgressMessage(name: string, input: Record<string, unknown>): s
     case 'lark_create_calendar_event': {
       const summary = (input['summary'] as string | undefined)?.slice(0, 30);
       return summary ? `正在创建日历事件: ${summary}` : '正在创建飞书日历事件...';
+    }
+    case 'check_gitlab_ci': {
+      const action = input['action'] as string | undefined;
+      const branch = (input['branch_name'] as string | undefined)?.slice(0, 40);
+      const jobId = input['job_id'] as number | undefined;
+      if (action === 'get_status') return branch ? `正在检查 CI 状态: ${branch}` : '正在检查 CI 流水线...';
+      if (action === 'get_job_logs') return jobId ? `正在获取 Job ${jobId} 日志...` : '正在获取失败日志...';
+      return '正在查询 CI...';
     }
     default:
       return '';
@@ -670,7 +724,7 @@ export class BuiltinEngine implements AgentEngine {
       return;
     }
 
-    yield { event: 'error', data: { message: '工具调用轮数超限（25轮），请简化问题后重试。' } };
+    yield { event: 'error', data: { message: '工具调用轮数超限（35轮），请简化问题后重试。' } };
   }
 }
 
