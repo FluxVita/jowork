@@ -451,6 +451,7 @@ pub fn run() {
   tauri::Builder::default()
     .plugin(tauri_plugin_process::init())
     .plugin(tauri_plugin_window_state::Builder::default().build())
+    .plugin(tauri_plugin_dialog::init())
     .manage(ContextState(Mutex::new(None)))
     .manage(ClaudeCodeManager::new())
     // ── 菜单事件：分发右键菜单 action + 应用菜单快捷键 ──

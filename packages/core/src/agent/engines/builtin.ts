@@ -183,13 +183,16 @@ function is4xxError(err: unknown): boolean {
   return /\b4\d{2}\b/.test(msg) && !/\b429\b/.test(msg);
 }
 
-function isConnectionError(err: unknown): boolean {
+function isConnectionOrTimeoutError(err: unknown): boolean {
   const msg = String(err).toLowerCase();
   return (
     msg.includes('fetch failed') ||
     msg.includes('econnrefused') ||
     msg.includes('enotfound') ||
-    msg.includes('connect etimedout')
+    msg.includes('connect etimedout') ||
+    msg.includes('aborted') ||
+    msg.includes('aborterror') ||
+    msg.includes('timeout')
   );
 }
 
@@ -206,7 +209,7 @@ async function* callModelStreamWithRetry(
       yield* streamModelWithTools(params);
       return;
     } catch (err: unknown) {
-      if (attempt === maxRetries || is4xxError(err) || isConnectionError(err)) throw err;
+      if (attempt === maxRetries || is4xxError(err) || isConnectionOrTimeoutError(err)) throw err;
       const delay = MODEL_RETRY_BASE_MS * Math.pow(2, attempt);
       log.warn(`Stream call failed (attempt ${attempt + 1}/${maxRetries + 1}), retrying in ${delay}ms`, String(err));
       await sleep(delay);
@@ -759,11 +762,17 @@ export class BuiltinEngine implements AgentEngine {
       }
 
       // end_turn
-      let finalContent = fullText || '(无回复)';
+      let finalContent = fullText;
+
+      // 模型返回空文本：记录告警，用 fallback 文案代替
+      if (!finalContent?.trim()) {
+        log.warn(`Model returned empty text at end_turn (round ${round}, provider: ${roundProvider}/${roundModel})`);
+        finalContent = '抱歉，未能生成回复。请稍后重试，或换个方式描述你的问题。';
+      }
 
       if (hasInternal(finalContent)) {
         log.debug('Stripped internal reasoning from final', extractInternal(finalContent));
-        finalContent = stripInternal(finalContent) || '(无回复)';
+        finalContent = stripInternal(finalContent) || '抱歉，未能生成回复。请稍后重试。';
       }
 
       const outputCheck = sanitizeOutput(finalContent, pepOpts);

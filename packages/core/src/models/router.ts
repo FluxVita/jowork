@@ -210,8 +210,12 @@ function classifyError(err: unknown): FailureReason | null {
   if (/\b402\b/.test(msg) || (/\b429\b/.test(msg) && msg.includes('billing'))) {
     return 'billing';
   }
-  // Network errors
-  if ((err instanceof TypeError && msg.includes('fetch failed')) || msg.includes('ECONNREFUSED') || msg.includes('ENOTFOUND') || msg.includes('ETIMEDOUT')) {
+  // Network errors（含 timeout / abort — provider 超时等同于网络不可达）
+  if (
+    (err instanceof TypeError && msg.includes('fetch failed')) ||
+    msg.includes('ECONNREFUSED') || msg.includes('ENOTFOUND') || msg.includes('ETIMEDOUT') ||
+    msg.includes('aborted') || msg.includes('AbortError') || msg.includes('timeout')
+  ) {
     return 'network';
   }
   return null;
@@ -1142,19 +1146,24 @@ export async function* streamModelWithTools(req: ToolUseRequest): AsyncGenerator
   log.info(`Stream tool-use routing to ${provider.name} (${model})`);
 
   if (provider.apiFormat === 'anthropic') {
-    // ── Anthropic 真流式，连接失败时降级 ──
+    // ── Anthropic 真流式，连接/超时失败时降级 ──
     try {
       yield* streamAnthropicToolUse(provider, model, apiKey, system, messages, tools, maxTokens);
       return;
     } catch (err) {
       const msg = String(err).toLowerCase();
-      const isConnErr =
+      const isRecoverable =
         msg.includes('fetch failed') ||
         msg.includes('econnrefused') ||
         msg.includes('enotfound') ||
-        msg.includes('connect etimedout');
-      if (!isConnErr) throw err;
-      log.warn(`${provider.name} stream connection failed (${String(err)}), falling back to non-streaming provider`);
+        msg.includes('connect etimedout') ||
+        msg.includes('aborted') ||
+        msg.includes('aborterror') ||
+        msg.includes('timeout');
+      if (!isRecoverable) throw err;
+      // 记录失败到断路器，防止下一轮再选同一个 provider
+      recordProviderFailure(provider.id, err);
+      log.warn(`${provider.name} stream failed (${String(err)}), falling back to non-streaming provider`);
       // fall through to non-streaming path
     }
   }
