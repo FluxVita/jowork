@@ -370,7 +370,7 @@ export class BuiltinEngine implements AgentEngine {
 
     let toolDefs = getToolDefinitions();
     const user = getUserById(userId);
-    if (user && user.role !== 'owner') {
+    if (user && role !== 'owner') {
       const userServices = resolveServicesForUser(user);
       const allowedToolNames = new Set(
         userServices.filter(s => s.type === 'tool').map(s => s.config['tool_name'] as string).filter(Boolean)
@@ -408,10 +408,24 @@ export class BuiltinEngine implements AgentEngine {
     // 追踪上一轮工具调用名称（用于 behavior 标签）
     let prevRoundToolNames: string[] = [];
 
-    // 反循环：追踪连续空结果的工具
+    // 反循环：多维度检测
+    const toolCallCounts = new Map<string, number>(); // 每个工具的总调用次数
     let consecutiveEmptyTool = '';
     let consecutiveEmptyCount = 0;
-    const LOOP_THRESHOLD = 3; // 同一工具连续 3 次空结果后注入纠正
+    let lastToolResultHash = '';       // 上一次工具结果的 hash（前 500 字符）
+    let consecutiveSameResultTool = '';
+    let consecutiveSameResultCount = 0;
+    const LOOP_THRESHOLD = 3;       // 连续 3 次空结果 → 移除
+    const SAME_RESULT_THRESHOLD = 3; // 连续 3 次相同结果 → 移除
+    const TOTAL_CALL_CAP = 6;       // 任一工具总调用 6 次 → 移除
+
+    const removeToolFromDefs = (toolName: string, reason: string) => {
+      toolDefs = toolDefs.filter(t => t.name !== toolName);
+      const remaining = toolDefs.map(t => t.name).join(', ');
+      const hint = `[SYSTEM] ${toolName} 已被禁用（${reason}）。剩余可用工具：${remaining}。请选择合适的工具继续任务。如果需要查询 PostHog 行为数据请用 query_posthog（action=hogql）。如果任务已无法完成，请直接回复说明情况。`;
+      appendMessage({ session_id: sessionId, role: 'user', content: hint });
+      log.warn(`Anti-loop: removed ${toolName} (${reason}). Remaining: ${remaining}`);
+    };
 
     for (let round = 1; round <= MAX_TOOL_ROUNDS; round++) {
       // 检查中断
@@ -687,7 +701,11 @@ export class BuiltinEngine implements AgentEngine {
             duration_ms,
           });
 
-          // 反循环检测：同一工具连续返回空/错误结果
+          // --- 反循环多维度检测 ---
+          // 维度1：总调用次数
+          toolCallCounts.set(tc.name, (toolCallCounts.get(tc.name) || 0) + 1);
+
+          // 维度2：连续空结果
           const isEmpty = toolResult.includes('未找到') || toolResult.includes('No results') || isError;
           if (isEmpty && tc.name === consecutiveEmptyTool) {
             consecutiveEmptyCount++;
@@ -698,18 +716,49 @@ export class BuiltinEngine implements AgentEngine {
             consecutiveEmptyTool = '';
             consecutiveEmptyCount = 0;
           }
+
+          // 维度3：连续相同结果（即使非空）
+          const resultHash = toolResult.slice(0, 500);
+          if (tc.name === consecutiveSameResultTool && resultHash === lastToolResultHash) {
+            consecutiveSameResultCount++;
+          } else {
+            consecutiveSameResultTool = tc.name;
+            lastToolResultHash = resultHash;
+            consecutiveSameResultCount = 1;
+          }
         }
 
-        // 反循环干预：注入纠正消息到 session，引导模型换工具
+        // 反循环干预（按优先级检查）
+        const toolsToRemove = new Set<string>();
+
+        // Check 1: 连续空结果
         if (consecutiveEmptyCount >= LOOP_THRESHOLD) {
-          const hint = `[SYSTEM] 你已经连续 ${consecutiveEmptyCount} 次使用 ${consecutiveEmptyTool} 但均无结果。请停止使用该工具，换一个不同的工具。提示：查询 PostHog 行为数据请用 query_posthog，查询 AI 对话日志请用 query_oss_sessions，查询 SLS 日志请用 query_aliyun_logs。如果任务无法完成，请直接回复说明情况。`;
-          appendMessage({
-            session_id: sessionId,
-            role: 'user',
-            content: hint,
-          });
-          log.warn(`Anti-loop: ${consecutiveEmptyTool} empty ${consecutiveEmptyCount} times, injected correction`);
+          toolsToRemove.add(consecutiveEmptyTool);
+          consecutiveEmptyTool = '';
           consecutiveEmptyCount = 0;
+        }
+
+        // Check 2: 连续相同结果
+        if (consecutiveSameResultCount >= SAME_RESULT_THRESHOLD) {
+          toolsToRemove.add(consecutiveSameResultTool);
+          consecutiveSameResultTool = '';
+          consecutiveSameResultCount = 0;
+          lastToolResultHash = '';
+        }
+
+        // Check 3: 总调用次数超限
+        for (const [name, count] of toolCallCounts) {
+          if (count >= TOTAL_CALL_CAP && toolDefs.some(t => t.name === name)) {
+            toolsToRemove.add(name);
+          }
+        }
+
+        // 执行移除
+        for (const name of toolsToRemove) {
+          if (toolDefs.some(t => t.name === name)) {
+            const count = toolCallCounts.get(name) || 0;
+            removeToolFromDefs(name, `已调用 ${count} 次，触发反循环保护`);
+          }
         }
 
         continue;
