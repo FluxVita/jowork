@@ -17,13 +17,18 @@ function doQuery(input: Record<string, unknown>, ctx: ToolContext) {
   return { user, accessible: filterByAccess(user, results) };
 }
 
+// 这些数据源有专用查询工具，run_query 不应处理
+const REDIRECT_SOURCES: Record<string, string> = {
+  posthog: 'query_posthog',
+};
+
 export const runQueryTool: Tool = {
   name: 'run_query',
-  description: '按精确条件查询数据地图。可组合数据源、类型、敏感级别、标签等条件。适合需要精确过滤的场景（如"列出所有 GitLab merge_request"）。',
+  description: '查询本地数据索引（文档、MR、Issue 等已索引的对象）。不能查询 PostHog 行为数据 — 请用 query_posthog 代替。',
   input_schema: {
     type: 'object',
     properties: {
-      source: { type: 'string', description: '数据源', enum: ['feishu', 'gitlab', 'github', 'linear', 'jira', 'posthog', 'figma', 'notion', 'confluence', 'slack', 'discord', 'google_drive', 'google_calendar', 'email'] },
+      source: { type: 'string', description: '数据源（注意：PostHog 请用 query_posthog 工具）', enum: ['feishu', 'gitlab', 'github', 'linear', 'jira', 'figma', 'notion', 'confluence', 'slack', 'discord', 'google_drive', 'google_calendar', 'email'] },
       source_type: { type: 'string', description: '数据类型' },
       sensitivity: { type: 'string', description: '敏感级别', enum: ['public', 'internal', 'restricted', 'secret'] },
       tags: { type: 'array', items: { type: 'string' }, description: '标签过滤' },
@@ -33,6 +38,11 @@ export const runQueryTool: Tool = {
   },
 
   async execute(input: Record<string, unknown>, ctx: ToolContext): Promise<string> {
+    // 拦截错误的工具选择，引导到正确工具
+    const source = input['source'] as string | undefined;
+    if (source && REDIRECT_SOURCES[source]) {
+      return `[tool_error] run_query 不支持查询 ${source}。请改用 ${REDIRECT_SOURCES[source]} 工具直接查询 ${source} API。`;
+    }
     const result = doQuery(input, ctx);
     if (!result) return 'ERROR: 用户不存在';
     const { accessible } = result;
@@ -43,6 +53,11 @@ export const runQueryTool: Tool = {
   },
 
   async executeStructured(input: Record<string, unknown>, ctx: ToolContext): Promise<{ text: string; structured: StructuredResult }> {
+    const source = input['source'] as string | undefined;
+    if (source && REDIRECT_SOURCES[source]) {
+      const msg = `[tool_error] run_query 不支持查询 ${source}。请改用 ${REDIRECT_SOURCES[source]} 工具直接查询 ${source} API。`;
+      return { text: msg, structured: { type: 'table', columns: [], rows: [], total: 0 } };
+    }
     const result = doQuery(input, ctx);
     if (!result) return { text: 'ERROR: 用户不存在', structured: { type: 'table', columns: [], rows: [], total: 0 } };
     const { accessible } = result;
