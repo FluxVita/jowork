@@ -5,7 +5,7 @@
  * macOS、Windows、Linux 上而无需散落各处的 platform 判断。
  */
 
-import { join } from 'node:path';
+import { join, dirname } from 'node:path';
 import { homedir } from 'node:os';
 import { existsSync, chmodSync, mkdirSync, readdirSync, statSync } from 'node:fs';
 import { execSync } from 'node:child_process';
@@ -15,6 +15,28 @@ import { execSync } from 'node:child_process';
 export const isWindows = process.platform === 'win32';
 export const isMac    = process.platform === 'darwin';
 export const isLinux  = process.platform === 'linux';
+
+// ─── Shell 环境（LaunchAgent 安全）────────────────────────────────────────────
+
+/**
+ * 构造包含完整 PATH 的环境变量对象。
+ * LaunchAgent 启动时 /bin/sh 的 PATH 通常只有 /usr/bin:/bin:/usr/sbin:/sbin，
+ * 不包含 npm/node/brew 安装的工具。此函数从 process.execPath 推断 Node bin 目录，
+ * 并补充常见的 homebrew / 系统路径。
+ */
+export function getShellEnv(extra?: Record<string, string>): NodeJS.ProcessEnv {
+  const nodeBinDir = dirname(process.execPath);
+  const basePath = process.env['PATH'] || '/usr/bin:/bin:/usr/sbin:/sbin';
+  // 确保 nodeBinDir 在最前面，同时补充 homebrew 路径
+  const brewPaths = isMac
+    ? '/opt/homebrew/bin:/usr/local/bin'
+    : '/usr/local/bin';
+  return {
+    ...process.env,
+    PATH: `${nodeBinDir}:${brewPaths}:${basePath}`,
+    ...extra,
+  };
+}
 
 // ─── 数据目录（遵循各平台规范）─────────────────────────────────────────────────
 
@@ -91,19 +113,20 @@ export function ensureDir(dir: string): void {
 export function daemonize(command: string, args: string[] = []): void {
   const cmdStr = [command, ...args].join(' ');
 
+  const env = getShellEnv();
   if (isWindows) {
     // Windows: 尝试用 pm2，否则用 cmd.exe start /B
     try {
-      execSync(`pm2 start ${cmdStr} --name jowork`, { stdio: 'ignore' });
+      execSync(`pm2 start ${cmdStr} --name jowork`, { stdio: 'ignore', env });
     } catch {
-      execSync(`cmd.exe /c start /B ${cmdStr}`, { stdio: 'ignore' });
+      execSync(`cmd.exe /c start /B ${cmdStr}`, { stdio: 'ignore', env });
     }
   } else {
     // macOS/Linux: 尝试 pm2，否则 nohup
     try {
-      execSync(`pm2 start ${cmdStr} --name jowork`, { stdio: 'ignore' });
+      execSync(`pm2 start ${cmdStr} --name jowork`, { stdio: 'ignore', env });
     } catch {
-      execSync(`/bin/sh -c "nohup ${cmdStr} &"`, { stdio: 'ignore' });
+      execSync(`/bin/sh -c "nohup ${cmdStr} &"`, { stdio: 'ignore', env });
     }
   }
 }
@@ -133,7 +156,7 @@ export async function generateSelfSignedCert(cn: string = 'jowork'): Promise<{ k
         exec(
           `openssl req -x509 -newkey rsa:2048 -keyout "${tmpKey}" -out "${tmpCert}" ` +
           `-days 3650 -nodes -subj "/CN=${cn}"`,
-          { stdio: 'ignore' },
+          { stdio: 'ignore', env: getShellEnv() },
         );
         const key  = readFileSync(tmpKey, 'utf-8');
         const cert = readFileSync(tmpCert, 'utf-8');
@@ -172,7 +195,7 @@ export function getDirSizeMb(dirPath: string): number {
   if (!isWindows) {
     // Unix/macOS: du -sm 最快
     try {
-      const output = execSync(`du -sm "${dirPath}"`, { stdio: ['pipe', 'pipe', 'pipe'] });
+      const output = execSync(`du -sm "${dirPath}"`, { stdio: ['pipe', 'pipe', 'pipe'], env: getShellEnv() });
       return parseFloat(output.toString().split('\t')[0]) || 0;
     } catch {
       return 0;

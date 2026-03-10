@@ -13,14 +13,17 @@ import {
   stopKlaude,
 } from '../../ai-services/klaude-manager.js';
 import { readFileSync, existsSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { join } from 'node:path';
 import { exec } from 'node:child_process';
+import { PROJECT_ROOT } from '../../config.js';
 import { createLogger } from '../../utils/logger.js';
+import { getShellEnv } from '../../platform.js';
 
 const log = createLogger('ai-services-route');
+const shellEnv = getShellEnv();
 const router = Router();
 
-const LOG_PATH = join(resolve(import.meta.dirname, '..', '..', '..'), 'data', 'klaude.log');
+const LOG_PATH = join(PROJECT_ROOT, 'data', 'klaude.log');
 
 /** GET /api/ai-services/klaude/status */
 router.get('/klaude/status', authMiddleware, (_req, res) => {
@@ -88,7 +91,7 @@ router.post('/klaude/stop', authMiddleware, requireRole('owner', 'admin'), (_req
 
 /** GET /api/ai-services/agent-browser/status — 检测 agent-browser 是否已安装 */
 router.get('/agent-browser/status', authMiddleware, (_req, res) => {
-  exec('agent-browser --version 2>/dev/null', (err, stdout) => {
+  exec('agent-browser --version 2>/dev/null', { env: shellEnv }, (err, stdout) => {
     if (err) {
       res.json({ installed: false, version: null });
     } else {
@@ -102,14 +105,14 @@ router.get('/agent-browser/status', authMiddleware, (_req, res) => {
 router.post('/agent-browser/install', authMiddleware, requireRole('owner', 'admin'), (_req, res) => {
   const cmd = 'npm install -g agent-browser && agent-browser install';
   log.info('Installing agent-browser...');
-  exec(cmd, { timeout: 120_000 }, (err, stdout, stderr) => {
+  exec(cmd, { timeout: 120_000, env: shellEnv }, (err, stdout, stderr) => {
     if (err) {
       log.error('agent-browser install failed', stderr || String(err));
       res.status(500).json({ ok: false, error: stderr?.trim() || String(err) });
       return;
     }
     // 验证安装成功
-    exec('agent-browser --version 2>/dev/null', (verErr, verOut) => {
+    exec('agent-browser --version 2>/dev/null', { env: shellEnv }, (verErr, verOut) => {
       if (verErr) {
         res.status(500).json({ ok: false, error: 'Install completed but verification failed' });
         return;
@@ -123,7 +126,7 @@ router.post('/agent-browser/install', authMiddleware, requireRole('owner', 'admi
 
 /** GET /api/ai-services/claude-cli/status — 检测 Claude Code CLI 是否已安装 */
 router.get('/claude-cli/status', authMiddleware, (_req, res) => {
-  exec('claude --version 2>/dev/null', (err, stdout) => {
+  exec('claude --version 2>/dev/null', { env: shellEnv }, (err, stdout) => {
     if (err) {
       res.json({ installed: false, version: null });
     } else {
@@ -137,13 +140,13 @@ router.get('/claude-cli/status', authMiddleware, (_req, res) => {
 router.post('/claude-cli/install', authMiddleware, requireRole('owner', 'admin'), (_req, res) => {
   const cmd = 'npm install -g @anthropic-ai/claude-code';
   log.info('Installing Claude Code CLI...');
-  exec(cmd, { timeout: 180_000 }, (err, _stdout, stderr) => {
+  exec(cmd, { timeout: 180_000, env: shellEnv }, (err, _stdout, stderr) => {
     if (err) {
       log.error('Claude CLI install failed', stderr || String(err));
       res.status(500).json({ ok: false, error: stderr?.trim() || String(err) });
       return;
     }
-    exec('claude --version 2>/dev/null', (verErr, verOut) => {
+    exec('claude --version 2>/dev/null', { env: shellEnv }, (verErr, verOut) => {
       if (verErr) {
         res.status(500).json({ ok: false, error: 'Install completed but verification failed' });
         return;

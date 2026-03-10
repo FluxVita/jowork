@@ -184,8 +184,19 @@ export function archiveSession(sessionId: string) {
 export function deleteSession(sessionId: string) {
   const db = getDb();
   const del = db.transaction(() => {
+    db.prepare('DELETE FROM message_feedback WHERE session_id = ?').run(sessionId);
     db.prepare('DELETE FROM session_messages WHERE session_id = ?').run(sessionId);
     db.prepare('DELETE FROM sessions WHERE session_id = ?').run(sessionId);
+  });
+  del();
+}
+
+export function deleteAllUserSessions(userId: string) {
+  const db = getDb();
+  const del = db.transaction(() => {
+    db.prepare(`DELETE FROM message_feedback WHERE session_id IN (SELECT session_id FROM sessions WHERE user_id = ?)`).run(userId);
+    db.prepare(`DELETE FROM session_messages WHERE session_id IN (SELECT session_id FROM sessions WHERE user_id = ?)`).run(userId);
+    db.prepare('DELETE FROM sessions WHERE user_id = ?').run(userId);
   });
   del();
 }

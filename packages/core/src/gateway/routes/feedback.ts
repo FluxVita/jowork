@@ -1,14 +1,13 @@
 import { Router } from 'express';
 import { writeFileSync, readFileSync, existsSync, mkdirSync, readdirSync, appendFileSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
+import { join } from 'path';
 import { authMiddleware } from '../middleware.js';
+import { PROJECT_ROOT } from '../../config.js';
 
 const router = Router();
 const PUBLIC_FEEDBACK_ENABLED = process.env['PUBLIC_FEEDBACK_ENABLED'] === 'true';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const FEEDBACK_DIR = join(__dirname, '../../../data');
+const FEEDBACK_DIR = join(PROJECT_ROOT, 'data');
 const FEEDBACK_SUBDIR = join(FEEDBACK_DIR, 'feedback');
 const AGENT_FEEDBACK_FILE = join(FEEDBACK_SUBDIR, 'agent_feedback.md');
 

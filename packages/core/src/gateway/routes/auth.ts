@@ -651,10 +651,15 @@ router.get('/feishu-members', authMiddleware, requireRole('owner', 'admin'), asy
 });
 
 /** POST /api/auth/assign-role — 分配角色 */
+const VALID_ROLES: Role[] = ['owner', 'admin', 'member', 'guest'];
 router.post('/assign-role', authMiddleware, requireRole('owner', 'admin'), (req, res) => {
   const { user_id, role } = req.body as { user_id: string; role: Role };
   if (!user_id || !role) {
     res.status(400).json({ error: 'user_id and role are required' });
+    return;
+  }
+  if (!VALID_ROLES.includes(role)) {
+    res.status(400).json({ error: `Invalid role: ${role}. Must be one of: ${VALID_ROLES.join(', ')}` });
     return;
   }
 

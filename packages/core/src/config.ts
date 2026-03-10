@@ -4,7 +4,10 @@ import type { GatewayConfig } from './types.js';
 
 // 使用 process.cwd()（服务器启动目录 = 项目根），而非 import.meta.dirname
 // 确保路径在任何包位置都能正确解析
-const ENV_PATH = resolve(process.cwd(), '.env');
+// packages/ 下的文件 import.meta.dirname 回溯层数因深度而异且容易算错，统一用 cwd
+export const PROJECT_ROOT = process.cwd();
+
+const ENV_PATH = resolve(PROJECT_ROOT, '.env');
 // 启动时打印 .env 路径，方便排查"加到了错误的 .env"问题
 console.log(`[config] Loading .env from: ${ENV_PATH}${existsSync(ENV_PATH) ? '' : ' (not found)'}`);
 if (existsSync(ENV_PATH)) {
@@ -33,8 +36,8 @@ export const config: GatewayConfig = {
   gateway_public_url: process.env['GATEWAY_PUBLIC_URL'],
   // 安全默认：JWT 密钥必须显式配置，避免弱默认值导致可伪造 token
   jwt_secret: env('JWT_SECRET'),
-  db_path: env('DB_PATH', resolve(process.cwd(), 'data', 'datamap.db')),
-  cache_dir: env('CACHE_DIR', resolve(process.cwd(), 'cache')),
+  db_path: env('DB_PATH', resolve(PROJECT_ROOT, 'data', 'datamap.db')),
+  cache_dir: env('CACHE_DIR', resolve(PROJECT_ROOT, 'cache')),
   token_storage_key: env('TOKEN_STORAGE_KEY', 'fluxvita_token'),
   feishu: {
     app_id: env('FEISHU_APP_ID', ''),

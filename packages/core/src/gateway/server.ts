@@ -230,6 +230,7 @@ export function startGateway(opts: GatewayOptions = {}) {
     wssTerm.clients.forEach((ws) => {
       if (termAlive.get(ws) === false) {
         // 上一个心跳周期没有回应，强制断开（触发 ws.on('close') → destroySession）
+        log.warn('Terminal WS heartbeat timeout, terminating connection');
         ws.terminate();
         return;
       }
@@ -396,7 +397,9 @@ export function startGateway(opts: GatewayOptions = {}) {
       }
     });
 
-    ws.on('close', () => {
+    ws.on('close', (code: number, reason: Buffer) => {
+      const reasonStr = reason?.toString() || '';
+      log.info(`Terminal WS closed: ${user.name} code=${code} reason=${reasonStr} session=${sessionId}`);
       // WebSocket 断开 → detach（PTY 继续运行，等待重连）
       // 注意：用户主动 close 已在 msg.type==='close' 里 destroy，此处 sessionId 为 null
       if (sessionId) {
@@ -493,9 +496,9 @@ export function startGateway(opts: GatewayOptions = {}) {
       }
     });
 
-    ws.on('close', () => {
+    ws.on('close', (code: number, reason: Buffer) => {
       wsClients.delete(ws);
-      log.debug(`WS client disconnected: ${user?.name}`);
+      log.info(`WS client disconnected: ${user?.name} code=${code} reason=${reason?.toString() || ''}`);
     });
   });
 

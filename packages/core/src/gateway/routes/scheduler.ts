@@ -127,13 +127,20 @@ router.post('/tasks', authMiddleware, (req, res) => {
     return;
   }
 
+  // 验证 action_type 枚举
+  const VALID_ACTION_TYPES = ['message', 'report', 'sync', 'custom'] as const;
+  if (!VALID_ACTION_TYPES.includes(action_type as typeof VALID_ACTION_TYPES[number])) {
+    res.status(400).json({ error: `Invalid action_type. Must be one of: ${VALID_ACTION_TYPES.join(', ')}` });
+    return;
+  }
+
   // owner 和 admin 免审批
   const autoApprove = ['owner', 'admin'].includes(req.user!.role);
 
   const taskId = createCronTask({
     name,
     cron_expr,
-    action_type: action_type as 'message' | 'report' | 'sync' | 'custom',
+    action_type: action_type as typeof VALID_ACTION_TYPES[number],
     action_config: action_config || {},
     created_by: req.user!.user_id,
     approved: autoApprove,

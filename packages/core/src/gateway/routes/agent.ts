@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { createReadStream, statSync } from 'node:fs';
 import { authMiddleware, requireRole } from '../middleware.js';
 import { agentChat } from '../../agent/controller.js';
-import { listSessions, searchSessions, getSession, getMessages, archiveSession } from '../../agent/session.js';
+import { listSessions, searchSessions, getSession, getMessages, archiveSession, deleteSession, deleteAllUserSessions } from '../../agent/session.js';
 import { getDb } from '../../datamap/db.js';
 import { getWorkstyle, saveWorkstyle } from '../../agent/workstyle.js';
 import { listMcpServers, addMcpServer, removeMcpServer, getAllMcpToolDefs, executeMcpTool, shutdownAllBridges, setMcpServerActive, updateMcpServer, getMcpServerStatus, getOrCreateBridge, getActiveMcpServers } from '../../agent/mcp-bridge.js';
@@ -228,7 +228,13 @@ router.get('/sessions/:id', authMiddleware, (req, res) => {
   res.json({ session, messages });
 });
 
-/** DELETE /api/agent/sessions/:id — 归档会话 */
+/** DELETE /api/agent/sessions — 清空当前用户所有会话 */
+router.delete('/sessions', authMiddleware, (req, res) => {
+  deleteAllUserSessions(req.user!.user_id);
+  res.json({ ok: true });
+});
+
+/** DELETE /api/agent/sessions/:id — 删除单个会话 */
 router.delete('/sessions/:id', authMiddleware, (req, res) => {
   const session = getSession(req.params['id'] as string);
   if (!session) {
@@ -240,7 +246,7 @@ router.delete('/sessions/:id', authMiddleware, (req, res) => {
     return;
   }
 
-  archiveSession(session.session_id);
+  deleteSession(session.session_id);
   res.json({ ok: true });
 });
 

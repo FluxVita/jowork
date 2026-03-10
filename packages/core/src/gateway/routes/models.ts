@@ -56,6 +56,11 @@ router.put('/providers/:id/config', authMiddleware, requireRole('admin', 'owner'
   const providerId = req.params['id'] as string;
   const { enabled, priority } = req.body as { enabled?: boolean; priority?: number };
 
+  if (priority !== undefined && (!Number.isFinite(priority) || priority < 0 || priority > 99)) {
+    res.status(400).json({ error: 'priority must be 0-99' });
+    return;
+  }
+
   try {
     updateProviderConfig(providerId, { enabled, priority });
     res.json({ message: 'Provider config updated' });
@@ -69,7 +74,7 @@ router.put('/providers/:id/key', authMiddleware, requireRole('admin', 'owner'), 
   const providerId = req.params['id'] as string;
   const { key } = req.body as { key: string };
 
-  if (!key || typeof key !== 'string') {
+  if (!key || typeof key !== 'string' || !key.trim()) {
     res.status(400).json({ error: 'key is required' });
     return;
   }

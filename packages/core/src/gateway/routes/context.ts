@@ -78,7 +78,13 @@ router.put('/docs/:id', authMiddleware, (req, res) => {
   const existing = getContextDoc(id);
 
   if (!existing) { res.status(404).json({ error: 'Not found' }); return; }
-  if (existing.layer !== 'personal' && !['owner', 'admin'].includes(user.role)) {
+  if (existing.layer === 'personal') {
+    // personal 文档只有创建者本人可修改
+    if (existing.created_by !== user.user_id) {
+      res.status(403).json({ error: '只能修改自己的个人文档' });
+      return;
+    }
+  } else if (!['owner', 'admin'].includes(user.role)) {
     res.status(403).json({ error: '无权修改公司/团队层文档' });
     return;
   }
@@ -98,7 +104,12 @@ router.delete('/docs/:id', authMiddleware, (req, res) => {
   const existing = getContextDoc(id);
 
   if (!existing) { res.status(404).json({ error: 'Not found' }); return; }
-  if (existing.layer !== 'personal' && !['owner', 'admin'].includes(user.role)) {
+  if (existing.layer === 'personal') {
+    if (existing.created_by !== user.user_id) {
+      res.status(403).json({ error: '只能删除自己的个人文档' });
+      return;
+    }
+  } else if (!['owner', 'admin'].includes(user.role)) {
     res.status(403).json({ error: '无权删除公司/团队层文档' });
     return;
   }

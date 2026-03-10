@@ -5,8 +5,9 @@
  */
 import { Router } from 'express';
 import { existsSync, statSync, createReadStream } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { join } from 'node:path';
 import { authMiddleware, requireRole } from '../middleware.js';
+import { PROJECT_ROOT } from '../../config.js';
 import { createLogger } from '../../utils/logger.js';
 
 const log = createLogger('bin-server');
@@ -14,7 +15,7 @@ const router = Router();
 
 // 优先读 data/bin/klaude（CI 部署路径）；
 // 兜底读 KLAUDE_BIN_PATH（本地开发 / 手动配置）
-const DATA_BIN = join(resolve(import.meta.dirname, '..', '..', '..', 'data', 'bin'), 'klaude');
+const DATA_BIN = join(PROJECT_ROOT, 'data', 'bin', 'klaude');
 const BIN_PATH = existsSync(DATA_BIN)
   ? DATA_BIN
   : (process.env['KLAUDE_BIN_PATH'] ?? DATA_BIN);

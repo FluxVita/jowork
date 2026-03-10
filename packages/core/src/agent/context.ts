@@ -1,12 +1,12 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { resolve, dirname } from 'node:path';
+import { resolve } from 'node:path';
 import { routeModel } from '../models/router.js';
 import { getMessages, updateSessionSummary } from './session.js';
 import { getDb } from '../datamap/db.js';
 import { createLogger } from '../utils/logger.js';
 import { getUserById } from '../auth/users.js';
 import { sanitizeToolResult, sanitizeOutput } from '../policy/context-pep.js';
-import { config as gatewayConfig } from '../config.js';
+import { config as gatewayConfig, PROJECT_ROOT } from '../config.js';
 import type { SessionMessage, ImageAttachment } from './types.js';
 import type { ToolUseMessage } from '../models/router.js';
 import type { ContextPepOpts } from '../policy/context-pep.js';
@@ -121,7 +121,7 @@ export async function maybeArchiveAndSummarize(sessionId: string, userId: string
   }
 
   // 1. 写入归档文件
-  const archiveDir = resolve(dirname(import.meta.url.replace('file://', '')), '..', '..', 'data', 'archives');
+  const archiveDir = resolve(PROJECT_ROOT, 'data', 'archives');
   mkdirSync(archiveDir, { recursive: true });
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
   const archivePath = resolve(archiveDir, `${sessionId}_${timestamp}.json`);
