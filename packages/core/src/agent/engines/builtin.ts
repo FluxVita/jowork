@@ -408,6 +408,11 @@ export class BuiltinEngine implements AgentEngine {
     // 追踪上一轮工具调用名称（用于 behavior 标签）
     let prevRoundToolNames: string[] = [];
 
+    // 反循环：追踪连续空结果的工具
+    let consecutiveEmptyTool = '';
+    let consecutiveEmptyCount = 0;
+    const LOOP_THRESHOLD = 3; // 同一工具连续 3 次空结果后注入纠正
+
     for (let round = 1; round <= MAX_TOOL_ROUNDS; round++) {
       // 检查中断
       if (signal?.aborted) {
@@ -681,6 +686,30 @@ export class BuiltinEngine implements AgentEngine {
             tool_status: isError ? 'error' : 'success',
             duration_ms,
           });
+
+          // 反循环检测：同一工具连续返回空/错误结果
+          const isEmpty = toolResult.includes('未找到') || toolResult.includes('No results') || isError;
+          if (isEmpty && tc.name === consecutiveEmptyTool) {
+            consecutiveEmptyCount++;
+          } else if (isEmpty) {
+            consecutiveEmptyTool = tc.name;
+            consecutiveEmptyCount = 1;
+          } else {
+            consecutiveEmptyTool = '';
+            consecutiveEmptyCount = 0;
+          }
+        }
+
+        // 反循环干预：注入纠正消息到 session，引导模型换工具
+        if (consecutiveEmptyCount >= LOOP_THRESHOLD) {
+          const hint = `[SYSTEM] 你已经连续 ${consecutiveEmptyCount} 次使用 ${consecutiveEmptyTool} 但均无结果。请停止使用该工具，换一个不同的工具。提示：查询 PostHog 行为数据请用 query_posthog，查询 AI 对话日志请用 query_oss_sessions，查询 SLS 日志请用 query_aliyun_logs。如果任务无法完成，请直接回复说明情况。`;
+          appendMessage({
+            session_id: sessionId,
+            role: 'user',
+            content: hint,
+          });
+          log.warn(`Anti-loop: ${consecutiveEmptyTool} empty ${consecutiveEmptyCount} times, injected correction`);
+          consecutiveEmptyCount = 0;
         }
 
         continue;
