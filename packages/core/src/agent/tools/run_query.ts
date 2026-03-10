@@ -46,7 +46,10 @@ export const runQueryTool: Tool = {
     const result = doQuery(input, ctx);
     if (!result) return 'ERROR: 用户不存在';
     const { accessible } = result;
-    if (accessible.length === 0) return '未找到符合条件的数据对象。';
+    if (accessible.length === 0) {
+      // 连续空结果时提示可能需要的专用工具
+      return '未找到符合条件的数据对象。提示：如需查询 PostHog 行为数据请用 query_posthog 工具（action=hogql），如需查询 AI 对话日志请用 query_oss_sessions 工具。';
+    }
     return `共 ${accessible.length} 条结果：\n` + accessible.map(obj =>
       `- [${obj.source}/${obj.source_type}] ${obj.title} (URI: ${obj.uri}, 敏感级别: ${obj.sensitivity}, 更新: ${obj.updated_at?.slice(0, 10) ?? '未知'})`
     ).join('\n');
