@@ -69,7 +69,7 @@ async function gotoDashboard(page: Page) {
   await mockAllRoutes(page);
   await page.addInitScript(() => {
     localStorage.setItem('fluxvita_token', 'mock-jwt-token');
-    localStorage.setItem('fv_admin_token', 'mock-jwt-token');
+    localStorage.setItem('fluxvita_admin_token', 'mock-jwt-token');
   });
   await page.goto('/dashboard.html');
   // Wait for content to render (posthog is default)

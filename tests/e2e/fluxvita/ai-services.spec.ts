@@ -4,7 +4,7 @@ import { test, expect } from '../fixtures/auth';
  * FluxVita AI Services 页面 E2E 测试
  *
  * ai-services.html 展示 AI 服务卡片网格（Klaude、OpenRouter、Agent Browser 等）。
- * 使用 fv_admin_token 或 fluxvita_token 认证。
+ * 使用 fluxvita_admin_token 或 fluxvita_token 认证。
  *
  * 关键元素：
  * - .page-header / h1：页头

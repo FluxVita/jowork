@@ -2,7 +2,7 @@ import type { Role } from '../types.js';
 
 // ─── Engine Types ───
 
-export type EngineType = 'builtin' | 'claude_agent';
+export type EngineType = 'builtin' | 'claude_agent' | 'edge';
 
 export interface ImageAttachment {
   /** base64 编码的图片数据（不含 data:xxx;base64, 前缀） */

@@ -48,10 +48,10 @@ export function createSession(
   userId: string,
   title?: string,
   engine?: EngineType,
-  opts?: { sessionType?: SessionType; parentSessionId?: string; agentConfig?: Record<string, unknown> },
+  opts?: { sessionId?: string; sessionType?: SessionType; parentSessionId?: string; agentConfig?: Record<string, unknown> },
 ): Session {
   const db = getDb();
-  const sessionId = genId('ses');
+  const sessionId = opts?.sessionId ?? genId('ses');
   const now = new Date().toISOString();
   const eng = engine ?? 'builtin';
   const sessionType = opts?.sessionType ?? 'main';

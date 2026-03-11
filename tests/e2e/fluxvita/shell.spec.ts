@@ -345,7 +345,7 @@ test.describe('Shell — 侧边栏折叠', () => {
 
     // 确保初始非折叠状态
     await page.addInitScript(() => {
-      localStorage.removeItem('fv_sidebar_collapsed');
+      localStorage.removeItem('fluxvita_sidebar_collapsed');
     });
 
     await page.goto('/shell.html');
@@ -379,7 +379,7 @@ test.describe('Shell — 侧边栏折叠', () => {
 
     // 预设折叠状态
     await page.addInitScript(() => {
-      localStorage.setItem('fv_sidebar_collapsed', '1');
+      localStorage.setItem('fluxvita_sidebar_collapsed', '1');
     });
 
     await page.goto('/shell.html');
@@ -398,7 +398,7 @@ test.describe('Shell — 侧边栏折叠', () => {
 
     // 预设折叠
     await page.addInitScript(() => {
-      localStorage.setItem('fv_sidebar_collapsed', '1');
+      localStorage.setItem('fluxvita_sidebar_collapsed', '1');
     });
 
     await page.goto('/shell.html');
@@ -434,7 +434,7 @@ test.describe('Shell — 键盘快捷键', () => {
   test('Cmd/Ctrl+\\ 折叠侧边栏', async ({ fluxvitaPage: page }) => {
     await setupShellMocks(page);
     await page.addInitScript(() => {
-      localStorage.removeItem('fv_sidebar_collapsed');
+      localStorage.removeItem('fluxvita_sidebar_collapsed');
     });
     await page.goto('/shell.html');
     await expect(page.locator('#app')).toBeVisible({ timeout: 10000 });

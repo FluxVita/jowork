@@ -162,7 +162,7 @@ async function gotoAdmin(page: Page) {
   // Inject token into localStorage before navigation
   await page.addInitScript(() => {
     localStorage.setItem('fluxvita_token', 'mock-jwt-token');
-    localStorage.setItem('fv_admin_token', 'mock-jwt-token');
+    localStorage.setItem('fluxvita_admin_token', 'mock-jwt-token');
     localStorage.setItem('user', JSON.stringify({ user_id: 'usr_1', name: 'Admin', role: 'owner' }));
   });
   await page.goto('/admin.html');

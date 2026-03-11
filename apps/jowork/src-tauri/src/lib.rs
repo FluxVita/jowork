@@ -25,7 +25,11 @@ const DEFAULT_GATEWAY_URL: &str = "https://jowork.work";
 
 #[derive(serde::Serialize, serde::Deserialize)]
 struct AppConfig {
-  mode: String, // "saas" | "self_hosted"
+  mode: String, // "saas" | "self_hosted" | "local"
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  api_key: Option<String>,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  api_provider: Option<String>,
 }
 
 fn config_path(app: &tauri::AppHandle) -> Option<PathBuf> {
@@ -37,18 +41,30 @@ fn read_mode(app: &tauri::AppHandle) -> String {
     .and_then(|p| fs::read_to_string(p).ok())
     .and_then(|s| serde_json::from_str::<AppConfig>(&s).ok())
     .map(|c| c.mode)
-    .filter(|m| m == "self_hosted")
+    .filter(|m| m == "self_hosted" || m == "local")
     .unwrap_or_else(|| "saas".to_string())
 }
 
-fn write_mode(app: &tauri::AppHandle, mode: &str) -> Result<(), String> {
+fn read_config(app: &tauri::AppHandle) -> AppConfig {
+  config_path(app)
+    .and_then(|p| fs::read_to_string(p).ok())
+    .and_then(|s| serde_json::from_str::<AppConfig>(&s).ok())
+    .unwrap_or(AppConfig { mode: "saas".to_string(), api_key: None, api_provider: None })
+}
+
+fn write_config(app: &tauri::AppHandle, config: &AppConfig) -> Result<(), String> {
   let path = config_path(app).ok_or("Cannot determine app data dir")?;
   if let Some(parent) = path.parent() {
     fs::create_dir_all(parent).map_err(|e| e.to_string())?;
   }
-  let content =
-    serde_json::to_string(&AppConfig { mode: mode.to_string() }).map_err(|e| e.to_string())?;
+  let content = serde_json::to_string(config).map_err(|e| e.to_string())?;
   fs::write(&path, content).map_err(|e| e.to_string())
+}
+
+fn write_mode(app: &tauri::AppHandle, mode: &str) -> Result<(), String> {
+  let mut config = read_config(app);
+  config.mode = mode.to_string();
+  write_config(app, &config)
 }
 
 // ── Sidecar（仅 self_hosted 模式使用）──────────────────
@@ -237,10 +253,27 @@ fn get_app_mode(app: tauri::AppHandle) -> String {
 
 #[tauri::command]
 fn set_app_mode(app: tauri::AppHandle, mode: String) -> Result<(), String> {
-  if mode != "saas" && mode != "self_hosted" {
+  if mode != "saas" && mode != "self_hosted" && mode != "local" {
     return Err(format!("Invalid mode: {}", mode));
   }
   write_mode(&app, &mode)
+}
+
+#[tauri::command]
+fn set_local_api_key(app: tauri::AppHandle, api_key: String, api_provider: Option<String>) -> Result<(), String> {
+  let mut config = read_config(&app);
+  config.api_key = Some(api_key);
+  config.api_provider = api_provider;
+  write_config(&app, &config)
+}
+
+#[tauri::command]
+fn get_local_api_key(app: tauri::AppHandle) -> serde_json::Value {
+  let config = read_config(&app);
+  serde_json::json!({
+    "api_key": config.api_key.unwrap_or_default(),
+    "api_provider": config.api_provider.unwrap_or_else(|| "openrouter".to_string()),
+  })
 }
 
 #[tauri::command]
@@ -444,6 +477,234 @@ fn claude_code_new_conversation(manager: tauri::State<'_, ClaudeCodeManager>) {
   manager.has_conversation.store(false, Ordering::SeqCst);
 }
 
+// ── Edge Agent (Edge Sidecar) ────────────────────────
+
+struct EdgeAgentManager {
+  active_child: Arc<Mutex<Option<Child>>>,
+}
+
+impl EdgeAgentManager {
+  fn new() -> Self {
+    Self { active_child: Arc::new(Mutex::new(None)) }
+  }
+}
+
+/// 查找 edge-sidecar.js 的路径
+fn find_edge_sidecar(app: &tauri::AppHandle) -> Option<PathBuf> {
+  // 1. Tauri resource dir (打包后)
+  if let Ok(resource_dir) = app.path().resource_dir() {
+    let p = resource_dir.join("edge-sidecar.js");
+    if p.exists() { return Some(p); }
+  }
+  // 2. 开发时: data/ 目录
+  let dev = PathBuf::from("data/edge-sidecar.js");
+  if dev.exists() { return Some(dev); }
+  // 3. 从 exe 旁边找
+  if let Ok(exe) = std::env::current_exe() {
+    if let Some(dir) = exe.parent() {
+      let p = dir.join("edge-sidecar.js");
+      if p.exists() { return Some(p); }
+    }
+  }
+  None
+}
+
+/// 查找 node binary
+fn find_node_binary() -> Option<PathBuf> {
+  let home = std::env::var("HOME").unwrap_or_default();
+  // 1. 系统级安装
+  for p in &["/opt/homebrew/bin/node", "/usr/local/bin/node"] {
+    let path = PathBuf::from(p);
+    if path.exists() { return Some(path); }
+  }
+  // 2. NVM：动态扫描版本目录，选最新版本
+  let nvm_dir = PathBuf::from(format!("{}/.nvm/versions/node", home));
+  if nvm_dir.is_dir() {
+    if let Ok(entries) = std::fs::read_dir(&nvm_dir) {
+      let mut versions: Vec<PathBuf> = entries
+        .filter_map(|e| e.ok())
+        .map(|e| e.path().join("bin/node"))
+        .filter(|p| p.exists())
+        .collect();
+      versions.sort_by(|a, b| b.cmp(a)); // 最新版本优先（v22 > v20）
+      if let Some(p) = versions.into_iter().next() { return Some(p); }
+    }
+  }
+  // 3. fallback: which node
+  Command::new("which").arg("node").output().ok().and_then(|o| {
+    if o.status.success() {
+      let s = String::from_utf8_lossy(&o.stdout).trim().to_string();
+      if !s.is_empty() { return Some(PathBuf::from(s)); }
+    }
+    None
+  })
+}
+
+#[tauri::command]
+fn edge_agent_check(app: tauri::AppHandle) -> serde_json::Value {
+  let sidecar = find_edge_sidecar(&app);
+  let node = find_node_binary();
+  serde_json::json!({
+    "available": sidecar.is_some() && node.is_some(),
+    "sidecar_path": sidecar.map(|p| p.to_string_lossy().to_string()).unwrap_or_default(),
+    "node_path": node.map(|p| p.to_string_lossy().to_string()).unwrap_or_default(),
+  })
+}
+
+#[tauri::command]
+fn edge_agent_chat(
+  app: tauri::AppHandle,
+  manager: tauri::State<'_, EdgeAgentManager>,
+  config: serde_json::Value,
+) -> Result<(), String> {
+  // Kill previous process if any
+  {
+    let mut guard = manager.active_child.lock().unwrap();
+    if let Some(child) = guard.as_mut() {
+      let _ = child.kill();
+      let _ = child.wait();
+    }
+    *guard = None;
+  }
+
+  let sidecar_path = find_edge_sidecar(&app).ok_or("Edge sidecar not found")?;
+  let node_bin = find_node_binary().ok_or("Node.js not found")?;
+
+  let config_json = serde_json::to_string(&config).map_err(|e| e.to_string())?;
+
+  let mut child = Command::new(&node_bin)
+    .arg(&sidecar_path)
+    .stdin(Stdio::piped())
+    .stdout(Stdio::piped())
+    .stderr(Stdio::piped())
+    .spawn()
+    .map_err(|e| format!("Failed to spawn edge sidecar: {}", e))?;
+
+  // Write config to stdin
+  if let Some(mut stdin) = child.stdin.take() {
+    use std::io::Write;
+    stdin.write_all(config_json.as_bytes()).map_err(|e| format!("Failed to write config: {}", e))?;
+    stdin.write_all(b"\n").map_err(|e| format!("Failed to write newline: {}", e))?;
+    stdin.flush().map_err(|e| format!("Failed to flush stdin: {}", e))?;
+    drop(stdin);
+  }
+
+  let stdout = child.stdout.take().ok_or("Failed to capture stdout")?;
+  let stderr = child.stderr.take().ok_or("Failed to capture stderr")?;
+
+  {
+    let mut guard = manager.active_child.lock().unwrap();
+    *guard = Some(child);
+  }
+
+  // stdout → emit edge_event (JSON lines)
+  let app_clone = app.clone();
+  let manager_clone = manager.active_child.clone();
+  thread::spawn(move || {
+    let reader = std::io::BufReader::new(stdout);
+    for line in reader.lines() {
+      match line {
+        Ok(l) if !l.is_empty() => {
+          match serde_json::from_str::<serde_json::Value>(&l) {
+            Ok(json) => { let _ = app_clone.emit("edge_event", &json); }
+            Err(e) => { eprintln!("[edge-sidecar] JSON parse error: {} | line: {}", e, &l[..l.len().min(200)]); }
+          }
+        }
+        Err(_) => break,
+        _ => {}
+      }
+    }
+    // 检查进程退出码，非零则 emit edge_error
+    let exit_code = manager_clone.lock().ok()
+      .and_then(|mut g| g.as_mut().and_then(|c| c.try_wait().ok().flatten()))
+      .map(|s| s.code().unwrap_or(-1))
+      .unwrap_or(0);
+    if exit_code != 0 {
+      let _ = app_clone.emit("edge_error", serde_json::json!({ "message": format!("Sidecar exited with code {}", exit_code) }));
+    }
+    let _ = app_clone.emit("edge_done", serde_json::json!({}));
+  });
+
+  // stderr → log (不 emit 到前端，避免干扰)
+  thread::spawn(move || {
+    let reader = std::io::BufReader::new(stderr);
+    for line in reader.lines() {
+      if let Ok(l) = line {
+        if !l.is_empty() {
+          eprintln!("[edge-sidecar] {}", l);
+        }
+      }
+    }
+  });
+
+  Ok(())
+}
+
+#[tauri::command]
+fn edge_agent_stop(manager: tauri::State<'_, EdgeAgentManager>) -> Result<(), String> {
+  let mut guard = manager.active_child.lock().unwrap();
+  if let Some(child) = guard.as_mut() {
+    let _ = child.kill();
+    let _ = child.wait();
+  }
+  *guard = None;
+  Ok(())
+}
+
+// ── 本地 Session 迁移（local→server 升级路径）─────────
+
+#[tauri::command]
+fn get_local_sessions() -> Result<serde_json::Value, String> {
+    let home = std::env::var("HOME")
+        .map(PathBuf::from)
+        .map_err(|_| "Cannot find HOME dir".to_string())?;
+    let sessions_dir = home.join(".jowork").join("sessions");
+
+    if !sessions_dir.exists() {
+        return Ok(serde_json::json!({ "sessions": [] }));
+    }
+
+    let mut sessions = Vec::new();
+
+    let entries = fs::read_dir(&sessions_dir).map_err(|e| e.to_string())?;
+    for entry in entries {
+        let entry = entry.map_err(|e| e.to_string())?;
+        let path = entry.path();
+        if !path.is_dir() { continue; }
+
+        let meta_path = path.join("meta.json");
+        let messages_path = path.join("messages.json");
+
+        if !meta_path.exists() { continue; }
+
+        let meta_str = fs::read_to_string(&meta_path).map_err(|e| e.to_string())?;
+        let meta: serde_json::Value = serde_json::from_str(&meta_str).unwrap_or_default();
+
+        let messages: serde_json::Value = if messages_path.exists() {
+            let msg_str = fs::read_to_string(&messages_path).map_err(|e| e.to_string())?;
+            serde_json::from_str(&msg_str).unwrap_or(serde_json::json!([]))
+        } else {
+            serde_json::json!([])
+        };
+
+        let session_id = meta.get("session_id")
+            .and_then(|v| v.as_str())
+            .unwrap_or_default()
+            .to_string();
+
+        if session_id.is_empty() { continue; }
+
+        sessions.push(serde_json::json!({
+            "session_id": session_id,
+            "title": meta.get("title").and_then(|v| v.as_str()).unwrap_or("Local session"),
+            "created_at": meta.get("created_at").and_then(|v| v.as_str()).unwrap_or(""),
+            "messages": messages,
+        }));
+    }
+
+    Ok(serde_json::json!({ "sessions": sessions }))
+}
+
 // ── App 入口 ─────────────────────────────────────────
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -454,6 +715,7 @@ pub fn run() {
     .plugin(tauri_plugin_dialog::init())
     .manage(ContextState(Mutex::new(None)))
     .manage(ClaudeCodeManager::new())
+    .manage(EdgeAgentManager::new())
     // ── 菜单事件：分发右键菜单 action + 应用菜单快捷键 ──
     .on_menu_event(|app, event| {
       let id = event.id().0.as_str();
@@ -539,6 +801,8 @@ pub fn run() {
     .invoke_handler(tauri::generate_handler![
       get_app_mode,
       set_app_mode,
+      set_local_api_key,
+      get_local_api_key,
       get_default_gateway_url,
       is_vibrancy_active,
       show_context_menu,
@@ -547,6 +811,10 @@ pub fn run() {
       claude_code_query,
       claude_code_stop,
       claude_code_new_conversation,
+      edge_agent_check,
+      edge_agent_chat,
+      edge_agent_stop,
+      get_local_sessions,
     ])
     .on_window_event(|_window, event| {
       if matches!(event, tauri::WindowEvent::Destroyed) {

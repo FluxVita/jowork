@@ -21,6 +21,9 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
+    "resources": [
+      "../data/edge-sidecar.js"
+    ],
     "windows": {
       "wix": null,
       "nsis": {

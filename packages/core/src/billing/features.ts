@@ -28,7 +28,9 @@ const FEATURE_MIN_PLAN: Record<FeatureKey, SubscriptionPlan> = {
 };
 
 // 计划升级顺序（rank 越高权限越大）
+// local_free 排在 free 旁边：本地版不经 Gateway feature gate（工具直接在 Edge 执行）
 const PLAN_ORDER: SubscriptionPlan[] = [
+  'local_free',
   'free',
   'personal_basic',
   'personal_pro',

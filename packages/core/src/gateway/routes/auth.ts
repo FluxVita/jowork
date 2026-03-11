@@ -350,10 +350,10 @@ router.get('/oauth/callback', async (req, res) => {
         localStorage.setItem(${JSON.stringify(config.token_storage_key)}, ${JSON.stringify(token)});
         localStorage.setItem(${JSON.stringify(config.token_storage_key + '_user')}, ${JSON.stringify(JSON.stringify(user))});
         if (${isNewUser}) {
-          localStorage.setItem('fv_oauth_just_done', '1');
+          localStorage.setItem(${JSON.stringify(config.token_storage_key.replace(/_token$/, '') + '_oauth_just_done')}, '1');
           location.href = '/onboarding.html';
         } else {
-          localStorage.setItem('fv_onboarding_done', '1');
+          localStorage.setItem(${JSON.stringify(config.token_storage_key.replace(/_token$/, '') + '_onboarding_done')}, '1');
           location.href = '/shell.html';
         }
       </script>

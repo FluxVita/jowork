@@ -933,6 +933,184 @@ fn claude_code_new_conversation(manager: tauri::State<'_, ClaudeCodeManager>) {
     manager.has_conversation.store(false, Ordering::SeqCst);
 }
 
+// ── Edge Agent (Edge Sidecar) ────────────────────────
+
+struct EdgeAgentManager {
+    active_child: std::sync::Arc<std::sync::Mutex<Option<std::process::Child>>>,
+}
+
+impl EdgeAgentManager {
+    fn new() -> Self {
+        Self { active_child: std::sync::Arc::new(std::sync::Mutex::new(None)) }
+    }
+}
+
+/// 查找 edge-sidecar.js 的路径
+fn find_edge_sidecar(app: &AppHandle) -> Option<std::path::PathBuf> {
+    use std::path::PathBuf;
+    // 1. Tauri resource dir (打包后)
+    if let Ok(resource_dir) = app.path().resource_dir() {
+        let p = resource_dir.join("edge-sidecar.js");
+        if p.exists() { return Some(p); }
+    }
+    // 2. 开发时: data/ 目录
+    let dev = PathBuf::from("data/edge-sidecar.js");
+    if dev.exists() { return Some(dev); }
+    // 3. 从 exe 旁边找
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(dir) = exe.parent() {
+            let p = dir.join("edge-sidecar.js");
+            if p.exists() { return Some(p); }
+        }
+    }
+    None
+}
+
+/// 查找 node binary
+fn find_node_binary() -> Option<std::path::PathBuf> {
+    use std::path::PathBuf;
+    let home = std::env::var("HOME").unwrap_or_default();
+    // 1. 系统级安装
+    for p in &["/opt/homebrew/bin/node", "/usr/local/bin/node"] {
+        let path = PathBuf::from(p);
+        if path.exists() { return Some(path); }
+    }
+    // 2. NVM：动态扫描版本目录，选最新版本
+    let nvm_dir = PathBuf::from(format!("{}/.nvm/versions/node", home));
+    if nvm_dir.is_dir() {
+        if let Ok(entries) = std::fs::read_dir(&nvm_dir) {
+            let mut versions: Vec<PathBuf> = entries
+                .filter_map(|e| e.ok())
+                .map(|e| e.path().join("bin/node"))
+                .filter(|p| p.exists())
+                .collect();
+            versions.sort_by(|a, b| b.cmp(a)); // 最新版本优先（v22 > v20）
+            if let Some(p) = versions.into_iter().next() { return Some(p); }
+        }
+    }
+    // 3. fallback: which node
+    std::process::Command::new("which").arg("node").output().ok().and_then(|o| {
+        if o.status.success() {
+            let s = String::from_utf8_lossy(&o.stdout).trim().to_string();
+            if !s.is_empty() { return Some(PathBuf::from(s)); }
+        }
+        None
+    })
+}
+
+#[tauri::command]
+fn edge_agent_check(app: AppHandle) -> serde_json::Value {
+    let sidecar = find_edge_sidecar(&app);
+    let node = find_node_binary();
+    serde_json::json!({
+        "available": sidecar.is_some() && node.is_some(),
+        "sidecar_path": sidecar.map(|p| p.to_string_lossy().to_string()).unwrap_or_default(),
+        "node_path": node.map(|p| p.to_string_lossy().to_string()).unwrap_or_default(),
+    })
+}
+
+#[tauri::command]
+fn edge_agent_chat(
+    app: AppHandle,
+    manager: tauri::State<'_, EdgeAgentManager>,
+    config: serde_json::Value,
+) -> Result<(), String> {
+    use std::process::{Command, Stdio};
+
+    // Kill previous process if any
+    {
+        let mut guard = manager.active_child.lock().unwrap();
+        if let Some(child) = guard.as_mut() {
+            let _ = child.kill();
+            let _ = child.wait();
+        }
+        *guard = None;
+    }
+
+    let sidecar_path = find_edge_sidecar(&app).ok_or("Edge sidecar not found")?;
+    let node_bin = find_node_binary().ok_or("Node.js not found")?;
+    let config_json = serde_json::to_string(&config).map_err(|e| e.to_string())?;
+
+    let mut child = Command::new(&node_bin)
+        .arg(&sidecar_path)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|e| format!("Failed to spawn edge sidecar: {}", e))?;
+
+    // Write config to stdin
+    if let Some(mut stdin) = child.stdin.take() {
+        use std::io::Write;
+        stdin.write_all(config_json.as_bytes()).map_err(|e| format!("Failed to write config: {}", e))?;
+        stdin.write_all(b"\n").map_err(|e| format!("Failed to write newline: {}", e))?;
+        stdin.flush().map_err(|e| format!("Failed to flush stdin: {}", e))?;
+        drop(stdin);
+    }
+
+    let stdout = child.stdout.take().ok_or("Failed to capture stdout")?;
+    let stderr = child.stderr.take().ok_or("Failed to capture stderr")?;
+
+    {
+        let mut guard = manager.active_child.lock().unwrap();
+        *guard = Some(child);
+    }
+
+    // stdout → emit edge_event (JSON lines)
+    let app_clone = app.clone();
+    let manager_clone = manager.active_child.clone();
+    std::thread::spawn(move || {
+        let reader = std::io::BufReader::new(stdout);
+        let mut got_events = false;
+        for line in reader.lines() {
+            match line {
+                Ok(l) if !l.is_empty() => {
+                    match serde_json::from_str::<serde_json::Value>(&l) {
+                        Ok(json) => { got_events = true; let _ = app_clone.emit("edge_event", &json); }
+                        Err(e) => { log_event(&format!("[edge-sidecar] JSON parse error: {} | line: {}", e, &l[..l.len().min(200)])); }
+                    }
+                }
+                Err(_) => break,
+                _ => {}
+            }
+        }
+        // 检查退出码，非零则 emit edge_error
+        let exit_code = manager_clone.lock().ok()
+            .and_then(|mut g| g.as_mut().and_then(|c| c.try_wait().ok().flatten()))
+            .map(|s| s.code().unwrap_or(-1))
+            .unwrap_or(0);
+        if exit_code != 0 {
+            let _ = app_clone.emit("edge_error", serde_json::json!({ "message": format!("Sidecar exited with code {}", exit_code) }));
+        }
+        let _ = app_clone.emit("edge_done", serde_json::json!({}));
+    });
+
+    // stderr → log
+    std::thread::spawn(move || {
+        let reader = std::io::BufReader::new(stderr);
+        for line in reader.lines() {
+            if let Ok(l) = line {
+                if !l.is_empty() {
+                    log_event(&format!("[edge-sidecar] {}", l));
+                }
+            }
+        }
+    });
+
+    Ok(())
+}
+
+#[tauri::command]
+fn edge_agent_stop(manager: tauri::State<'_, EdgeAgentManager>) -> Result<(), String> {
+    let mut guard = manager.active_child.lock().unwrap();
+    if let Some(child) = guard.as_mut() {
+        let _ = child.kill();
+        let _ = child.wait();
+    }
+    *guard = None;
+    Ok(())
+}
+
 // ── Tauri Commands ──
 
 #[tauri::command]
@@ -1027,9 +1205,13 @@ pub fn run() {
             claude_code_query,
             claude_code_stop,
             claude_code_new_conversation,
+            edge_agent_check,
+            edge_agent_chat,
+            edge_agent_stop,
         ])
         .manage(PtyManager::new())
         .manage(ClaudeCodeManager::new())
+        .manage(EdgeAgentManager::new())
         .setup(|app| {
             let handle = app.handle().clone();
 
@@ -1152,32 +1334,47 @@ pub fn run() {
             });
 
             // ── 健康检查轮询 ──
-            // is_offline 初始为 true：首次检测在线后立即从 Rust 端跳转到 gateway，
-            // 不再依赖 JS window.location.href（可能被 WKWebView 拦截）
+            // is_offline 初始为 true：首次检测在线后从 Rust 端跳转到 gateway。
+            // was_online_once: 一旦 shell.html 加载过，后续断连交给 JS banner 处理，
+            // 不再从 Rust 层导航到 offline.html（避免丢失用户页面状态）。
             let health_handle = app.handle().clone();
             let is_offline = Arc::new(Mutex::new(true));
+            let was_online_once = Arc::new(Mutex::new(false));
             tauri::async_runtime::spawn(async move {
+                let mut consecutive_failures: u32 = 0;
                 loop {
                     let s = load_settings(&health_handle);
-                    // 更新代理目标（以防 settings 在运行时被修改）
                     set_proxy_target(&s.gateway_url);
                     let status = do_health_check(&s.gateway_url).await;
                     let _ = health_handle.emit("health-status", &status);
 
-                    // 在块内持有锁，确保 await 前释放
                     {
                         let mut offline = is_offline.lock().unwrap();
-                        if !status.online && !*offline {
-                            *offline = true;
-                            log_event("[poll] Gateway 下线，跳转离线页");
-                            navigate_to(&health_handle, "main", OFFLINE_PAGE);
-                        } else if status.online && *offline {
-                            *offline = false;
-                            log_event("[poll] Gateway 在线，跳转本地代理");
-                            navigate_to(&health_handle, "main", &proxy_nav_url());
+                        let mut ever_online = was_online_once.lock().unwrap();
+
+                        if status.online {
+                            consecutive_failures = 0;
+                            if *offline {
+                                *offline = false;
+                                *ever_online = true;
+                                log_event("[poll] Gateway 在线，跳转本地代理");
+                                navigate_to(&health_handle, "main", &proxy_nav_url());
+                            }
+                        } else {
+                            consecutive_failures += 1;
+                            // 仅在从未上线过（首次启动）且连续失败 3 次时才跳离线页
+                            // 一旦 shell.html 加载过，断连由 JS banner 处理
+                            if !*offline && !*ever_online && consecutive_failures >= 3 {
+                                *offline = true;
+                                log_event(&format!("[poll] Gateway 下线（连续 {} 次失败），跳转离线页", consecutive_failures));
+                                navigate_to(&health_handle, "main", OFFLINE_PAGE);
+                            }
                         }
                     }
-                    tokio::time::sleep(Duration::from_secs(HEALTH_CHECK_INTERVAL_SECS)).await;
+
+                    // 失败时 5s 快速重试，在线时正常 30s
+                    let interval = if consecutive_failures > 0 { 5 } else { HEALTH_CHECK_INTERVAL_SECS };
+                    tokio::time::sleep(Duration::from_secs(interval)).await;
                 }
             });
 

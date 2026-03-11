@@ -30,7 +30,7 @@ export const runQueryTool: Tool = {
     properties: {
       source: { type: 'string', description: '数据源（注意：PostHog 请用 query_posthog 工具）', enum: ['feishu', 'gitlab', 'github', 'linear', 'jira', 'figma', 'notion', 'confluence', 'slack', 'discord', 'google_drive', 'google_calendar', 'email'] },
       source_type: { type: 'string', description: '数据类型' },
-      sensitivity: { type: 'string', description: '敏感级别', enum: ['public', 'internal', 'restricted', 'secret'] },
+      sensitivity: { type: 'string', description: '敏感级别过滤（一般不需要传，系统会自动按用户权限过滤）' },
       tags: { type: 'array', items: { type: 'string' }, description: '标签过滤' },
       limit: { type: 'number', description: '返回数量上限，默认 20' },
     },

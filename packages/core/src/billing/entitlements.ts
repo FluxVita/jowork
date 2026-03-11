@@ -4,7 +4,8 @@ import { getOrgSetting } from '../auth/settings.js';
 // ─── 计划类型 ───
 
 // 个人版：仅积分差异，无功能门槛（云托管有效，自托管无积分限制）
-export type PersonalPlan = 'free' | 'personal_basic' | 'personal_pro' | 'personal_max';
+// local_free: 个人本地版（无 Gateway，BYOK，全部本地工具免费）
+export type PersonalPlan = 'local_free' | 'free' | 'personal_basic' | 'personal_pro' | 'personal_max';
 
 // Team 版：功能门槛差异
 export type TeamTier = 'team_starter' | 'team_pro' | 'team_business';
@@ -16,6 +17,7 @@ export type SubscriptionPlan = PersonalPlan | TeamTier;
 
 // 月度对话次数配额（1次 = 1条完整AI响应，含工具调用）；null = 无限制
 export const MONTHLY_CONVERSATIONS: Record<PersonalPlan, number | null> = {
+  local_free: null,     // 个人本地版：无限（BYOK，用户自付模型费用）
   free: 50,             // 50 次对话/月
   personal_basic: 500,  // 500 次对话/月
   personal_pro: 2000,   // 2000 次对话/月
@@ -37,6 +39,7 @@ export const TEAM_MAX_USERS = 100;
 
 // Connector 数量限制（null = 无限）
 export const CONNECTOR_LIMITS: Record<SubscriptionPlan, number | null> = {
+  local_free: 0,        // 个人本地版：无 Gateway，无 Connector
   free: 5,
   personal_basic: 5,
   personal_pro: null,
@@ -48,6 +51,7 @@ export const CONNECTOR_LIMITS: Record<SubscriptionPlan, number | null> = {
 
 // 升级路径
 export const PLAN_UPGRADE_TARGET: Record<SubscriptionPlan, SubscriptionPlan | null> = {
+  local_free: 'personal_basic',  // 个人本地版 → 个人服务器版
   free: 'personal_basic',
   personal_basic: 'personal_pro',
   personal_pro: 'personal_max',
@@ -66,11 +70,12 @@ export function normalizePlanPublic(input: string | null | undefined): Subscript
 function normalizePlan(input: string | null | undefined): SubscriptionPlan {
   const v = String(input ?? '').trim().toLowerCase();
   const valid: SubscriptionPlan[] = [
-    'free', 'personal_basic', 'personal_pro', 'personal_max',
+    'local_free', 'free', 'personal_basic', 'personal_pro', 'personal_max',
     'team_starter', 'team_pro', 'team_business',
   ];
   if (valid.includes(v as SubscriptionPlan)) return v as SubscriptionPlan;
   // 旧值向后兼容
+  if (v === 'local') return 'local_free';
   if (v === 'pro') return 'personal_pro';
   if (v === 'team') return 'team_starter';
   if (v === 'business') return 'team_business';
