@@ -133,6 +133,54 @@ export function startGateway(opts: GatewayOptions = {}) {
     });
   });
 
+  // 深度健康检查（无需认证）：验证 Klaude、模型可用性
+  // 用于部署后冒烟测试和监控系统
+  app.get('/health/deep', async (_req, res) => {
+    const results: Record<string, unknown> = { timestamp: new Date().toISOString() };
+
+    // Klaude 检查
+    const klaudePort = process.env['KLAUDE_PORT'] ?? '8899';
+    try {
+      const resp = await fetch(`http://127.0.0.1:${klaudePort}/ping`, { signal: AbortSignal.timeout(3000) });
+      results['klaude'] = { ok: resp.ok, status: resp.status };
+    } catch (e) {
+      results['klaude'] = { ok: false, error: String(e) };
+    }
+
+    // 模型可用性（轻量 ping：发一条最小请求看模型是否响应）
+    try {
+      const modelResult = await routeModel({
+        messages: [{ role: 'user', content: 'ping' }],
+        maxTokens: 5,
+        taskType: 'chat',
+        userId: 'system_health_check',
+      });
+      results['model'] = { ok: !!modelResult.content, provider: modelResult.provider, model: modelResult.model };
+    } catch (e) {
+      results['model'] = { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+
+    // Credits（通过 Bearer token 可选传入 userId）
+    const authHeader = _req.headers['authorization'];
+    if (authHeader?.startsWith('Bearer ')) {
+      try {
+        const token = authHeader.slice(7);
+        const payload = verifyToken(token);
+        if (payload) {
+          const { getCreditsBalance } = await import('../billing/credits.js');
+          const { getUserPlan } = await import('../billing/features.js');
+          const balance = getCreditsBalance(payload.user_id);
+          const plan = getUserPlan(payload.user_id);
+          results['credits'] = { remaining: balance.remaining, total: balance.total, used: balance.used, plan };
+        }
+      } catch { /* ignore auth errors — credits is optional */ }
+    }
+
+    const allOk = (results['klaude'] as Record<string, unknown>)?.['ok'] === true
+      && (results['model'] as Record<string, unknown>)?.['ok'] === true;
+    res.json({ status: allOk ? 'ok' : 'degraded', ...results });
+  });
+
   app.use('/api', (req, res, next) => {
     if (!req.path.startsWith('/v1/')) {
       res.setHeader('Deprecation', 'true');
