@@ -12,6 +12,7 @@ function doQuery(input: Record<string, unknown>, ctx: ToolContext) {
     source_type: input['source_type'] as SourceType | undefined,
     sensitivity: input['sensitivity'] as Sensitivity | undefined,
     tags: input['tags'] as string[] | undefined,
+    updated_after: input['updated_after'] as string | undefined,
     limit: (input['limit'] as number) || 20,
   });
   return { user, accessible: filterByAccess(user, results) };
@@ -32,6 +33,7 @@ export const runQueryTool: Tool = {
       source_type: { type: 'string', description: '数据类型' },
       sensitivity: { type: 'string', description: '敏感级别过滤（一般不需要传，系统会自动按用户权限过滤）' },
       tags: { type: 'array', items: { type: 'string' }, description: '标签过滤' },
+      updated_after: { type: 'string', description: '只返回此日期之后更新的对象（ISO 格式，如 "2026-03-09"）。查询"本周"时必须传入本周开始日期。' },
       limit: { type: 'number', description: '返回数量上限，默认 20' },
     },
     required: [],

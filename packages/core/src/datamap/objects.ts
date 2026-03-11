@@ -117,6 +117,8 @@ export function searchObjects(opts: {
   sensitivity?: Sensitivity;
   data_scope?: DataScope;
   tags?: string[];
+  /** 只返回 updated_at >= 此值的对象（ISO 8601 日期，如 "2026-03-09"） */
+  updated_after?: string;
   limit?: number;
   offset?: number;
 }): DataObject[] {
@@ -154,6 +156,10 @@ export function searchObjects(opts: {
       conditions.push("tags_json LIKE ?");
       params.push(`%"${tag}"%`);
     }
+  }
+  if (opts.updated_after) {
+    conditions.push('updated_at >= ?');
+    params.push(opts.updated_after);
   }
 
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';

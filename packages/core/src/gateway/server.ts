@@ -205,6 +205,22 @@ export function startGateway(opts: GatewayOptions = {}) {
     res.sendFile(shellHtml);
   });
 
+  // 全局错误处理（4-参数 Express 错误中间件，必须放在所有路由之后）
+  // 捕获 PayloadTooLargeError、SyntaxError（malformed JSON）等 body-parser 错误
+  app.use((err: Error & { status?: number; type?: string }, _req: import('express').Request, res: import('express').Response, _next: import('express').NextFunction) => {
+    const status = (err as { status?: number }).status ?? 500;
+    if (status === 413 || err.type === 'entity.too.large') {
+      res.status(413).json({ error: '请求体过大，请缩短消息内容后重试' });
+      return;
+    }
+    if (err instanceof SyntaxError && status === 400) {
+      res.status(400).json({ error: 'JSON 格式错误' });
+      return;
+    }
+    log.error('Unhandled middleware error', { status, message: err.message });
+    res.status(status).json({ error: err.message || '服务器内部错误' });
+  });
+
   // 404（API only）
   app.use((_req, res) => {
     res.status(404).json({ error: 'Not found' });
