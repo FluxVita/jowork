@@ -4,7 +4,7 @@
   "identifier": "com.jowork.app",
   "version": "0.1.0",
   "build": {
-    "beforeBuildCommand": "pnpm --filter @jowork/app build && node scripts/build-sidecar.mjs && node scripts/build-edge-sidecar.mjs",
+    "beforeBuildCommand": "pnpm --filter @jowork/app build && node scripts/build-sidecar.mjs && node ../../scripts/build-edge-sidecar.mjs",
     "frontendDist": "../public"
   },
   "app": {

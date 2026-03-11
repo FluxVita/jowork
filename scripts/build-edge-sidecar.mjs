@@ -8,6 +8,13 @@
 
 import { execSync } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+// 总是从项目根目录执行（支持从 apps/jowork/ 等子目录调用）
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const rootDir = resolve(__dirname, '..');
+process.chdir(rootDir);
 
 // 确保 data 目录存在
 mkdirSync('data', { recursive: true });
