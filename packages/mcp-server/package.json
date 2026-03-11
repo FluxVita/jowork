@@ -1,0 +1,29 @@
+{
+  "name": "@jowork/mcp-server",
+  "version": "0.1.0",
+  "description": "JoWork MCP Server — expose JoWork Gateway tools to any MCP client (Claude Desktop, Cursor, OpenClaw, etc.)",
+  "type": "module",
+  "bin": {
+    "jowork-mcp": "./dist/index.js"
+  },
+  "main": "./dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
+    "lint": "tsc --noEmit"
+  },
+  "keywords": ["mcp", "jowork", "openclaw", "ai-tools", "gateway"],
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.27.1",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.0",
+    "tsx": "^4.21.0",
+    "@types/node": "^22.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
