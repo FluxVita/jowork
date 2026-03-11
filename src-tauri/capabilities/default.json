@@ -18,6 +18,7 @@
     "core:resources:default",
     "core:menu:default",
     "core:tray:default",
+    "core:event:default",
     "store:default",
     "dialog:default"
   ],

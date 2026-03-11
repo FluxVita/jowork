@@ -5,7 +5,15 @@
   "windows": ["main"],
   "permissions": [
     "core:default",
+    "core:event:default",
     "process:default",
     "dialog:default"
-  ]
+  ],
+  "remote": {
+    "urls": [
+      "http://localhost:*/*",
+      "http://127.0.0.1:*/*",
+      "https://*:*/*"
+    ]
+  }
 }
