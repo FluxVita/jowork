@@ -555,6 +555,10 @@ fn pty_create(app: AppHandle, manager: tauri::State<PtyManager>, cols: u16, rows
     #[cfg(not(target_os = "windows"))]
     let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/zsh".to_string());
     let mut cmd = CommandBuilder::new(&shell);
+    // 设置终端环境变量，与 gateway terminal.ts 保持一致
+    // 缺少 TERM 会导致 zsh/P10K 使用错误的 escape sequence → 光标偏移 → 字符重复
+    cmd.env("TERM", "xterm-256color");
+    cmd.env("TERM_PROGRAM", "jowork");
     #[cfg(target_os = "windows")]
     if let Ok(home) = std::env::var("USERPROFILE").or_else(|_| std::env::var("HOME")) { cmd.cwd(home); }
     #[cfg(not(target_os = "windows"))]
@@ -672,6 +676,10 @@ async fn handle_pty_ws(stream: tokio::net::TcpStream) {
         .unwrap_or_else(|_| "/bin/zsh".to_string());
 
     let mut cmd = CommandBuilder::new(&shell);
+    // 设置终端环境变量，与 gateway terminal.ts 保持一致
+    // 缺少 TERM 会导致 zsh/P10K 使用错误的 escape sequence → 光标偏移 → 字符重复
+    cmd.env("TERM", "xterm-256color");
+    cmd.env("TERM_PROGRAM", "jowork");
     let home_dir = if cfg!(target_os = "windows") {
         std::env::var("USERPROFILE").or_else(|_| std::env::var("HOME")).ok()
     } else {

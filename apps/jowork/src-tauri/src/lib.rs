@@ -1,13 +1,14 @@
+use std::collections::HashMap;
 use std::fs;
 use std::io::BufRead;
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::thread;
 use std::time::Duration;
 use tauri::menu::{MenuBuilder, MenuItemBuilder, PredefinedMenuItem, SubmenuBuilder};
-use tauri::{Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
+use tauri::{AppHandle, Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
 use tauri::window::Color;
 
 #[cfg(target_os = "macos")]
@@ -705,6 +706,221 @@ fn get_local_sessions() -> Result<serde_json::Value, String> {
     Ok(serde_json::json!({ "sessions": sessions }))
 }
 
+// ── 本地 PTY（极客模式终端）──────────────────────────
+
+struct PtySession {
+    writer: Mutex<Box<dyn std::io::Write + Send>>,
+    #[allow(dead_code)]
+    master: Box<dyn portable_pty::MasterPty + Send>,
+}
+
+struct PtyManager {
+    sessions: Mutex<HashMap<u64, PtySession>>,
+    next_id: AtomicU64,
+}
+
+impl PtyManager {
+    fn new() -> Self {
+        Self { sessions: Mutex::new(HashMap::new()), next_id: AtomicU64::new(1) }
+    }
+}
+
+#[tauri::command]
+fn pty_create(app: AppHandle, manager: tauri::State<PtyManager>, cols: u16, rows: u16) -> Result<u64, String> {
+    use portable_pty::{native_pty_system, CommandBuilder, PtySize};
+    use std::io::Read;
+
+    let pty_system = native_pty_system();
+    let pair = pty_system.openpty(PtySize { rows, cols, pixel_width: 0, pixel_height: 0 })
+        .map_err(|e| e.to_string())?;
+
+    #[cfg(target_os = "windows")]
+    let shell = std::env::var("COMSPEC").unwrap_or_else(|_| "powershell.exe".to_string());
+    #[cfg(not(target_os = "windows"))]
+    let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/zsh".to_string());
+
+    let mut cmd = CommandBuilder::new(&shell);
+    cmd.env("TERM", "xterm-256color");
+    cmd.env("TERM_PROGRAM", "jowork");
+    #[cfg(target_os = "windows")]
+    if let Ok(home) = std::env::var("USERPROFILE").or_else(|_| std::env::var("HOME")) { cmd.cwd(home); }
+    #[cfg(not(target_os = "windows"))]
+    if let Ok(home) = std::env::var("HOME") { cmd.cwd(home); }
+
+    let _child = pair.slave.spawn_command(cmd).map_err(|e| e.to_string())?;
+    drop(pair.slave);
+
+    let master = pair.master;
+    let writer = master.take_writer().map_err(|e| e.to_string())?;
+    let reader = master.try_clone_reader().map_err(|e| e.to_string())?;
+
+    let id = manager.next_id.fetch_add(1, Ordering::SeqCst);
+
+    let app_clone = app.clone();
+    std::thread::spawn(move || {
+        let mut reader = reader;
+        let mut buf = [0u8; 4096];
+        loop {
+            match reader.read(&mut buf) {
+                Ok(0) => break,
+                Ok(n) => {
+                    let data = String::from_utf8_lossy(&buf[..n]).to_string();
+                    let _ = app_clone.emit(&format!("pty_output_{}", id), data);
+                }
+                Err(_) => break,
+            }
+        }
+        let _ = app_clone.emit(&format!("pty_exit_{}", id), ());
+    });
+
+    manager.sessions.lock().unwrap().insert(id, PtySession { writer: Mutex::new(writer), master });
+    Ok(id)
+}
+
+#[tauri::command]
+fn pty_write(manager: tauri::State<PtyManager>, id: u64, data: String) -> Result<(), String> {
+    use std::io::Write;
+    let sessions = manager.sessions.lock().unwrap();
+    let session = sessions.get(&id).ok_or("PTY session not found")?;
+    let result = session.writer.lock().unwrap().write_all(data.as_bytes()).map_err(|e| e.to_string());
+    result
+}
+
+#[tauri::command]
+fn pty_resize(manager: tauri::State<PtyManager>, id: u64, cols: u16, rows: u16) -> Result<(), String> {
+    use portable_pty::PtySize;
+    let sessions = manager.sessions.lock().unwrap();
+    let session = sessions.get(&id).ok_or("PTY session not found")?;
+    session.master.resize(PtySize { rows, cols, pixel_width: 0, pixel_height: 0 }).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn pty_kill(manager: tauri::State<PtyManager>, id: u64) {
+    manager.sessions.lock().unwrap().remove(&id);
+}
+
+// ── 本地 PTY WebSocket 服务（127.0.0.1:18802）──
+// geek.html 优先连此端口，零网络延迟，体验等同本地终端
+
+const LOCAL_PTY_WS_PORT: u16 = 18802;
+
+async fn run_local_pty_ws() {
+    use tokio::net::TcpListener;
+    let addr = format!("127.0.0.1:{}", LOCAL_PTY_WS_PORT);
+    let listener = match TcpListener::bind(&addr).await {
+        Ok(l) => { eprintln!("[pty-ws] 监听 {}", addr); l }
+        Err(e) => { eprintln!("[pty-ws] 绑定失败: {}", e); return; }
+    };
+    loop {
+        match listener.accept().await {
+            Ok((stream, _)) => {
+                let _ = stream.set_nodelay(true);
+                tokio::spawn(handle_pty_ws(stream));
+            }
+            Err(e) => eprintln!("[pty-ws] accept 错误: {}", e),
+        }
+    }
+}
+
+async fn handle_pty_ws(stream: tokio::net::TcpStream) {
+    use portable_pty::{native_pty_system, CommandBuilder, PtySize};
+    use tokio_tungstenite::tungstenite::Message;
+    use futures_util::SinkExt;
+    use std::io::{Read, Write};
+
+    let ws = match tokio_tungstenite::accept_async(stream).await {
+        Ok(ws) => ws,
+        Err(e) => { eprintln!("[pty-ws] WS握手失败: {}", e); return; }
+    };
+    let (mut ws_tx, mut ws_rx) = futures_util::StreamExt::split(ws);
+
+    let pair = match native_pty_system().openpty(PtySize { rows: 24, cols: 80, pixel_width: 0, pixel_height: 0 }) {
+        Ok(p) => p,
+        Err(e) => { eprintln!("[pty-ws] openpty失败: {}", e); return; }
+    };
+
+    #[cfg(target_os = "windows")]
+    let shell = std::env::var("COMSPEC").unwrap_or_else(|_| "powershell.exe".to_string());
+    #[cfg(not(target_os = "windows"))]
+    let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/zsh".to_string());
+
+    let mut cmd = CommandBuilder::new(&shell);
+    cmd.env("TERM", "xterm-256color");
+    cmd.env("TERM_PROGRAM", "jowork");
+    let home_dir = if cfg!(target_os = "windows") {
+        std::env::var("USERPROFILE").or_else(|_| std::env::var("HOME")).ok()
+    } else {
+        std::env::var("HOME").ok()
+    };
+    if let Some(home) = home_dir { cmd.cwd(home); }
+
+    let _child = match pair.slave.spawn_command(cmd) {
+        Ok(c) => c,
+        Err(e) => { eprintln!("[pty-ws] spawn失败: {}", e); return; }
+    };
+    drop(pair.slave);
+
+    let master = pair.master;
+    let mut pty_reader = master.try_clone_reader().unwrap();
+    let pty_writer: Arc<Mutex<Box<dyn Write + Send>>> = Arc::new(Mutex::new(master.take_writer().unwrap()));
+    let pty_master: Arc<Mutex<Box<dyn portable_pty::MasterPty + Send>>> = Arc::new(Mutex::new(master));
+
+    let (tx, mut rx) = tokio::sync::mpsc::channel::<Vec<u8>>(256);
+    std::thread::spawn(move || {
+        let mut buf = [0u8; 4096];
+        loop {
+            match pty_reader.read(&mut buf) {
+                Ok(0) | Err(_) => break,
+                Ok(n) => {
+                    if tx.blocking_send(buf[..n].to_vec()).is_err() { break; }
+                }
+            }
+        }
+    });
+
+    eprintln!("[pty-ws] 新连接");
+
+    loop {
+        tokio::select! {
+            data = rx.recv() => {
+                match data {
+                    Some(bytes) => {
+                        let text = String::from_utf8_lossy(&bytes).into_owned();
+                        if ws_tx.send(Message::Text(text)).await.is_err() { break; }
+                    }
+                    None => break,
+                }
+            }
+            msg = futures_util::StreamExt::next(&mut ws_rx) => {
+                match msg {
+                    Some(Ok(Message::Text(text))) => {
+                        let text = text.as_str();
+                        if text.starts_with('{') {
+                            if let Ok(v) = serde_json::from_str::<serde_json::Value>(text) {
+                                let cols = v["cols"].as_u64().unwrap_or(80) as u16;
+                                let rows = v["rows"].as_u64().unwrap_or(24) as u16;
+                                let m = pty_master.lock().unwrap();
+                                let _ = m.resize(PtySize { rows, cols, pixel_width: 0, pixel_height: 0 });
+                                continue;
+                            }
+                        }
+                        let mut w = pty_writer.lock().unwrap();
+                        let _ = w.write_all(text.as_bytes());
+                    }
+                    Some(Ok(Message::Binary(data))) => {
+                        let mut w = pty_writer.lock().unwrap();
+                        let _ = w.write_all(&data);
+                    }
+                    Some(Ok(Message::Close(_))) | None | Some(Err(_)) => break,
+                    _ => {}
+                }
+            }
+        }
+    }
+
+    eprintln!("[pty-ws] 连接关闭");
+}
+
 // ── App 入口 ─────────────────────────────────────────
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -716,6 +932,7 @@ pub fn run() {
     .manage(ContextState(Mutex::new(None)))
     .manage(ClaudeCodeManager::new())
     .manage(EdgeAgentManager::new())
+    .manage(PtyManager::new())
     // ── 菜单事件：分发右键菜单 action + 应用菜单快捷键 ──
     .on_menu_event(|app, event| {
       let id = event.id().0.as_str();
@@ -783,6 +1000,9 @@ pub fn run() {
         let _ = app.set_menu(menu);
       }
 
+      // ── 启动本地 PTY WebSocket 服务（极客模式终端）──
+      tauri::async_runtime::spawn(run_local_pty_ws());
+
       // ── 导航逻辑（独立线程，不阻塞 setup）──
       let handle = app.handle().clone();
       thread::spawn(move || {
@@ -815,6 +1035,10 @@ pub fn run() {
       edge_agent_chat,
       edge_agent_stop,
       get_local_sessions,
+      pty_create,
+      pty_write,
+      pty_resize,
+      pty_kill,
     ])
     .on_window_event(|_window, event| {
       if matches!(event, tauri::WindowEvent::Destroyed) {
