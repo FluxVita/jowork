@@ -59,7 +59,7 @@ export function AhaMomentStep() {
   return (
     <div className="flex flex-col items-center text-center px-8 py-12">
       <div className="text-5xl mb-6">✨</div>
-      <h1 className="text-xl font-bold mb-2">{t('step3Title', { defaultValue: 'Try It Now!' })}</h1>
+      <h1 className="text-xl font-bold mb-2">{t('step3Title')}</h1>
       <p className="text-text-secondary mb-8 max-w-md">{t('step3Description')}</p>
 
       {!selectedQuestion ? (

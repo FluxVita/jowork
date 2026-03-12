@@ -128,6 +128,10 @@ export class ConnectorHub {
     return this.credentials.has(connectorId);
   }
 
+  isStarted(connectorId: string): boolean {
+    return this.clients.has(connectorId);
+  }
+
   async start(connectorId: string): Promise<void> {
     if (this.clients.has(connectorId)) return;
 

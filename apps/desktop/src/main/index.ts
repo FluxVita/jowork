@@ -3,6 +3,7 @@ import { join } from 'path';
 import { is } from '@electron-toolkit/utils';
 import { setupIPC, getLauncherWindow, getNotificationManager } from './ipc';
 import { setupTray } from './tray';
+import { setupAutoUpdater } from './updater';
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -50,6 +51,7 @@ app.whenReady().then(() => {
 
   if (mainWindow) {
     getNotificationManager().setMainWindow(mainWindow);
+    setupAutoUpdater(mainWindow);
   }
 });
 

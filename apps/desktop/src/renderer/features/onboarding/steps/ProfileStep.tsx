@@ -16,8 +16,8 @@ export function ProfileStep() {
   return (
     <div className="flex flex-col items-center text-center px-8 py-12">
       <div className="text-5xl mb-6">👤</div>
-      <h1 className="text-xl font-bold mb-2">{t('step3Title', { defaultValue: 'Tell JoWork About You' })}</h1>
-      <p className="text-text-secondary mb-8 max-w-md">{t('step3Description', { defaultValue: 'Help AI understand how to assist you better.' })}</p>
+      <h1 className="text-xl font-bold mb-2">{t('profileTitle')}</h1>
+      <p className="text-text-secondary mb-8 max-w-md">{t('profileDescription')}</p>
 
       <div className="w-full max-w-sm space-y-4 mb-8 text-left">
         {/* Role */}

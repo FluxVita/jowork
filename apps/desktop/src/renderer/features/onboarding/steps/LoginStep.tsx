@@ -26,9 +26,9 @@ export function LoginStep() {
   return (
     <div className="flex flex-col items-center justify-center text-center px-8 py-12">
       <div className="text-5xl mb-6">🔐</div>
-      <h1 className="text-xl font-bold mb-2">{t('step2Title', { defaultValue: 'Cloud & Team Features' })}</h1>
+      <h1 className="text-xl font-bold mb-2">{t('loginTitle')}</h1>
       <p className="text-text-secondary mb-8 max-w-md">
-        {t('step2Description', { defaultValue: 'Sign in to unlock cloud AI, team collaboration, and cross-device sync.' })}
+        {t('loginDescription')}
       </p>
 
       <button

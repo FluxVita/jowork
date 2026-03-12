@@ -1,11 +1,15 @@
 {
   "welcome": "Welcome to JoWork",
   "welcomeDescription": "Your AI work assistant. Local-first, privacy-safe.",
+  "loginTitle": "Cloud & Team Features",
+  "loginDescription": "Sign in to unlock cloud AI, team collaboration, and cross-device sync.",
   "step1Title": "Choose an AI Engine",
   "step1Description": "JoWork supports multiple AI engines. Choose one to get started.",
   "step2Title": "Connect Data Sources",
   "step2Description": "Connect your tools so the AI can better assist you.",
-  "step3Title": "Start a Conversation",
+  "profileTitle": "Tell JoWork About You",
+  "profileDescription": "Help AI understand how to assist you better.",
+  "step3Title": "Try It Now!",
   "step3Description": "All set! Start collaborating with your AI assistant.",
   "skip": "Skip",
   "getStarted": "Get Started"

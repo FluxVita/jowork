@@ -12,7 +12,7 @@ import { Scheduler, type NewScheduledTask } from './scheduler';
 import { AuthManager } from './auth/manager';
 import { ModeManager } from './auth/mode';
 import { SyncManager } from './sync/sync-manager';
-import { setupAutoUpdater, checkForUpdates, quitAndInstall } from './updater';
+import { checkForUpdates, quitAndInstall } from './updater';
 import type { SyncRecord } from '@jowork/core';
 import type { EngineId } from './engine/types';
 
@@ -185,7 +185,7 @@ export function setupIPC(): void {
       description: m.description,
       category: m.category,
       tier: m.tier,
-      status: connectorHub.hasCredential(m.id) ? 'disconnected' : 'disconnected',
+      status: connectorHub.isStarted(m.id) ? 'connected' : connectorHub.hasCredential(m.id) ? 'disconnected' : 'unconfigured',
       hasCredential: connectorHub.hasCredential(m.id),
     }));
   });
@@ -586,11 +586,6 @@ export function setupIPC(): void {
   ipcMain.handle('updater:check', () => checkForUpdates());
   ipcMain.handle('updater:install', () => quitAndInstall());
 
-  // Setup auto-updater with main window
-  const mainWin = BrowserWindow.getAllWindows()[0];
-  if (mainWin) {
-    setupAutoUpdater(mainWin);
-  }
 }
 
 export function getLauncherWindow(): LauncherWindow {
