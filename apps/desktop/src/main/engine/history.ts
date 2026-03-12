@@ -51,6 +51,7 @@ export class HistoryManager {
         updated_at INTEGER NOT NULL
       );
       CREATE INDEX IF NOT EXISTS idx_messages_session ON messages(session_id);
+      CREATE INDEX IF NOT EXISTS idx_sessions_updated ON sessions(updated_at);
     `);
   }
 

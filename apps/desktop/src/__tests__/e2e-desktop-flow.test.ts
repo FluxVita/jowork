@@ -8,6 +8,9 @@ import Database from 'better-sqlite3';
 import { HistoryManager } from '../main/engine/history';
 import { MemoryStore } from '../main/memory/store';
 import { ModeManager } from '../main/auth/mode';
+import { ContextDocsStore } from '../main/context/docs';
+import { OfflineQueue } from '../main/sync/offline-queue';
+import { Scheduler } from '../main/scheduler/index';
 import { existsSync, unlinkSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
@@ -18,10 +21,17 @@ describe('E2E: Desktop user journey', () => {
   let hm: HistoryManager;
   let memStore: MemoryStore;
   let modeManager: ModeManager;
+  let contextDocs: ContextDocsStore;
+  let offlineQueue: OfflineQueue;
+  let scheduler: Scheduler;
 
   beforeAll(() => {
     hm = new HistoryManager(TEST_DB);
-    memStore = new MemoryStore(hm.getSqliteInstance());
+    const sqlite = hm.getSqliteInstance();
+    memStore = new MemoryStore(sqlite);
+    contextDocs = new ContextDocsStore(sqlite);
+    offlineQueue = new OfflineQueue(sqlite);
+    scheduler = new Scheduler(sqlite);
     modeManager = new ModeManager(
       (key) => hm.getSetting(key),
       (key, value) => hm.setSetting(key, value),
@@ -292,18 +302,140 @@ describe('E2E: Desktop user journey', () => {
   });
 
   // ==========================================
-  // FLOW 8: Shared SQLite verification
+  // FLOW 8: Context docs management
   // ==========================================
-  describe('Flow 8: Shared SQLite verification', () => {
-    it('HistoryManager and MemoryStore share the same database', () => {
-      // Verify they can coexist without conflicts
+  describe('Flow 8: Context docs CRUD', () => {
+    let docId: string;
+
+    it('Step 1: Create a context doc', () => {
+      const doc = contextDocs.create({
+        title: 'Team coding standards',
+        content: 'Use TypeScript strict mode',
+        scope: 'team',
+        category: 'code',
+        priority: 10,
+      });
+      docId = doc.id;
+      expect(doc.scope).toBe('team');
+      expect(doc.priority).toBe(10);
+    });
+
+    it('Step 2: List context docs by scope', () => {
+      contextDocs.create({ title: 'Personal note', content: 'My style', scope: 'personal' });
+      const teamDocs = contextDocs.listByScope('team');
+      expect(teamDocs.length).toBeGreaterThanOrEqual(1);
+      expect(teamDocs.every((d) => d.scope === 'team')).toBe(true);
+    });
+
+    it('Step 3: Update a context doc', () => {
+      const updated = contextDocs.update(docId, { content: 'Use TypeScript strict mode + ESLint' });
+      expect(updated!.content).toContain('ESLint');
+    });
+
+    it('Step 4: Delete a context doc', () => {
+      contextDocs.delete(docId);
+      expect(contextDocs.get(docId)).toBeNull();
+    });
+  });
+
+  // ==========================================
+  // FLOW 9: Offline sync queue
+  // ==========================================
+  describe('Flow 9: Offline sync queue', () => {
+    it('Step 1: Queue starts empty', () => {
+      expect(offlineQueue.count()).toBe(0);
+    });
+
+    it('Step 2: Enqueue sync records', () => {
+      offlineQueue.enqueue({
+        id: 'mem_1', entity: 'memory', data: { title: 'Test' },
+        syncVersion: 1, updatedAt: Date.now(),
+      });
+      offlineQueue.enqueue({
+        id: 'mem_2', entity: 'memory', data: { title: 'Test 2' },
+        syncVersion: 1, updatedAt: Date.now(),
+      });
+      expect(offlineQueue.count()).toBe(2);
+    });
+
+    it('Step 3: Deduplicate on re-enqueue', () => {
+      offlineQueue.enqueue({
+        id: 'mem_1', entity: 'memory', data: { title: 'Updated' },
+        syncVersion: 2, updatedAt: Date.now(),
+      });
+      expect(offlineQueue.count()).toBe(2); // Still 2, not 3
+    });
+
+    it('Step 4: Drain returns FIFO order', () => {
+      const records = offlineQueue.drain();
+      expect(records).toHaveLength(2);
+      expect(records[0].id).toBe('mem_1');
+      expect(records[0].data.title).toBe('Updated'); // Deduped version
+    });
+
+    it('Step 5: Remove after successful push', () => {
+      offlineQueue.remove(['mem_1']);
+      expect(offlineQueue.count()).toBe(1);
+    });
+
+    it('Step 6: Clear all', () => {
+      offlineQueue.clear();
+      expect(offlineQueue.count()).toBe(0);
+    });
+  });
+
+  // ==========================================
+  // FLOW 10: Scheduler task management
+  // ==========================================
+  describe('Flow 10: Scheduler CRUD', () => {
+    let taskId: string;
+
+    it('Step 1: Create a scheduled task', () => {
+      const task = scheduler.create({
+        name: 'Daily scan',
+        cronExpression: '0 9 * * *',
+        type: 'scan',
+        config: { connectorId: 'github' },
+      });
+      taskId = task.id;
+      expect(task.name).toBe('Daily scan');
+      expect(task.enabled).toBe(true);
+      expect(task.timezone).toBe('Asia/Shanghai');
+    });
+
+    it('Step 2: List tasks', () => {
+      const tasks = scheduler.list();
+      expect(tasks.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('Step 3: Update a task', () => {
+      const updated = scheduler.update(taskId, { enabled: false });
+      expect(updated!.enabled).toBe(false);
+    });
+
+    it('Step 4: Get a task by id', () => {
+      const task = scheduler.get(taskId);
+      expect(task).not.toBeNull();
+      expect(task!.enabled).toBe(false);
+    });
+
+    it('Step 5: Delete a task', () => {
+      scheduler.delete(taskId);
+      expect(scheduler.get(taskId)).toBeNull();
+    });
+  });
+
+  // ==========================================
+  // FLOW 11: Shared SQLite verification
+  // ==========================================
+  describe('Flow 11: Shared SQLite verification', () => {
+    it('All modules share the same database', () => {
       const session = hm.createSession('claude-code', 'Shared DB test');
       const memory = memStore.create({ title: 'Shared test', content: 'Works' });
 
       expect(hm.getSession(session.id)).not.toBeNull();
       expect(memStore.get(memory.id)).not.toBeNull();
 
-      // Both use the same sqlite instance
       const sqlite = hm.getSqliteInstance();
       const tables = sqlite
         .prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
@@ -314,6 +446,31 @@ describe('E2E: Desktop user journey', () => {
       expect(tableNames).toContain('messages');
       expect(tableNames).toContain('memories');
       expect(tableNames).toContain('settings');
+      expect(tableNames).toContain('context_docs');
+      expect(tableNames).toContain('sync_queue');
+      expect(tableNames).toContain('scheduled_tasks');
+      expect(tableNames).toContain('task_executions');
+    });
+
+    it('WAL mode is enabled', () => {
+      const sqlite = hm.getSqliteInstance();
+      const row = sqlite.pragma('journal_mode') as { journal_mode: string }[];
+      expect(row[0].journal_mode).toBe('wal');
+    });
+
+    it('Indexes exist for performance', () => {
+      const sqlite = hm.getSqliteInstance();
+      const indexes = sqlite
+        .prepare("SELECT name FROM sqlite_master WHERE type='index' AND name LIKE 'idx_%'")
+        .all() as { name: string }[];
+      const indexNames = indexes.map((i) => i.name);
+
+      expect(indexNames).toContain('idx_messages_session');
+      expect(indexNames).toContain('idx_sessions_updated');
+      expect(indexNames).toContain('idx_memories_scope');
+      expect(indexNames).toContain('idx_context_docs_scope');
+      expect(indexNames).toContain('idx_sync_queue_created');
+      expect(indexNames).toContain('idx_task_executions_task');
     });
   });
 });

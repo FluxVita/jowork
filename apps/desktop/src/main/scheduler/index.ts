@@ -78,6 +78,7 @@ export class Scheduler {
         duration_ms INTEGER,
         executed_at INTEGER NOT NULL
       );
+      CREATE INDEX IF NOT EXISTS idx_task_executions_task ON task_executions(task_id, executed_at);
     `);
   }
 
