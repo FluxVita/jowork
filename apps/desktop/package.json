@@ -7,6 +7,7 @@
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "lint": "tsc --noEmit",
+    "test": "vitest run",
     "postinstall:phase1": "electron-rebuild -f -w better-sqlite3",
     "preview": "electron-vite preview",
     "build:mac": "electron-vite build && electron-builder --mac",
