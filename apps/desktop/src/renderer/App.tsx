@@ -6,6 +6,7 @@ import { ConnectorsPage } from './features/connectors/ConnectorsPage';
 import { MemoryPage } from './features/memory/MemoryPage';
 import { SkillsPanel } from './features/skills/SkillsPanel';
 import { WorkstyleEditor } from './features/workstyle/WorkstyleEditor';
+import { TerminalPage } from './pages/TerminalPage';
 import { SettingsPage } from './pages/SettingsPage';
 
 export function App() {
@@ -22,6 +23,7 @@ export function App() {
           <Route path="memories" element={<MemoryPage />} />
           <Route path="skills" element={<SkillsPanel />} />
           <Route path="workstyle" element={<WorkstyleEditor />} />
+          <Route path="terminal" element={<TerminalPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>
       </Routes>

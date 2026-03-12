@@ -6,6 +6,8 @@ import { SkillLoader } from './skills/loader';
 import { LauncherWindow } from './windows/launcher-window';
 import { NotificationManager } from './system/notifications';
 import { ClipboardManager } from './system/clipboard';
+import { PtyManager } from './system/pty-manager';
+import { FileWatcher } from './system/file-watcher';
 import type { EngineId } from './engine/types';
 
 let engineManager: EngineManager;
@@ -15,6 +17,8 @@ let skillLoader: SkillLoader;
 let launcherWindow: LauncherWindow;
 let notificationManager: NotificationManager;
 let clipboardManager: ClipboardManager;
+let ptyManager: PtyManager;
+let fileWatcher: FileWatcher;
 
 export function getEngineManager(): EngineManager {
   return engineManager;
@@ -28,6 +32,8 @@ export function setupIPC(): void {
   launcherWindow = new LauncherWindow();
   notificationManager = new NotificationManager();
   clipboardManager = new ClipboardManager();
+  ptyManager = new PtyManager();
+  fileWatcher = new FileWatcher();
 
   // App
   ipcMain.handle('app:get-version', () => app.getVersion());
@@ -263,6 +269,53 @@ export function setupIPC(): void {
   ipcMain.handle('clipboard:write', (_e, text: string) => {
     clipboardManager.write(text);
   });
+
+  // --- PTY Terminal ---
+
+  ipcMain.handle('pty:create', (event, opts?: { cwd?: string; shell?: string }) => {
+    const id = ptyManager.create(opts);
+
+    // Forward PTY output to renderer
+    ptyManager.onData(id, (data) => {
+      event.sender.send('pty:data', id, data);
+    });
+
+    ptyManager.onExit(id, (exitCode) => {
+      event.sender.send('pty:exit', id, exitCode);
+    });
+
+    return id;
+  });
+
+  ipcMain.handle('pty:write', (_e, id: string, data: string) => {
+    ptyManager.write(id, data);
+  });
+
+  ipcMain.handle('pty:resize', (_e, id: string, cols: number, rows: number) => {
+    ptyManager.resize(id, cols, rows);
+  });
+
+  ipcMain.handle('pty:destroy', (_e, id: string) => {
+    ptyManager.destroy(id);
+  });
+
+  ipcMain.handle('pty:list', () => {
+    return ptyManager.list();
+  });
+
+  // --- File system ---
+
+  ipcMain.handle('file:watch', (_e, dir: string) => {
+    fileWatcher.watchProject(dir);
+  });
+
+  ipcMain.handle('file:unwatch', (_e, dir: string) => {
+    fileWatcher.unwatchProject(dir);
+  });
+
+  ipcMain.handle('file:read-for-chat', async (_e, filePath: string) => {
+    return fileWatcher.readFileForChat(filePath);
+  });
 }
 
 export function getLauncherWindow(): LauncherWindow {
@@ -276,5 +329,8 @@ export function getNotificationManager(): NotificationManager {
 // Cleanup on app quit
 app.on('before-quit', () => {
   connectorHub?.stopAll();
+  ptyManager?.destroyAll();
+  fileWatcher?.closeAll();
+  launcherWindow?.destroy();
   engineManager?.close();
 });

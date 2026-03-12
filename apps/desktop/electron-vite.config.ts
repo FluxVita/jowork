@@ -2,7 +2,7 @@ import { defineConfig, externalizeDepsPlugin } from 'electron-vite';
 import react from '@vitejs/plugin-react';
 import { resolve } from 'path';
 
-const nativeExternals = ['better-sqlite3'];
+const nativeExternals = ['better-sqlite3', 'node-pty'];
 
 export default defineConfig({
   main: {
