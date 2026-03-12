@@ -47,6 +47,8 @@ interface ConversationStore {
   isStreaming: boolean;
   streamingText: string;
   pendingConfirm: PendingConfirm | null;
+  hasMoreMessages: boolean;
+  isLoadingMore: boolean;
 
   loadSessions: () => Promise<void>;
   selectSession: (id: string) => Promise<void>;
@@ -54,6 +56,7 @@ interface ConversationStore {
   deleteSession: (id: string) => Promise<void>;
   renameSession: (id: string, title: string) => Promise<void>;
   sendMessage: (content: string) => Promise<void>;
+  loadMoreMessages: () => Promise<void>;
   abort: () => Promise<void>;
   handleChatEvent: (event: ChatEvent) => void;
   handleSessionCreated: (session: Session) => void;
@@ -67,6 +70,8 @@ export const useConversationStore = create<ConversationStore>((set, get) => ({
   isStreaming: false,
   streamingText: '',
   pendingConfirm: null,
+  hasMoreMessages: false,
+  isLoadingMore: false,
 
   loadSessions: async () => {
     const sessions = await window.jowork.session.list();
@@ -74,10 +79,33 @@ export const useConversationStore = create<ConversationStore>((set, get) => ({
   },
 
   selectSession: async (id) => {
-    set({ activeSessionId: id, messages: [], streamingText: '' });
+    set({ activeSessionId: id, messages: [], streamingText: '', hasMoreMessages: false });
     const data = await window.jowork.session.get(id);
     if (data) {
-      set({ messages: data.messages ?? [] });
+      set({ messages: data.messages ?? [], hasMoreMessages: data.hasMore ?? false });
+    }
+  },
+
+  loadMoreMessages: async () => {
+    const { activeSessionId, messages, isLoadingMore, hasMoreMessages } = get();
+    if (!activeSessionId || isLoadingMore || !hasMoreMessages) return;
+
+    const oldestMsg = messages[0];
+    if (!oldestMsg) return;
+
+    set({ isLoadingMore: true });
+    try {
+      const result = await window.jowork.session.messages(activeSessionId, {
+        limit: 40,
+        beforeId: oldestMsg.id,
+      });
+      set((s) => ({
+        messages: [...(result.messages as Message[]), ...s.messages],
+        hasMoreMessages: result.hasMore,
+        isLoadingMore: false,
+      }));
+    } catch {
+      set({ isLoadingMore: false });
     }
   },
 

@@ -208,8 +208,14 @@ export function setupIPC(): void {
     const hm = engineManager.getHistoryManager();
     const session = hm.getSession(sessionId);
     if (!session) return null;
-    const sessionMessages = hm.getMessages(sessionId);
-    return { ...session, messages: sessionMessages };
+    // Load initial page of messages (most recent 40)
+    const { messages: sessionMessages, hasMore } = hm.getMessagesPaginated(sessionId, { limit: 40 });
+    return { ...session, messages: sessionMessages, hasMore };
+  });
+
+  ipcMain.handle('session:messages', (_e, sessionId: string, opts?: { limit?: number; beforeId?: string }) => {
+    const hm = engineManager.getHistoryManager();
+    return hm.getMessagesPaginated(sessionId, opts);
   });
 
   ipcMain.handle('session:create', (_e, opts?: { engineId?: EngineId; title?: string }) => {

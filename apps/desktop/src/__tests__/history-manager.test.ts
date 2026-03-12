@@ -133,6 +133,34 @@ describe('HistoryManager', () => {
       expect(msg.tokens).toBe(150);
       expect(msg.cost).toBe(5);
     });
+
+    it('paginates messages with getMessagesPaginated', () => {
+      const session = hm.createSession('claude-code');
+      // Insert 10 messages
+      for (let i = 1; i <= 10; i++) {
+        hm.appendMessage(session.id, { sessionId: session.id, role: 'user', content: `msg-${i}` });
+      }
+
+      // Load last 3 messages
+      const page1 = hm.getMessagesPaginated(session.id, { limit: 3 });
+      expect(page1.messages).toHaveLength(3);
+      expect(page1.hasMore).toBe(true);
+      expect(page1.messages[0].content).toBe('msg-8');
+      expect(page1.messages[2].content).toBe('msg-10');
+
+      // Load next 3 (before the oldest in page1)
+      const page2 = hm.getMessagesPaginated(session.id, { limit: 3, beforeId: page1.messages[0].id });
+      expect(page2.messages).toHaveLength(3);
+      expect(page2.hasMore).toBe(true);
+      expect(page2.messages[0].content).toBe('msg-5');
+      expect(page2.messages[2].content).toBe('msg-7');
+
+      // Load remaining
+      const page3 = hm.getMessagesPaginated(session.id, { limit: 10, beforeId: page2.messages[0].id });
+      expect(page3.messages).toHaveLength(4);
+      expect(page3.hasMore).toBe(false);
+      expect(page3.messages[0].content).toBe('msg-1');
+    });
   });
 
   describe('Engine session mappings', () => {

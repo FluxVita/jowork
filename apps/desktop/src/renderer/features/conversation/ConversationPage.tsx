@@ -10,6 +10,9 @@ export function ConversationPage() {
   const activeSessionId = useConversationStore((s) => s.activeSessionId);
   const pendingConfirm = useConversationStore((s) => s.pendingConfirm);
   const resolveConfirm = useConversationStore((s) => s.resolveConfirm);
+  const hasMoreMessages = useConversationStore((s) => s.hasMoreMessages);
+  const isLoadingMore = useConversationStore((s) => s.isLoadingMore);
+  const loadMoreMessages = useConversationStore((s) => s.loadMoreMessages);
 
   return (
     <div className="flex flex-col h-full">
@@ -39,6 +42,9 @@ export function ConversationPage() {
           messages={messages}
           streamingText={streamingText}
           isStreaming={isStreaming}
+          hasMore={hasMoreMessages}
+          isLoadingMore={isLoadingMore}
+          onLoadMore={loadMoreMessages}
         />
       )}
 

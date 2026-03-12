@@ -16,6 +16,9 @@ interface MessageListProps {
   messages: Message[];
   streamingText: string;
   isStreaming: boolean;
+  hasMore?: boolean;
+  isLoadingMore?: boolean;
+  onLoadMore?: () => void;
 }
 
 function renderMessage(msg: Message): ReactNode {
@@ -29,9 +32,10 @@ function renderMessage(msg: Message): ReactNode {
   }
 }
 
-export function MessageList({ messages, streamingText, isStreaming }: MessageListProps) {
+export function MessageList({ messages, streamingText, isStreaming, hasMore, isLoadingMore, onLoadMore }: MessageListProps) {
   const parentRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const prevMessageCount = useRef(messages.length);
 
   const virtualizer = useVirtualizer({
     count: messages.length,
@@ -40,18 +44,62 @@ export function MessageList({ messages, streamingText, isStreaming }: MessageLis
     overscan: 5,
   });
 
-  // Auto-scroll to bottom on new messages or streaming
+  // Auto-scroll to bottom only on new messages (not when loading older ones)
   const scrollToBottom = useCallback(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, []);
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages.length, streamingText, scrollToBottom]);
+    // Only auto-scroll if messages were appended (not prepended via load-more)
+    if (messages.length > prevMessageCount.current) {
+      const newCount = messages.length - prevMessageCount.current;
+      // If a small number of messages were added, it's likely new messages → scroll down
+      // If many were prepended (load more), don't scroll
+      if (newCount <= 5) {
+        scrollToBottom();
+      }
+    }
+    prevMessageCount.current = messages.length;
+  }, [messages.length, scrollToBottom]);
+
+  useEffect(() => {
+    if (streamingText) scrollToBottom();
+  }, [streamingText, scrollToBottom]);
+
+  // Scroll-to-top detection for loading older messages
+  useEffect(() => {
+    const el = parentRef.current;
+    if (!el || !hasMore || !onLoadMore) return;
+
+    const handleScroll = () => {
+      if (el.scrollTop < 100 && !isLoadingMore) {
+        onLoadMore();
+      }
+    };
+
+    el.addEventListener('scroll', handleScroll, { passive: true });
+    return () => el.removeEventListener('scroll', handleScroll);
+  }, [hasMore, isLoadingMore, onLoadMore]);
 
   return (
     <div ref={parentRef} className="flex-1 overflow-y-auto px-4 py-6">
       <div className="max-w-3xl mx-auto">
+        {/* Load more indicator */}
+        {hasMore && (
+          <div className="text-center py-2 mb-2">
+            {isLoadingMore ? (
+              <span className="text-xs text-text-secondary">Loading older messages...</span>
+            ) : (
+              <button
+                onClick={onLoadMore}
+                className="text-xs text-accent hover:text-accent/80 transition-colors"
+              >
+                Load older messages
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Virtualized message list */}
         <div
           style={{

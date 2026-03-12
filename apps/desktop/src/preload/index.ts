@@ -44,6 +44,8 @@ const api = {
     list: (opts?: { limit?: number; offset?: number }) =>
       ipcRenderer.invoke('session:list', opts) as Promise<unknown[]>,
     get: (id: string) => ipcRenderer.invoke('session:get', id),
+    messages: (id: string, opts?: { limit?: number; beforeId?: string }) =>
+      ipcRenderer.invoke('session:messages', id, opts) as Promise<{ messages: unknown[]; hasMore: boolean }>,
     create: (opts?: { engineId?: string; title?: string }) =>
       ipcRenderer.invoke('session:create', opts),
     delete: (id: string) => ipcRenderer.invoke('session:delete', id) as Promise<void>,

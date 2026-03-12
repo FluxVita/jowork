@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3';
 import { drizzle, type BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
-import { eq, desc, and } from 'drizzle-orm';
+import { eq, desc, and, lt, asc } from 'drizzle-orm';
 import { sessions, messages, engineSessionMappings, settings } from '@jowork/core';
 import { createId } from '@jowork/core';
 import type { Session, Message, EngineId } from '@jowork/core';
@@ -169,6 +169,56 @@ export class HistoryManager {
       cost: r.cost ?? undefined,
       createdAt: new Date(r.createdAt),
     }));
+  }
+
+  /**
+   * Paginated message loading. Returns messages in ascending order (oldest first).
+   * Uses rowid for stable ordering (createdAt can be identical for rapid inserts).
+   * - limit: max messages to return (default 40)
+   * - beforeId: cursor — only return messages with rowid < this message's rowid
+   * Returns { messages, hasMore }
+   */
+  getMessagesPaginated(
+    sessionId: string,
+    opts: { limit?: number; beforeId?: string } = {},
+  ): { messages: Message[]; hasMore: boolean } {
+    const limit = opts.limit ?? 40;
+
+    // Use raw SQL with rowid for stable cursor-based pagination
+    let sql: string;
+    let params: unknown[];
+
+    if (opts.beforeId) {
+      sql = `SELECT * FROM messages
+             WHERE session_id = ? AND rowid < (SELECT rowid FROM messages WHERE id = ?)
+             ORDER BY rowid DESC LIMIT ?`;
+      params = [sessionId, opts.beforeId, limit + 1];
+    } else {
+      sql = `SELECT * FROM messages WHERE session_id = ? ORDER BY rowid DESC LIMIT ?`;
+      params = [sessionId, limit + 1];
+    }
+
+    const rows = this.sqlite.prepare(sql).all(...params) as Array<{
+      id: string; session_id: string; role: string; content: string;
+      tool_name: string | null; tokens: number | null; cost: number | null; created_at: number;
+    }>;
+
+    const hasMore = rows.length > limit;
+    const sliced = rows.slice(0, limit).reverse(); // ascending order
+
+    return {
+      messages: sliced.map((r) => ({
+        id: r.id,
+        sessionId: r.session_id,
+        role: r.role as Message['role'],
+        content: r.content,
+        toolName: r.tool_name ?? undefined,
+        tokens: r.tokens ?? undefined,
+        cost: r.cost ?? undefined,
+        createdAt: new Date(r.created_at),
+      })),
+      hasMore,
+    };
   }
 
   getSession(sessionId: string): Session | null {
