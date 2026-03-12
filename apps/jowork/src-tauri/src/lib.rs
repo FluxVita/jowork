@@ -108,6 +108,7 @@ fn launch_sidecar(app: &tauri::AppHandle) {
   }
 }
 
+#[allow(dead_code)]
 fn wait_for_gateway() {
   let url = format!("http://127.0.0.1:{}/health", GATEWAY_PORT);
   for _ in 0..20 {
@@ -238,6 +239,7 @@ fn reveal_in_finder(path: String) -> Result<(), String> {
 
 // ── 导航辅助 ─────────────────────────────────────────
 
+#[allow(dead_code)]
 fn navigate(app: &tauri::AppHandle, url: &str) {
   if let Some(window) = app.get_webview_window("main") {
     let js = format!("location.href = '{}'", url);
@@ -1003,18 +1005,11 @@ pub fn run() {
       // ── 启动本地 PTY WebSocket 服务（极客模式终端）──
       tauri::async_runtime::spawn(run_local_pty_ws());
 
-      // ── 导航逻辑（独立线程，不阻塞 setup）──
-      let handle = app.handle().clone();
-      thread::spawn(move || {
-        if is_self_hosted {
-          launch_sidecar(&handle);
-          wait_for_gateway();
-          navigate(&handle, &format!("http://127.0.0.1:{}/setup.html", GATEWAY_PORT));
-        } else {
-          thread::sleep(Duration::from_millis(400));
-          navigate(&handle, DEFAULT_GATEWAY_URL);
-        }
-      });
+      // ── 自托管模式：预启动 sidecar（非阻塞） ──
+      if is_self_hosted {
+        launch_sidecar(&app.handle());
+      }
+      // 导航逻辑由 loading.html 通过 Tauri invoke 完成，不再阻塞
 
       Ok(())
     })
