@@ -28,6 +28,7 @@ interface SyncManagerOpts {
 export class SyncManager {
   private queue: OfflineQueue;
   private resolver: ConflictResolver;
+  private sqlite: Database.Database;
   private cloudUrl: string;
   private getToken: () => string | null;
   private deviceId: string;
@@ -37,13 +38,55 @@ export class SyncManager {
   private syncing = false;
   private opts: SyncManagerOpts;
 
+  /** Prepared statements for upsert per entity type. */
+  private upsertStmts: Record<string, Database.Statement> = {};
+
   constructor(opts: SyncManagerOpts) {
     this.opts = opts;
+    this.sqlite = opts.sqlite;
     this.queue = new OfflineQueue(opts.sqlite);
     this.resolver = new ConflictResolver(opts.mode);
     this.cloudUrl = opts.cloudUrl;
     this.getToken = opts.getToken;
     this.deviceId = opts.deviceId;
+    this.prepareUpsertStatements();
+  }
+
+  /**
+   * Prepare SQLite upsert statements for each syncable entity type.
+   * Uses INSERT OR REPLACE which is safe for our append-only + LWW model.
+   */
+  private prepareUpsertStatements(): void {
+    this.upsertStmts.session = this.sqlite.prepare(`
+      INSERT OR REPLACE INTO sessions (id, title, engine_id, mode, message_count, created_at, updated_at)
+      VALUES (@id, @title, @engine_id, @mode, @message_count, @created_at, @updated_at)
+    `);
+    this.upsertStmts.message = this.sqlite.prepare(`
+      INSERT OR REPLACE INTO messages (id, session_id, role, content, tool_name, tokens, cost, created_at)
+      VALUES (@id, @session_id, @role, @content, @tool_name, @tokens, @cost, @created_at)
+    `);
+    this.upsertStmts.memory = this.sqlite.prepare(`
+      INSERT OR REPLACE INTO memories (id, title, content, tags, scope, pinned, source, last_used_at, created_at, updated_at)
+      VALUES (@id, @title, @content, @tags, @scope, @pinned, @source, @last_used_at, @created_at, @updated_at)
+    `);
+    this.upsertStmts.context_doc = this.sqlite.prepare(`
+      INSERT OR REPLACE INTO context_docs (id, title, content, scope, token_count, created_at, updated_at)
+      VALUES (@id, @title, @content, @scope, @token_count, @created_at, @updated_at)
+    `);
+    this.upsertStmts.setting = this.sqlite.prepare(`
+      INSERT OR REPLACE INTO settings (key, value, updated_at)
+      VALUES (@key, @value, @updated_at)
+    `);
+    this.upsertStmts.scheduled_task = this.sqlite.prepare(`
+      INSERT OR REPLACE INTO scheduled_tasks (id, name, cron_expression, timezone, type, config, enabled, last_run_at, next_run_at, cloud_sync, created_at)
+      VALUES (@id, @name, @cron_expression, @timezone, @type, @config, @enabled, @last_run_at, @next_run_at, @cloud_sync, @created_at)
+    `);
+    this.upsertStmts.delete_session = this.sqlite.prepare(`DELETE FROM sessions WHERE id = ?`);
+    this.upsertStmts.delete_message = this.sqlite.prepare(`DELETE FROM messages WHERE id = ?`);
+    this.upsertStmts.delete_memory = this.sqlite.prepare(`DELETE FROM memories WHERE id = ?`);
+    this.upsertStmts.delete_context_doc = this.sqlite.prepare(`DELETE FROM context_docs WHERE id = ?`);
+    this.upsertStmts.delete_setting = this.sqlite.prepare(`DELETE FROM settings WHERE key = ?`);
+    this.upsertStmts.delete_scheduled_task = this.sqlite.prepare(`DELETE FROM scheduled_tasks WHERE id = ?`);
   }
 
   /** Start background sync polling. */
@@ -156,7 +199,7 @@ export class SyncManager {
     return data.accepted;
   }
 
-  /** Pull changes from server. */
+  /** Pull changes from server and apply to local SQLite. */
   private async pull(): Promise<number> {
     const token = this.getToken();
     if (!token) return 0;
@@ -174,12 +217,42 @@ export class SyncManager {
 
     const data = await res.json() as SyncPullResponse;
 
-    // Apply changes locally
-    // TODO: write pulled records to local SQLite tables
-    // For now, just update the version watermark
+    if (data.changes.length > 0) {
+      this.applyPulledChanges(data.changes);
+    }
 
     this.lastSyncVersion = Math.max(this.lastSyncVersion, data.serverVersion);
     return data.changes.length;
+  }
+
+  /**
+   * Apply pulled SyncRecords to local SQLite in a single transaction.
+   * Soft-deleted records are removed locally; others are upserted.
+   */
+  private applyPulledChanges(changes: SyncRecord[]): void {
+    const apply = this.sqlite.transaction((records: SyncRecord[]) => {
+      for (const record of records) {
+        if (record.deletedAt) {
+          // Soft-delete: remove from local DB
+          const delStmt = this.upsertStmts[`delete_${record.entity}`];
+          const key = record.entity === 'setting' ? record.data.key : record.id;
+          delStmt?.run(key);
+          continue;
+        }
+
+        const stmt = this.upsertStmts[record.entity];
+        if (!stmt) continue;
+
+        // Map SyncRecord.data to the expected column params
+        try {
+          stmt.run(record.data);
+        } catch {
+          // Skip records that don't match schema (e.g. schema version mismatch)
+        }
+      }
+    });
+
+    apply(changes);
   }
 
   private setOnline(online: boolean): void {

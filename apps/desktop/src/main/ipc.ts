@@ -16,6 +16,8 @@ import { checkForUpdates, quitAndInstall } from './updater';
 import { ContextAssembler } from './context/assembler';
 import { ContextDocsStore } from './context/docs';
 import { AutoExtractor } from './memory/auto-extract';
+import { Scanner } from './scheduler/scanner';
+import { NotificationRuleManager } from './scheduler/notification-rules';
 import type { SyncRecord } from '@jowork/core';
 import type { EngineId } from './engine/types';
 
@@ -52,6 +54,9 @@ export function setupIPC(): void {
   fileWatcher = new FileWatcher();
   scheduler = new Scheduler(engineManager.getHistoryManager().getSqliteInstance());
   scheduler.setEngineManager(engineManager);
+  const ruleManager = new NotificationRuleManager(engineManager.getHistoryManager().getSqliteInstance());
+  const scanner = new Scanner(connectorHub, ruleManager, notificationManager, engineManager.getHistoryManager().getSqliteInstance());
+  scheduler.setScanner(scanner);
   scheduler.startAll();
 
   const hm = engineManager.getHistoryManager();

@@ -5,6 +5,7 @@ import { eq, desc } from 'drizzle-orm';
 import { scheduledTasks, taskExecutions } from '@jowork/core';
 import { createId } from '@jowork/core';
 import type { EngineManager } from '../engine/manager';
+import type { Scanner } from './scanner';
 
 export type TaskType = 'scan' | 'skill' | 'notify';
 
@@ -37,6 +38,7 @@ export class Scheduler {
   private db: BetterSQLite3Database;
   private sqlite: Database.Database;
   private engineManager: EngineManager | null = null;
+  private scanner: Scanner | null = null;
 
   constructor(sqlite: Database.Database) {
     this.sqlite = sqlite;
@@ -46,6 +48,10 @@ export class Scheduler {
 
   setEngineManager(em: EngineManager): void {
     this.engineManager = em;
+  }
+
+  setScanner(scanner: Scanner): void {
+    this.scanner = scanner;
   }
 
   private ensureTable(): void {
@@ -254,8 +260,24 @@ export class Scheduler {
   }
 
   private async executeScan(task: ScheduledTaskRecord): Promise<string> {
-    // Delegate to connector hub scan — placeholder
-    return `Scan completed for config: ${JSON.stringify(task.config)}`;
+    if (!this.scanner) {
+      return 'Scanner not initialized';
+    }
+
+    const connectorId = task.config.connectorId as string | undefined;
+    let results;
+
+    if (connectorId) {
+      const result = await this.scanner.scanConnector(connectorId);
+      results = [result];
+    } else {
+      results = await this.scanner.scanAll();
+    }
+
+    await this.scanner.processRules(results);
+
+    const totalItems = results.reduce((sum, r) => sum + r.newItems.length, 0);
+    return `Scanned ${results.length} connector(s), found ${totalItems} new item(s)`;
   }
 
   private async executeSkill(task: ScheduledTaskRecord): Promise<string> {
