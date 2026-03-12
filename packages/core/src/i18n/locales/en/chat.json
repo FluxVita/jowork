@@ -1,0 +1,17 @@
+{
+  "title": "JoWork AI Assistant",
+  "placeholder": "Type a message... (Cmd+Enter to send)",
+  "send": "Send",
+  "stop": "Stop",
+  "emptyTitle": "Start a conversation",
+  "emptyDescription": "Start a conversation with your AI assistant. It can help you with code, analysis, and more.",
+  "noConversations": "No conversations yet",
+  "detectingEngines": "Detecting engines...",
+  "thinking": "Thinking...",
+  "toolCall": "Tool call",
+  "toolResult": "Tool result",
+  "newConversation": "New conversation",
+  "deleteConversation": "Delete conversation",
+  "renameConversation": "Rename conversation",
+  "searchConversations": "Search conversations..."
+}

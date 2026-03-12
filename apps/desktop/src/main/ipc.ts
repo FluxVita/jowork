@@ -12,6 +12,7 @@ import { Scheduler, type NewScheduledTask } from './scheduler';
 import { AuthManager } from './auth/manager';
 import { ModeManager } from './auth/mode';
 import { SyncManager } from './sync/sync-manager';
+import { setupAutoUpdater, checkForUpdates, quitAndInstall } from './updater';
 import type { SyncRecord } from '@jowork/core';
 import type { EngineId } from './engine/types';
 
@@ -580,6 +581,16 @@ export function setupIPC(): void {
   ipcMain.handle('sync:track-change', (_e, record: SyncRecord) => {
     syncManager.trackChange(record);
   });
+
+  // --- Updater IPC ---
+  ipcMain.handle('updater:check', () => checkForUpdates());
+  ipcMain.handle('updater:install', () => quitAndInstall());
+
+  // Setup auto-updater with main window
+  const mainWin = BrowserWindow.getAllWindows()[0];
+  if (mainWin) {
+    setupAutoUpdater(mainWin);
+  }
 }
 
 export function getLauncherWindow(): LauncherWindow {

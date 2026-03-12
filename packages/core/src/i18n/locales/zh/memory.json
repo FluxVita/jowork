@@ -1,0 +1,17 @@
+{
+  "title": "记忆",
+  "description": "AI 跨对话记住的关于你的信息。",
+  "new": "新建",
+  "editMemory": "编辑记忆",
+  "newMemory": "新建记忆",
+  "titlePlaceholder": "记忆标题",
+  "contentPlaceholder": "记忆内容...",
+  "tagsPlaceholder": "标签（逗号分隔）",
+  "pinned": "已置顶",
+  "allMemories": "所有记忆",
+  "noMemories": "还没有记忆。",
+  "noMemoriesHint": "手动创建或让 AI 从对话中学习。",
+  "pin": "置顶",
+  "unpin": "取消置顶",
+  "searchMemories": "搜索记忆..."
+}

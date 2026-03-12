@@ -1,0 +1,12 @@
+{
+  "welcome": "欢迎使用 JoWork",
+  "welcomeDescription": "你的 AI 工作助手，本地优先、隐私安全。",
+  "step1Title": "选择 AI 引擎",
+  "step1Description": "JoWork 支持多种 AI 引擎。选择一个开始使用。",
+  "step2Title": "连接数据源",
+  "step2Description": "连接你常用的工具，让 AI 更好地帮助你。",
+  "step3Title": "开始对话",
+  "step3Description": "一切就绪！开始和 AI 助手协作吧。",
+  "skip": "跳过",
+  "getStarted": "开始使用"
+}

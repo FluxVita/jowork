@@ -1,0 +1,18 @@
+{
+  "title": "设置",
+  "general": "通用",
+  "appearance": "外观",
+  "engines": "AI 引擎",
+  "about": "关于",
+  "themeLight": "浅色",
+  "themeDark": "深色",
+  "themeSystem": "跟随系统",
+  "language": "语言",
+  "update": "更新",
+  "checkUpdate": "检查更新",
+  "updateAvailable": "有新版本可用",
+  "updateDownloaded": "更新已下载，重启后安装",
+  "restartToUpdate": "立即重启更新",
+  "upToDate": "已是最新版本",
+  "checking": "检查中..."
+}

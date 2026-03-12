@@ -2,7 +2,7 @@ import { useSession } from './hooks/useSession';
 import { useTranslation } from 'react-i18next';
 
 export function SessionList() {
-  const { t } = useTranslation();
+  const { t } = useTranslation('chat');
   const { sessions, activeSessionId, selectSession, createSession, deleteSession } = useSession();
 
   return (
@@ -11,7 +11,7 @@ export function SessionList() {
         onClick={createSession}
         className="mx-3 mb-2 px-3 py-1.5 text-sm rounded-md bg-accent text-white hover:bg-accent-hover transition-colors"
       >
-        + {t('sidebar.conversation')}
+        + {t('newConversation')}
       </button>
 
       <div className="flex-1 overflow-y-auto px-1">
@@ -29,7 +29,7 @@ export function SessionList() {
                 deleteSession(session.id);
               }}
               className="opacity-0 group-hover:opacity-100 text-text-secondary hover:text-red-400 ml-1 text-xs"
-              title="Delete"
+              title={t('deleteConversation')}
             >
               ×
             </button>
@@ -38,7 +38,7 @@ export function SessionList() {
 
         {sessions.length === 0 && (
           <p className="text-xs text-text-secondary px-3 py-4 text-center">
-            No conversations yet
+            {t('noConversations')}
           </p>
         )}
       </div>

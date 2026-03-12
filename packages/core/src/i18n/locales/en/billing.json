@@ -1,0 +1,20 @@
+{
+  "title": "Billing",
+  "credits": "Credits",
+  "remaining": "Remaining",
+  "used": "Used this period",
+  "wallet": "Wallet Balance",
+  "buyCredits": "Buy Credits",
+  "plans": "Plans",
+  "currentPlan": "Current Plan",
+  "upgrade": "Upgrade",
+  "manageSubscription": "Manage Subscription",
+  "signInRequired": "Sign in to access billing and cloud credits.",
+  "buyAmount": "Buy {{amount}} credits",
+  "free": "Free",
+  "pro": "Pro",
+  "teamPlan": "Team",
+  "perMonth": "/mo",
+  "usageChart": "Usage",
+  "dailyUsage": "Daily usage"
+}

@@ -7,7 +7,7 @@ import { InviteDialog } from './InviteDialog';
 import { TeamSettings } from './TeamSettings';
 
 export function TeamPage() {
-  const { t } = useTranslation();
+  const { t } = useTranslation('team');
   const { team, teams, loading, loadTeam, loadTeams, createTeam } = useTeam();
   const { user, modeState, loginWithGoogle, switchToTeam } = useAuth();
   const [showInvite, setShowInvite] = useState(false);
@@ -30,16 +30,16 @@ export function TeamPage() {
   if (!user) {
     return (
       <div className="p-6 max-w-2xl mx-auto">
-        <h1 className="text-xl font-bold mb-4">{t('sidebar.team')}</h1>
+        <h1 className="text-xl font-bold mb-4">{t('title')}</h1>
         <div className="bg-surface rounded-lg p-8 text-center">
           <p className="text-text-secondary mb-4">
-            Sign in to create or join a team workspace.
+            {t('signInRequired')}
           </p>
           <button
             onClick={loginWithGoogle}
             className="px-6 py-2 rounded-md bg-accent text-white font-medium hover:bg-accent/90 transition-colors"
           >
-            Sign in with Google
+            {t('auth:signIn', { ns: 'auth' })}
           </button>
         </div>
       </div>
@@ -50,12 +50,12 @@ export function TeamPage() {
   if (!team) {
     return (
       <div className="p-6 max-w-2xl mx-auto">
-        <h1 className="text-xl font-bold mb-4">{t('sidebar.team')}</h1>
+        <h1 className="text-xl font-bold mb-4">{t('title')}</h1>
 
         {/* Existing teams */}
         {teams.length > 0 && (
           <div className="mb-6">
-            <h2 className="text-sm font-medium text-text-secondary mb-2">Your Teams</h2>
+            <h2 className="text-sm font-medium text-text-secondary mb-2">{t('yourTeams')}</h2>
             <div className="space-y-2">
               {teams.map((tm) => (
                 <button
@@ -65,9 +65,9 @@ export function TeamPage() {
                 >
                   <div>
                     <div className="font-medium">{tm.name}</div>
-                    <div className="text-xs text-text-secondary">{tm.memberCount} members</div>
+                    <div className="text-xs text-text-secondary">{t('memberCount', { count: tm.memberCount })}</div>
                   </div>
-                  <span className="text-accent text-sm">Switch</span>
+                  <span className="text-accent text-sm">{t('switch')}</span>
                 </button>
               ))}
             </div>
@@ -76,12 +76,12 @@ export function TeamPage() {
 
         {/* Create team */}
         <div className="bg-surface rounded-lg p-5">
-          <h2 className="font-medium mb-3">Create a Team</h2>
+          <h2 className="font-medium mb-3">{t('createTeam')}</h2>
           <div className="flex gap-2">
             <input
               value={newTeamName}
               onChange={(e) => setNewTeamName(e.target.value)}
-              placeholder="Team name"
+              placeholder={t('teamName')}
               className="flex-1 bg-surface-2 border border-border rounded-md px-3 py-2 text-sm outline-none focus:border-accent"
             />
             <button
@@ -99,7 +99,7 @@ export function TeamPage() {
               disabled={creating || !newTeamName.trim()}
               className="px-4 py-2 rounded-md bg-accent text-white text-sm font-medium hover:bg-accent/90 transition-colors disabled:opacity-50"
             >
-              {creating ? 'Creating...' : 'Create'}
+              {creating ? t('creating') : t('common:create')}
             </button>
           </div>
         </div>
@@ -115,21 +115,21 @@ export function TeamPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold">{team.name}</h1>
-          <p className="text-sm text-text-secondary">{team.memberCount} members</p>
+          <p className="text-sm text-text-secondary">{t('memberCount', { count: team.memberCount })}</p>
         </div>
         <button
           onClick={() => setShowInvite(true)}
           className="px-4 py-2 rounded-md bg-accent text-white text-sm font-medium hover:bg-accent/90 transition-colors"
         >
-          Invite Members
+          {t('invite')}
         </button>
       </div>
 
       {/* Members */}
       <div className="bg-surface rounded-lg p-5">
-        <h2 className="font-medium mb-3">Members</h2>
+        <h2 className="font-medium mb-3">{t('members')}</h2>
         {loading ? (
-          <p className="text-sm text-text-secondary py-4 text-center">Loading...</p>
+          <p className="text-sm text-text-secondary py-4 text-center">{t('common:loading')}</p>
         ) : (
           <MemberList
             teamId={team.id}

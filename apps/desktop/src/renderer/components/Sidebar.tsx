@@ -6,21 +6,21 @@ import { useAuth } from '../features/auth/hooks/useAuth';
 import { CreditBar } from '../features/billing/CreditBar';
 
 const navItems = [
-  { path: '/', key: 'sidebar.conversation', icon: '💬' },
-  { path: '/connectors', key: 'sidebar.connectors', icon: '🔌' },
-  { path: '/memories', key: 'sidebar.memories', icon: '🧠' },
-  { path: '/skills', key: 'sidebar.skills', icon: '⚡' },
-  { path: '/workstyle', key: 'sidebar.workstyle', icon: '✏️' },
-  { path: '/scheduler', key: 'sidebar.scheduler', icon: '🕐' },
-  { path: '/notifications', key: 'sidebar.notifications', icon: '🔔' },
-  { path: '/terminal', key: 'sidebar.terminal', icon: '>' },
-  { path: '/billing', key: 'sidebar.billing', icon: '$' },
-  { path: '/team', key: 'sidebar.team', icon: '👥' },
-  { path: '/settings', key: 'sidebar.settings', icon: '⚙️' },
+  { path: '/', key: 'conversation', icon: '💬' },
+  { path: '/connectors', key: 'connectors', icon: '🔌' },
+  { path: '/memories', key: 'memories', icon: '🧠' },
+  { path: '/skills', key: 'skills', icon: '⚡' },
+  { path: '/workstyle', key: 'workstyle', icon: '✏️' },
+  { path: '/scheduler', key: 'scheduler', icon: '🕐' },
+  { path: '/notifications', key: 'notifications', icon: '🔔' },
+  { path: '/terminal', key: 'terminal', icon: '>' },
+  { path: '/billing', key: 'billing', icon: '$' },
+  { path: '/team', key: 'team', icon: '👥' },
+  { path: '/settings', key: 'settings', icon: '⚙️' },
 ] as const;
 
 export function Sidebar() {
-  const { t } = useTranslation();
+  const { t } = useTranslation('sidebar');
   const navigate = useNavigate();
   const location = useLocation();
   const isConversation = location.pathname === '/';

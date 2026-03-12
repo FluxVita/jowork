@@ -1,0 +1,14 @@
+{
+  "title": "Skills",
+  "description": "Reusable prompts and workflows from multiple sources.",
+  "filterPlaceholder": "Filter skills...",
+  "noSkills": "No skills found.",
+  "noSkillsHint": "Add .md files to ~/.claude/commands/ or ~/.claude/skills/",
+  "sourceClaudeCode": "Claude Code",
+  "sourceJowork": "JoWork",
+  "sourceOpenclaw": "OpenClaw",
+  "sourceCommunity": "Community",
+  "loading": "Loading skills...",
+  "run": "Run",
+  "details": "Details"
+}

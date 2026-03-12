@@ -1,0 +1,12 @@
+{
+  "welcome": "Welcome to JoWork",
+  "welcomeDescription": "Your AI work assistant. Local-first, privacy-safe.",
+  "step1Title": "Choose an AI Engine",
+  "step1Description": "JoWork supports multiple AI engines. Choose one to get started.",
+  "step2Title": "Connect Data Sources",
+  "step2Description": "Connect your tools so the AI can better assist you.",
+  "step3Title": "Start a Conversation",
+  "step3Description": "All set! Start collaborating with your AI assistant.",
+  "skip": "Skip",
+  "getStarted": "Get Started"
+}

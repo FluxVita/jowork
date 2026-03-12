@@ -1,0 +1,22 @@
+{
+  "title": "Team",
+  "members": "Members",
+  "invite": "Invite Members",
+  "createTeam": "Create a Team",
+  "settings": "Team Settings",
+  "signInRequired": "Sign in to create or join a team workspace.",
+  "yourTeams": "Your Teams",
+  "switch": "Switch",
+  "owner": "Owner",
+  "admin": "Admin",
+  "member": "Member",
+  "teamName": "Team name",
+  "memberCount": "{{count}} members",
+  "creating": "Creating...",
+  "inviteLink": "Invite link",
+  "copyLink": "Copy link",
+  "linkCopied": "Copied",
+  "removeMember": "Remove member",
+  "changeRole": "Change role",
+  "leaveTeam": "Leave team"
+}

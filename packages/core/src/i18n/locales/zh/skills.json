@@ -1,0 +1,14 @@
+{
+  "title": "技能",
+  "description": "来自多个来源的可复用提示词和工作流。",
+  "filterPlaceholder": "筛选技能...",
+  "noSkills": "未找到技能。",
+  "noSkillsHint": "添加 .md 文件到 ~/.claude/commands/ 或 ~/.claude/skills/",
+  "sourceClaudeCode": "Claude Code",
+  "sourceJowork": "JoWork",
+  "sourceOpenclaw": "OpenClaw",
+  "sourceCommunity": "社区",
+  "loading": "加载技能...",
+  "run": "运行",
+  "details": "详情"
+}

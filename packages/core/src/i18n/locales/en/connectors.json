@@ -1,0 +1,17 @@
+{
+  "title": "Connectors",
+  "description": "Connect your tools and data sources to JoWork.",
+  "core": "Core Connectors",
+  "more": "More Connectors",
+  "configure": "Configure",
+  "connect": "Connect",
+  "disconnect": "Disconnect",
+  "loading": "Loading connectors...",
+  "tokenPlaceholder": "Access token or API key",
+  "health": "Health status",
+  "healthy": "Healthy",
+  "unhealthy": "Unhealthy",
+  "lastSync": "Last sync",
+  "authorize": "Authorize",
+  "revoke": "Revoke"
+}

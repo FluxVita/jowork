@@ -1,0 +1,16 @@
+{
+  "title": "Scheduled Tasks",
+  "description": "Automate recurring tasks like data scans, skill execution, and notifications.",
+  "newTask": "New Task",
+  "editTask": "Edit Task",
+  "namePlaceholder": "Task name",
+  "cronPlaceholder": "Cron expression (e.g. 0 10 * * *)",
+  "cloudExecution": "Enable cloud execution when offline",
+  "noTasks": "No scheduled tasks yet.",
+  "noTasksHint": "Create one to automate your workflow.",
+  "enabled": "Enabled",
+  "disabled": "Disabled",
+  "lastRun": "Last run",
+  "nextRun": "Next run",
+  "history": "Run history"
+}

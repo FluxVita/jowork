@@ -1,0 +1,17 @@
+{
+  "title": "JoWork AI 助手",
+  "placeholder": "输入消息... (Cmd+Enter 发送)",
+  "send": "发送",
+  "stop": "停止",
+  "emptyTitle": "开始新对话",
+  "emptyDescription": "与 AI 助手对话，它可以帮你编码、分析数据等。",
+  "noConversations": "还没有对话",
+  "detectingEngines": "正在检测引擎...",
+  "thinking": "思考中...",
+  "toolCall": "工具调用",
+  "toolResult": "工具结果",
+  "newConversation": "新对话",
+  "deleteConversation": "删除对话",
+  "renameConversation": "重命名对话",
+  "searchConversations": "搜索对话..."
+}

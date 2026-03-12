@@ -1,0 +1,20 @@
+{
+  "title": "计费",
+  "credits": "积分",
+  "remaining": "剩余",
+  "used": "本周期已用",
+  "wallet": "钱包余额",
+  "buyCredits": "购买积分",
+  "plans": "方案",
+  "currentPlan": "当前方案",
+  "upgrade": "升级",
+  "manageSubscription": "管理订阅",
+  "signInRequired": "登录后可使用计费和云积分功能。",
+  "buyAmount": "购买 {{amount}} 积分",
+  "free": "免费",
+  "pro": "专业版",
+  "teamPlan": "团队版",
+  "perMonth": "/月",
+  "usageChart": "用量统计",
+  "dailyUsage": "每日用量"
+}

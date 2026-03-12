@@ -1,0 +1,17 @@
+{
+  "title": "连接器",
+  "description": "连接你的工具和数据源到 JoWork。",
+  "core": "核心连接器",
+  "more": "更多连接器",
+  "configure": "配置",
+  "connect": "连接",
+  "disconnect": "断开",
+  "loading": "加载连接器...",
+  "tokenPlaceholder": "Access Token 或 API Key",
+  "health": "健康状态",
+  "healthy": "正常",
+  "unhealthy": "异常",
+  "lastSync": "上次同步",
+  "authorize": "授权",
+  "revoke": "撤销授权"
+}

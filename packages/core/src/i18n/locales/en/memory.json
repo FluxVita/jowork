@@ -1,0 +1,17 @@
+{
+  "title": "Memories",
+  "description": "Things the AI remembers about you across conversations.",
+  "new": "New",
+  "editMemory": "Edit Memory",
+  "newMemory": "New Memory",
+  "titlePlaceholder": "Memory title",
+  "contentPlaceholder": "Memory content...",
+  "tagsPlaceholder": "Tags (comma-separated)",
+  "pinned": "Pinned",
+  "allMemories": "All Memories",
+  "noMemories": "No memories yet.",
+  "noMemoriesHint": "Create one manually or let AI learn from conversations.",
+  "pin": "Pin",
+  "unpin": "Unpin",
+  "searchMemories": "Search memories..."
+}
