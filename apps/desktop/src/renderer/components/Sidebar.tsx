@@ -8,6 +8,8 @@ const navItems = [
   { path: '/memories', key: 'sidebar.memories', icon: '🧠' },
   { path: '/skills', key: 'sidebar.skills', icon: '⚡' },
   { path: '/workstyle', key: 'sidebar.workstyle', icon: '✏️' },
+  { path: '/scheduler', key: 'sidebar.scheduler', icon: '🕐' },
+  { path: '/notifications', key: 'sidebar.notifications', icon: '🔔' },
   { path: '/terminal', key: 'sidebar.terminal', icon: '>' },
   { path: '/settings', key: 'sidebar.settings', icon: '⚙️' },
 ] as const;
