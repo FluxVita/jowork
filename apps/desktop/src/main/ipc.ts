@@ -1,8 +1,10 @@
 import { ipcMain, app, BrowserWindow } from 'electron';
 import { EngineManager } from './engine/manager';
+import { ConnectorHub } from './connectors/hub';
 import type { EngineId } from './engine/types';
 
 let engineManager: EngineManager;
+let connectorHub: ConnectorHub;
 
 export function getEngineManager(): EngineManager {
   return engineManager;
@@ -10,6 +12,7 @@ export function getEngineManager(): EngineManager {
 
 export function setupIPC(): void {
   engineManager = new EngineManager();
+  connectorHub = new ConnectorHub(engineManager.getHistoryManager());
 
   // App
   ipcMain.handle('app:get-version', () => app.getVersion());
@@ -123,9 +126,45 @@ export function setupIPC(): void {
   ipcMain.handle('session:rename', (_e, sessionId: string, title: string) => {
     engineManager.getHistoryManager().renameSession(sessionId, title);
   });
+
+  // --- Connector management ---
+
+  ipcMain.handle('connector:list', () => {
+    return connectorHub.getManifests().map((m) => ({
+      id: m.id,
+      name: m.name,
+      description: m.description,
+      category: m.category,
+      tier: m.tier,
+      status: connectorHub.hasCredential(m.id) ? 'disconnected' : 'disconnected',
+      hasCredential: connectorHub.hasCredential(m.id),
+    }));
+  });
+
+  ipcMain.handle('connector:save-credential', (_e, connectorId: string, credential: unknown) => {
+    connectorHub.saveCredential(connectorId, credential);
+  });
+
+  ipcMain.handle('connector:start', async (_e, connectorId: string) => {
+    await connectorHub.start(connectorId);
+  });
+
+  ipcMain.handle('connector:stop', async (_e, connectorId: string) => {
+    await connectorHub.stop(connectorId);
+  });
+
+  ipcMain.handle('connector:health', async () => {
+    const results = await connectorHub.healthCheck();
+    return Object.fromEntries(results);
+  });
+
+  ipcMain.handle('connector:tools', async () => {
+    return connectorHub.listAllTools();
+  });
 }
 
 // Cleanup on app quit
 app.on('before-quit', () => {
+  connectorHub?.stopAll();
   engineManager?.close();
 });

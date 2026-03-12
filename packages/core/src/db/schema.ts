@@ -71,3 +71,29 @@ export const syncCursors = sqliteTable('sync_cursors', {
   cursor: text('cursor'),
   lastSyncedAt: integer('last_synced_at'),
 });
+
+// --- Phase 3: Memory + Context + Skills ---
+
+export const memories = sqliteTable('memories', {
+  id: text('id').primaryKey(),
+  title: text('title').notNull(),
+  content: text('content').notNull(),
+  tags: text('tags'),
+  scope: text('scope').notNull(),
+  pinned: integer('pinned').default(0),
+  source: text('source'),
+  lastUsedAt: integer('last_used_at'),
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+});
+
+export const contextDocs = sqliteTable('context_docs', {
+  id: text('id').primaryKey(),
+  title: text('title').notNull(),
+  content: text('content').notNull(),
+  scope: text('scope').notNull(),
+  category: text('category'),
+  priority: integer('priority').default(0),
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+});
