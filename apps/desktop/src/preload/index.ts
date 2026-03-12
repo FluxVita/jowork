@@ -235,6 +235,17 @@ const api = {
     check: () => ipcRenderer.invoke('updater:check'),
     install: () => ipcRenderer.invoke('updater:install') as Promise<void>,
   },
+
+  // ── Confirm Rules ──
+  confirm: {
+    evaluate: (toolName: string) => ipcRenderer.invoke('confirm:evaluate', toolName) as Promise<{
+      action: 'auto' | 'confirm' | 'block';
+      risk: 'low' | 'medium' | 'high';
+    }>,
+    alwaysAllow: (toolName: string) => ipcRenderer.invoke('confirm:always-allow', toolName) as Promise<void>,
+    getRules: () => ipcRenderer.invoke('confirm:get-rules'),
+    getAllowed: () => ipcRenderer.invoke('confirm:get-allowed') as Promise<string[]>,
+  },
 };
 
 contextBridge.exposeInMainWorld('jowork', api);

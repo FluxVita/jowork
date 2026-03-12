@@ -2,11 +2,14 @@ import { useChat } from './hooks/useChat';
 import { MessageList } from './MessageList';
 import { InputBox } from './InputBox';
 import { EngineIndicator } from './EngineIndicator';
+import { ConfirmDialog } from './ConfirmDialog';
 import { useConversationStore } from '../../stores/conversation';
 
 export function ConversationPage() {
   const { sendMessage, abort, isStreaming, streamingText, messages } = useChat();
   const activeSessionId = useConversationStore((s) => s.activeSessionId);
+  const pendingConfirm = useConversationStore((s) => s.pendingConfirm);
+  const resolveConfirm = useConversationStore((s) => s.resolveConfirm);
 
   return (
     <div className="flex flex-col h-full">
@@ -37,6 +40,17 @@ export function ConversationPage() {
           streamingText={streamingText}
           isStreaming={isStreaming}
         />
+      )}
+
+      {/* Confirm dialog for tool calls requiring approval */}
+      {pendingConfirm && (
+        <div className="px-4 pb-2">
+          <ConfirmDialog
+            action={pendingConfirm}
+            onAllow={(alwaysAllow) => resolveConfirm(true, alwaysAllow)}
+            onDeny={() => resolveConfirm(false)}
+          />
+        </div>
       )}
 
       {/* Input */}

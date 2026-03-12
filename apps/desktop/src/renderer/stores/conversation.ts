@@ -29,6 +29,15 @@ interface ChatEvent {
   input?: string;
   result?: string;
   message?: string;
+  confirmAction?: 'auto' | 'confirm' | 'block';
+  confirmRisk?: 'low' | 'medium' | 'high';
+}
+
+export interface PendingConfirm {
+  toolName: string;
+  description: string;
+  params: Record<string, unknown>;
+  risk: 'low' | 'medium' | 'high';
 }
 
 interface ConversationStore {
@@ -37,6 +46,7 @@ interface ConversationStore {
   messages: Message[];
   isStreaming: boolean;
   streamingText: string;
+  pendingConfirm: PendingConfirm | null;
 
   loadSessions: () => Promise<void>;
   selectSession: (id: string) => Promise<void>;
@@ -47,6 +57,7 @@ interface ConversationStore {
   abort: () => Promise<void>;
   handleChatEvent: (event: ChatEvent) => void;
   handleSessionCreated: (session: Session) => void;
+  resolveConfirm: (allowed: boolean, alwaysAllow?: boolean) => void;
 }
 
 export const useConversationStore = create<ConversationStore>((set, get) => ({
@@ -55,6 +66,7 @@ export const useConversationStore = create<ConversationStore>((set, get) => ({
   messages: [],
   isStreaming: false,
   streamingText: '',
+  pendingConfirm: null,
 
   loadSessions: async () => {
     const sessions = await window.jowork.session.list();
@@ -154,7 +166,7 @@ export const useConversationStore = create<ConversationStore>((set, get) => ({
 
   abort: async () => {
     await window.jowork.chat.abort();
-    set({ isStreaming: false });
+    set({ isStreaming: false, pendingConfirm: null });
   },
 
   handleChatEvent: (event) => {
@@ -164,7 +176,25 @@ export const useConversationStore = create<ConversationStore>((set, get) => ({
           set((s) => ({ streamingText: s.streamingText + event.content }));
         }
         break;
-      case 'tool_call':
+      case 'tool_use':
+        // If confirm required, show dialog
+        if (event.confirmAction === 'confirm') {
+          let params: Record<string, unknown> = {};
+          try {
+            params = event.input ? JSON.parse(event.input) : {};
+          } catch {
+            params = { raw: event.input };
+          }
+          set({
+            pendingConfirm: {
+              toolName: event.toolName ?? 'unknown',
+              description: `Tool call: ${event.toolName}`,
+              params,
+              risk: event.confirmRisk ?? 'medium',
+            },
+          });
+        }
+        // Always add to messages for visibility
         set((s) => ({
           messages: [
             ...s.messages,
@@ -217,5 +247,16 @@ export const useConversationStore = create<ConversationStore>((set, get) => ({
       sessions: [session, ...s.sessions.filter((sess) => sess.id !== session.id)],
       activeSessionId: session.id,
     }));
+  },
+
+  resolveConfirm: (allowed, alwaysAllow) => {
+    const { pendingConfirm } = get();
+    if (!pendingConfirm) return;
+
+    if (allowed && alwaysAllow) {
+      window.jowork.confirm.alwaysAllow(pendingConfirm.toolName);
+    }
+
+    set({ pendingConfirm: null });
   },
 }));

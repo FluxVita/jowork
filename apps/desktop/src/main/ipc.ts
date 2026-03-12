@@ -18,6 +18,7 @@ import { ContextDocsStore } from './context/docs';
 import { AutoExtractor } from './memory/auto-extract';
 import { Scanner } from './scheduler/scanner';
 import { NotificationRuleManager } from './scheduler/notification-rules';
+import { ConfirmRuleEngine } from './engine/confirm-rules';
 import type { SyncRecord } from '@jowork/core';
 import type { EngineId } from './engine/types';
 
@@ -37,6 +38,7 @@ let syncManager: SyncManager;
 let contextAssembler: ContextAssembler;
 let contextDocsStore: ContextDocsStore;
 let autoExtractor: AutoExtractor;
+let confirmRuleEngine: ConfirmRuleEngine;
 
 export function getEngineManager(): EngineManager {
   return engineManager;
@@ -68,6 +70,7 @@ export function setupIPC(): void {
   contextAssembler = new ContextAssembler();
   contextDocsStore = new ContextDocsStore(hm.getSqliteInstance());
   autoExtractor = new AutoExtractor(memoryStore);
+  confirmRuleEngine = new ConfirmRuleEngine(hm.getSqliteInstance());
 
   syncManager = new SyncManager({
     sqlite: hm.getSqliteInstance(),
@@ -144,7 +147,21 @@ export function setupIPC(): void {
     try {
       let assistantContent = '';
       for await (const engineEvent of engineManager.chat(chatOpts)) {
-        event.sender.send('chat:event', { sessionId, ...engineEvent });
+        // Enrich tool_use events with confirm rule evaluation
+        if (engineEvent.type === 'tool_use') {
+          const toolEvent = engineEvent as typeof engineEvent & { toolName?: string; input?: string };
+          const toolName = toolEvent.toolName ?? '';
+          const action = confirmRuleEngine.evaluate(toolName);
+          const risk = confirmRuleEngine.getRisk(toolName);
+          event.sender.send('chat:event', {
+            sessionId,
+            ...engineEvent,
+            confirmAction: action,
+            confirmRisk: risk,
+          });
+        } else {
+          event.sender.send('chat:event', { sessionId, ...engineEvent });
+        }
 
         // Accumulate assistant text for persistence
         if (engineEvent.type === 'text') {
@@ -617,6 +634,26 @@ export function setupIPC(): void {
   // --- Updater IPC ---
   ipcMain.handle('updater:check', () => checkForUpdates());
   ipcMain.handle('updater:install', () => quitAndInstall());
+
+  // --- Confirm rules ---
+  ipcMain.handle('confirm:evaluate', (_e, toolName: string) => {
+    return {
+      action: confirmRuleEngine.evaluate(toolName),
+      risk: confirmRuleEngine.getRisk(toolName),
+    };
+  });
+
+  ipcMain.handle('confirm:always-allow', (_e, toolName: string) => {
+    confirmRuleEngine.alwaysAllow(toolName);
+  });
+
+  ipcMain.handle('confirm:get-rules', () => {
+    return confirmRuleEngine.getRules();
+  });
+
+  ipcMain.handle('confirm:get-allowed', () => {
+    return confirmRuleEngine.getAllowedTools();
+  });
 
 }
 

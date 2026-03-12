@@ -90,8 +90,48 @@ function needsLocalAccess(text: string): boolean {
   return localKeywords.some((kw) => text.toLowerCase().includes(kw));
 }
 
-async function replyToFeishu(_userId: string, _chatId: string, _text: string): Promise<void> {
-  // TODO: implement actual Feishu message send API
-  // POST https://open.feishu.cn/open-apis/im/v1/messages
-  console.log(`[FeishuBot] Would reply: ${_text}`);
+async function getFeishuTenantToken(): Promise<string> {
+  const appId = process.env.FEISHU_APP_ID;
+  const appSecret = process.env.FEISHU_APP_SECRET;
+  if (!appId || !appSecret) {
+    throw new Error('FEISHU_APP_ID and FEISHU_APP_SECRET must be set');
+  }
+
+  const res = await fetch('https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ app_id: appId, app_secret: appSecret }),
+  });
+
+  const data = await res.json() as { code: number; tenant_access_token?: string; msg?: string };
+  if (data.code !== 0 || !data.tenant_access_token) {
+    throw new Error(`Failed to get tenant token: ${data.msg ?? 'unknown error'}`);
+  }
+  return data.tenant_access_token;
+}
+
+async function replyToFeishu(_userId: string, chatId: string, text: string): Promise<void> {
+  try {
+    const token = await getFeishuTenantToken();
+
+    const res = await fetch(`https://open.feishu.cn/open-apis/im/v1/messages?receive_id_type=chat_id`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        receive_id: chatId,
+        msg_type: 'text',
+        content: JSON.stringify({ text }),
+      }),
+    });
+
+    const data = await res.json() as { code: number; msg?: string };
+    if (data.code !== 0) {
+      console.error(`[FeishuBot] Send failed: ${data.msg}`);
+    }
+  } catch (err) {
+    console.error('[FeishuBot] Reply error:', err);
+  }
 }
