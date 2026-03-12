@@ -1,6 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { HashRouter, Routes, Route } from 'react-router';
-import { ErrorBoundary } from './components/ErrorBoundary';
+import { ErrorBoundary, FeatureErrorBoundary } from './components/ErrorBoundary';
 import { MainLayout } from './layouts/MainLayout';
 
 // Critical path — loaded eagerly (conversation is the default page)
@@ -44,34 +44,34 @@ export function App() {
             <Route element={<MainLayout />}>
               <Route index element={<ConversationPage />} />
               <Route path="connectors" element={
-                <Suspense fallback={<PageFallback />}><ConnectorsPage /></Suspense>
+                <FeatureErrorBoundary name="Connectors"><Suspense fallback={<PageFallback />}><ConnectorsPage /></Suspense></FeatureErrorBoundary>
               } />
               <Route path="memories" element={
-                <Suspense fallback={<PageFallback />}><MemoryPage /></Suspense>
+                <FeatureErrorBoundary name="Memory"><Suspense fallback={<PageFallback />}><MemoryPage /></Suspense></FeatureErrorBoundary>
               } />
               <Route path="skills" element={
-                <Suspense fallback={<PageFallback />}><SkillsPanel /></Suspense>
+                <FeatureErrorBoundary name="Skills"><Suspense fallback={<PageFallback />}><SkillsPanel /></Suspense></FeatureErrorBoundary>
               } />
               <Route path="workstyle" element={
-                <Suspense fallback={<PageFallback />}><WorkstyleEditor /></Suspense>
+                <FeatureErrorBoundary name="Workstyle"><Suspense fallback={<PageFallback />}><WorkstyleEditor /></Suspense></FeatureErrorBoundary>
               } />
               <Route path="scheduler" element={
-                <Suspense fallback={<PageFallback />}><SchedulerPage /></Suspense>
+                <FeatureErrorBoundary name="Scheduler"><Suspense fallback={<PageFallback />}><SchedulerPage /></Suspense></FeatureErrorBoundary>
               } />
               <Route path="notifications" element={
-                <Suspense fallback={<PageFallback />}><NotificationCenter /></Suspense>
+                <FeatureErrorBoundary name="Notifications"><Suspense fallback={<PageFallback />}><NotificationCenter /></Suspense></FeatureErrorBoundary>
               } />
               <Route path="billing" element={
-                <Suspense fallback={<PageFallback />}><BillingPage /></Suspense>
+                <FeatureErrorBoundary name="Billing"><Suspense fallback={<PageFallback />}><BillingPage /></Suspense></FeatureErrorBoundary>
               } />
               <Route path="team" element={
-                <Suspense fallback={<PageFallback />}><TeamPage /></Suspense>
+                <FeatureErrorBoundary name="Team"><Suspense fallback={<PageFallback />}><TeamPage /></Suspense></FeatureErrorBoundary>
               } />
               <Route path="terminal" element={
-                <Suspense fallback={<PageFallback />}><TerminalPage /></Suspense>
+                <FeatureErrorBoundary name="Terminal"><Suspense fallback={<PageFallback />}><TerminalPage /></Suspense></FeatureErrorBoundary>
               } />
               <Route path="settings" element={
-                <Suspense fallback={<PageFallback />}><SettingsPage /></Suspense>
+                <FeatureErrorBoundary name="Settings"><Suspense fallback={<PageFallback />}><SettingsPage /></Suspense></FeatureErrorBoundary>
               } />
             </Route>
           </Routes>
