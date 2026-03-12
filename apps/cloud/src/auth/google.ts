@@ -1,5 +1,8 @@
 import type { Context } from 'hono';
+import { eq } from 'drizzle-orm';
 import { signJwt } from './jwt';
+import { getDb } from '../db';
+import { users } from '../db/schema';
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
@@ -62,8 +65,31 @@ export async function googleCallback(c: Context): Promise<Response> {
       picture: string;
     };
 
-    // TODO: upsert user in database
+    // Upsert user in database
     const userId = `user_${googleUser.id}`;
+    const db = getDb();
+
+    const [existing] = await db.select().from(users).where(eq(users.id, userId));
+    let plan = 'free';
+
+    if (existing) {
+      // Update existing user
+      await db.update(users).set({
+        name: googleUser.name,
+        avatarUrl: googleUser.picture,
+        updatedAt: new Date(),
+      }).where(eq(users.id, userId));
+      plan = existing.plan;
+    } else {
+      // Create new user
+      await db.insert(users).values({
+        id: userId,
+        email: googleUser.email,
+        name: googleUser.name,
+        avatarUrl: googleUser.picture,
+        plan: 'free',
+      });
+    }
 
     // Issue JoWork JWT
     const jwt = signJwt({
@@ -71,7 +97,7 @@ export async function googleCallback(c: Context): Promise<Response> {
       email: googleUser.email,
       name: googleUser.name,
       avatar_url: googleUser.picture,
-      plan: 'free',
+      plan,
     });
 
     // Redirect back to desktop app with token
@@ -83,14 +109,46 @@ export async function googleCallback(c: Context): Promise<Response> {
 }
 
 /**
- * Refresh JWT token.
+ * Refresh JWT token. Validates the old token is still recent, looks up user, issues new JWT.
  */
 export async function refreshToken(c: Context): Promise<Response> {
-  const { refreshToken } = await c.req.json();
-  if (!refreshToken) {
-    return c.json({ error: 'Missing refresh token' }, 400);
+  const { token } = await c.req.json();
+  if (!token) {
+    return c.json({ error: 'Missing token' }, 400);
   }
 
-  // TODO: validate refresh token, look up user, issue new JWT
-  return c.json({ error: 'Not implemented' }, 501);
+  // Decode without full verification (we accept recently expired tokens for refresh)
+  try {
+    const [, body] = (token as string).split('.');
+    if (!body) return c.json({ error: 'Invalid token format' }, 400);
+
+    const payload = JSON.parse(Buffer.from(body, 'base64url').toString('utf-8')) as {
+      sub: string;
+      exp: number;
+    };
+
+    // Only allow refresh within 30 days of expiry
+    const now = Math.floor(Date.now() / 1000);
+    if (payload.exp < now - 30 * 24 * 60 * 60) {
+      return c.json({ error: 'Token too old to refresh' }, 401);
+    }
+
+    const db = getDb();
+    const [user] = await db.select().from(users).where(eq(users.id, payload.sub));
+    if (!user) {
+      return c.json({ error: 'User not found' }, 404);
+    }
+
+    const newJwt = signJwt({
+      sub: user.id,
+      email: user.email,
+      name: user.name ?? undefined,
+      avatar_url: user.avatarUrl ?? undefined,
+      plan: user.plan,
+    });
+
+    return c.json({ token: newJwt });
+  } catch {
+    return c.json({ error: 'Invalid token' }, 400);
+  }
 }
