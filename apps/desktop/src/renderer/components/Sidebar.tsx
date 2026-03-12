@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useLocation } from 'react-router';
+import { SessionList } from '../features/conversation/SessionList';
 
 const navItems = [
   { path: '/', key: 'sidebar.conversation', icon: '💬' },
@@ -11,11 +12,12 @@ export function Sidebar() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
+  const isConversation = location.pathname === '/';
 
   return (
-    <div className="flex flex-col h-full px-3 py-2">
+    <div className="flex flex-col h-full py-2">
       {/* Brand */}
-      <div className="flex items-center gap-2 px-2 mb-4">
+      <div className="flex items-center gap-2 px-5 mb-3">
         <span className="text-lg font-bold text-accent">JoWork</span>
         <span className="text-xs px-1.5 py-0.5 rounded bg-accent/10 text-accent">
           {t('sidebar.personal')}
@@ -23,7 +25,7 @@ export function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex flex-col gap-0.5 flex-1">
+      <nav className="flex flex-col gap-0.5 px-3 mb-2">
         {navItems.map((item) => {
           const active = location.pathname === item.path;
           return (
@@ -40,8 +42,18 @@ export function Sidebar() {
         })}
       </nav>
 
+      {/* Session list (only on conversation page) */}
+      {isConversation && (
+        <div className="flex-1 min-h-0 border-t border-border pt-2">
+          <SessionList />
+        </div>
+      )}
+
+      {/* Spacer when not on conversation page */}
+      {!isConversation && <div className="flex-1" />}
+
       {/* Bottom */}
-      <div className="text-xs text-text-secondary px-2 py-2 border-t border-border">
+      <div className="text-xs text-text-secondary px-5 py-2 border-t border-border">
         JoWork v0.0.1
       </div>
     </div>
