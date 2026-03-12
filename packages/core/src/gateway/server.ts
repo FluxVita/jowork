@@ -102,6 +102,8 @@ export function startGateway(opts: GatewayOptions = {}) {
 
     let allowOrigin = false;
     if (origin && CORS_ORIGINS.includes(origin)) allowOrigin = true;
+    // tauri://localhost 始终允许（Tauri 桌面 App 本地优先架构）
+    if (origin === 'tauri://localhost') allowOrigin = true;
     if (IS_DEV && localDevOrigin) allowOrigin = true;
     if (IS_DEV && CORS_ALLOW_DEV_ALL && origin) allowOrigin = true;
 

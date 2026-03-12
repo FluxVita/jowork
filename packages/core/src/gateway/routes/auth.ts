@@ -799,16 +799,10 @@ router.get('/google/callback', async (req, res) => {
     const token = signToken(user, '30d');
     log.info('User logged in via Google OAuth', { user_id: user.user_id, email: user.email, isNew });
 
-    // 4. 返回 HTML，写入 localStorage 并跳转
-    const tokenKey = config.token_storage_key || 'jowork_token';
-    res.send(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Logging in...</title></head><body>
-      <script>
-        localStorage.setItem(${JSON.stringify(tokenKey)}, ${JSON.stringify(token)});
-        localStorage.setItem(${JSON.stringify(tokenKey + '_user')}, ${JSON.stringify(JSON.stringify(user))});
-        location.href = ${isNew ? '"/onboarding.html"' : '"/shell.html"'};
-      </script>
-      <p style="font-family:system-ui;color:#888;text-align:center;padding:40px">Signing you in...</p>
-    </body></html>`);
+    // 4. 通过 URL 参数传递 token（兼容 Tauri 的 localStorage 隔离）
+    const dest = isNew ? '/onboarding.html' : '/shell.html';
+    const sep = dest.includes('?') ? '&' : '?';
+    res.redirect(`${dest}${sep}token=${encodeURIComponent(token)}`);
   } catch (err) {
     log.error('Google OAuth callback error', err);
     res.redirect('/signup.html?error=google_auth_failed');

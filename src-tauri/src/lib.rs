@@ -21,7 +21,9 @@ use tauri_plugin_store::StoreExt;
 const DEFAULT_GATEWAY_URL: &str = "https://gateway.fluxvita.work/shell.html";
 const HEALTH_CHECK_INTERVAL_SECS: u64 = 30;
 const STORE_KEY_GATEWAY_URL: &str = "gateway_url";
-const OFFLINE_PAGE: &str = "tauri://localhost/offline.html";
+const STORE_KEY_AUTH_TOKEN: &str = "auth_token";
+const OFFLINE_PAGE: &str = "tauri://localhost/tauri-offline.html";
+const SHELL_PAGE: &str = "tauri://localhost/shell.html";
 const LOCAL_PROXY_PORT: u16 = 19801;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -173,6 +175,19 @@ async fn proxy_handle_conn(mut client: tokio::net::TcpStream, target_base: Strin
         }
     }
 
+    // CORS 预检请求：直接返回 204（tauri://localhost → 本地代理跨域）
+    if method.eq_ignore_ascii_case("OPTIONS") {
+        let cors = "HTTP/1.1 204 No Content\r\n\
+            Access-Control-Allow-Origin: tauri://localhost\r\n\
+            Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS\r\n\
+            Access-Control-Allow-Headers: Content-Type, Authorization, X-CSRF-Token\r\n\
+            Access-Control-Allow-Credentials: true\r\n\
+            Access-Control-Max-Age: 86400\r\n\
+            Content-Length: 0\r\n\r\n";
+        let _ = client.write_all(cors.as_bytes()).await;
+        return;
+    }
+
     // WebSocket：建立 TLS 隧道透传
     if is_ws {
         proxy_ws_tunnel(client, headers, path, target_base).await;
@@ -211,7 +226,7 @@ async fn proxy_handle_conn(mut client: tokio::net::TcpStream, target_base: Strin
         Err(e) => {
             let msg = format!("Proxy error: {e}");
             let _ = client.write_all(
-                format!("HTTP/1.1 502 Bad Gateway\r\nContent-Type: text/plain\r\nContent-Length: {}\r\n\r\n{}", msg.len(), msg).as_bytes()
+                format!("HTTP/1.1 502 Bad Gateway\r\nContent-Type: text/plain\r\nAccess-Control-Allow-Origin: tauri://localhost\r\nAccess-Control-Allow-Credentials: true\r\nContent-Length: {}\r\n\r\n{}", msg.len(), msg).as_bytes()
             ).await;
             return;
         }
@@ -234,6 +249,9 @@ async fn proxy_handle_conn(mut client: tokio::net::TcpStream, target_base: Strin
             resp_head.push_str(&format!("{}: {}\r\n", name, v));
         }
     }
+    // CORS headers（tauri://localhost → 代理跨域）
+    resp_head.push_str("Access-Control-Allow-Origin: tauri://localhost\r\n");
+    resp_head.push_str("Access-Control-Allow-Credentials: true\r\n");
     resp_head.push_str("Transfer-Encoding: chunked\r\n\r\n");
 
     if client.write_all(resp_head.as_bytes()).await.is_err() { return; }
@@ -437,6 +455,48 @@ async fn do_health_check(gateway_url: &str) -> HealthStatus {
     result
 }
 
+// ── Token 持久化 ──
+
+fn persist_token_to_store(app: &AppHandle, token: &str) {
+    if let Ok(store) = app.store("settings.json") {
+        store.set(STORE_KEY_AUTH_TOKEN, serde_json::json!(token));
+        let _ = store.save();
+        log_event("[token] 已持久化");
+    }
+}
+
+fn read_persisted_token(app: &AppHandle) -> String {
+    app.store("settings.json").ok()
+        .and_then(|s| s.get(STORE_KEY_AUTH_TOKEN))
+        .and_then(|v| v.as_str().map(|s| s.to_string()))
+        .unwrap_or_default()
+}
+
+fn extract_token_from_url(url: &Url) -> Option<String> {
+    // 从 URL query 或 fragment 中提取 token 参数
+    for source in [url.query(), url.fragment()] {
+        if let Some(params) = source {
+            for pair in params.split('&') {
+                if let Some(val) = pair.strip_prefix("token=") {
+                    return Some(val.to_string());
+                }
+            }
+        }
+    }
+    None
+}
+
+/// 构建 initialization_script：注入代理地址和持久化 token
+fn build_init_script(persisted_token: &str) -> String {
+    let escaped = persisted_token.replace('\\', "\\\\").replace('\'', "\\'");
+    format!(r#"(function(){{
+window.__TAURI_PROXY_BASE__='http://127.0.0.1:{}';
+window.__TOKEN_STORAGE_KEY__='fluxvita_token';
+var pt='{}';
+if(pt){{try{{if(!localStorage.getItem('fluxvita_token'))localStorage.setItem('fluxvita_token',pt)}}catch(e){{}}}}
+}})();"#, LOCAL_PROXY_PORT, escaped)
+}
+
 fn navigate_to(app: &AppHandle, window_label: &str, url_str: &str) {
     log_event(&format!("[navigate] -> {}", url_str));
     if let Some(win) = app.get_webview_window(window_label) {
@@ -450,9 +510,15 @@ fn navigate_to(app: &AppHandle, window_label: &str, url_str: &str) {
     }
 }
 
-fn create_main_window(app: &AppHandle, url: Url) -> tauri::Result<WebviewWindow> {
+fn create_main_window(app: &AppHandle) -> tauri::Result<WebviewWindow> {
+    let persisted_token = read_persisted_token(app);
+    let init_script = build_init_script(&persisted_token);
     let app_for_nav = app.clone();
-    let builder = WebviewWindowBuilder::new(app, "main", WebviewUrl::External(url))
+    let app_for_token = app.clone();
+    let proxy_prefix = format!("http://127.0.0.1:{}", LOCAL_PROXY_PORT);
+
+    let builder = WebviewWindowBuilder::new(app, "main", WebviewUrl::App("shell.html".into()))
+        .initialization_script(&init_script)
         .title("")
         .inner_size(1200.0, 800.0)
         .min_inner_size(800.0, 600.0)
@@ -460,8 +526,28 @@ fn create_main_window(app: &AppHandle, url: Url) -> tauri::Result<WebviewWindow>
         .visible(true)
         .on_navigation(move |url| {
             let url_str = url.as_str();
-            // 拦截飞书 OAuth 回调：无论 redirect_uri 指向哪个 HTTPS 地址，
-            // 一律转发到本地 HTTP 代理，避免 WKWebView 因自签名证书拒绝跳转
+
+            // ① 拦截代理 origin 的页面导航 → 回到 tauri://localhost
+            // （OAuth 完成后 gateway 302 到 proxy/shell.html?token=xxx）
+            if url_str.starts_with(&proxy_prefix) {
+                let path = &url_str[proxy_prefix.len()..];
+                if path.starts_with("/shell.html") || path.starts_with("/onboarding.html") {
+                    // 提取并持久化 token
+                    if let Some(token) = extract_token_from_url(url) {
+                        persist_token_to_store(&app_for_token, &token);
+                    }
+                    let tauri_url = format!("tauri://localhost{}", path);
+                    log_event(&format!("[nav-intercept] proxy -> tauri: {}", tauri_url));
+                    let handle = app_for_nav.clone();
+                    tauri::async_runtime::spawn(async move {
+                        tokio::time::sleep(Duration::from_millis(50)).await;
+                        navigate_to(&handle, "main", &tauri_url);
+                    });
+                    return false;
+                }
+            }
+
+            // ② 拦截 OAuth 回调 → 转发到本地代理
             if url_str.contains("/api/auth/oauth/callback") && url_str.contains("code=")
                 && !url_str.starts_with("http://127.0.0.1") {
                 let query = url.query().map(|q| format!("?{}", q)).unwrap_or_default();
@@ -472,7 +558,7 @@ fn create_main_window(app: &AppHandle, url: Url) -> tauri::Result<WebviewWindow>
                     tokio::time::sleep(Duration::from_millis(50)).await;
                     navigate_to(&handle, "main", &proxy_url);
                 });
-                return false; // 阻止直接导航到 HTTPS（自签名证书）
+                return false;
             }
             true
         });
@@ -494,8 +580,8 @@ fn show_or_create_main_window(app: &AppHandle, _gateway_url: &str) {
     if let Some(win) = app.get_webview_window("main") {
         let _ = win.show();
         let _ = win.set_focus();
-    } else if let Ok(parsed) = proxy_nav_url().parse::<Url>() {
-        let _ = create_main_window(app, parsed);
+    } else {
+        let _ = create_main_window(app);
     }
 }
 
@@ -504,7 +590,7 @@ fn show_settings_window(app: &AppHandle) {
         let _ = win.show();
         let _ = win.set_focus();
     } else {
-        let _ = WebviewWindowBuilder::new(app, "settings", WebviewUrl::App("settings.html".into()))
+        let _ = WebviewWindowBuilder::new(app, "settings", WebviewUrl::App("app-settings.html".into()))
             .title("FluxVita 设置")
             .inner_size(520.0, 420.0)
             .resizable(false)
@@ -1152,15 +1238,21 @@ fn save_settings(app: AppHandle, url: String) -> Result<String, String> {
     store.set(STORE_KEY_GATEWAY_URL, serde_json::json!(url));
     store.save().map_err(|e| format!("Save error: {e}"))?;
 
-    // 更新代理目标，并将主窗口导航到本地代理 URL
+    // 更新代理目标，并将主窗口导航回本地 shell.html
     set_proxy_target(&url);
     if let Some(win) = app.get_webview_window("main") {
-        if let Ok(parsed) = proxy_nav_url().parse::<Url>() {
+        if let Ok(parsed) = SHELL_PAGE.parse::<Url>() {
             let _ = win.navigate(parsed);
         }
     }
 
     Ok("saved".into())
+}
+
+#[tauri::command]
+fn persist_token(app: AppHandle, token: String) -> Result<(), String> {
+    persist_token_to_store(&app, &token);
+    Ok(())
 }
 
 #[tauri::command]
@@ -1202,6 +1294,7 @@ pub fn run() {
             save_settings,
             check_health,
             get_proxy_url,
+            persist_token,
             install_update,
             open_settings,
             read_log,
@@ -1269,10 +1362,10 @@ pub fn run() {
             // ── 启动本地 PTY WebSocket 服务（极客模式本地终端）──
             tauri::async_runtime::spawn(run_local_pty_ws());
 
-            // ── 始终先显示 offline.html（避免黑屏），由页面自行检测并跳转 ──
-            log_event("[startup] 加载 offline.html，等待页面检测连接");
-            let initial_url: Url = OFFLINE_PAGE.parse().unwrap();
-            let win = create_main_window(&handle, initial_url)?;
+            // ── 本地优先：直接加载 shell.html（从 frontendDist 本地文件） ──
+            // UI 瞬间可见，API 数据由 tauri-bridge.js 通过本地代理异步拉取
+            log_event("[startup] 加载本地 shell.html（本地优先模式）");
+            let win = create_main_window(&handle)?;
 
             // ── 系统托盘 ──
             let show_item = MenuItemBuilder::with_id("show", "显示窗口").build(app)?;
@@ -1341,13 +1434,10 @@ pub fn run() {
                 }
             });
 
-            // ── 健康检查轮询 ──
-            // is_offline 初始为 true：首次检测在线后从 Rust 端跳转到 gateway。
-            // was_online_once: 一旦 shell.html 加载过，后续断连交给 JS banner 处理，
-            // 不再从 Rust 层导航到 offline.html（避免丢失用户页面状态）。
+            // ── 健康检查轮询（仅 emit 事件，不导航）──
+            // 本地优先模式下 shell.html 已从本地加载，连接状态由 JS 前端处理。
+            // Rust 只负责后台轮询并 emit health-status 事件。
             let health_handle = app.handle().clone();
-            let is_offline = Arc::new(Mutex::new(true));
-            let was_online_once = Arc::new(Mutex::new(false));
             tauri::async_runtime::spawn(async move {
                 let mut consecutive_failures: u32 = 0;
                 loop {
@@ -1356,28 +1446,10 @@ pub fn run() {
                     let status = do_health_check(&s.gateway_url).await;
                     let _ = health_handle.emit("health-status", &status);
 
-                    {
-                        let mut offline = is_offline.lock().unwrap();
-                        let mut ever_online = was_online_once.lock().unwrap();
-
-                        if status.online {
-                            consecutive_failures = 0;
-                            if *offline {
-                                *offline = false;
-                                *ever_online = true;
-                                log_event("[poll] Gateway 在线，跳转本地代理");
-                                navigate_to(&health_handle, "main", &proxy_nav_url());
-                            }
-                        } else {
-                            consecutive_failures += 1;
-                            // 仅在从未上线过（首次启动）且连续失败 3 次时才跳离线页
-                            // 一旦 shell.html 加载过，断连由 JS banner 处理
-                            if !*offline && !*ever_online && consecutive_failures >= 3 {
-                                *offline = true;
-                                log_event(&format!("[poll] Gateway 下线（连续 {} 次失败），跳转离线页", consecutive_failures));
-                                navigate_to(&health_handle, "main", OFFLINE_PAGE);
-                            }
-                        }
+                    if status.online {
+                        consecutive_failures = 0;
+                    } else {
+                        consecutive_failures += 1;
                     }
 
                     // 失败时 5s 快速重试，在线时正常 30s

@@ -4,7 +4,7 @@
   "identifier": "com.fluxvita.gateway",
   "version": "0.1.1",
   "build": {
-    "frontendDist": "../tauri-ui"
+    "frontendDist": "../public"
   },
   "app": {
     "withGlobalTauri": true,
