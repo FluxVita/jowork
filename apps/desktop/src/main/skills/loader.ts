@@ -1,4 +1,4 @@
-import { readdir, readFile, stat } from 'fs/promises';
+import { readdir, readFile, writeFile, mkdir, unlink, stat } from 'fs/promises';
 import { join, basename, extname } from 'path';
 import { homedir } from 'os';
 import type { Skill, SkillVariable } from './types';
@@ -99,7 +99,7 @@ export class SkillLoader {
   }
 
   private async loadBuiltinSkills(): Promise<Skill[]> {
-    return [
+    const hardcoded: Skill[] = [
       {
         id: 'jowork:weekly-report',
         name: 'Weekly Report',
@@ -129,5 +129,76 @@ export class SkillLoader {
         promptTemplate: 'Based on my recent activity, prepare my daily standup update:\n- What I did yesterday\n- What I plan to do today\n- Any blockers\nKeep it concise (3-5 bullet points total).',
       },
     ];
+
+    // Also load from templates directory
+    const templateSkills = await this.loadTemplateSkills();
+    return [...hardcoded, ...templateSkills];
+  }
+
+  private async loadTemplateSkills(): Promise<Skill[]> {
+    const dir = join(__dirname, 'templates');
+    const skills: Skill[] = [];
+    try {
+      const entries = await readdir(dir);
+      for (const entry of entries) {
+        if (!entry.endsWith('.json')) continue;
+        try {
+          const content = await readFile(join(dir, entry), 'utf-8');
+          const data = JSON.parse(content) as Skill;
+          skills.push({ ...data, source: 'jowork' });
+        } catch {
+          // skip invalid template files
+        }
+      }
+    } catch {
+      // templates directory doesn't exist
+    }
+    return skills;
+  }
+
+  /** Save a user-created custom skill as .md in ~/.jowork/skills/ */
+  async saveCustomSkill(skill: Omit<Skill, 'id' | 'source'>): Promise<Skill> {
+    const dir = join(homedir(), '.jowork', 'skills');
+    await mkdir(dir, { recursive: true });
+
+    const slug = skill.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    const filePath = join(dir, `${slug}.md`);
+
+    // Build markdown with frontmatter
+    const lines = ['---'];
+    lines.push(`description: ${skill.description}`);
+    lines.push(`trigger: ${skill.trigger}`);
+    lines.push(`type: ${skill.type}`);
+    if (skill.variables?.length) {
+      lines.push('variables:');
+      for (const v of skill.variables) {
+        lines.push(`  - name: ${v.name}`);
+        lines.push(`    label: ${v.label}`);
+        lines.push(`    type: ${v.type}`);
+        if (v.required) lines.push(`    required: true`);
+        if (v.default) lines.push(`    default: ${v.default}`);
+        if (v.options?.length) lines.push(`    options: ${v.options.join(', ')}`);
+      }
+    }
+    lines.push('---');
+    lines.push('');
+    lines.push(skill.promptTemplate ?? '');
+
+    await writeFile(filePath, lines.join('\n'), 'utf-8');
+
+    return {
+      ...skill,
+      id: `community:${slug}`,
+      source: 'community',
+      filePath,
+    };
+  }
+
+  /** Delete a custom skill file */
+  async deleteCustomSkill(skillId: string): Promise<void> {
+    const skills = await this.loadAll();
+    const skill = skills.find((s) => s.id === skillId);
+    if (!skill?.filePath) throw new Error('Cannot delete: skill has no file path');
+    await unlink(skill.filePath);
   }
 }

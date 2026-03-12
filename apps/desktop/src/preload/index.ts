@@ -95,6 +95,9 @@ const api = {
     list: () => ipcRenderer.invoke('skill:list'),
     run: (skillId: string, vars: Record<string, string>, sessionId?: string) =>
       ipcRenderer.invoke('skill:run', skillId, vars, sessionId) as Promise<void>,
+    save: (skill: { name: string; description: string; trigger: string; type: 'simple' | 'workflow'; promptTemplate?: string; variables?: Array<{ name: string; label: string; type: 'text' | 'select' | 'multiline'; required?: boolean; default?: string; options?: string[] }>; steps?: Array<{ id: string; prompt: string; condition?: string; outputVar?: string }> }) =>
+      ipcRenderer.invoke('skill:save', skill),
+    delete: (skillId: string) => ipcRenderer.invoke('skill:delete', skillId) as Promise<void>,
   },
 
   // ── Settings ──

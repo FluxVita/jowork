@@ -1,0 +1,23 @@
+{
+  "id": "jowork:explain-code",
+  "name": "Explain Code",
+  "description": "Get a clear explanation of a code snippet with complexity analysis",
+  "trigger": "/explain",
+  "type": "simple",
+  "promptTemplate": "Explain this code in detail:\n\n```{{language}}\n{{code}}\n```\n\nInclude:\n1. What the code does (high-level summary)\n2. Step-by-step walkthrough\n3. Time/space complexity\n4. Potential edge cases or gotchas",
+  "variables": [
+    {
+      "name": "code",
+      "label": "Code Snippet",
+      "type": "multiline",
+      "required": true
+    },
+    {
+      "name": "language",
+      "label": "Language",
+      "type": "select",
+      "default": "typescript",
+      "options": ["typescript", "javascript", "python", "go", "rust", "java", "other"]
+    }
+  ]
+}

@@ -292,6 +292,14 @@ export function setupIPC(): void {
     return skillLoader.loadAll();
   });
 
+  ipcMain.handle('skill:save', async (_e, skill: Parameters<typeof skillLoader.saveCustomSkill>[0]) => {
+    return skillLoader.saveCustomSkill(skill);
+  });
+
+  ipcMain.handle('skill:delete', async (_e, skillId: string) => {
+    return skillLoader.deleteCustomSkill(skillId);
+  });
+
   ipcMain.handle('skill:run', async (event, skillId: string, vars: Record<string, string>, sessionId?: string) => {
     const skills = await skillLoader.loadAll();
     const skill = skills.find((s) => s.id === skillId);

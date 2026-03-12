@@ -1,0 +1,34 @@
+{
+  "id": "jowork:draft-email",
+  "name": "Draft Email",
+  "description": "Draft a professional email based on key points and tone",
+  "trigger": "/email",
+  "type": "simple",
+  "promptTemplate": "Draft a professional email with the following details:\n\nRecipient: {{recipient}}\nSubject: {{subject}}\nKey Points:\n{{key_points}}\nTone: {{tone}}\n\nWrite a clear, concise email that covers all key points. Include a subject line suggestion if none provided.",
+  "variables": [
+    {
+      "name": "recipient",
+      "label": "Recipient",
+      "type": "text",
+      "required": true
+    },
+    {
+      "name": "subject",
+      "label": "Subject",
+      "type": "text"
+    },
+    {
+      "name": "key_points",
+      "label": "Key Points",
+      "type": "multiline",
+      "required": true
+    },
+    {
+      "name": "tone",
+      "label": "Tone",
+      "type": "select",
+      "default": "professional",
+      "options": ["professional", "friendly", "formal", "urgent", "casual"]
+    }
+  ]
+}

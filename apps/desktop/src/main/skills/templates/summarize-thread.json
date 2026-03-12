@@ -1,0 +1,16 @@
+{
+  "id": "jowork:summarize-thread",
+  "name": "Summarize Thread",
+  "description": "Summarize a long conversation thread into key points and action items",
+  "trigger": "/summarize",
+  "type": "simple",
+  "promptTemplate": "Summarize the following conversation thread:\n\n{{thread_content}}\n\nProvide:\n1. Key Discussion Points (3-5 bullets)\n2. Decisions Made\n3. Action Items (with owners if mentioned)\n4. Open Questions",
+  "variables": [
+    {
+      "name": "thread_content",
+      "label": "Thread Content",
+      "type": "multiline",
+      "required": true
+    }
+  ]
+}

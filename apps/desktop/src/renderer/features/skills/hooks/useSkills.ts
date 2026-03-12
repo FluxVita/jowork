@@ -17,6 +17,8 @@ export interface SkillInfo {
   }>;
 }
 
+export type SkillDraft = Omit<SkillInfo, 'id' | 'source'> & { promptTemplate?: string; steps?: Array<{ id: string; prompt: string; condition?: string; outputVar?: string }> };
+
 interface SkillStore {
   skills: SkillInfo[];
   isLoading: boolean;
@@ -26,9 +28,11 @@ interface SkillStore {
   loadSkills: () => Promise<void>;
   selectSkill: (skill: SkillInfo | null) => void;
   runSkill: (skillId: string, vars: Record<string, string>, sessionId?: string) => Promise<void>;
+  saveSkill: (draft: SkillDraft) => Promise<void>;
+  deleteSkill: (skillId: string) => Promise<void>;
 }
 
-export const useSkillStore = create<SkillStore>((set) => ({
+export const useSkillStore = create<SkillStore>((set, get) => ({
   skills: [],
   isLoading: false,
   activeSkill: null,
@@ -53,5 +57,18 @@ export const useSkillStore = create<SkillStore>((set) => ({
     } finally {
       set({ isRunning: false });
     }
+  },
+
+  saveSkill: async (draft) => {
+    await window.jowork.skill.save(draft);
+    await get().loadSkills();
+  },
+
+  deleteSkill: async (skillId) => {
+    await window.jowork.skill.delete(skillId);
+    set((s) => ({
+      skills: s.skills.filter((sk) => sk.id !== skillId),
+      activeSkill: s.activeSkill?.id === skillId ? null : s.activeSkill,
+    }));
   },
 }));
