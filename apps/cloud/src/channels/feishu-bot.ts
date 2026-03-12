@@ -1,5 +1,7 @@
 import type { Context } from 'hono';
 import { routeTask, type RouteDecision } from './router';
+import { connections } from './connections';
+import { CloudExecutor } from '../scheduler/cloud-executor';
 
 interface FeishuEvent {
   schema: string;
@@ -17,6 +19,13 @@ interface FeishuEvent {
       chat_id: string;
     };
   };
+}
+
+// Map Feishu open_id to JoWork userId (simple mapping; in production use DB lookup)
+const FEISHU_USER_MAP: Record<string, string> = {};
+
+function resolveUserId(openId: string): string | null {
+  return FEISHU_USER_MAP[openId] ?? null;
 }
 
 /**
@@ -52,23 +61,52 @@ export async function handleFeishuWebhook(c: Context): Promise<Response> {
     return c.json({ ok: true });
   }
 
+  // Resolve JoWork user from Feishu sender
+  const userId = resolveUserId(senderId);
+  const userOnline = userId ? connections.isOnline(userId) : false;
+
   // Route decision
   const decision: RouteDecision = routeTask({
     action: inferAction(text),
     requiresLocalAccess: needsLocalAccess(text),
-    userOnline: false, // TODO: check WebSocket connection status
+    userOnline,
   });
 
-  // Queue response based on routing
+  // Handle based on routing decision
   switch (decision) {
-    case 'cloud':
-      // TODO: execute via cloud engine and reply
+    case 'cloud': {
+      // Execute via cloud engine
       await replyToFeishu(senderId, message.chat_id, 'Processing your request...');
+      try {
+        const executor = new CloudExecutor();
+        const result = await executor.executeSkill(userId ?? 'anonymous', {
+          skillId: 'feishu-chat',
+          prompt: text,
+          systemPrompt: 'You are JoWork, a helpful AI assistant responding via Feishu. Be concise.',
+        });
+        await replyToFeishu(senderId, message.chat_id, result);
+      } catch (err) {
+        await replyToFeishu(senderId, message.chat_id, `Error: ${String(err)}`);
+      }
       break;
-    case 'local':
-      // TODO: forward via WebSocket
-      await replyToFeishu(senderId, message.chat_id, 'Forwarding to your local JoWork...');
+    }
+    case 'local': {
+      // Forward to connected desktop via WebSocket
+      if (userId) {
+        const forwarded = connections.forward(userId, {
+          type: 'feishu_message',
+          payload: { text, chatId: message.chat_id, senderId },
+        });
+        if (forwarded) {
+          await replyToFeishu(senderId, message.chat_id, 'Forwarded to your local JoWork.');
+        } else {
+          await replyToFeishu(senderId, message.chat_id, 'Your desktop appears offline. Task queued.');
+        }
+      } else {
+        await replyToFeishu(senderId, message.chat_id, 'User not linked. Please link your Feishu account in JoWork settings.');
+      }
       break;
+    }
     case 'queue':
       await replyToFeishu(senderId, message.chat_id, 'Your computer is offline. Task queued — will execute when you come back online.');
       break;
