@@ -1,7 +1,12 @@
+import { useState } from 'react';
 import { useNotificationStore } from './hooks/useNotifications';
+import { NotificationRules } from './NotificationRules';
+
+type Tab = 'inbox' | 'rules';
 
 export function NotificationCenter() {
   const { notifications, unreadCount, markRead, markAllRead, clear } = useNotificationStore();
+  const [tab, setTab] = useState<Tab>('inbox');
 
   return (
     <div className="flex-1 p-8 overflow-y-auto">
@@ -16,25 +21,44 @@ export function NotificationCenter() {
             )}
           </h1>
           <div className="flex items-center gap-2">
-            <button
-              onClick={markAllRead}
-              className="text-xs text-text-secondary hover:text-accent transition-colors"
-            >
-              Mark all read
-            </button>
-            <button
-              onClick={clear}
-              className="text-xs text-text-secondary hover:text-red-400 transition-colors"
-            >
-              Clear all
-            </button>
+            {tab === 'inbox' && (
+              <>
+                <button
+                  onClick={markAllRead}
+                  className="text-xs text-text-secondary hover:text-accent transition-colors"
+                >
+                  Mark all read
+                </button>
+                <button
+                  onClick={clear}
+                  className="text-xs text-text-secondary hover:text-red-400 transition-colors"
+                >
+                  Clear all
+                </button>
+              </>
+            )}
           </div>
         </div>
-        <p className="text-sm text-text-secondary mb-4">
-          In-app notifications from scheduled tasks and connectors.
-        </p>
 
-        {notifications.length === 0 ? (
+        <div className="flex items-center gap-4 mb-4 border-b border-border">
+          {(['inbox', 'rules'] as const).map((t) => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              className={`pb-2 text-sm transition-colors border-b-2 -mb-px ${
+                tab === t
+                  ? 'border-accent text-text-primary font-medium'
+                  : 'border-transparent text-text-secondary hover:text-text-primary'
+              }`}
+            >
+              {t === 'inbox' ? 'Inbox' : 'Rules'}
+            </button>
+          ))}
+        </div>
+
+        {tab === 'rules' ? (
+          <NotificationRules />
+        ) : notifications.length === 0 ? (
           <div className="text-center py-12 text-text-secondary text-sm">
             <p>No notifications.</p>
           </div>

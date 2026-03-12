@@ -43,11 +43,12 @@ export function NotificationRules() {
   };
 
   return (
-    <div className="flex-1 p-8 overflow-y-auto">
-      <div className="max-w-3xl">
-        <div className="flex items-center justify-between mb-1">
-          <h1 className="text-xl font-semibold">Notification Rules</h1>
-          <button
+    <div>
+      <div className="flex items-center justify-between mb-1">
+        <p className="text-sm text-text-secondary">
+          Configure when and how you receive notifications from connectors.
+        </p>
+        <button
             onClick={() => {
               setEditingRule(null);
               setShowEditor(!showEditor);
@@ -56,12 +57,9 @@ export function NotificationRules() {
           >
             {showEditor ? 'Cancel' : '+ New Rule'}
           </button>
-        </div>
-        <p className="text-sm text-text-secondary mb-4">
-          Configure when and how you receive notifications from connectors.
-        </p>
+      </div>
 
-        {showEditor && (
+      {showEditor && (
           <div className="mb-4">
             <RuleEditor
               initial={editingRule ?? undefined}
@@ -125,7 +123,6 @@ export function NotificationRules() {
             ))}
           </div>
         )}
-      </div>
     </div>
   );
 }
