@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { ScheduledTaskInfo } from './hooks/useScheduler';
+import { CronPicker } from './CronPicker';
 
 type TaskType = 'scan' | 'skill' | 'notify';
 
@@ -54,23 +55,16 @@ export function TaskEditor({ initial, onSave, onCancel }: Props) {
           text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-1 focus:ring-accent"
       />
 
-      <div className="flex gap-3">
-        <input
-          type="text"
-          value={cron}
-          onChange={(e) => setCron(e.target.value)}
-          placeholder="Cron expression (e.g. 0 10 * * *)"
-          className="flex-1 px-3 py-2 text-sm font-mono bg-surface-2 border border-border rounded-md
-            text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
-        />
-        <input
-          type="text"
-          value={timezone}
-          onChange={(e) => setTimezone(e.target.value)}
-          className="w-40 px-3 py-2 text-sm bg-surface-2 border border-border rounded-md
-            text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
-        />
-      </div>
+      <CronPicker value={cron} onChange={setCron} />
+
+      <input
+        type="text"
+        value={timezone}
+        onChange={(e) => setTimezone(e.target.value)}
+        placeholder="Timezone (e.g. Asia/Shanghai)"
+        className="w-full px-3 py-2 text-sm bg-surface-2 border border-border rounded-md
+          text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+      />
 
       <div className="flex items-center gap-4">
         {(['scan', 'skill', 'notify'] as const).map((t) => (

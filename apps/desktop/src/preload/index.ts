@@ -100,6 +100,16 @@ const api = {
     delete: (skillId: string) => ipcRenderer.invoke('skill:delete', skillId) as Promise<void>,
   },
 
+  // ── Notification Rules ──
+  notifRules: {
+    list: () => ipcRenderer.invoke('notif-rules:list'),
+    add: (rule: { id: string; connectorId: string; condition: string; customFilter?: string; channels: string[]; silentHours?: { start: string; end: string }; aiSummary: boolean }) =>
+      ipcRenderer.invoke('notif-rules:add', rule) as Promise<void>,
+    update: (id: string, patch: Record<string, unknown>) =>
+      ipcRenderer.invoke('notif-rules:update', id, patch) as Promise<void>,
+    delete: (id: string) => ipcRenderer.invoke('notif-rules:delete', id) as Promise<void>,
+  },
+
   // ── Settings ──
   settings: {
     get: (key: string) => ipcRenderer.invoke('settings:get', key) as Promise<string | null>,

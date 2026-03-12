@@ -324,6 +324,24 @@ export function setupIPC(): void {
     event.sender.send('chat:event', { sessionId, type: 'done' });
   });
 
+  // --- Notification Rules ---
+
+  ipcMain.handle('notif-rules:list', () => {
+    return ruleManager.getRules();
+  });
+
+  ipcMain.handle('notif-rules:add', (_e, rule: Parameters<typeof ruleManager.addRule>[0]) => {
+    ruleManager.addRule(rule);
+  });
+
+  ipcMain.handle('notif-rules:update', (_e, id: string, patch: Record<string, unknown>) => {
+    ruleManager.updateRule(id, patch);
+  });
+
+  ipcMain.handle('notif-rules:delete', (_e, id: string) => {
+    ruleManager.deleteRule(id);
+  });
+
   // --- Settings (key-value) ---
 
   ipcMain.handle('settings:get', (_e, key: string) => {
