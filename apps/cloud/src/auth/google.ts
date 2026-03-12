@@ -112,7 +112,14 @@ export async function googleCallback(c: Context): Promise<Response> {
  * Refresh JWT token. Validates the old token is still recent, looks up user, issues new JWT.
  */
 export async function refreshToken(c: Context): Promise<Response> {
-  const { token } = await c.req.json();
+  let token: string | undefined;
+  try {
+    const body = await c.req.json();
+    token = body.token;
+  } catch {
+    return c.json({ error: 'Invalid JSON body' }, 400);
+  }
+
   if (!token) {
     return c.json({ error: 'Missing token' }, 400);
   }

@@ -18,6 +18,15 @@ import { handleStatus as handleSyncStatus } from './sync/status';
 
 const app = new Hono();
 
+// Global error handler — catches JSON parse errors (→400) and unhandled exceptions (→500)
+app.onError((err, c) => {
+  if (err instanceof SyntaxError && err.message.includes('JSON')) {
+    return c.json({ error: 'Invalid JSON body' }, 400);
+  }
+  console.error('[Server Error]', err);
+  return c.json({ error: 'Internal server error' }, 500);
+});
+
 // Global middleware
 app.use('*', logger());
 app.use('*', cors());

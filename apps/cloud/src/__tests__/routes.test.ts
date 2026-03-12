@@ -228,6 +228,19 @@ describe('Feishu webhook', () => {
   });
 });
 
+describe('Global error handling', () => {
+  it('Malformed JSON body returns 400 instead of 500', async () => {
+    const res = await request('/auth/refresh', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{invalid json!!!',
+    });
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toContain('JSON');
+  });
+});
+
 describe('Stripe webhook', () => {
   it('POST /billing/webhook accepts request', async () => {
     const res = await request('/billing/webhook', {

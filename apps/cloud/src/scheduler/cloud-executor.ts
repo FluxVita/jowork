@@ -163,6 +163,9 @@ export class CloudExecutor {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ app_id: appId, app_secret: appSecret }),
     });
+    if (!tokenRes.ok) {
+      throw new Error(`Feishu token request failed: ${tokenRes.status}`);
+    }
     const tokenData = await tokenRes.json() as { code: number; tenant_access_token?: string };
     if (tokenData.code !== 0 || !tokenData.tenant_access_token) {
       throw new Error('Failed to get Feishu tenant token');
@@ -182,6 +185,9 @@ export class CloudExecutor {
       }),
     });
 
+    if (!res.ok) {
+      throw new Error(`Feishu message send failed: ${res.status}`);
+    }
     const data = await res.json() as { code: number; msg?: string };
     if (data.code !== 0) {
       throw new Error(`Feishu send failed: ${data.msg}`);
