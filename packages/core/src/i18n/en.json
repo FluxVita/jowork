@@ -1,0 +1,19 @@
+{
+  "app": { "name": "JoWork" },
+  "sidebar": {
+    "conversation": "AI Assistant",
+    "dashboard": "Dashboard",
+    "connectors": "Connectors",
+    "settings": "Settings",
+    "billing": "Billing",
+    "personal": "Personal",
+    "team": "Team"
+  },
+  "settings": {
+    "title": "Settings",
+    "general": "General",
+    "appearance": "Appearance",
+    "engines": "AI Engines",
+    "about": "About"
+  }
+}

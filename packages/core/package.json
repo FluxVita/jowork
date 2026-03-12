@@ -1,0 +1,23 @@
+{
+  "name": "@jowork/core",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.44.0",
+    "better-sqlite3": "^11.8.0",
+    "nanoid": "^5.1.0",
+    "i18next": "^25.1.0",
+    "pino": "^9.6.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.0",
+    "typescript": "^5.9.0"
+  }
+}

@@ -1,0 +1,25 @@
+appId: com.jowork.app
+productName: JoWork
+directories:
+  output: dist
+  buildResources: build
+
+mac:
+  target: [dmg, zip]
+  category: public.app-category.productivity
+  icon: build/icon.icns
+  hardenedRuntime: true
+
+win:
+  target: nsis
+  icon: build/icon.ico
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+
+asar:
+  unpack: "{**/*.node,**/spawn-helper}"
+
+publish:
+  provider: github
