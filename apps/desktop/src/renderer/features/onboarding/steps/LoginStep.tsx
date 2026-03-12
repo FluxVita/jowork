@@ -1,0 +1,49 @@
+import { useTranslation } from 'react-i18next';
+import { useOnboarding } from '../hooks/useOnboarding';
+import { useAuth } from '../../auth/hooks/useAuth';
+
+export function LoginStep() {
+  const { t } = useTranslation('onboarding');
+  const { nextStep, setSkippedLogin } = useOnboarding();
+  const { loginWithGoogle, user } = useAuth();
+
+  const handleSkip = () => {
+    setSkippedLogin(true);
+    nextStep();
+  };
+
+  const handleLogin = async () => {
+    await loginWithGoogle();
+    nextStep();
+  };
+
+  // Already logged in — auto-advance
+  if (user) {
+    nextStep();
+    return null;
+  }
+
+  return (
+    <div className="flex flex-col items-center justify-center text-center px-8 py-12">
+      <div className="text-5xl mb-6">🔐</div>
+      <h1 className="text-xl font-bold mb-2">{t('step2Title', { defaultValue: 'Cloud & Team Features' })}</h1>
+      <p className="text-text-secondary mb-8 max-w-md">
+        {t('step2Description', { defaultValue: 'Sign in to unlock cloud AI, team collaboration, and cross-device sync.' })}
+      </p>
+
+      <button
+        onClick={handleLogin}
+        className="px-8 py-3 rounded-lg bg-accent text-white font-medium hover:bg-accent/90 transition-colors mb-4"
+      >
+        {t('auth:signIn', { ns: 'auth' })}
+      </button>
+
+      <button
+        onClick={handleSkip}
+        className="text-sm text-text-secondary hover:text-text-primary transition-colors"
+      >
+        {t('skip')}
+      </button>
+    </div>
+  );
+}
