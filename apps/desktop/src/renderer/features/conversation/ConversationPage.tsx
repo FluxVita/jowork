@@ -1,3 +1,4 @@
+import { useState, useCallback } from 'react';
 import { useChat } from './hooks/useChat';
 import { MessageList } from './MessageList';
 import { InputBox } from './InputBox';
@@ -13,17 +14,54 @@ export function ConversationPage() {
   const hasMoreMessages = useConversationStore((s) => s.hasMoreMessages);
   const isLoadingMore = useConversationStore((s) => s.isLoadingMore);
   const loadMoreMessages = useConversationStore((s) => s.loadMoreMessages);
+  const [showExportMenu, setShowExportMenu] = useState(false);
+
+  const handleExport = useCallback(async (format: 'markdown' | 'json') => {
+    if (!activeSessionId) return;
+    setShowExportMenu(false);
+    await window.jowork.session.export(activeSessionId, format);
+  }, [activeSessionId]);
 
   return (
     <div className="flex flex-col h-full">
       {/* Engine status bar */}
       <div className="flex items-center justify-between border-b border-border px-2">
         <EngineIndicator />
-        {activeSessionId && (
-          <span className="text-xs text-text-secondary px-3 py-1 truncate max-w-[200px]">
-            {activeSessionId}
-          </span>
-        )}
+        <div className="flex items-center gap-1">
+          {activeSessionId && messages.length > 0 && (
+            <div className="relative">
+              <button
+                onClick={() => setShowExportMenu(!showExportMenu)}
+                className="text-xs text-text-secondary hover:text-text-primary px-2 py-1 rounded
+                  hover:bg-surface-2 transition-colors"
+                title="Export conversation"
+              >
+                Export
+              </button>
+              {showExportMenu && (
+                <div className="absolute right-0 top-full mt-1 bg-surface-2 border border-border rounded-md shadow-lg z-10 py-1 min-w-[140px]">
+                  <button
+                    onClick={() => handleExport('markdown')}
+                    className="w-full text-left px-3 py-1.5 text-xs text-text-primary hover:bg-surface-1 transition-colors"
+                  >
+                    Markdown (.md)
+                  </button>
+                  <button
+                    onClick={() => handleExport('json')}
+                    className="w-full text-left px-3 py-1.5 text-xs text-text-primary hover:bg-surface-1 transition-colors"
+                  >
+                    JSON (.json)
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+          {activeSessionId && (
+            <span className="text-xs text-text-secondary px-2 py-1 truncate max-w-[200px]">
+              {activeSessionId}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Messages */}

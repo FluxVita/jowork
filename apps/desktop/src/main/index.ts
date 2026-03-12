@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell } from 'electron';
+import { app, BrowserWindow, shell, Menu } from 'electron';
 import { join } from 'path';
 import { is } from '@electron-toolkit/utils';
 import { setupIPC, getLauncherWindow, getNotificationManager } from './ipc';
@@ -40,9 +40,57 @@ function createMainWindow(): void {
   }
 }
 
+function buildAppMenu(): void {
+  const isMac = process.platform === 'darwin';
+  const template: Electron.MenuItemConstructorOptions[] = [
+    ...(isMac ? [{
+      label: app.name,
+      submenu: [
+        { role: 'about' as const },
+        { type: 'separator' as const },
+        { label: 'Settings', accelerator: 'CmdOrCtrl+,', click: () => mainWindow?.webContents.send('nav:goto', '/settings') },
+        { type: 'separator' as const },
+        { role: 'hide' as const },
+        { role: 'hideOthers' as const },
+        { role: 'unhide' as const },
+        { type: 'separator' as const },
+        { role: 'quit' as const },
+      ],
+    }] : []),
+    {
+      label: 'File',
+      submenu: [
+        { label: 'New Conversation', accelerator: 'CmdOrCtrl+N', click: () => mainWindow?.webContents.send('shortcut:new-session') },
+        { label: 'Export Conversation', accelerator: 'CmdOrCtrl+E', click: () => mainWindow?.webContents.send('shortcut:export') },
+        { type: 'separator' },
+        isMac ? { role: 'close' } : { role: 'quit' },
+      ],
+    },
+    { role: 'editMenu' },
+    {
+      label: 'View',
+      submenu: [
+        { label: 'Terminal', accelerator: 'CmdOrCtrl+Shift+T', click: () => mainWindow?.webContents.send('nav:goto', '/terminal') },
+        { type: 'separator' },
+        { role: 'reload' },
+        { role: 'toggleDevTools' },
+        { type: 'separator' },
+        { role: 'resetZoom' },
+        { role: 'zoomIn' },
+        { role: 'zoomOut' },
+        { type: 'separator' },
+        { role: 'togglefullscreen' },
+      ],
+    },
+    { role: 'windowMenu' },
+  ];
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+}
+
 app.whenReady().then(() => {
   setupIPC();
   createMainWindow();
+  buildAppMenu();
   setupTray(mainWindow);
 
   // Register launcher global shortcut and set main window reference

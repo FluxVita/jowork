@@ -1,11 +1,31 @@
-import { Outlet } from 'react-router';
+import { useEffect } from 'react';
+import { Outlet, useNavigate } from 'react-router';
 import { Sidebar } from '../components/Sidebar';
 import { ContextPanel } from '../components/ContextPanel';
 import { useAppStore } from '../stores/app';
+import { useConversationStore } from '../stores/conversation';
 
 export function MainLayout() {
   const sidebarOpen = useAppStore((s) => s.sidebarOpen);
   const contextPanelOpen = useAppStore((s) => s.contextPanelOpen);
+  const navigate = useNavigate();
+  const createSession = useConversationStore((s) => s.createSession);
+
+  // Listen for menu accelerator events from main process
+  useEffect(() => {
+    const offNav = window.jowork.on('nav:goto', (path: unknown) => {
+      if (typeof path === 'string') navigate(path);
+    });
+    const offNewSession = window.jowork.on('shortcut:new-session', () => {
+      navigate('/');
+      createSession();
+    });
+    const offExport = window.jowork.on('shortcut:export', () => {
+      const sessionId = useConversationStore.getState().activeSessionId;
+      if (sessionId) window.jowork.session.export(sessionId, 'markdown');
+    });
+    return () => { offNav(); offNewSession(); offExport(); };
+  }, [navigate, createSession]);
 
   return (
     <div className="flex h-screen bg-surface-0 text-text-primary">

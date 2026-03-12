@@ -50,6 +50,8 @@ const api = {
       ipcRenderer.invoke('session:create', opts),
     delete: (id: string) => ipcRenderer.invoke('session:delete', id) as Promise<void>,
     rename: (id: string, title: string) => ipcRenderer.invoke('session:rename', id, title) as Promise<void>,
+    export: (id: string, format: 'markdown' | 'json') =>
+      ipcRenderer.invoke('session:export', id, format) as Promise<{ saved: boolean; path?: string }>,
     onCreated: (cb: (session: unknown) => void) => listen('session:created', cb),
   },
 

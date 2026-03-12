@@ -1,4 +1,5 @@
-import { ipcMain, app, BrowserWindow, shell } from 'electron';
+import { ipcMain, app, BrowserWindow, shell, dialog } from 'electron';
+import { writeFile } from 'fs/promises';
 import { EngineManager } from './engine/manager';
 import { ConnectorHub } from './connectors/hub';
 import { MemoryStore, type NewMemory } from './memory/store';
@@ -229,6 +230,60 @@ export function setupIPC(): void {
 
   ipcMain.handle('session:rename', (_e, sessionId: string, title: string) => {
     engineManager.getHistoryManager().renameSession(sessionId, title);
+  });
+
+  ipcMain.handle('session:export', async (_e, sessionId: string, format: 'markdown' | 'json') => {
+    const hm = engineManager.getHistoryManager();
+    const session = hm.getSession(sessionId);
+    if (!session) throw new Error('Session not found');
+    const msgs = hm.getMessages(sessionId);
+
+    const safeTitle = session.title.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 50);
+    const ext = format === 'json' ? 'json' : 'md';
+    const defaultPath = `${safeTitle}.${ext}`;
+
+    const win = BrowserWindow.getFocusedWindow();
+    const result = await dialog.showSaveDialog(win!, {
+      defaultPath,
+      filters: format === 'json'
+        ? [{ name: 'JSON', extensions: ['json'] }]
+        : [{ name: 'Markdown', extensions: ['md'] }],
+    });
+
+    if (result.canceled || !result.filePath) return { saved: false };
+
+    let content: string;
+    if (format === 'json') {
+      content = JSON.stringify({
+        session: { id: session.id, title: session.title, engine: session.engineId, createdAt: session.createdAt },
+        messages: msgs.map((m) => ({
+          role: m.role, content: m.content, toolName: m.toolName, createdAt: m.createdAt,
+        })),
+        exportedAt: new Date().toISOString(),
+      }, null, 2);
+    } else {
+      const lines: string[] = [`# ${session.title}`, ''];
+      lines.push(`**Engine**: ${session.engineId} | **Created**: ${new Date(session.createdAt).toLocaleString()}`, '');
+      lines.push('---', '');
+      for (const m of msgs) {
+        const ts = new Date(m.createdAt).toLocaleTimeString();
+        if (m.role === 'user') {
+          lines.push(`### User (${ts})`, '', m.content, '');
+        } else if (m.role === 'assistant') {
+          lines.push(`### Assistant (${ts})`, '', m.content, '');
+        } else if (m.role === 'tool_call') {
+          lines.push(`> **Tool Call**: \`${m.toolName ?? 'tool'}\``, `> \`\`\``, `> ${m.content.slice(0, 500)}`, `> \`\`\``, '');
+        } else if (m.role === 'tool_result') {
+          lines.push(`> **Tool Result**: \`${m.toolName ?? ''}\``, `> ${m.content.slice(0, 500)}`, '');
+        } else {
+          lines.push(`*${m.role}*: ${m.content}`, '');
+        }
+      }
+      content = lines.join('\n');
+    }
+
+    await writeFile(result.filePath, content, 'utf-8');
+    return { saved: true, path: result.filePath };
   });
 
   // --- Connector management ---
