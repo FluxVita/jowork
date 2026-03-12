@@ -11,10 +11,10 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "better-sqlite3": "^12.6.2",
     "drizzle-orm": "^0.44.0",
-    "better-sqlite3": "^11.8.0",
-    "nanoid": "^5.1.0",
     "i18next": "^25.1.0",
+    "nanoid": "^5.1.0",
     "pino": "^9.6.0"
   },
   "devDependencies": {
