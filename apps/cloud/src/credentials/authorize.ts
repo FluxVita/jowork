@@ -1,41 +1,65 @@
 import type { Context } from 'hono';
+import { getDb } from '../db';
+import { CredentialVault } from './vault';
+
+function getVault() {
+  return new CredentialVault(getDb());
+}
 
 /**
- * Credential authorization API endpoints — placeholder.
- * Full implementation in Phase 6 after auth is available.
+ * POST /credentials/authorize — store encrypted credentials for a connector
  */
-
 export async function authorizeConnector(c: Context): Promise<Response> {
-  // POST /credentials/authorize
   const { connectorId, encryptedCredentials } = await c.req.json();
-  const userId = c.get('userId');
+  const userId = c.get('userId') as string;
 
-  // TODO: use CredentialVault.authorize()
+  if (!connectorId || !encryptedCredentials) {
+    return c.json({ error: 'connectorId and encryptedCredentials are required' }, 400);
+  }
+
+  await getVault().authorize(userId, connectorId, encryptedCredentials);
   return c.json({ ok: true, connectorId, userId });
 }
 
+/**
+ * DELETE /credentials/revoke/:id — revoke credentials for a connector
+ */
 export async function revokeConnector(c: Context): Promise<Response> {
-  // DELETE /credentials/revoke/:id
-  const connectorId = c.req.param('id');
-  const userId = c.get('userId');
+  const connectorId = c.req.param('id') as string;
+  const userId = c.get('userId') as string;
 
-  // TODO: use CredentialVault.revoke()
+  await getVault().revoke(userId, connectorId);
   return c.json({ ok: true, connectorId, userId });
 }
 
+/**
+ * POST /credentials/authorize-all — bulk authorize multiple connectors
+ */
 export async function authorizeAll(c: Context): Promise<Response> {
-  // POST /credentials/authorize-all
   const { credentials } = await c.req.json();
-  const userId = c.get('userId');
+  const userId = c.get('userId') as string;
 
-  // TODO: use CredentialVault.authorizeAll()
-  return c.json({ ok: true, count: credentials?.length ?? 0, userId });
+  if (!Array.isArray(credentials)) {
+    return c.json({ error: 'credentials array required' }, 400);
+  }
+
+  await getVault().authorizeAll(
+    userId,
+    credentials.map((c: { connectorId: string; encryptedCredentials: string }) => ({
+      connectorId: c.connectorId,
+      encrypted: c.encryptedCredentials,
+    })),
+  );
+
+  return c.json({ ok: true, count: credentials.length, userId });
 }
 
+/**
+ * GET /credentials/status — list authorized connectors
+ */
 export async function getStatus(c: Context): Promise<Response> {
-  // GET /credentials/status
-  const userId = c.get('userId');
+  const userId = c.get('userId') as string;
 
-  // TODO: use CredentialVault.getStatus()
-  return c.json({ connectors: [], userId });
+  const connectors = await getVault().getStatus(userId);
+  return c.json({ connectors, userId });
 }
