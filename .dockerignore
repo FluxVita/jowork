@@ -1,0 +1,11 @@
+node_modules
+**/node_modules
+**/dist
+**/out
+**/.turbo
+.git
+.claude
+*.md
+!pnpm-workspace.yaml
+apps/desktop
+packages/ui/src

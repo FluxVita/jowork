@@ -2,7 +2,8 @@ app = "jowork-cloud"
 primary_region = "sjc"
 
 [build]
-  dockerfile = "Dockerfile"
+  # Run: fly deploy --config apps/cloud/fly.toml from repo root
+  dockerfile = "apps/cloud/Dockerfile"
 
 [env]
   PORT = "3000"
