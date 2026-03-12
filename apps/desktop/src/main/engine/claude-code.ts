@@ -33,6 +33,9 @@ export class ClaudeCodeEngine implements AgentEngine {
       '-p', opts.message,
       '--output-format', 'stream-json',
     ];
+    if (opts.systemContext) {
+      args.push('--system-prompt', opts.systemContext);
+    }
     if (opts.cwd) {
       args.push('--cwd', opts.cwd);
     }

@@ -13,6 +13,9 @@ import { AuthManager } from './auth/manager';
 import { ModeManager } from './auth/mode';
 import { SyncManager } from './sync/sync-manager';
 import { checkForUpdates, quitAndInstall } from './updater';
+import { ContextAssembler } from './context/assembler';
+import { ContextDocsStore } from './context/docs';
+import { AutoExtractor } from './memory/auto-extract';
 import type { SyncRecord } from '@jowork/core';
 import type { EngineId } from './engine/types';
 
@@ -29,6 +32,9 @@ let scheduler: Scheduler;
 let authManager: AuthManager;
 let modeManager: ModeManager;
 let syncManager: SyncManager;
+let contextAssembler: ContextAssembler;
+let contextDocsStore: ContextDocsStore;
+let autoExtractor: AutoExtractor;
 
 export function getEngineManager(): EngineManager {
   return engineManager;
@@ -54,6 +60,9 @@ export function setupIPC(): void {
     (key, value) => hm.setSetting(key, value),
   );
   authManager = new AuthManager(modeManager);
+  contextAssembler = new ContextAssembler();
+  contextDocsStore = new ContextDocsStore(hm.getSqliteInstance());
+  autoExtractor = new AutoExtractor(memoryStore);
 
   syncManager = new SyncManager({
     sqlite: hm.getSqliteInstance(),
@@ -105,12 +114,26 @@ export function setupIPC(): void {
       content: opts.message,
     });
 
+    // Assemble context (workstyle + memories + docs)
+    const workstyle = hm.getSetting('workstyle') ?? '';
+    const memories = memoryStore.list({ limit: 20 });
+    const teamDocs = contextDocsStore.listByScope('team');
+    const personalDocs = contextDocsStore.listByScope('personal');
+    const systemContext = contextAssembler.assemble({
+      teamDocs,
+      personalDocs,
+      memories,
+      workstyle,
+      tokenBudget: 4000,
+    });
+
     // Resolve engine session ID for resume
     const engineSessionId = hm.getEngineSessionId(sessionId, activeEngine);
     const chatOpts = {
       message: opts.message,
       sessionId: engineSessionId ?? undefined,
       cwd: opts.cwd,
+      systemContext: systemContext || undefined,
     };
 
     try {
@@ -135,6 +158,10 @@ export function setupIPC(): void {
           content: assistantContent,
         });
       }
+
+      // Auto-extract memories from the conversation
+      const allMessages = hm.getMessages(sessionId);
+      autoExtractor.extractFromConversation(allMessages);
     } catch (err) {
       event.sender.send('chat:event', {
         sessionId,

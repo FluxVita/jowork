@@ -16,6 +16,8 @@ export interface ChatOpts {
   message: string;
   images?: string[];
   cwd?: string;
+  /** Assembled context (workstyle, memories, docs) injected as system prompt prefix. */
+  systemContext?: string;
 }
 
 export interface AgentEngine {

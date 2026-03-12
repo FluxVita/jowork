@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, type KeyboardEvent } from 'react';
+import { useState, useRef, useCallback, type KeyboardEvent, type DragEvent } from 'react';
 
 interface InputBoxProps {
   onSend: (message: string) => void;
@@ -8,6 +8,7 @@ interface InputBoxProps {
 
 export function InputBox({ onSend, onAbort, isStreaming }: InputBoxProps) {
   const [text, setText] = useState('');
+  const [dragOver, setDragOver] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const handleSend = useCallback(() => {
@@ -35,8 +36,47 @@ export function InputBox({ onSend, onAbort, isStreaming }: InputBoxProps) {
     }
   };
 
+  const handleDragOver = (e: DragEvent) => {
+    e.preventDefault();
+    setDragOver(true);
+  };
+
+  const handleDragLeave = () => {
+    setDragOver(false);
+  };
+
+  const handleDrop = async (e: DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length === 0) return;
+
+    const contents: string[] = [];
+    for (const file of files) {
+      try {
+        const result = await window.jowork.invoke('file:read-for-chat', file.path);
+        if (result) {
+          contents.push(`[File: ${file.name}]\n${result}`);
+        }
+      } catch {
+        contents.push(`[File: ${file.name}] (failed to read)`);
+      }
+    }
+
+    if (contents.length > 0) {
+      setText((prev) => prev + (prev ? '\n\n' : '') + contents.join('\n\n'));
+      textareaRef.current?.focus();
+    }
+  };
+
   return (
-    <div className="border-t border-border p-4">
+    <div
+      className={`border-t border-border p-4 transition-colors ${dragOver ? 'bg-accent/5 border-accent' : ''}`}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
       <div className="flex gap-2 items-end max-w-3xl mx-auto">
         <textarea
           ref={textareaRef}
@@ -44,7 +84,7 @@ export function InputBox({ onSend, onAbort, isStreaming }: InputBoxProps) {
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
           onInput={handleInput}
-          placeholder="Type a message... (Cmd+Enter to send)"
+          placeholder={dragOver ? 'Drop files here...' : 'Type a message... (Cmd+Enter to send)'}
           rows={1}
           className="flex-1 resize-none bg-surface-2 text-text-primary rounded-lg px-4 py-2.5 text-sm
             placeholder:text-text-secondary focus:outline-none focus:ring-1 focus:ring-accent

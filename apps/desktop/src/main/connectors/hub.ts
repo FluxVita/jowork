@@ -97,6 +97,17 @@ export class ConnectorHub {
         args: ['-y', '@modelcontextprotocol/server-filesystem'],
         env: {},
       },
+      {
+        id: 'feishu',
+        name: 'Feishu / Lark',
+        description: 'Group messages, documents, calendar',
+        category: 'communication',
+        tier: 'ga',
+        transport: 'stdio',
+        command: 'npx',
+        args: ['-y', 'lark-openapi-mcp'],
+        env: { LARK_APP_ID: '', LARK_APP_SECRET: '' },
+      },
     ];
 
     for (const m of builtins) {

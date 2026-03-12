@@ -1,4 +1,5 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useCallback, type ReactNode } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { MessageBubble } from './MessageBubble';
 import { ToolCallCard } from './ToolCallCard';
 import { ToolResultCard } from './ToolResultCard';
@@ -17,27 +18,67 @@ interface MessageListProps {
   isStreaming: boolean;
 }
 
+function renderMessage(msg: Message): ReactNode {
+  switch (msg.role) {
+    case 'tool_call':
+      return <ToolCallCard toolName={msg.toolName ?? 'tool'} content={msg.content} />;
+    case 'tool_result':
+      return <ToolResultCard toolName={msg.toolName} content={msg.content} />;
+    default:
+      return <MessageBubble role={msg.role} content={msg.content} />;
+  }
+}
+
 export function MessageList({ messages, streamingText, isStreaming }: MessageListProps) {
+  const parentRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
+  const virtualizer = useVirtualizer({
+    count: messages.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 80,
+    overscan: 5,
+  });
+
+  // Auto-scroll to bottom on new messages or streaming
+  const scrollToBottom = useCallback(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages.length, streamingText]);
+  }, []);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages.length, streamingText, scrollToBottom]);
 
   return (
-    <div className="flex-1 overflow-y-auto px-4 py-6">
+    <div ref={parentRef} className="flex-1 overflow-y-auto px-4 py-6">
       <div className="max-w-3xl mx-auto">
-        {messages.map((msg) => {
-          switch (msg.role) {
-            case 'tool_call':
-              return <ToolCallCard key={msg.id} toolName={msg.toolName ?? 'tool'} content={msg.content} />;
-            case 'tool_result':
-              return <ToolResultCard key={msg.id} toolName={msg.toolName} content={msg.content} />;
-            default:
-              return <MessageBubble key={msg.id} role={msg.role} content={msg.content} />;
-          }
-        })}
+        {/* Virtualized message list */}
+        <div
+          style={{
+            height: `${virtualizer.getTotalSize()}px`,
+            width: '100%',
+            position: 'relative',
+          }}
+        >
+          {virtualizer.getVirtualItems().map((virtualItem) => (
+            <div
+              key={virtualItem.key}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                transform: `translateY(${virtualItem.start}px)`,
+              }}
+              data-index={virtualItem.index}
+              ref={virtualizer.measureElement}
+            >
+              {renderMessage(messages[virtualItem.index])}
+            </div>
+          ))}
+        </div>
 
+        {/* Streaming text (outside virtualizer — always at the bottom) */}
         {isStreaming && streamingText && (
           <div className="mb-4">
             <div className="max-w-[80%] rounded-2xl rounded-bl-md px-4 py-2.5 bg-surface-2">
