@@ -3,12 +3,18 @@ import { EngineManager } from './engine/manager';
 import { ConnectorHub } from './connectors/hub';
 import { MemoryStore, type NewMemory } from './memory/store';
 import { SkillLoader } from './skills/loader';
+import { LauncherWindow } from './windows/launcher-window';
+import { NotificationManager } from './system/notifications';
+import { ClipboardManager } from './system/clipboard';
 import type { EngineId } from './engine/types';
 
 let engineManager: EngineManager;
 let connectorHub: ConnectorHub;
 let memoryStore: MemoryStore;
 let skillLoader: SkillLoader;
+let launcherWindow: LauncherWindow;
+let notificationManager: NotificationManager;
+let clipboardManager: ClipboardManager;
 
 export function getEngineManager(): EngineManager {
   return engineManager;
@@ -19,6 +25,9 @@ export function setupIPC(): void {
   connectorHub = new ConnectorHub(engineManager.getHistoryManager());
   memoryStore = new MemoryStore(engineManager.getHistoryManager().getSqliteInstance());
   skillLoader = new SkillLoader();
+  launcherWindow = new LauncherWindow();
+  notificationManager = new NotificationManager();
+  clipboardManager = new ClipboardManager();
 
   // App
   ipcMain.handle('app:get-version', () => app.getVersion());
@@ -228,6 +237,40 @@ export function setupIPC(): void {
   ipcMain.handle('settings:set', (_e, key: string, value: string) => {
     engineManager.getHistoryManager().setSetting(key, value);
   });
+
+  // --- Launcher ---
+
+  ipcMain.handle('launcher:toggle', () => {
+    launcherWindow.toggle();
+  });
+
+  ipcMain.handle('launcher:hide', () => {
+    launcherWindow.hide();
+  });
+
+  // --- System: Notifications ---
+
+  ipcMain.handle('system:notify', (_e, opts: { title: string; body: string; sessionId?: string }) => {
+    notificationManager.send(opts);
+  });
+
+  // --- System: Clipboard ---
+
+  ipcMain.handle('clipboard:read', () => {
+    return clipboardManager.read();
+  });
+
+  ipcMain.handle('clipboard:write', (_e, text: string) => {
+    clipboardManager.write(text);
+  });
+}
+
+export function getLauncherWindow(): LauncherWindow {
+  return launcherWindow;
+}
+
+export function getNotificationManager(): NotificationManager {
+  return notificationManager;
 }
 
 // Cleanup on app quit

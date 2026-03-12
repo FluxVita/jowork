@@ -1,7 +1,7 @@
 import { app, BrowserWindow, shell } from 'electron';
 import { join } from 'path';
 import { is } from '@electron-toolkit/utils';
-import { setupIPC } from './ipc';
+import { setupIPC, getLauncherWindow, getNotificationManager } from './ipc';
 import { setupTray } from './tray';
 
 let mainWindow: BrowserWindow | null = null;
@@ -41,8 +41,16 @@ function createMainWindow(): void {
 
 app.whenReady().then(() => {
   setupIPC();
-  setupTray(mainWindow);
   createMainWindow();
+  setupTray(mainWindow);
+
+  // Register launcher global shortcut and set main window reference
+  const launcher = getLauncherWindow();
+  launcher.registerShortcut();
+
+  if (mainWindow) {
+    getNotificationManager().setMainWindow(mainWindow);
+  }
 });
 
 app.on('window-all-closed', () => {
