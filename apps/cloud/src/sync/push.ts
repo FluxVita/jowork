@@ -26,7 +26,7 @@ export function getGlobalVersion() {
  * - Messages: append-only (no overwrites)
  */
 export async function handlePush(c: Context): Promise<Response> {
-  const userId = c.get('userId');
+  const userId = c.get('userId') as string;
   const body = await c.req.json() as { changes: SyncRecord[]; deviceId: string };
 
   if (!body.changes || !Array.isArray(body.changes)) {

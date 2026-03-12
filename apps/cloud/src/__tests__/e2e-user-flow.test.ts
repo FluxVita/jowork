@@ -56,7 +56,7 @@ describe('E2E: Complete user journey', () => {
     });
 
     it('Step 3: Public invite lookup (before any team exists)', async () => {
-      const res = await request('/teams/invite/somecode123');
+      const res = await request('/invite/somecode123');
       if (!hasDb) { expect(res.status).toBe(500); return; }
       // With real DB, unknown code returns 404
       expect([200, 404]).toContain(res.status);
@@ -125,7 +125,7 @@ describe('E2E: Complete user journey', () => {
 
     it('Step 3: Public checks invite details', async () => {
       const code = inviteCode || 'abc123';
-      const res = await request(`/teams/invite/${code}`);
+      const res = await request(`/invite/${code}`);
       if (!hasDb) { expect(res.status).toBe(500); return; }
       expect(res.status).toBe(200);
       const body = await res.json();

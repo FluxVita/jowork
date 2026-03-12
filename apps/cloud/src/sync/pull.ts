@@ -6,7 +6,7 @@ import { getSyncStore, getGlobalVersion } from './push';
  * POST /sync/pull — pull changes from cloud since a given version
  */
 export async function handlePull(c: Context): Promise<Response> {
-  const userId = c.get('userId');
+  const userId = c.get('userId') as string;
   const body = await c.req.json() as { since: number; entities?: SyncEntity[]; limit?: number };
   const since = body.since ?? 0;
   const limit = body.limit ?? 500;

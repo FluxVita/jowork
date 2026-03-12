@@ -82,8 +82,8 @@ export class OfflineQueue {
 
   /** Number of pending items. */
   count(): number {
-    const row = this.sqlite.prepare('SELECT COUNT(*) as n FROM sync_queue').get() as { n: number };
-    return row.n;
+    const row = this.sqlite.prepare('SELECT COUNT(*) as n FROM sync_queue').get() as { n: number } | undefined;
+    return row?.n ?? 0;
   }
 
   clear(): void {

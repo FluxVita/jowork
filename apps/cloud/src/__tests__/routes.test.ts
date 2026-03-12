@@ -165,8 +165,8 @@ describe('Auth middleware', () => {
 describe('Public invite lookup', () => {
   const hasDb = !!process.env.DATABASE_URL;
 
-  it('GET /teams/invite/:code returns invite details (requires DB)', async () => {
-    const res = await request('/teams/invite/abc123');
+  it('GET /invite/:code returns invite details (requires DB)', async () => {
+    const res = await request('/invite/abc123');
     if (!hasDb) {
       expect(res.status).toBe(500);
       return;

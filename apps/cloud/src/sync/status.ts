@@ -21,7 +21,7 @@ export function isClientOnline(userId: string): boolean {
  * GET /sync/status — current sync status for the authenticated user
  */
 export async function handleStatus(c: Context): Promise<Response> {
-  const userId = c.get('userId');
+  const userId = c.get('userId') as string;
 
   const store = getSyncStore();
   const prefix = `${userId}:`;

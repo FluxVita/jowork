@@ -300,15 +300,20 @@ export function setupIPC(): void {
     const { SkillExecutor } = await import('./skills/executor');
     const executor = new SkillExecutor(engineManager);
 
-    if (skill.type === 'workflow' && skill.steps?.length) {
-      for await (const ev of executor.executeWorkflow(skill, vars, sessionId)) {
-        event.sender.send('chat:event', { sessionId, ...ev as object });
+    try {
+      if (skill.type === 'workflow' && skill.steps?.length) {
+        for await (const ev of executor.executeWorkflow(skill, vars, sessionId)) {
+          event.sender.send('chat:event', { sessionId, ...ev as object });
+        }
+      } else {
+        for await (const ev of executor.executeSimple(skill, vars, sessionId)) {
+          event.sender.send('chat:event', { sessionId, ...ev as object });
+        }
       }
-    } else {
-      for await (const ev of executor.executeSimple(skill, vars, sessionId)) {
-        event.sender.send('chat:event', { sessionId, ...ev as object });
-      }
+    } catch (err) {
+      event.sender.send('chat:event', { sessionId, type: 'error', message: String(err) });
     }
+    event.sender.send('chat:event', { sessionId, type: 'done' });
   });
 
   // --- Settings (key-value) ---

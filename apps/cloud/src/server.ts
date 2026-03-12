@@ -36,8 +36,8 @@ app.post('/billing/webhook', handleWebhook);
 // Feishu webhook (no auth — verified by token)
 app.post('/channels/feishu/webhook', handleFeishuWebhook);
 
-// Public invite lookup
-app.get('/teams/invite/:code', getInviteDetails);
+// Public invite lookup (outside /teams/* to avoid auth middleware)
+app.get('/invite/:code', getInviteDetails);
 
 // --- Protected routes (require JWT) ---
 app.use('/api/*', authMiddleware);

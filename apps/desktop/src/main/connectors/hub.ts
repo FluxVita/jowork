@@ -208,7 +208,13 @@ export class ConnectorHub {
   }
 
   async callTool(namespacedName: string, args: Record<string, unknown>): Promise<unknown> {
-    const [connectorId, toolName] = namespacedName.split('/');
+    const slashIndex = namespacedName.indexOf('/');
+    if (slashIndex === -1) throw new Error(`Invalid tool name format (expected "connectorId/toolName"): ${namespacedName}`);
+
+    const connectorId = namespacedName.slice(0, slashIndex);
+    const toolName = namespacedName.slice(slashIndex + 1);
+    if (!toolName) throw new Error(`Empty tool name in: ${namespacedName}`);
+
     const client = this.clients.get(connectorId);
     if (!client) throw new Error(`Connector not started: ${connectorId}`);
 

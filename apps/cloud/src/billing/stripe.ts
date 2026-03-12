@@ -33,7 +33,10 @@ export async function createCheckout(c: Context): Promise<Response> {
       }),
     });
 
-    const session = await res.json();
+    const session = await res.json() as Record<string, unknown>;
+    if (!res.ok) {
+      return c.json({ error: (session.error as Record<string, string>)?.message ?? `Stripe error ${res.status}` }, res.status as 400);
+    }
     return c.json({ url: (session as { url: string }).url });
   } catch (err) {
     return c.json({ error: String(err) }, 500);
@@ -71,7 +74,10 @@ export async function createPortal(c: Context): Promise<Response> {
       }),
     });
 
-    const session = await res.json();
+    const session = await res.json() as Record<string, unknown>;
+    if (!res.ok) {
+      return c.json({ error: (session.error as Record<string, string>)?.message ?? `Stripe error ${res.status}` }, res.status as 400);
+    }
     return c.json({ url: (session as { url: string }).url });
   } catch (err) {
     return c.json({ error: String(err) }, 500);
@@ -110,7 +116,10 @@ export async function createTopUp(c: Context): Promise<Response> {
       }),
     });
 
-    const session = await res.json();
+    const session = await res.json() as Record<string, unknown>;
+    if (!res.ok) {
+      return c.json({ error: (session.error as Record<string, string>)?.message ?? `Stripe error ${res.status}` }, res.status as 400);
+    }
     return c.json({ url: (session as { url: string }).url });
   } catch (err) {
     return c.json({ error: String(err) }, 500);
