@@ -69,7 +69,10 @@ const port = parseInt(process.env.PORT || '3000', 10);
 
 export { app };
 
-// Start server
-import { serve } from '@hono/node-server';
-serve({ fetch: app.fetch, port });
-console.log(`Cloud server running on port ${port}`);
+// Start server (skip in test environment)
+if (process.env.NODE_ENV !== 'test' && !process.env.VITEST) {
+  import('@hono/node-server').then(({ serve }) => {
+    serve({ fetch: app.fetch, port });
+    console.log(`Cloud server running on port ${port}`);
+  });
+}

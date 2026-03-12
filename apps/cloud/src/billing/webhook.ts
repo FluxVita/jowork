@@ -25,6 +25,9 @@ export async function handleWebhook(c: Context): Promise<Response> {
   let event: StripeEvent;
   try {
     event = JSON.parse(body);
+    if (!event.type || !event.data?.object) {
+      return c.json({ error: 'Invalid event structure' }, 400);
+    }
   } catch {
     return c.json({ error: 'Invalid JSON' }, 400);
   }
