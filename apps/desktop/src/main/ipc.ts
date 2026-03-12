@@ -11,6 +11,8 @@ import { FileWatcher } from './system/file-watcher';
 import { Scheduler, type NewScheduledTask } from './scheduler';
 import { AuthManager } from './auth/manager';
 import { ModeManager } from './auth/mode';
+import { SyncManager } from './sync/sync-manager';
+import type { SyncRecord } from '@jowork/core';
 import type { EngineId } from './engine/types';
 
 let engineManager: EngineManager;
@@ -25,6 +27,7 @@ let fileWatcher: FileWatcher;
 let scheduler: Scheduler;
 let authManager: AuthManager;
 let modeManager: ModeManager;
+let syncManager: SyncManager;
 
 export function getEngineManager(): EngineManager {
   return engineManager;
@@ -50,6 +53,14 @@ export function setupIPC(): void {
     (key, value) => hm.setSetting(key, value),
   );
   authManager = new AuthManager(modeManager);
+
+  syncManager = new SyncManager({
+    sqlite: hm.getSqliteInstance(),
+    cloudUrl: 'https://api.jowork.dev',
+    getToken: () => authManager.getToken(),
+    mode: modeManager.isTeam() ? 'team' : 'personal',
+    deviceId: hm.getSetting('device_id') || `device_${Date.now()}`,
+  });
 
   // App
   ipcMain.handle('app:get-version', () => app.getVersion());
@@ -545,6 +556,30 @@ export function setupIPC(): void {
   ipcMain.handle('shell:open-external', async (_e, url: string) => {
     await shell.openExternal(url);
   });
+
+  // --- Sync ---
+
+  ipcMain.handle('sync:start', () => {
+    if (authManager.isLoggedIn()) {
+      syncManager.start();
+    }
+  });
+
+  ipcMain.handle('sync:stop', () => {
+    syncManager.stop();
+  });
+
+  ipcMain.handle('sync:now', async () => {
+    await syncManager.sync();
+  });
+
+  ipcMain.handle('sync:status', () => {
+    return syncManager.getStatus();
+  });
+
+  ipcMain.handle('sync:track-change', (_e, record: SyncRecord) => {
+    syncManager.trackChange(record);
+  });
 }
 
 export function getLauncherWindow(): LauncherWindow {
@@ -557,6 +592,7 @@ export function getNotificationManager(): NotificationManager {
 
 // Cleanup on app quit
 app.on('before-quit', () => {
+  syncManager?.stop();
   scheduler?.stopAll();
   connectorHub?.stopAll();
   ptyManager?.destroyAll();

@@ -50,7 +50,7 @@ describe('E2E: Complete user journey', () => {
       const res = await request('/api/v1/status', { headers: authHeaders(proToken) });
       expect(res.status).toBe(200);
       const body = await res.json();
-      expect(body.phase).toBe(6);
+      expect(body.phase).toBe(7);
     });
 
     it('Step 3: Public invite lookup (before any team exists)', async () => {

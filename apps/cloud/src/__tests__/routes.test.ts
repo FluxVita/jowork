@@ -116,7 +116,7 @@ describe('Protected routes with valid auth', () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.status).toBe('ok');
-    expect(body.phase).toBe(6);
+    expect(body.phase).toBe(7);
   });
 });
 

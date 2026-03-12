@@ -5,3 +5,4 @@ export * from './memory.js';
 export * from './skill.js';
 export * from './user.js';
 export * from './billing.js';
+export * from './sync.js';

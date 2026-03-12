@@ -12,6 +12,9 @@ import { createTeam, getTeam, createInvite, joinTeam } from './team/teams';
 import { removeMember, updateMemberRole } from './team/members';
 import { getInviteDetails } from './team/invites';
 import { authorizeConnector, revokeConnector, authorizeAll, getStatus } from './credentials/authorize';
+import { handlePush } from './sync/push';
+import { handlePull } from './sync/pull';
+import { handleStatus as handleSyncStatus } from './sync/status';
 
 const app = new Hono();
 
@@ -41,6 +44,7 @@ app.use('/api/*', authMiddleware);
 app.use('/billing/*', authMiddleware);
 app.use('/teams/*', authMiddleware);
 app.use('/credentials/*', authMiddleware);
+app.use('/sync/*', authMiddleware);
 
 // Billing
 app.post('/billing/checkout', createCheckout);
@@ -62,8 +66,13 @@ app.post('/teams/join/:code', joinTeam);
 app.delete('/teams/:id/members/:userId', removeMember);
 app.patch('/teams/:id/members/:userId', updateMemberRole);
 
+// Sync
+app.post('/sync/push', handlePush);
+app.post('/sync/pull', handlePull);
+app.get('/sync/status', handleSyncStatus);
+
 // API status
-app.get('/api/v1/status', (c) => c.json({ status: 'ok', phase: 6 }));
+app.get('/api/v1/status', (c) => c.json({ status: 'ok', phase: 7 }));
 
 const port = parseInt(process.env.PORT || '3000', 10);
 
