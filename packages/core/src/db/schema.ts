@@ -97,3 +97,29 @@ export const contextDocs = sqliteTable('context_docs', {
   createdAt: integer('created_at').notNull(),
   updatedAt: integer('updated_at').notNull(),
 });
+
+// --- Phase 5: Scheduler ---
+
+export const scheduledTasks = sqliteTable('scheduled_tasks', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  cronExpression: text('cron_expression').notNull(),
+  timezone: text('timezone').default('Asia/Shanghai'),
+  type: text('type').notNull(),       // 'scan' | 'skill' | 'notify'
+  config: text('config'),             // JSON
+  enabled: integer('enabled').default(1),
+  lastRunAt: integer('last_run_at'),
+  nextRunAt: integer('next_run_at'),
+  cloudSync: integer('cloud_sync').default(0),
+  createdAt: integer('created_at').notNull(),
+});
+
+export const taskExecutions = sqliteTable('task_executions', {
+  id: text('id').primaryKey(),
+  taskId: text('task_id').notNull().references(() => scheduledTasks.id),
+  status: text('status').notNull(),   // 'success' | 'failure' | 'skipped'
+  result: text('result'),
+  error: text('error'),
+  durationMs: integer('duration_ms'),
+  executedAt: integer('executed_at').notNull(),
+});

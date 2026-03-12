@@ -8,6 +8,7 @@ import { NotificationManager } from './system/notifications';
 import { ClipboardManager } from './system/clipboard';
 import { PtyManager } from './system/pty-manager';
 import { FileWatcher } from './system/file-watcher';
+import { Scheduler, type NewScheduledTask } from './scheduler';
 import type { EngineId } from './engine/types';
 
 let engineManager: EngineManager;
@@ -19,6 +20,7 @@ let notificationManager: NotificationManager;
 let clipboardManager: ClipboardManager;
 let ptyManager: PtyManager;
 let fileWatcher: FileWatcher;
+let scheduler: Scheduler;
 
 export function getEngineManager(): EngineManager {
   return engineManager;
@@ -34,6 +36,9 @@ export function setupIPC(): void {
   clipboardManager = new ClipboardManager();
   ptyManager = new PtyManager();
   fileWatcher = new FileWatcher();
+  scheduler = new Scheduler(engineManager.getHistoryManager().getSqliteInstance());
+  scheduler.setEngineManager(engineManager);
+  scheduler.startAll();
 
   // App
   ipcMain.handle('app:get-version', () => app.getVersion());
@@ -316,6 +321,32 @@ export function setupIPC(): void {
   ipcMain.handle('file:read-for-chat', async (_e, filePath: string) => {
     return fileWatcher.readFileForChat(filePath);
   });
+
+  // --- Scheduler ---
+
+  ipcMain.handle('scheduler:list', () => {
+    return scheduler.list();
+  });
+
+  ipcMain.handle('scheduler:get', (_e, id: string) => {
+    return scheduler.get(id);
+  });
+
+  ipcMain.handle('scheduler:create', (_e, task: NewScheduledTask) => {
+    return scheduler.create(task);
+  });
+
+  ipcMain.handle('scheduler:update', (_e, id: string, patch: Partial<NewScheduledTask>) => {
+    return scheduler.update(id, patch);
+  });
+
+  ipcMain.handle('scheduler:delete', (_e, id: string) => {
+    scheduler.delete(id);
+  });
+
+  ipcMain.handle('scheduler:executions', (_e, taskId: string, limit?: number) => {
+    return scheduler.getExecutions(taskId, limit);
+  });
 }
 
 export function getLauncherWindow(): LauncherWindow {
@@ -328,6 +359,7 @@ export function getNotificationManager(): NotificationManager {
 
 // Cleanup on app quit
 app.on('before-quit', () => {
+  scheduler?.stopAll();
   connectorHub?.stopAll();
   ptyManager?.destroyAll();
   fileWatcher?.closeAll();
