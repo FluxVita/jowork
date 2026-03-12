@@ -315,8 +315,22 @@ export class Scheduler {
   }
 
   private async executeNotify(task: ScheduledTaskRecord): Promise<string> {
-    // Delegate to notification manager — placeholder
     const message = task.config.message as string || 'Scheduled notification';
+    const title = task.config.title as string || task.name;
+
+    // Dispatch to Electron notification system
+    try {
+      const { getNotificationManager } = await import('../ipc');
+      const nm = getNotificationManager();
+      nm.send({
+        title,
+        body: message,
+        urgency: (task.config.urgency as 'low' | 'normal' | 'critical') ?? 'normal',
+      });
+    } catch {
+      // Notification manager not ready (e.g., during startup)
+    }
+
     return `Notification sent: ${message}`;
   }
 
