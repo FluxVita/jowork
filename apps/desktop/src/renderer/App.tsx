@@ -1,7 +1,7 @@
 import { HashRouter, Routes, Route } from 'react-router';
 import { MainLayout } from './layouts/MainLayout';
 import { ConversationPage } from './features/conversation/ConversationPage';
-import { ConnectorsPage } from './pages/ConnectorsPage';
+import { ConnectorsPage } from './features/connectors/ConnectorsPage';
 import { SettingsPage } from './pages/SettingsPage';
 
 export function App() {
