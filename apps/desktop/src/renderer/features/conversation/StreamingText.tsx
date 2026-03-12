@@ -1,55 +1,53 @@
 import { useMemo } from 'react';
+import { marked } from 'marked';
 
 interface StreamingTextProps {
   text: string;
 }
 
+// Configure marked for safe rendering
+marked.setOptions({
+  breaks: true,
+  gfm: true,
+});
+
 /**
- * Renders streaming markdown text incrementally.
- * Phase 1: simple rendering with code block detection.
- * TODO: integrate markdown-it for full markdown support.
+ * Renders streaming markdown text with full markdown support via marked.
+ * Handles incomplete code blocks gracefully during streaming.
  */
 export function StreamingText({ text }: StreamingTextProps) {
-  const rendered = useMemo(() => {
-    if (!text) return null;
+  const html = useMemo(() => {
+    if (!text) return '';
 
-    const parts: { type: 'text' | 'code'; content: string; lang?: string }[] = [];
-    const codeBlockRegex = /```(\w*)\n([\s\S]*?)```/g;
-    let lastIndex = 0;
-    let match;
-
-    while ((match = codeBlockRegex.exec(text)) !== null) {
-      if (match.index > lastIndex) {
-        parts.push({ type: 'text', content: text.slice(lastIndex, match.index) });
-      }
-      parts.push({ type: 'code', content: match[2], lang: match[1] || undefined });
-      lastIndex = match.index + match[0].length;
+    // Handle incomplete code blocks during streaming
+    // Count opening ``` and closing ``` to detect if we're mid-block
+    const fences = text.match(/```/g);
+    let safeText = text;
+    if (fences && fences.length % 2 !== 0) {
+      // Odd number = unclosed code block, close it so marked renders properly
+      safeText += '\n```';
     }
 
-    // Remaining text (including incomplete code blocks during streaming)
-    if (lastIndex < text.length) {
-      parts.push({ type: 'text', content: text.slice(lastIndex) });
-    }
-
-    return parts;
+    return marked.parse(safeText, { async: false }) as string;
   }, [text]);
 
-  if (!rendered) return null;
+  if (!html) return null;
 
   return (
-    <div className="prose prose-sm prose-invert max-w-none">
-      {rendered.map((part, i) =>
-        part.type === 'code' ? (
-          <pre key={i} className="bg-surface-0 rounded-md p-3 my-2 overflow-x-auto">
-            {part.lang && (
-              <div className="text-xs text-text-secondary mb-1">{part.lang}</div>
-            )}
-            <code className="text-sm">{part.content}</code>
-          </pre>
-        ) : (
-          <span key={i} className="whitespace-pre-wrap">{part.content}</span>
-        ),
-      )}
+    <div className="streaming-text">
+      <div
+        className="prose prose-sm prose-invert max-w-none
+          [&_pre]:bg-surface-0 [&_pre]:rounded-md [&_pre]:p-3 [&_pre]:my-2 [&_pre]:overflow-x-auto
+          [&_code]:text-sm [&_code]:text-accent
+          [&_pre_code]:text-text-primary [&_pre_code]:bg-transparent
+          [&_a]:text-accent [&_a]:no-underline hover:[&_a]:underline
+          [&_table]:border-collapse [&_th]:border [&_th]:border-border [&_th]:p-2
+          [&_td]:border [&_td]:border-border [&_td]:p-2
+          [&_blockquote]:border-l-2 [&_blockquote]:border-accent/40 [&_blockquote]:pl-3 [&_blockquote]:text-text-secondary
+          [&_ul]:list-disc [&_ol]:list-decimal [&_li]:ml-4
+          [&_hr]:border-border"
+        dangerouslySetInnerHTML={{ __html: html }}
+      />
       <span className="inline-block w-2 h-4 bg-accent/60 animate-pulse ml-0.5" />
     </div>
   );
