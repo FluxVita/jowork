@@ -2,13 +2,18 @@ import { defineConfig, externalizeDepsPlugin } from 'electron-vite';
 import react from '@vitejs/plugin-react';
 import { resolve } from 'path';
 
+const nativeExternals = ['better-sqlite3'];
+
 export default defineConfig({
   main: {
     plugins: [externalizeDepsPlugin()],
     build: {
       rollupOptions: {
-        input: resolve(__dirname, 'src/main/index.ts'),
-        external: ['better-sqlite3'],
+        input: {
+          index: resolve(__dirname, 'src/main/index.ts'),
+          'mcp-server': resolve(__dirname, 'src/mcp-server-entry.ts'),
+        },
+        external: nativeExternals,
       },
     },
   },

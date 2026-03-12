@@ -15,8 +15,10 @@
   "dependencies": {
     "@jowork/core": "workspace:*",
     "@jowork/ui": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.27.0",
     "better-sqlite3": "^11.8.0",
     "drizzle-orm": "^0.44.0",
+    "zod": "^3.25.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-router": "^7.6.0",
