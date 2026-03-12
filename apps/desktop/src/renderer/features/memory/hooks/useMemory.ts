@@ -44,7 +44,7 @@ export const useMemoryStore = create<MemoryStore>((set, get) => ({
   loadMemories: async (opts) => {
     set({ isLoading: true });
     try {
-      const memories = await window.jowork.invoke('memory:list', opts ?? {});
+      const memories = await window.jowork.memory.list(opts ?? {});
       set({ memories: memories as MemoryRecord[], isLoading: false });
     } catch {
       set({ isLoading: false });
@@ -58,28 +58,28 @@ export const useMemoryStore = create<MemoryStore>((set, get) => ({
         await get().loadMemories();
         return;
       }
-      const memories = await window.jowork.invoke('memory:search', query);
-      set({ memories: memories as MemoryRecord[], isLoading: false });
+      const memories = await window.jowork.memory.search(query) as MemoryRecord[];
+      set({ memories, isLoading: false });
     } catch {
       set({ isLoading: false });
     }
   },
 
   create: async (mem) => {
-    const record = await window.jowork.invoke('memory:create', mem) as MemoryRecord;
+    const record = await window.jowork.memory.create(mem) as MemoryRecord;
     set((s) => ({ memories: [record, ...s.memories] }));
     return record;
   },
 
   update: async (id, patch) => {
-    const updated = await window.jowork.invoke('memory:update', id, patch) as MemoryRecord;
+    const updated = await window.jowork.memory.update(id, patch) as MemoryRecord;
     set((s) => ({
       memories: s.memories.map((m) => (m.id === id ? updated : m)),
     }));
   },
 
   remove: async (id) => {
-    await window.jowork.invoke('memory:delete', id);
+    await window.jowork.memory.delete(id);
     set((s) => ({ memories: s.memories.filter((m) => m.id !== id) }));
   },
 

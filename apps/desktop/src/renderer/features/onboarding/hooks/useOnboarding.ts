@@ -92,7 +92,7 @@ export const useOnboarding = create<OnboardingStore>((set, get) => ({
 
   loadState: async () => {
     try {
-      const saved = await window.jowork.invoke('store:get', 'onboarding');
+      const saved = await window.jowork.settings.get('onboarding');
       if (saved) {
         const parsed = typeof saved === 'string' ? JSON.parse(saved) : saved;
         set({
@@ -119,5 +119,5 @@ function persistState(state: OnboardingState): void {
     connectedDuringOnboarding: state.connectedDuringOnboarding,
     profile: state.profile,
   };
-  window.jowork.invoke('store:set', 'onboarding', JSON.stringify(data)).catch(() => {});
+  window.jowork.settings.set('onboarding', JSON.stringify(data)).catch(() => {});
 }

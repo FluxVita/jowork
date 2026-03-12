@@ -80,7 +80,7 @@ export const useBilling = create<BillingState>((set, get) => ({
   loadCredits: async () => {
     set({ loading: true });
     try {
-      const credits = await window.jowork.invoke('billing:get-credits') as CreditInfo;
+      const credits = await window.jowork.billing.getCredits() as CreditInfo;
       set({ credits });
     } catch {
       // Not logged in or no billing — use defaults
@@ -102,7 +102,7 @@ export const useBilling = create<BillingState>((set, get) => ({
   loadPlans: async () => {
     // Plans are static for now
     try {
-      const user = await window.jowork.invoke('auth:get-user') as { plan?: string } | null;
+      const user = await window.jowork.auth.getUser();
       if (user?.plan) {
         set({ currentPlan: user.plan });
       }
@@ -112,23 +112,23 @@ export const useBilling = create<BillingState>((set, get) => ({
   },
 
   openCheckout: async (planId: string) => {
-    const url = await window.jowork.invoke('billing:checkout', planId) as string;
+    const url = await window.jowork.billing.checkout(planId);
     if (url) {
-      await window.jowork.invoke('shell:open-external', url);
+      await window.jowork.shell.openExternal(url);
     }
   },
 
   openPortal: async () => {
-    const url = await window.jowork.invoke('billing:portal') as string;
+    const url = await window.jowork.billing.portal();
     if (url) {
-      await window.jowork.invoke('shell:open-external', url);
+      await window.jowork.shell.openExternal(url);
     }
   },
 
   buyCredits: async (amount: number) => {
-    const url = await window.jowork.invoke('billing:top-up', amount) as string;
+    const url = await window.jowork.billing.topUp(amount);
     if (url) {
-      await window.jowork.invoke('shell:open-external', url);
+      await window.jowork.shell.openExternal(url);
     }
     // Refresh credits after a brief delay (Stripe webhook will update server-side)
     setTimeout(() => get().loadCredits(), 3000);

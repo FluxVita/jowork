@@ -55,7 +55,7 @@ export function InputBox({ onSend, onAbort, isStreaming }: InputBoxProps) {
     const contents: string[] = [];
     for (const file of files) {
       try {
-        const result = await window.jowork.invoke('file:read-for-chat', file.path);
+        const result = await window.jowork.file.readForChat(file.path);
         if (result) {
           contents.push(`[File: ${file.name}]\n${result}`);
         }

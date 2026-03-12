@@ -15,7 +15,7 @@ export function LauncherInput() {
       submit();
     }
     if (e.key === 'Escape') {
-      window.jowork.invoke('launcher:hide');
+      window.jowork.launcher.hide();
     }
   };
 

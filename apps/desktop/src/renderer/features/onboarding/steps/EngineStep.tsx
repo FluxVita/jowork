@@ -19,9 +19,15 @@ export function EngineStep() {
 
     async function detectEngines() {
       try {
-        const result = await window.jowork.invoke('engine:list');
+        const result = await window.jowork.engine.detect();
         if (mounted) {
-          setEngines(result ?? []);
+          // Convert detect result to engine status list
+          const engineList = Object.entries(result ?? {}).map(([id, status]) => ({
+            id,
+            name: id.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+            detected: status.installed,
+          }));
+          setEngines(engineList);
         }
       } catch {
         // Engine detection failed — show empty

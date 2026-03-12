@@ -37,7 +37,7 @@ export const useTeam = create<TeamState>((set, get) => ({
   loadTeam: async (teamId: string) => {
     set({ loading: true });
     try {
-      const team = await window.jowork.invoke('team:get', teamId) as Team;
+      const team = await window.jowork.team.get(teamId) as Team;
       set({ team });
     } finally {
       set({ loading: false });
@@ -47,7 +47,7 @@ export const useTeam = create<TeamState>((set, get) => ({
   loadTeams: async () => {
     set({ loading: true });
     try {
-      const teams = await window.jowork.invoke('team:list') as Team[];
+      const teams = await window.jowork.team.list() as Team[];
       set({ teams });
     } catch {
       set({ teams: [] });
@@ -57,17 +57,17 @@ export const useTeam = create<TeamState>((set, get) => ({
   },
 
   createTeam: async (name: string) => {
-    const team = await window.jowork.invoke('team:create', name) as Team;
+    const team = await window.jowork.team.create(name) as Team;
     set((s) => ({ teams: [...s.teams, team] }));
     return team;
   },
 
   generateInvite: async (teamId: string) => {
-    return await window.jowork.invoke('team:invite', teamId) as { inviteCode: string; inviteUrl: string };
+    return await window.jowork.team.invite(teamId) as { inviteCode: string; inviteUrl: string };
   },
 
   removeMember: async (teamId: string, userId: string) => {
-    await window.jowork.invoke('team:remove-member', teamId, userId);
+    await window.jowork.team.removeMember(teamId, userId);
     const { team } = get();
     if (team?.id === teamId) {
       set({
@@ -81,7 +81,7 @@ export const useTeam = create<TeamState>((set, get) => ({
   },
 
   updateRole: async (teamId: string, userId: string, role: string) => {
-    await window.jowork.invoke('team:update-role', teamId, userId, role);
+    await window.jowork.team.updateRole(teamId, userId, role);
     const { team } = get();
     if (team?.id === teamId) {
       set({

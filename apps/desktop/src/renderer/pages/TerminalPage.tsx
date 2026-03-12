@@ -13,7 +13,7 @@ export function TerminalPage() {
   const cleanupRef = useRef<(() => void) | null>(null);
 
   const createTab = useCallback(async () => {
-    const id = await window.jowork.invoke('pty:create') as string;
+    const id = await window.jowork.pty.create();
     const tab: TerminalTab = { id, title: `Terminal ${tabs.length + 1}` };
     setTabs((prev) => [...prev, tab]);
     setActiveTab(id);
@@ -21,7 +21,7 @@ export function TerminalPage() {
   }, [tabs.length]);
 
   const closeTab = useCallback(async (id: string) => {
-    await window.jowork.invoke('pty:destroy', id);
+    await window.jowork.pty.destroy(id);
     setTabs((prev) => prev.filter((t) => t.id !== id));
     setActiveTab((prev) => (prev === id ? tabs[0]?.id ?? null : prev));
   }, [tabs]);
@@ -57,12 +57,12 @@ export function TerminalPage() {
 
         // Resize IPC
         const { cols, rows } = fitAddon.proposeDimensions() ?? { cols: 80, rows: 24 };
-        await window.jowork.invoke('pty:resize', activeTab, cols, rows);
+        await window.jowork.pty.resize(activeTab, cols, rows);
       }
 
       // Keyboard input → PTY
       terminal.onData((data: string) => {
-        window.jowork.invoke('pty:write', activeTab, data);
+        window.jowork.pty.write(activeTab, data);
       });
 
       // PTY output → terminal

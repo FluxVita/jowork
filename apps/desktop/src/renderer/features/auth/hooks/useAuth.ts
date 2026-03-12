@@ -36,9 +36,9 @@ export const useAuth = create<AuthState>((set) => ({
   loginWithGoogle: async () => {
     set({ loading: true });
     try {
-      const user = await window.jowork.invoke('auth:login-google') as AuthUser;
+      const user = await window.jowork.auth.loginGoogle();
       set({ user });
-      const modeState = await window.jowork.invoke('auth:get-mode') as ModeState;
+      const modeState = await window.jowork.auth.getMode();
       set({ modeState });
     } finally {
       set({ loading: false });
@@ -46,15 +46,15 @@ export const useAuth = create<AuthState>((set) => ({
   },
 
   logout: async () => {
-    await window.jowork.invoke('auth:logout');
+    await window.jowork.auth.logout();
     set({ user: null });
-    const modeState = await window.jowork.invoke('auth:get-mode') as ModeState;
+    const modeState = await window.jowork.auth.getMode();
     set({ modeState });
   },
 
   refreshAuth: async () => {
     try {
-      const user = await window.jowork.invoke('auth:get-user') as AuthUser | null;
+      const user = await window.jowork.auth.getUser();
       set({ user });
     } catch {
       set({ user: null });
@@ -62,19 +62,19 @@ export const useAuth = create<AuthState>((set) => ({
   },
 
   loadModeState: async () => {
-    const modeState = await window.jowork.invoke('auth:get-mode') as ModeState;
+    const modeState = await window.jowork.auth.getMode();
     set({ modeState });
   },
 
   switchToPersonal: async () => {
-    await window.jowork.invoke('auth:switch-personal');
-    const modeState = await window.jowork.invoke('auth:get-mode') as ModeState;
+    await window.jowork.auth.switchPersonal();
+    const modeState = await window.jowork.auth.getMode();
     set({ modeState });
   },
 
   switchToTeam: async (teamId: string, teamName: string) => {
-    await window.jowork.invoke('auth:switch-team', teamId, teamName);
-    const modeState = await window.jowork.invoke('auth:get-mode') as ModeState;
+    await window.jowork.auth.switchTeam(teamId, teamName);
+    const modeState = await window.jowork.auth.getMode();
     set({ modeState });
   },
 }));

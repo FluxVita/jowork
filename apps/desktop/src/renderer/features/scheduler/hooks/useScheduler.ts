@@ -44,7 +44,7 @@ export const useSchedulerStore = create<SchedulerStore>((set, get) => ({
   loadTasks: async () => {
     set({ isLoading: true });
     try {
-      const tasks = await window.jowork.invoke('scheduler:list');
+      const tasks = await window.jowork.scheduler.list();
       set({ tasks: tasks as ScheduledTaskInfo[], isLoading: false });
     } catch {
       set({ isLoading: false });
@@ -52,19 +52,19 @@ export const useSchedulerStore = create<SchedulerStore>((set, get) => ({
   },
 
   createTask: async (task) => {
-    const created = await window.jowork.invoke('scheduler:create', task) as ScheduledTaskInfo;
+    const created = await window.jowork.scheduler.create(task) as ScheduledTaskInfo;
     set((s) => ({ tasks: [created, ...s.tasks] }));
   },
 
   updateTask: async (id, patch) => {
-    const updated = await window.jowork.invoke('scheduler:update', id, patch) as ScheduledTaskInfo;
+    const updated = await window.jowork.scheduler.update(id, patch) as ScheduledTaskInfo;
     set((s) => ({
       tasks: s.tasks.map((t) => (t.id === id ? updated : t)),
     }));
   },
 
   deleteTask: async (id) => {
-    await window.jowork.invoke('scheduler:delete', id);
+    await window.jowork.scheduler.delete(id);
     set((s) => ({ tasks: s.tasks.filter((t) => t.id !== id) }));
   },
 
@@ -73,7 +73,7 @@ export const useSchedulerStore = create<SchedulerStore>((set, get) => ({
   },
 
   loadExecutions: async (taskId) => {
-    const execs = await window.jowork.invoke('scheduler:executions', taskId) as TaskExecution[];
+    const execs = await window.jowork.scheduler.executions(taskId) as TaskExecution[];
     set((s) => ({
       executions: { ...s.executions, [taskId]: execs },
     }));

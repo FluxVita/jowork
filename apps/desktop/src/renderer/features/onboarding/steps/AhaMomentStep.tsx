@@ -42,10 +42,8 @@ export function AhaMomentStep() {
     setResponse(null);
 
     try {
-      const result = await window.jowork.invoke('chat:send', {
-        message: question,
-      });
-      setResponse(result?.text ?? (language === 'zh' ? '回答已生成。' : 'Response generated.'));
+      await window.jowork.chat.send({ message: question });
+      setResponse(language === 'zh' ? '回答已生成。' : 'Response generated.');
     } catch {
       setResponse(language === 'zh'
         ? '引擎暂时不可用，完成设置后再试。'

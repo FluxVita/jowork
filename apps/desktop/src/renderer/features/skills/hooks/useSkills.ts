@@ -37,7 +37,7 @@ export const useSkillStore = create<SkillStore>((set) => ({
   loadSkills: async () => {
     set({ isLoading: true });
     try {
-      const skills = await window.jowork.invoke('skill:list');
+      const skills = await window.jowork.skill.list();
       set({ skills: skills as SkillInfo[], isLoading: false });
     } catch {
       set({ isLoading: false });
@@ -49,7 +49,7 @@ export const useSkillStore = create<SkillStore>((set) => ({
   runSkill: async (skillId, vars, sessionId) => {
     set({ isRunning: true });
     try {
-      await window.jowork.invoke('skill:run', skillId, vars, sessionId);
+      await window.jowork.skill.run(skillId, vars, sessionId);
     } finally {
       set({ isRunning: false });
     }

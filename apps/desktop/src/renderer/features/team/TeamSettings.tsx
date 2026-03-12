@@ -10,7 +10,7 @@ export function TeamSettings({ team }: TeamSettingsProps) {
   const [saved, setSaved] = useState(false);
 
   const handleSave = async () => {
-    await window.jowork.invoke('team:update-settings', team.id, { name });
+    await window.jowork.team.updateSettings(team.id, { name });
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };

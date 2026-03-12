@@ -30,7 +30,7 @@ export function ConnectorsStep() {
   const handleConnect = async (id: string) => {
     setConnecting(id);
     try {
-      await window.jowork.invoke('connector:connect', id, {});
+      await window.jowork.connector.start(id);
       addConnector(id);
     } catch {
       // Connection failed — user can retry

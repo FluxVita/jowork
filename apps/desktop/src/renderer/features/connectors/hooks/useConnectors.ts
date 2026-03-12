@@ -36,7 +36,7 @@ export const useConnectorStore = create<ConnectorStore>((set) => ({
   loadConnectors: async () => {
     set({ isLoading: true });
     try {
-      const manifests = await window.jowork.invoke('connector:list');
+      const manifests = await window.jowork.connector.list();
       set({ connectors: manifests as ConnectorInfo[], isLoading: false });
     } catch {
       set({ isLoading: false });
@@ -46,9 +46,9 @@ export const useConnectorStore = create<ConnectorStore>((set) => ({
   connect: async (id, credential) => {
     try {
       if (credential) {
-        await window.jowork.invoke('connector:save-credential', id, credential);
+        await window.jowork.connector.saveCredential(id, credential);
       }
-      await window.jowork.invoke('connector:start', id);
+      await window.jowork.connector.start(id);
       set((s) => ({
         connectors: s.connectors.map((c) =>
           c.id === id ? { ...c, status: 'connected' as const, hasCredential: true } : c,
@@ -61,7 +61,7 @@ export const useConnectorStore = create<ConnectorStore>((set) => ({
 
   disconnect: async (id) => {
     try {
-      await window.jowork.invoke('connector:stop', id);
+      await window.jowork.connector.stop(id);
       set((s) => ({
         connectors: s.connectors.map((c) =>
           c.id === id ? { ...c, status: 'disconnected' as const } : c,
@@ -74,7 +74,7 @@ export const useConnectorStore = create<ConnectorStore>((set) => ({
 
   checkHealth: async () => {
     try {
-      const health = await window.jowork.invoke('connector:health');
+      const health = await window.jowork.connector.health();
       set({ health: health as Record<string, HealthStatus> });
     } catch {
       // ignore

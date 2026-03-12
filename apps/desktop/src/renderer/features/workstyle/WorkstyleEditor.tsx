@@ -22,15 +22,15 @@ export function WorkstyleEditor() {
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    window.jowork.invoke('settings:get', 'workstyle').then((val) => {
-      setContent((val as string) || DEFAULT_TEMPLATE);
+    window.jowork.settings.get('workstyle').then((val) => {
+      setContent(val || DEFAULT_TEMPLATE);
     });
   }, []);
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      await window.jowork.invoke('settings:set', 'workstyle', content);
+      await window.jowork.settings.set('workstyle', content);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } finally {
