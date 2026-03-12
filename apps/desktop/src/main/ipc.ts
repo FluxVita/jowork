@@ -1,10 +1,14 @@
 import { ipcMain, app, BrowserWindow } from 'electron';
 import { EngineManager } from './engine/manager';
 import { ConnectorHub } from './connectors/hub';
+import { MemoryStore, type NewMemory } from './memory/store';
+import { SkillLoader } from './skills/loader';
 import type { EngineId } from './engine/types';
 
 let engineManager: EngineManager;
 let connectorHub: ConnectorHub;
+let memoryStore: MemoryStore;
+let skillLoader: SkillLoader;
 
 export function getEngineManager(): EngineManager {
   return engineManager;
@@ -13,6 +17,8 @@ export function getEngineManager(): EngineManager {
 export function setupIPC(): void {
   engineManager = new EngineManager();
   connectorHub = new ConnectorHub(engineManager.getHistoryManager());
+  memoryStore = new MemoryStore(engineManager.getHistoryManager().getSqliteInstance());
+  skillLoader = new SkillLoader();
 
   // App
   ipcMain.handle('app:get-version', () => app.getVersion());
@@ -160,6 +166,67 @@ export function setupIPC(): void {
 
   ipcMain.handle('connector:tools', async () => {
     return connectorHub.listAllTools();
+  });
+
+  // --- Memory management ---
+
+  ipcMain.handle('memory:list', (_e, opts: { scope?: string; pinned?: boolean; limit?: number }) => {
+    return memoryStore.list(opts);
+  });
+
+  ipcMain.handle('memory:search', (_e, query: string) => {
+    return memoryStore.search(query);
+  });
+
+  ipcMain.handle('memory:create', (_e, mem: NewMemory) => {
+    return memoryStore.create(mem);
+  });
+
+  ipcMain.handle('memory:update', (_e, id: string, patch: Partial<NewMemory>) => {
+    return memoryStore.update(id, patch);
+  });
+
+  ipcMain.handle('memory:delete', (_e, id: string) => {
+    memoryStore.delete(id);
+  });
+
+  ipcMain.handle('memory:get', (_e, id: string) => {
+    return memoryStore.get(id);
+  });
+
+  // --- Skills ---
+
+  ipcMain.handle('skill:list', async () => {
+    return skillLoader.loadAll();
+  });
+
+  ipcMain.handle('skill:run', async (event, skillId: string, vars: Record<string, string>, sessionId?: string) => {
+    const skills = await skillLoader.loadAll();
+    const skill = skills.find((s) => s.id === skillId);
+    if (!skill) throw new Error(`Skill not found: ${skillId}`);
+
+    const { SkillExecutor } = await import('./skills/executor');
+    const executor = new SkillExecutor(engineManager);
+
+    if (skill.type === 'workflow' && skill.steps?.length) {
+      for await (const ev of executor.executeWorkflow(skill, vars, sessionId)) {
+        event.sender.send('chat:event', { sessionId, ...ev as object });
+      }
+    } else {
+      for await (const ev of executor.executeSimple(skill, vars, sessionId)) {
+        event.sender.send('chat:event', { sessionId, ...ev as object });
+      }
+    }
+  });
+
+  // --- Settings (key-value) ---
+
+  ipcMain.handle('settings:get', (_e, key: string) => {
+    return engineManager.getHistoryManager().getSetting(key);
+  });
+
+  ipcMain.handle('settings:set', (_e, key: string, value: string) => {
+    engineManager.getHistoryManager().setSetting(key, value);
   });
 }
 

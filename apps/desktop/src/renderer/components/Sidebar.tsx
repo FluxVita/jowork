@@ -5,6 +5,9 @@ import { SessionList } from '../features/conversation/SessionList';
 const navItems = [
   { path: '/', key: 'sidebar.conversation', icon: '💬' },
   { path: '/connectors', key: 'sidebar.connectors', icon: '🔌' },
+  { path: '/memories', key: 'sidebar.memories', icon: '🧠' },
+  { path: '/skills', key: 'sidebar.skills', icon: '⚡' },
+  { path: '/workstyle', key: 'sidebar.workstyle', icon: '✏️' },
   { path: '/settings', key: 'sidebar.settings', icon: '⚙️' },
 ] as const;
 

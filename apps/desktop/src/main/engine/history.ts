@@ -232,6 +232,10 @@ export class HistoryManager {
       .run();
   }
 
+  getSqliteInstance(): Database.Database {
+    return this.sqlite;
+  }
+
   close(): void {
     this.sqlite.close();
   }
