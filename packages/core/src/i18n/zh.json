@@ -21,5 +21,35 @@
     "appearance": "外观",
     "engines": "AI 引擎",
     "about": "关于"
+  },
+  "billing": {
+    "title": "计费",
+    "credits": "积分",
+    "remaining": "剩余",
+    "used": "本周期已用",
+    "wallet": "钱包余额",
+    "buyCredits": "购买积分",
+    "plans": "方案",
+    "currentPlan": "当前方案",
+    "upgrade": "升级",
+    "manageSubscription": "管理订阅",
+    "signInRequired": "登录后可使用计费和云积分功能。"
+  },
+  "team": {
+    "title": "团队",
+    "members": "成员",
+    "invite": "邀请成员",
+    "createTeam": "创建团队",
+    "settings": "团队设置",
+    "signInRequired": "登录后可创建或加入团队工作区。",
+    "yourTeams": "你的团队",
+    "switch": "切换",
+    "owner": "所有者",
+    "admin": "管理员",
+    "member": "成员"
+  },
+  "auth": {
+    "signIn": "使用 Google 登录",
+    "signOut": "退出登录"
   }
 }

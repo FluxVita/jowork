@@ -1,6 +1,7 @@
 {
   "name": "jowork",
   "private": true,
+  "packageManager": "pnpm@10.17.1",
   "scripts": {
     "dev": "turbo dev",
     "build": "turbo build",

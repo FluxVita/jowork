@@ -1,6 +1,9 @@
+import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useLocation } from 'react-router';
 import { SessionList } from '../features/conversation/SessionList';
+import { useAuth } from '../features/auth/hooks/useAuth';
+import { CreditBar } from '../features/billing/CreditBar';
 
 const navItems = [
   { path: '/', key: 'sidebar.conversation', icon: '💬' },
@@ -11,6 +14,8 @@ const navItems = [
   { path: '/scheduler', key: 'sidebar.scheduler', icon: '🕐' },
   { path: '/notifications', key: 'sidebar.notifications', icon: '🔔' },
   { path: '/terminal', key: 'sidebar.terminal', icon: '>' },
+  { path: '/billing', key: 'sidebar.billing', icon: '$' },
+  { path: '/team', key: 'sidebar.team', icon: '👥' },
   { path: '/settings', key: 'sidebar.settings', icon: '⚙️' },
 ] as const;
 
@@ -19,14 +24,23 @@ export function Sidebar() {
   const navigate = useNavigate();
   const location = useLocation();
   const isConversation = location.pathname === '/';
+  const { modeState, loadModeState, user } = useAuth();
+
+  useEffect(() => {
+    loadModeState();
+  }, [loadModeState]);
+
+  const modeBadge = modeState?.mode === 'team' && modeState.teamName
+    ? `Team: ${modeState.teamName}`
+    : t('sidebar.personal');
 
   return (
     <div className="flex flex-col h-full py-2">
-      {/* Brand */}
+      {/* Brand + mode badge */}
       <div className="flex items-center gap-2 px-5 mb-3">
         <span className="text-lg font-bold text-accent">JoWork</span>
         <span className="text-xs px-1.5 py-0.5 rounded bg-accent/10 text-accent">
-          {t('sidebar.personal')}
+          {modeBadge}
         </span>
       </div>
 
@@ -57,6 +71,13 @@ export function Sidebar() {
 
       {/* Spacer when not on conversation page */}
       {!isConversation && <div className="flex-1" />}
+
+      {/* Credit bar (when logged in) */}
+      {user && (
+        <div className="border-t border-border">
+          <CreditBar />
+        </div>
+      )}
 
       {/* Bottom */}
       <div className="text-xs text-text-secondary px-5 py-2 border-t border-border">

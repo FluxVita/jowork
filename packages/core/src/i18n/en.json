@@ -21,5 +21,35 @@
     "appearance": "Appearance",
     "engines": "AI Engines",
     "about": "About"
+  },
+  "billing": {
+    "title": "Billing",
+    "credits": "Credits",
+    "remaining": "Remaining",
+    "used": "Used this period",
+    "wallet": "Wallet Balance",
+    "buyCredits": "Buy Credits",
+    "plans": "Plans",
+    "currentPlan": "Current Plan",
+    "upgrade": "Upgrade",
+    "manageSubscription": "Manage Subscription",
+    "signInRequired": "Sign in to access billing and cloud credits."
+  },
+  "team": {
+    "title": "Team",
+    "members": "Members",
+    "invite": "Invite Members",
+    "createTeam": "Create a Team",
+    "settings": "Team Settings",
+    "signInRequired": "Sign in to create or join a team workspace.",
+    "yourTeams": "Your Teams",
+    "switch": "Switch",
+    "owner": "Owner",
+    "admin": "Admin",
+    "member": "Member"
+  },
+  "auth": {
+    "signIn": "Sign in with Google",
+    "signOut": "Sign out"
   }
 }

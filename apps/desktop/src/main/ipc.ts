@@ -1,4 +1,4 @@
-import { ipcMain, app, BrowserWindow } from 'electron';
+import { ipcMain, app, BrowserWindow, shell } from 'electron';
 import { EngineManager } from './engine/manager';
 import { ConnectorHub } from './connectors/hub';
 import { MemoryStore, type NewMemory } from './memory/store';
@@ -9,6 +9,8 @@ import { ClipboardManager } from './system/clipboard';
 import { PtyManager } from './system/pty-manager';
 import { FileWatcher } from './system/file-watcher';
 import { Scheduler, type NewScheduledTask } from './scheduler';
+import { AuthManager } from './auth/manager';
+import { ModeManager } from './auth/mode';
 import type { EngineId } from './engine/types';
 
 let engineManager: EngineManager;
@@ -21,6 +23,8 @@ let clipboardManager: ClipboardManager;
 let ptyManager: PtyManager;
 let fileWatcher: FileWatcher;
 let scheduler: Scheduler;
+let authManager: AuthManager;
+let modeManager: ModeManager;
 
 export function getEngineManager(): EngineManager {
   return engineManager;
@@ -39,6 +43,13 @@ export function setupIPC(): void {
   scheduler = new Scheduler(engineManager.getHistoryManager().getSqliteInstance());
   scheduler.setEngineManager(engineManager);
   scheduler.startAll();
+
+  const hm = engineManager.getHistoryManager();
+  modeManager = new ModeManager(
+    (key) => hm.getSetting(key),
+    (key, value) => hm.setSetting(key, value),
+  );
+  authManager = new AuthManager(modeManager);
 
   // App
   ipcMain.handle('app:get-version', () => app.getVersion());
@@ -346,6 +357,193 @@ export function setupIPC(): void {
 
   ipcMain.handle('scheduler:executions', (_e, taskId: string, limit?: number) => {
     return scheduler.getExecutions(taskId, limit);
+  });
+
+  // --- Auth & Mode ---
+
+  ipcMain.handle('auth:login-google', async () => {
+    return authManager.loginWithGoogle();
+  });
+
+  ipcMain.handle('auth:logout', async () => {
+    await authManager.logout();
+  });
+
+  ipcMain.handle('auth:get-user', () => {
+    return authManager.getCurrentUser();
+  });
+
+  ipcMain.handle('auth:get-mode', () => {
+    return modeManager.getState();
+  });
+
+  ipcMain.handle('auth:switch-personal', () => {
+    modeManager.switchToPersonal();
+  });
+
+  ipcMain.handle('auth:switch-team', (_e, teamId: string, teamName: string) => {
+    modeManager.switchToTeam(teamId, teamName);
+  });
+
+  // --- Billing (proxy to cloud API) ---
+
+  ipcMain.handle('billing:get-credits', async () => {
+    const token = authManager.getToken();
+    if (!token) throw new Error('Not logged in');
+
+    const cloudUrl = 'https://api.jowork.dev';
+    const res = await fetch(`${cloudUrl}/billing/credits`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) throw new Error('Failed to fetch credits');
+    return res.json();
+  });
+
+  ipcMain.handle('billing:checkout', async (_e, planId: string) => {
+    const token = authManager.getToken();
+    if (!token) throw new Error('Not logged in');
+
+    const cloudUrl = 'https://api.jowork.dev';
+    const res = await fetch(`${cloudUrl}/billing/checkout`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ planId }),
+    });
+    if (!res.ok) throw new Error('Failed to create checkout');
+    const data = await res.json() as { url: string };
+    return data.url;
+  });
+
+  ipcMain.handle('billing:portal', async () => {
+    const token = authManager.getToken();
+    if (!token) throw new Error('Not logged in');
+
+    const cloudUrl = 'https://api.jowork.dev';
+    const res = await fetch(`${cloudUrl}/billing/portal`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) throw new Error('Failed to create portal');
+    const data = await res.json() as { url: string };
+    return data.url;
+  });
+
+  ipcMain.handle('billing:top-up', async (_e, amount: number) => {
+    const token = authManager.getToken();
+    if (!token) throw new Error('Not logged in');
+
+    const cloudUrl = 'https://api.jowork.dev';
+    const res = await fetch(`${cloudUrl}/billing/top-up`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ credits: amount }),
+    });
+    if (!res.ok) throw new Error('Failed to create top-up');
+    const data = await res.json() as { url: string };
+    return data.url;
+  });
+
+  // --- Team (proxy to cloud API) ---
+
+  ipcMain.handle('team:list', async () => {
+    const token = authManager.getToken();
+    if (!token) return [];
+
+    const cloudUrl = 'https://api.jowork.dev';
+    try {
+      const res = await fetch(`${cloudUrl}/teams`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return [];
+      return res.json();
+    } catch {
+      return [];
+    }
+  });
+
+  ipcMain.handle('team:get', async (_e, teamId: string) => {
+    const token = authManager.getToken();
+    if (!token) throw new Error('Not logged in');
+
+    const cloudUrl = 'https://api.jowork.dev';
+    const res = await fetch(`${cloudUrl}/teams/${teamId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) throw new Error('Failed to fetch team');
+    return res.json();
+  });
+
+  ipcMain.handle('team:create', async (_e, name: string) => {
+    const token = authManager.getToken();
+    if (!token) throw new Error('Not logged in');
+
+    const cloudUrl = 'https://api.jowork.dev';
+    const res = await fetch(`${cloudUrl}/teams`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    });
+    if (!res.ok) throw new Error('Failed to create team');
+    return res.json();
+  });
+
+  ipcMain.handle('team:invite', async (_e, teamId: string) => {
+    const token = authManager.getToken();
+    if (!token) throw new Error('Not logged in');
+
+    const cloudUrl = 'https://api.jowork.dev';
+    const res = await fetch(`${cloudUrl}/teams/${teamId}/invite`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) throw new Error('Failed to generate invite');
+    return res.json();
+  });
+
+  ipcMain.handle('team:remove-member', async (_e, teamId: string, userId: string) => {
+    const token = authManager.getToken();
+    if (!token) throw new Error('Not logged in');
+
+    const cloudUrl = 'https://api.jowork.dev';
+    const res = await fetch(`${cloudUrl}/teams/${teamId}/members/${userId}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) throw new Error('Failed to remove member');
+    return res.json();
+  });
+
+  ipcMain.handle('team:update-role', async (_e, teamId: string, userId: string, role: string) => {
+    const token = authManager.getToken();
+    if (!token) throw new Error('Not logged in');
+
+    const cloudUrl = 'https://api.jowork.dev';
+    const res = await fetch(`${cloudUrl}/teams/${teamId}/members/${userId}`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role }),
+    });
+    if (!res.ok) throw new Error('Failed to update role');
+    return res.json();
+  });
+
+  ipcMain.handle('team:update-settings', async (_e, teamId: string, settings: { name?: string }) => {
+    const token = authManager.getToken();
+    if (!token) throw new Error('Not logged in');
+
+    const cloudUrl = 'https://api.jowork.dev';
+    const res = await fetch(`${cloudUrl}/teams/${teamId}`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(settings),
+    });
+    if (!res.ok) throw new Error('Failed to update team settings');
+    return res.json();
+  });
+
+  // --- Shell ---
+
+  ipcMain.handle('shell:open-external', async (_e, url: string) => {
+    await shell.openExternal(url);
   });
 }
 

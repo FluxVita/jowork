@@ -8,6 +8,8 @@ import { SkillsPanel } from './features/skills/SkillsPanel';
 import { WorkstyleEditor } from './features/workstyle/WorkstyleEditor';
 import { SchedulerPage } from './features/scheduler/SchedulerPage';
 import { NotificationCenter } from './features/notifications/NotificationCenter';
+import { BillingPage } from './features/billing/BillingPage';
+import { TeamPage } from './features/team/TeamPage';
 import { TerminalPage } from './pages/TerminalPage';
 import { SettingsPage } from './pages/SettingsPage';
 
@@ -27,6 +29,8 @@ export function App() {
           <Route path="workstyle" element={<WorkstyleEditor />} />
           <Route path="scheduler" element={<SchedulerPage />} />
           <Route path="notifications" element={<NotificationCenter />} />
+          <Route path="billing" element={<BillingPage />} />
+          <Route path="team" element={<TeamPage />} />
           <Route path="terminal" element={<TerminalPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>
