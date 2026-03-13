@@ -14,7 +14,7 @@ export function PlanSelector() {
           <div
             key={plan.id}
             className={`rounded-lg border p-4 flex flex-col ${
-              isCurrent ? 'border-accent bg-accent/5' : 'border-border bg-surface'
+              isCurrent ? 'border-accent bg-accent/5' : 'border-border bg-surface-1'
             }`}
           >
             <div className="mb-3">

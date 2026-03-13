@@ -53,7 +53,7 @@ export function ConnectorsStep() {
         {connectors.map((c) => (
           <div
             key={c.id}
-            className="flex items-center justify-between bg-surface rounded-lg p-3"
+            className="flex items-center justify-between bg-surface-1 rounded-lg p-3"
           >
             <div className="flex items-center gap-3">
               <span className="text-lg">{c.icon}</span>

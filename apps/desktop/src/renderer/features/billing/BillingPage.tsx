@@ -32,7 +32,7 @@ export function BillingPage() {
     return (
       <div className="p-6 max-w-2xl mx-auto">
         <h1 className="text-xl font-bold mb-4">{t('title')}</h1>
-        <div className="bg-surface rounded-lg p-8 text-center">
+        <div className="bg-surface-1 rounded-lg p-8 text-center">
           <p className="text-text-secondary mb-4">
             {t('signInRequired')}
           </p>
@@ -60,7 +60,7 @@ export function BillingPage() {
       </div>
 
       {/* Credit overview */}
-      <div className="bg-surface rounded-lg p-5">
+      <div className="bg-surface-1 rounded-lg p-5">
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-medium">{t('credits')}</h2>
           {loading && <span className="text-xs text-text-secondary">{t('common:loading')}</span>}
@@ -85,7 +85,7 @@ export function BillingPage() {
       </div>
 
       {/* Top-up */}
-      <div className="bg-surface rounded-lg p-5">
+      <div className="bg-surface-1 rounded-lg p-5">
         <h2 className="font-medium mb-3">{t('buyCredits')}</h2>
         <div className="flex items-center gap-2 mb-3">
           {TOPUP_OPTIONS.map((amt) => (

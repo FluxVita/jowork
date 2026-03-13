@@ -50,14 +50,14 @@ export function EngineStep() {
 
       <div className="w-full max-w-sm space-y-3 mb-8">
         {checking ? (
-          <div className="bg-surface rounded-lg p-4 text-sm text-text-secondary">
+          <div className="bg-surface-1 rounded-lg p-4 text-sm text-text-secondary">
             {t('common:loading', { ns: 'common' })}
           </div>
         ) : (
           engines.map((engine) => (
             <div
               key={engine.id}
-              className="flex items-center justify-between bg-surface rounded-lg p-4"
+              className="flex items-center justify-between bg-surface-1 rounded-lg p-4"
             >
               <span className="text-sm font-medium">{engine.name}</span>
               {engine.detected ? (
@@ -70,7 +70,7 @@ export function EngineStep() {
         )}
 
         {!checking && engines.length === 0 && (
-          <div className="bg-surface rounded-lg p-4 text-sm text-text-secondary">
+          <div className="bg-surface-1 rounded-lg p-4 text-sm text-text-secondary">
             {t('chat:detectingEngines', { ns: 'chat' })}
           </div>
         )}

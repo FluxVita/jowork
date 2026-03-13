@@ -92,7 +92,7 @@ export class FeatureErrorBoundary extends Component<FeatureErrorProps, FeatureEr
   render(): ReactNode {
     if (this.state.hasError) {
       return (
-        <div className="flex items-center gap-3 p-4 bg-surface rounded-lg">
+        <div className="flex items-center gap-3 p-4 bg-surface-1 rounded-lg">
           <span className="text-yellow-500">⚠️</span>
           <span className="text-sm text-text-secondary">
             {i18n.t('featureError', { ns: 'common', name: this.props.name })}

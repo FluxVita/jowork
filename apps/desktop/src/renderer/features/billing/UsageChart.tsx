@@ -20,7 +20,7 @@ export function UsageChart({ data, limit }: UsageChartProps) {
   }, [data, limit]);
 
   return (
-    <div className="bg-surface rounded-lg p-4">
+    <div className="bg-surface-1 rounded-lg p-4">
       <h3 className="text-sm font-medium mb-3">{t('dailyUsage')}</h3>
       <div className="flex items-end gap-1.5 h-32">
         {data.map((day) => {

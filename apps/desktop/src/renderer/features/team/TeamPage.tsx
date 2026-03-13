@@ -31,7 +31,7 @@ export function TeamPage() {
     return (
       <div className="p-6 max-w-2xl mx-auto">
         <h1 className="text-xl font-bold mb-4">{t('title')}</h1>
-        <div className="bg-surface rounded-lg p-8 text-center">
+        <div className="bg-surface-1 rounded-lg p-8 text-center">
           <p className="text-text-secondary mb-4">
             {t('signInRequired')}
           </p>
@@ -61,7 +61,7 @@ export function TeamPage() {
                 <button
                   key={tm.id}
                   onClick={() => switchToTeam(tm.id, tm.name)}
-                  className="w-full flex items-center justify-between bg-surface rounded-lg p-4 hover:bg-surface-2 transition-colors text-left"
+                  className="w-full flex items-center justify-between bg-surface-1 rounded-lg p-4 hover:bg-surface-2 transition-colors text-left"
                 >
                   <div>
                     <div className="font-medium">{tm.name}</div>
@@ -75,7 +75,7 @@ export function TeamPage() {
         )}
 
         {/* Create team */}
-        <div className="bg-surface rounded-lg p-5">
+        <div className="bg-surface-1 rounded-lg p-5">
           <h2 className="font-medium mb-3">{t('createTeam')}</h2>
           <div className="flex gap-2">
             <input
@@ -126,7 +126,7 @@ export function TeamPage() {
       </div>
 
       {/* Members */}
-      <div className="bg-surface rounded-lg p-5">
+      <div className="bg-surface-1 rounded-lg p-5">
         <h2 className="font-medium mb-3">{t('members')}</h2>
         {loading ? (
           <p className="text-sm text-text-secondary py-4 text-center">{t('common:loading')}</p>

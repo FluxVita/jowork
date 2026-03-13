@@ -34,7 +34,7 @@ export function InviteDialog({ teamId, onClose }: InviteDialogProps) {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-surface rounded-lg p-6 w-full max-w-md mx-4">
+      <div className="bg-surface-1 rounded-lg p-6 w-full max-w-md mx-4">
         <h2 className="text-lg font-semibold mb-4">{t('inviteTitle')}</h2>
 
         {!invite ? (

@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { useNavigate } from 'react-router';
 import { useOnboarding } from './hooks/useOnboarding';
 import { WelcomeStep } from './steps/WelcomeStep';
 import { LoginStep } from './steps/LoginStep';
@@ -17,16 +18,24 @@ const STEPS: Record<number, React.FC> = {
 };
 
 export function OnboardingFlow() {
-  const { step, loadState } = useOnboarding();
+  const { step, completed, loadState } = useOnboarding();
+  const navigate = useNavigate();
 
   useEffect(() => {
     loadState();
   }, [loadState]);
 
+  // Navigate to main app once onboarding is completed
+  useEffect(() => {
+    if (completed) {
+      navigate('/', { replace: true });
+    }
+  }, [completed, navigate]);
+
   const StepComponent = STEPS[step] ?? WelcomeStep;
 
   return (
-    <div className="h-screen flex flex-col bg-background text-text-primary">
+    <div className="h-screen flex flex-col bg-surface-0 text-text-primary">
       {/* Progress indicator */}
       <div className="flex justify-center gap-2 pt-8 pb-4">
         {[1, 2, 3, 4, 5, 6].map((s) => (

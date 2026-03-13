@@ -20,7 +20,7 @@ export function TeamSettings({ team }: TeamSettingsProps) {
   };
 
   return (
-    <div className="bg-surface rounded-lg p-5">
+    <div className="bg-surface-1 rounded-lg p-5">
       <h3 className="font-medium mb-4">{t('settings')}</h3>
       <div className="space-y-4">
         <div>

@@ -54,7 +54,7 @@ export function AhaMomentStep() {
             <button
               key={i}
               onClick={() => handleAsk(q)}
-              className="w-full text-left bg-surface rounded-lg p-4 text-sm hover:bg-surface-2 transition-colors"
+              className="w-full text-left bg-surface-1 rounded-lg p-4 text-sm hover:bg-surface-2 transition-colors"
             >
               {q}
             </button>
@@ -65,7 +65,7 @@ export function AhaMomentStep() {
           <div className="bg-accent/10 rounded-lg p-4 mb-3 text-sm text-left">
             {selectedQuestion}
           </div>
-          <div className="bg-surface rounded-lg p-4 text-sm text-left min-h-[80px]">
+          <div className="bg-surface-1 rounded-lg p-4 text-sm text-left min-h-[80px]">
             {loading ? (
               <div className="text-text-secondary animate-pulse">
                 {tChat('thinking')}
