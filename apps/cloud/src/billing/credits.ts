@@ -117,6 +117,8 @@ export async function consumeCredits(
   const cost = getCreditCost(action);
   const db = getDb();
 
+  // Ensure credit row exists (new users won't have one yet)
+  await ensureCreditRow(userId, 'free');
   await ensureDailyReset(userId);
 
   const [row] = await db.select().from(credits)
