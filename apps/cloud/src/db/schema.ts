@@ -123,6 +123,13 @@ export const cloudMemories = pgTable('cloud_memories', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
+// User preferences (JSON KV store per user)
+export const userPreferences = pgTable('user_preferences', {
+  userId: text('user_id').references(() => users.id).primaryKey(),
+  data: jsonb('data').notNull().default({}),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
 // Cloud context docs (Team scope)
 export const cloudContextDocs = pgTable('cloud_context_docs', {
   id: text('id').primaryKey(),

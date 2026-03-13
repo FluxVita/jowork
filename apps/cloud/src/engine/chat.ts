@@ -38,7 +38,7 @@ export async function handleChat(c: Context): Promise<Response> {
     return c.json({ error: 'Cloud AI not configured' }, 503);
   }
 
-  const systemPrompt = body.systemContext || 'You are JoWork, a helpful AI work assistant.';
+  const systemPrompt = body.systemContext || `You are JoWork, an AI work assistant that helps users be more productive. Be concise and direct. Support both English and Chinese — respond in whatever language the user writes in.`;
 
   // Create or get session
   const db = getDb();

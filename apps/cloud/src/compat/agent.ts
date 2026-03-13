@@ -7,9 +7,18 @@ import type { Context } from 'hono';
 import { stream } from 'hono/streaming';
 import { eq, desc } from 'drizzle-orm';
 import { getDb } from '../db';
-import { cloudSessions, cloudMessages } from '../db/schema';
+import { cloudSessions, cloudMessages, userPreferences } from '../db/schema';
 import { consumeCredits } from '../billing/credits';
 import { resolveProvider } from '../engine/provider';
+
+const SYSTEM_PROMPT = `You are JoWork, an AI work assistant that helps users be more productive.
+
+Key traits:
+- Concise and direct — lead with the answer, not the reasoning
+- Helpful for work tasks: writing, analysis, coding, planning, brainstorming
+- When asked to write, match the appropriate tone (professional for emails, casual for messages)
+- Support both English and Chinese — respond in whatever language the user writes in
+- If you don't know something, say so honestly rather than guessing`;
 
 // --- Engines ---
 
@@ -251,7 +260,7 @@ async function streamOpenAI(
       model: provider.model,
       max_tokens: 4096,
       messages: [
-        { role: 'system', content: 'You are JoWork, a helpful AI work assistant.' },
+        { role: 'system', content: SYSTEM_PROMPT },
         ...messages,
       ],
       stream: true,
@@ -330,7 +339,7 @@ async function streamAnthropic(
     body: JSON.stringify({
       model: provider.model,
       max_tokens: 4096,
-      system: 'You are JoWork, a helpful AI work assistant.',
+      system: SYSTEM_PROMPT,
       messages,
       stream: true,
     }),
@@ -401,19 +410,51 @@ export function listAgentTasks(c: Context): Response {
   return c.json({ tasks: [] });
 }
 
-// --- Preferences ---
+// --- Preferences (DB-persisted, memory fallback for tests) ---
 
-const preferencesStore = new Map<string, Record<string, unknown>>();
+const prefsFallback = new Map<string, Record<string, unknown>>();
+const hasDb = !!process.env['DATABASE_URL'];
 
 export async function getPreferences(c: Context): Promise<Response> {
   const userId = c.get('userId') as string;
-  return c.json(preferencesStore.get(userId) ?? {});
+
+  if (!hasDb) {
+    return c.json(prefsFallback.get(userId) ?? {});
+  }
+
+  const db = getDb();
+  const [row] = await db.select().from(userPreferences)
+    .where(eq(userPreferences.userId, userId));
+
+  return c.json(row?.data ?? {});
 }
 
 export async function setPreferences(c: Context): Promise<Response> {
   const userId = c.get('userId') as string;
   const body = await c.req.json<Record<string, unknown>>();
-  const current = preferencesStore.get(userId) ?? {};
-  preferencesStore.set(userId, { ...current, ...body });
+
+  if (!hasDb) {
+    const current = prefsFallback.get(userId) ?? {};
+    prefsFallback.set(userId, { ...current, ...body });
+    return c.json({ ok: true });
+  }
+
+  const db = getDb();
+  const [existing] = await db.select().from(userPreferences)
+    .where(eq(userPreferences.userId, userId));
+
+  const merged = { ...(existing?.data as Record<string, unknown> ?? {}), ...body };
+
+  if (existing) {
+    await db.update(userPreferences)
+      .set({ data: merged, updatedAt: new Date() })
+      .where(eq(userPreferences.userId, userId));
+  } else {
+    await db.insert(userPreferences).values({
+      userId,
+      data: merged,
+    });
+  }
+
   return c.json({ ok: true });
 }
