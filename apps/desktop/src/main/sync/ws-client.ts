@@ -147,7 +147,7 @@ export class RemoteChannel {
       actions: [{ type: 'button', text: 'Execute' }],
     });
 
-    notification.on('click', async () => {
+    notification.once('click', async () => {
       try {
         const task: RemoteTask = {
           id: taskId || `qt_${Date.now()}`,

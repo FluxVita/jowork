@@ -68,6 +68,13 @@ export class FileWatcher {
       this.mainWindow?.webContents.send('file:changed', { path, event: 'unlink' });
     });
 
+    watcher.on('error', (err) => {
+      console.error(`[FileWatcher] Error watching ${dir}:`, err);
+      // Auto-cleanup broken watcher
+      watcher.close();
+      this.watchers.delete(dir);
+    });
+
     this.watchers.set(dir, watcher);
   }
 

@@ -23,7 +23,7 @@ export class NotificationManager {
       urgency: opts.urgency ?? 'normal',
     });
 
-    notification.on('click', () => {
+    notification.once('click', () => {
       if (this.mainWindow) {
         this.mainWindow.show();
         this.mainWindow.focus();

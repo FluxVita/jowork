@@ -4,6 +4,9 @@
  * When the desktop reconnects, queued tasks are drained and forwarded.
  */
 
+const MAX_QUEUE_PER_USER = 100;
+const TASK_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+
 export interface QueuedTask {
   id: string;
   userId: string;
@@ -24,7 +27,14 @@ class TaskQueue {
       queuedAt: new Date(),
     };
 
-    const queue = this.queues.get(userId) ?? [];
+    let queue = this.queues.get(userId) ?? [];
+    // Evict expired tasks
+    const now = Date.now();
+    queue = queue.filter((t) => now - t.queuedAt.getTime() < TASK_TTL_MS);
+    // Enforce max queue size — drop oldest if full
+    if (queue.length >= MAX_QUEUE_PER_USER) {
+      queue = queue.slice(queue.length - MAX_QUEUE_PER_USER + 1);
+    }
     queue.push(queued);
     this.queues.set(userId, queue);
 

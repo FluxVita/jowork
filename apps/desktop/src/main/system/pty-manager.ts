@@ -5,6 +5,8 @@ import * as fs from 'fs';
 interface PtySession {
   id: string;
   process: pty.IPty;
+  dataDisposable?: pty.IDisposable;
+  exitDisposable?: pty.IDisposable;
 }
 
 const ALLOWED_SHELLS = new Set([
@@ -70,11 +72,19 @@ export class PtyManager {
   }
 
   onData(id: string, callback: (data: string) => void): void {
-    this.sessions.get(id)?.process.onData(callback);
+    const session = this.sessions.get(id);
+    if (!session) return;
+    // Dispose previous listener to prevent accumulation
+    session.dataDisposable?.dispose();
+    session.dataDisposable = session.process.onData(callback);
   }
 
   onExit(id: string, callback: (exitCode: number, signal?: number) => void): void {
-    this.sessions.get(id)?.process.onExit(({ exitCode, signal }) => {
+    const session = this.sessions.get(id);
+    if (!session) return;
+    // Dispose previous listener to prevent accumulation
+    session.exitDisposable?.dispose();
+    session.exitDisposable = session.process.onExit(({ exitCode, signal }) => {
       callback(exitCode, signal);
       this.sessions.delete(id);
     });
@@ -83,6 +93,8 @@ export class PtyManager {
   destroy(id: string): void {
     const session = this.sessions.get(id);
     if (session) {
+      session.dataDisposable?.dispose();
+      session.exitDisposable?.dispose();
       session.process.kill();
       this.sessions.delete(id);
     }

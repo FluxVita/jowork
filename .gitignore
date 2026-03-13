@@ -28,3 +28,7 @@ Thumbs.db
 findings.md
 progress.md
 task_plan.md
+
+# AI tool config
+.claude/
+GEMINI.md

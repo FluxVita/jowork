@@ -4,7 +4,7 @@ import { is } from '@electron-toolkit/utils';
 import { i18n } from '@jowork/core';
 import { setupIPC, getLauncherWindow, getNotificationManager, getFileWatcher } from './ipc';
 import { setupTray } from './tray';
-import { setupAutoUpdater } from './updater';
+import { setupAutoUpdater, teardownAutoUpdater } from './updater';
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -112,6 +112,11 @@ app.whenReady().then(() => {
     getFileWatcher().setMainWindow(mainWindow);
     setupAutoUpdater(mainWindow);
   }
+});
+
+app.on('before-quit', () => {
+  teardownAutoUpdater();
+  getFileWatcher().closeAll();
 });
 
 app.on('window-all-closed', () => {
