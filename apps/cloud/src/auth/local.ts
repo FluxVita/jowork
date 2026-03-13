@@ -1,5 +1,8 @@
 import type { Context } from 'hono';
+import { eq } from 'drizzle-orm';
 import { signJwt, verifyJwt } from './jwt';
+import { getDb } from '../db';
+import { users } from '../db/schema';
 
 interface CompatUser {
   id: string;
@@ -28,7 +31,27 @@ function buildLocalUser(input: { username?: string; display_name?: string; feish
   };
 }
 
-function issueCompatAuth(c: Context, user: CompatUser): Response {
+async function ensureUserInDb(user: CompatUser): Promise<void> {
+  try {
+    const db = getDb();
+    const [existing] = await db.select().from(users).where(eq(users.id, user.id));
+    if (!existing) {
+      await db.insert(users).values({
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        avatarUrl: user.avatar_url,
+        plan: user.plan,
+      });
+    }
+  } catch {
+    // DB may not be available in tests — silently continue
+  }
+}
+
+async function issueCompatAuth(c: Context, user: CompatUser): Promise<Response> {
+  await ensureUserInDb(user);
+
   const token = signJwt({
     sub: user.id,
     email: user.email,
