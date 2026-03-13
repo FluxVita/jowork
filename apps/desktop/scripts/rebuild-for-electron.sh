@@ -23,7 +23,17 @@ fi
 
 # Quick check: can Electron load the current binary (must instantiate to trigger native load)?
 ELECTRON_BIN="$(cd "$DESKTOP_DIR" && node -e "console.log(require('electron'))" 2>/dev/null || echo "")"
-if [ -n "$ELECTRON_BIN" ] && "$ELECTRON_BIN" --no-sandbox -e "new (require('$SQLITE_DIR'))(':memory:').close()" 2>/dev/null; then
+check_sqlite_in_electron() {
+  if [ -z "$ELECTRON_BIN" ]; then
+    return 1
+  fi
+
+  ELECTRON_RUN_AS_NODE=1 "$ELECTRON_BIN" -e \
+    "new (require(process.argv[1]))(':memory:').close()" \
+    "$SQLITE_DIR" >/dev/null 2>&1
+}
+
+if check_sqlite_in_electron; then
   echo "[rebuild] better-sqlite3 already compatible with Electron $ELECTRON_VERSION"
   exit 0
 fi
@@ -39,7 +49,7 @@ HOME=~/.electron-gyp npx --yes node-gyp rebuild \
   --runtime=electron 2>&1 | tail -5
 
 # Verify it actually works now
-if [ -n "$ELECTRON_BIN" ] && "$ELECTRON_BIN" --no-sandbox -e "new (require('$SQLITE_DIR'))(':memory:').close()" 2>/dev/null; then
+if check_sqlite_in_electron; then
   echo "[rebuild] Success — better-sqlite3 ready for Electron $ELECTRON_VERSION"
 else
   echo "[rebuild] WARNING: rebuild completed but verification failed"
