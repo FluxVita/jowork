@@ -1,17 +1,24 @@
-import { useState, useRef, useCallback, type KeyboardEvent, type DragEvent } from 'react';
+import { useState, useRef, useCallback, useEffect, type KeyboardEvent, type DragEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 
 interface InputBoxProps {
   onSend: (message: string) => void;
   onAbort: () => void;
   isStreaming: boolean;
+  /** When this value changes, the textarea re-focuses (e.g. session switch). */
+  focusKey?: string | null;
 }
 
-export function InputBox({ onSend, onAbort, isStreaming }: InputBoxProps) {
+export function InputBox({ onSend, onAbort, isStreaming, focusKey }: InputBoxProps) {
   const { t } = useTranslation('chat');
   const [text, setText] = useState('');
   const [dragOver, setDragOver] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Re-focus textarea on mount and when session changes
+  useEffect(() => {
+    textareaRef.current?.focus();
+  }, [focusKey]);
 
   const handleSend = useCallback(() => {
     const trimmed = text.trim();
@@ -27,6 +34,10 @@ export function InputBox({ onSend, onAbort, isStreaming }: InputBoxProps) {
     if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
       e.preventDefault();
       handleSend();
+    }
+    if (e.key === 'Escape' && isStreaming) {
+      e.preventDefault();
+      onAbort();
     }
   };
 

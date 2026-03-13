@@ -128,7 +128,7 @@ export function ConversationPage() {
       )}
 
       {/* Input */}
-      <InputBox onSend={sendMessage} onAbort={abort} isStreaming={isStreaming} />
+      <InputBox onSend={sendMessage} onAbort={abort} isStreaming={isStreaming} focusKey={activeSessionId} />
     </div>
   );
 }
