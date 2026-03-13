@@ -96,7 +96,12 @@ export class ClaudeCodeEngine implements AgentEngine {
   async abort(): Promise<void> {
     this.abortController?.abort();
     if (this.process && !this.process.killed) {
-      this.process.kill('SIGTERM');
+      const proc = this.process;
+      proc.kill('SIGTERM');
+      // Fallback to SIGKILL if SIGTERM doesn't terminate within 3s
+      setTimeout(() => {
+        if (!proc.killed) proc.kill('SIGKILL');
+      }, 3000);
     }
   }
 

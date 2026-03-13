@@ -120,12 +120,12 @@ export class ConfirmRuleEngine {
   }
 
   /**
-   * Simple glob matching: `*` matches any sequence, `/` is literal.
+   * Simple glob matching: `*` matches any sequence, all other chars are literal.
    */
   private matchPattern(pattern: string, toolName: string): boolean {
-    const regex = new RegExp(
-      '^' + pattern.replace(/\*/g, '.*').replace(/\//g, '\\/') + '$',
-    );
+    // Escape all regex special chars, then convert `*` (now `\\*`) back to `.*`
+    const escaped = pattern.replace(/[.+?()[\]{}^$|\\]/g, '\\$&');
+    const regex = new RegExp('^' + escaped.replace(/\*/g, '.*') + '$');
     return regex.test(toolName);
   }
 }

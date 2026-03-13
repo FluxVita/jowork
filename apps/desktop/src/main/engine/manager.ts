@@ -61,7 +61,7 @@ export class EngineManager {
 
   async *chat(opts: ChatOpts): AsyncGenerator<EngineEvent> {
     const engine = this.engines.get(this.activeEngineId);
-    if (!engine) throw new Error(`No active engine`);
+    if (!engine) throw new Error(`No active engine: ${this.activeEngineId} is not registered`);
 
     // Resolve engine-side session ID if resuming
     let engineChatOpts = { ...opts };
