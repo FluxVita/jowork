@@ -40,6 +40,7 @@ export function ProfileStep() {
               <button
                 key={role}
                 onClick={() => setProfile({ role })}
+                aria-pressed={profile.role === role}
                 className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
                   profile.role === role
                     ? 'bg-accent text-white'

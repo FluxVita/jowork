@@ -65,6 +65,7 @@ export function ConnectorsStep() {
               <button
                 onClick={() => handleConnect(c.id)}
                 disabled={connecting === c.id}
+                aria-label={`${tConn('connect')} ${c.name}`}
                 className="px-3 py-1 rounded-md text-xs bg-accent text-white hover:bg-accent/90 transition-colors disabled:opacity-50"
               >
                 {connecting === c.id ? tc('loading') : tConn('connect')}

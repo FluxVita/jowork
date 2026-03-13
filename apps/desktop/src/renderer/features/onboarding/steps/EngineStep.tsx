@@ -58,12 +58,14 @@ export function EngineStep() {
             <div
               key={engine.id}
               className="flex items-center justify-between bg-surface-1 rounded-lg p-4"
+              role="listitem"
+              aria-label={`${engine.name}: ${engine.detected ? t('common:detected', { ns: 'common', defaultValue: 'Detected' }) : t('common:notDetected', { ns: 'common', defaultValue: 'Not detected' })}`}
             >
               <span className="text-sm font-medium">{engine.name}</span>
               {engine.detected ? (
-                <span className="text-green-500 text-sm">✓</span>
+                <span className="text-green-500 text-sm" aria-hidden="true">✓</span>
               ) : (
-                <span className="text-text-secondary text-sm">—</span>
+                <span className="text-text-secondary text-sm" aria-hidden="true">—</span>
               )}
             </div>
           ))

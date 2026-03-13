@@ -78,6 +78,7 @@ export function AhaMomentStep() {
             <button
               key={i}
               onClick={() => handleAsk(q)}
+              aria-label={`${t('askQuestion', { defaultValue: 'Ask' })}: ${q}`}
               className="w-full text-left bg-surface-1 rounded-lg p-4 text-sm hover:bg-surface-2 transition-colors"
             >
               {q}

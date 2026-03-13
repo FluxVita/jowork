@@ -22,6 +22,8 @@ export function WelcomeStep() {
       <div className="flex gap-3 mb-8">
         <button
           onClick={() => handleLanguageChange('zh')}
+          aria-label="切换到中文"
+          aria-pressed={language === 'zh'}
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
             language === 'zh' ? 'bg-accent text-white' : 'bg-surface-2 text-text-secondary hover:bg-surface-2/80'
           }`}
@@ -30,6 +32,8 @@ export function WelcomeStep() {
         </button>
         <button
           onClick={() => handleLanguageChange('en')}
+          aria-label="Switch to English"
+          aria-pressed={language === 'en'}
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
             language === 'en' ? 'bg-accent text-white' : 'bg-surface-2 text-text-secondary hover:bg-surface-2/80'
           }`}
