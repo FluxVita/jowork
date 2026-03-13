@@ -21,5 +21,6 @@
   "walletBalance": "+{{count}} wallet",
   "creditsPerMonth": "{{count}} credits/month",
   "downgrade": "Downgrade",
-  "dailyLimit": "Limit: {{limit}}/day"
+  "dailyLimit": "Limit: {{limit}}/day",
+  "usageHistory": "Usage History"
 }

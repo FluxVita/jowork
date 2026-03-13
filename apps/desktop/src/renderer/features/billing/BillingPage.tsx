@@ -139,7 +139,7 @@ export function BillingPage() {
           <GlassCard className="p-6">
              <h2 className="text-[16px] font-bold text-foreground mb-5 flex items-center gap-2">
               <Activity className="w-5 h-5 text-primary" />
-              Usage History
+              {t('usageHistory')}
             </h2>
             <div className="h-[140px] opacity-90">
               <UsageChart data={usageData} limit={credits?.dailyFreeLimit ?? 50} />

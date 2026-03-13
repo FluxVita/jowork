@@ -84,7 +84,7 @@ export function AhaMomentStep() {
     unsubRef.current?.();
     let accumulated = '';
     unsubRef.current = window.jowork.on('chat:event', (...args: unknown[]) => {
-      const event = args[0] as { type?: string; content?: string };
+      const event = (args[0] && typeof args[0] === 'object') ? args[0] as { type?: string; content?: string } : null;
       if (event?.type === 'text' && event.content) {
         accumulated += event.content;
         setStreamingText(accumulated);

@@ -19,6 +19,7 @@ export function TerminalPage() {
   const theme = useAppStore((s) => s.theme);
 
   const createTab = useCallback(async () => {
+    if (!window.jowork?.pty) return '';
     const id = await window.jowork.pty.create();
     tabCounter++;
     const tab: TerminalTab = { id, title: t('terminalTab', { n: tabCounter }) };
@@ -28,7 +29,7 @@ export function TerminalPage() {
   }, [t]);
 
   const closeTab = useCallback(async (id: string) => {
-    await window.jowork.pty.destroy(id);
+    await window.jowork?.pty?.destroy(id);
     setTabs((prev) => {
       const remaining = prev.filter((tab) => tab.id !== id);
       // Use setter for activeTab to avoid stale closure

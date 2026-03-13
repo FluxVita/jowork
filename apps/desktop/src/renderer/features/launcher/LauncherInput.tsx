@@ -69,7 +69,9 @@ export function LauncherInput() {
       }
       if (e.key === 'Tab' || (e.key === 'Enter' && !e.shiftKey)) {
         e.preventDefault();
-        selectSkill(filteredSkills[selectedIdx]);
+        if (selectedIdx >= 0 && selectedIdx < filteredSkills.length) {
+          selectSkill(filteredSkills[selectedIdx]);
+        }
         return;
       }
     }
