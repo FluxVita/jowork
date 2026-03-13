@@ -22,5 +22,7 @@ EXPOSE 3000
 
 COPY apps/cloud/drizzle.config.ts apps/cloud/
 COPY apps/cloud/public apps/cloud/public
+COPY apps/cloud/start.sh apps/cloud/
+RUN chmod +x apps/cloud/start.sh
 
-CMD ["sh", "-c", "cd apps/cloud && npx drizzle-kit push --force && npx tsx src/server.ts"]
+CMD ["sh", "apps/cloud/start.sh"]
