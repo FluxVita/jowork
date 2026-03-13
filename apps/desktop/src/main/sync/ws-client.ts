@@ -75,8 +75,11 @@ export class RemoteChannel {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
     }
-    this.ws?.close();
-    this.ws = null;
+    if (this.ws) {
+      this.ws.removeAllListeners();
+      this.ws.close();
+      this.ws = null;
+    }
     this.connected = false;
     this.reconnectAttempts = 0;
   }

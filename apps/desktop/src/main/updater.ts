@@ -11,6 +11,8 @@ import { BrowserWindow } from 'electron';
  */
 
 let autoUpdater: typeof import('electron-updater').autoUpdater | null = null;
+let checkInterval: ReturnType<typeof setInterval> | null = null;
+let initialCheckTimeout: ReturnType<typeof setTimeout> | null = null;
 
 export async function setupAutoUpdater(mainWindow: BrowserWindow): Promise<void> {
   // Skip in dev mode — updates only work with packaged apps
@@ -64,14 +66,28 @@ export async function setupAutoUpdater(mainWindow: BrowserWindow): Promise<void>
   });
 
   // Check every hour
-  setInterval(() => {
+  checkInterval = setInterval(() => {
     autoUpdater?.checkForUpdates().catch(() => {});
   }, 60 * 60 * 1000);
 
   // Initial check (delay 10s to not block startup)
-  setTimeout(() => {
+  initialCheckTimeout = setTimeout(() => {
     autoUpdater?.checkForUpdatesAndNotify().catch(() => {});
   }, 10_000);
+}
+
+/** Clean up all listeners and timers. Call on app quit. */
+export function teardownAutoUpdater(): void {
+  if (checkInterval) {
+    clearInterval(checkInterval);
+    checkInterval = null;
+  }
+  if (initialCheckTimeout) {
+    clearTimeout(initialCheckTimeout);
+    initialCheckTimeout = null;
+  }
+  autoUpdater?.removeAllListeners();
+  autoUpdater = null;
 }
 
 /** Manually trigger an update check. */

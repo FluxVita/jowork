@@ -89,7 +89,16 @@ export class ClaudeCodeEngine implements AgentEngine {
         yield { type: 'error', message: String(err) } as EngineEvent & { message: string };
       }
     } finally {
+      // Ensure subprocess is killed even if generator is not fully consumed
+      if (this.process && !this.process.killed) {
+        this.process.kill('SIGTERM');
+        const proc = this.process;
+        setTimeout(() => {
+          if (!proc.killed) proc.kill('SIGKILL');
+        }, 3000);
+      }
       this.process = undefined;
+      this.abortController = undefined;
     }
   }
 

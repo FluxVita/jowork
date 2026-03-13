@@ -31,6 +31,8 @@ export class OAuthFlow {
     const fullUrl = `${config.authUrl}?${params.toString()}`;
 
     return new Promise<OAuthTokens>((resolve, reject) => {
+      let settled = false;
+
       const authWindow = new BrowserWindow({
         width: 600,
         height: 700,
@@ -43,27 +45,33 @@ export class OAuthFlow {
 
       authWindow.loadURL(fullUrl);
 
-      authWindow.webContents.on('will-redirect', async (_event, url) => {
-        if (url.startsWith(config.callbackUrl)) {
-          const code = new URL(url).searchParams.get('code');
-          if (!code) {
-            reject(new Error('No authorization code received'));
-            authWindow.close();
-            return;
-          }
-          try {
-            const tokens = await this.exchangeToken(config, code);
-            resolve(tokens);
-          } catch (err) {
-            reject(err);
-          }
-          authWindow.close();
-        }
-      });
+      const onRedirect = async (_event: Electron.Event, url: string) => {
+        if (!url.startsWith(config.callbackUrl)) return;
+        settled = true;
 
-      authWindow.on('closed', () => {
-        reject(new Error('Authorization window closed by user'));
-      });
+        const code = new URL(url).searchParams.get('code');
+        if (!code) {
+          reject(new Error('No authorization code received'));
+          authWindow.close();
+          return;
+        }
+        try {
+          const tokens = await this.exchangeToken(config, code);
+          resolve(tokens);
+        } catch (err) {
+          reject(err);
+        }
+        authWindow.close();
+      };
+
+      const onClosed = () => {
+        if (!settled) {
+          reject(new Error('Authorization window closed by user'));
+        }
+      };
+
+      authWindow.webContents.on('will-redirect', onRedirect);
+      authWindow.once('closed', onClosed);
     });
   }
 
