@@ -10,7 +10,6 @@
     "build": "electron-vite build",
     "lint": "tsc --noEmit",
     "test": "vitest run",
-    "postinstall": "electron-builder install-app-deps",
     "preview": "electron-vite preview",
     "build:mac": "electron-vite build && electron-builder --mac",
     "build:win": "electron-vite build && electron-builder --win"
