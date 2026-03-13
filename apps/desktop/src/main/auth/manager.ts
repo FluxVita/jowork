@@ -32,6 +32,8 @@ export class AuthManager {
 
   async loginWithGoogle(): Promise<AuthUser> {
     return new Promise((resolve, reject) => {
+      let settled = false;
+
       const authWindow = new BrowserWindow({
         width: 500,
         height: 650,
@@ -42,42 +44,43 @@ export class AuthManager {
         },
       });
 
-      authWindow.loadURL(`${this.cloudUrl}/auth/google`);
+      authWindow.loadURL(`${this.cloudUrl}/auth/google?mode=desktop`);
 
       authWindow.webContents.on('will-redirect', async (_event, url) => {
-        if (url.includes('/auth/callback')) {
-          try {
-            const parsedUrl = new URL(url);
-            const token = parsedUrl.searchParams.get('token');
-            const refreshToken = parsedUrl.searchParams.get('refresh_token');
+        if (!url.includes('/auth/callback')) return;
+        settled = true;
 
-            if (!token) {
-              reject(new Error('No token received'));
-              authWindow.close();
-              return;
-            }
+        try {
+          const parsedUrl = new URL(url);
+          const token = parsedUrl.searchParams.get('token');
+          const refreshToken = parsedUrl.searchParams.get('refresh_token');
 
-            this.tokenStore.save({
-              accessToken: token,
-              refreshToken: refreshToken || undefined,
-              expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 days
-            });
-
-            const user = this.decodeUser(token);
-            this.currentUser = user;
-            this.modeManager.setCloudUser(user.id);
-
-            resolve(user);
+          if (!token) {
+            reject(new Error('No token received'));
             authWindow.close();
-          } catch (err) {
-            reject(err);
-            authWindow.close();
+            return;
           }
+
+          this.tokenStore.save({
+            accessToken: token,
+            refreshToken: refreshToken || undefined,
+            expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 days
+          });
+
+          const user = this.decodeUser(token);
+          this.currentUser = user;
+          this.modeManager.setCloudUser(user.id);
+
+          resolve(user);
+          authWindow.close();
+        } catch (err) {
+          reject(err);
+          authWindow.close();
         }
       });
 
-      authWindow.on('closed', () => {
-        if (!this.currentUser) {
+      authWindow.once('closed', () => {
+        if (!settled) {
           reject(new Error('Auth window closed'));
         }
       });

@@ -279,7 +279,7 @@ document.getElementById('google-btn').addEventListener('click', function() {
   if (this.disabled) return;
   this.disabled = true;
   this.querySelector('span').textContent = 'Redirecting...';
-  window.location.href = API + '/api/auth/google';
+  window.location.href = API + '/api/auth/google?mode=web';
 });
 
 document.getElementById('local-btn').addEventListener('click', async function() {

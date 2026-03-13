@@ -1,5 +1,5 @@
 import type { Context } from 'hono';
-import { eq } from 'drizzle-orm';
+import { eq, or } from 'drizzle-orm';
 import { signJwt } from './jwt';
 import { getDb } from '../db';
 import { users } from '../db/schema';
@@ -7,12 +7,33 @@ import { users } from '../db/schema';
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
 const REDIRECT_URI = process.env.AUTH_REDIRECT_URI || 'http://localhost:3000/api/auth/google/callback';
+const WEB_APP_URL = (process.env.APP_URL || process.env.JOWORK_APP_URL || 'https://jowork.work').replace(/\/+$/, '');
+
+type OAuthMode = 'desktop' | 'web';
 
 function hasGoogleOAuth(): boolean {
   return Boolean(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET);
 }
 
-function buildGoogleAuthUrl(): string {
+function getOAuthMode(c: Context): OAuthMode {
+  return c.req.query('mode') === 'desktop' ? 'desktop' : 'web';
+}
+
+function encodeState(mode: OAuthMode): string {
+  return Buffer.from(JSON.stringify({ mode }), 'utf-8').toString('base64url');
+}
+
+function decodeState(state: string | undefined): OAuthMode {
+  if (!state) return 'web';
+  try {
+    const parsed = JSON.parse(Buffer.from(state, 'base64url').toString('utf-8')) as { mode?: string };
+    return parsed.mode === 'desktop' ? 'desktop' : 'web';
+  } catch {
+    return 'web';
+  }
+}
+
+function buildGoogleAuthUrl(mode: OAuthMode): string {
   const params = new URLSearchParams({
     client_id: GOOGLE_CLIENT_ID,
     redirect_uri: REDIRECT_URI,
@@ -20,6 +41,7 @@ function buildGoogleAuthUrl(): string {
     scope: 'openid email profile',
     access_type: 'offline',
     prompt: 'consent',
+    state: encodeState(mode),
   });
 
   return `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
@@ -33,7 +55,7 @@ export function googleLogin(c: Context): Response {
     return c.json({ error: 'Google login is not configured' }, 503);
   }
 
-  return c.redirect(buildGoogleAuthUrl());
+  return c.redirect(buildGoogleAuthUrl(getOAuthMode(c)));
 }
 
 export function getGoogleStatus(c: Context): Response {
@@ -54,7 +76,7 @@ export function getOAuthUrl(c: Context): Response {
   return c.json({
     enabled: true,
     provider: 'google',
-    url: buildGoogleAuthUrl(),
+    url: buildGoogleAuthUrl(getOAuthMode(c)),
   });
 }
 
@@ -66,6 +88,8 @@ export async function googleCallback(c: Context): Promise<Response> {
   if (!code) {
     return c.json({ error: 'Missing authorization code' }, 400);
   }
+
+  const mode = decodeState(c.req.query('state'));
 
   try {
     // Exchange code for Google tokens
@@ -100,15 +124,24 @@ export async function googleCallback(c: Context): Promise<Response> {
     };
 
     // Upsert user in database
-    const userId = `user_${googleUser.id}`;
+    const googleScopedUserId = `user_${googleUser.id}`;
     const db = getDb();
 
-    const [existing] = await db.select().from(users).where(eq(users.id, userId));
+    const [existing] = await db.select().from(users).where(
+      or(
+        eq(users.id, googleScopedUserId),
+        eq(users.email, googleUser.email),
+      ),
+    );
+
+    const userId = existing?.id || googleScopedUserId;
+    const isNewUser = !existing;
     let plan = 'free';
 
     if (existing) {
       // Update existing user
       await db.update(users).set({
+        email: googleUser.email,
         name: googleUser.name,
         avatarUrl: googleUser.picture,
         updatedAt: new Date(),
@@ -134,8 +167,10 @@ export async function googleCallback(c: Context): Promise<Response> {
       plan,
     });
 
-    // Redirect back to desktop app with token
-    const callbackUrl = `jowork://auth/callback?token=${encodeURIComponent(jwt)}`;
+    const callbackUrl = mode === 'desktop'
+      ? `${WEB_APP_URL}/auth/callback?token=${encodeURIComponent(jwt)}`
+      : `${WEB_APP_URL}${isNewUser ? '/onboarding.html' : '/shell.html'}?token=${encodeURIComponent(jwt)}`;
+
     return c.redirect(callbackUrl);
   } catch (err) {
     return c.json({ error: String(err) }, 500);
