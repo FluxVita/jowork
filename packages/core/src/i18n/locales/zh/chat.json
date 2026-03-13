@@ -42,5 +42,8 @@
   "launcherHint": "按 Enter 提问，Esc 关闭",
   "engineCrashed": "AI 引擎崩溃，正在重启... (第 {{retries}} 次)",
   "engineCrashFatal": "AI 引擎在 {{max}} 次重启后仍然失败，请在设置中切换引擎。",
-  "engineRestartReady": "AI 引擎已重新启动。"
+  "engineRestartReady": "AI 引擎已重新启动。",
+  "launcherTitle": "JoWork 快捷提问",
+  "launcherClose": "关闭",
+  "launcherOpenMain": "打开主窗口"
 }

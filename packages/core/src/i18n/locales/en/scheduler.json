@@ -45,5 +45,17 @@
   "descWeekdays9": "Mon-Fri at 09:00",
   "descMonday9": "Every Monday at 09:00",
   "descEvery15Min": "At :00, :15, :30, :45",
-  "descEvery30Min": "At :00 and :30"
+  "descEvery30Min": "At :00 and :30",
+  "cronMin": "min",
+  "cronHour": "hour",
+  "cronDay": "day",
+  "cronMonth": "month",
+  "cronDow": "dow",
+  "daySun": "Sun",
+  "dayMon": "Mon",
+  "dayTue": "Tue",
+  "dayWed": "Wed",
+  "dayThu": "Thu",
+  "dayFri": "Fri",
+  "daySat": "Sat"
 }

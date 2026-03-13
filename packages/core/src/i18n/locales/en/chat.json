@@ -42,5 +42,8 @@
   "launcherHint": "Press Enter to ask, Esc to close",
   "engineCrashed": "AI engine crashed, restarting... (attempt {{retries}})",
   "engineCrashFatal": "AI engine failed after {{max}} restart attempts. Try switching engines in Settings.",
-  "engineRestartReady": "AI engine restarted successfully."
+  "engineRestartReady": "AI engine restarted successfully.",
+  "launcherTitle": "JoWork Quick Ask",
+  "launcherClose": "close",
+  "launcherOpenMain": "open main"
 }

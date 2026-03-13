@@ -38,12 +38,12 @@ function useDescribeCron() {
     const [min, hour, dom, _mon, dow] = parts;
     const pieces: string[] = [];
 
-    if (min !== '*' && min !== '0') pieces.push(`min ${min}`);
-    if (hour !== '*') pieces.push(`hour ${hour}`);
-    if (dom !== '*') pieces.push(`day ${dom}`);
+    if (min !== '*' && min !== '0') pieces.push(`${t('cronMin')} ${min}`);
+    if (hour !== '*') pieces.push(`${t('cronHour')} ${hour}`);
+    if (dom !== '*') pieces.push(`${t('cronDay')} ${dom}`);
     if (dow !== '*') {
-      const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-      pieces.push(dow.split(',').map((d) => days[Number(d)] ?? d).join(', '));
+      const dayKeys = ['daySun', 'dayMon', 'dayTue', 'dayWed', 'dayThu', 'dayFri', 'daySat'] as const;
+      pieces.push(dow.split(',').map((d) => t(dayKeys[Number(d)] ?? d)).join(', '));
     }
 
     return pieces.length > 0 ? pieces.join(', ') : t('everyMinute');
@@ -102,11 +102,11 @@ export function CronPicker({ value, onChange }: Props) {
       )}
 
       <div className="flex gap-3 text-[10px] text-text-secondary font-mono">
-        <span>min</span>
-        <span>hour</span>
-        <span>day</span>
-        <span>month</span>
-        <span>dow</span>
+        <span>{t('cronMin')}</span>
+        <span>{t('cronHour')}</span>
+        <span>{t('cronDay')}</span>
+        <span>{t('cronMonth')}</span>
+        <span>{t('cronDow')}</span>
       </div>
     </div>
   );

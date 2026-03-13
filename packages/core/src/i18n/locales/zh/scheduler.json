@@ -45,5 +45,17 @@
   "descWeekdays9": "周一至周五 09:00",
   "descMonday9": "每周一 09:00",
   "descEvery15Min": "每小时 :00, :15, :30, :45",
-  "descEvery30Min": "每小时 :00 和 :30"
+  "descEvery30Min": "每小时 :00 和 :30",
+  "cronMin": "分",
+  "cronHour": "时",
+  "cronDay": "日",
+  "cronMonth": "月",
+  "cronDow": "周",
+  "daySun": "日",
+  "dayMon": "一",
+  "dayTue": "二",
+  "dayWed": "三",
+  "dayThu": "四",
+  "dayFri": "五",
+  "daySat": "六"
 }
