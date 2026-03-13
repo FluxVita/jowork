@@ -1,7 +1,9 @@
 import { useRef, useEffect, type KeyboardEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useLauncherStore } from './hooks/useLauncher';
 
 export function LauncherInput() {
+  const { t } = useTranslation('chat');
   const { query, setQuery, submit, isStreaming } = useLauncherStore();
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -28,13 +30,13 @@ export function LauncherInput() {
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         onKeyDown={handleKeyDown}
-        placeholder="Ask JoWork anything..."
+        placeholder={t('launcherPlaceholder')}
         disabled={isStreaming}
         className="flex-1 bg-transparent text-sm text-text-primary placeholder:text-text-secondary
           focus:outline-none disabled:opacity-50"
       />
       {isStreaming && (
-        <span className="text-xs text-accent animate-pulse">Thinking...</span>
+        <span className="text-xs text-accent animate-pulse">{t('thinking')}</span>
       )}
     </div>
   );

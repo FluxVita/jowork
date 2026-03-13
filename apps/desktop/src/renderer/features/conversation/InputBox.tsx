@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, type KeyboardEvent, type DragEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface InputBoxProps {
   onSend: (message: string) => void;
@@ -7,6 +8,7 @@ interface InputBoxProps {
 }
 
 export function InputBox({ onSend, onAbort, isStreaming }: InputBoxProps) {
+  const { t } = useTranslation('chat');
   const [text, setText] = useState('');
   const [dragOver, setDragOver] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -84,8 +86,8 @@ export function InputBox({ onSend, onAbort, isStreaming }: InputBoxProps) {
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
           onInput={handleInput}
-          placeholder={dragOver ? 'Drop files here...' : 'Type a message... (Cmd+Enter to send)'}
-          aria-label="Chat message input"
+          placeholder={dragOver ? t('dropFilesHere') : t('placeholder')}
+          aria-label={t('inputAriaLabel')}
           rows={1}
           className="flex-1 resize-none bg-surface-2 text-text-primary rounded-lg px-4 py-2.5 text-sm
             placeholder:text-text-secondary focus:outline-none focus:ring-1 focus:ring-accent
@@ -94,20 +96,20 @@ export function InputBox({ onSend, onAbort, isStreaming }: InputBoxProps) {
         {isStreaming ? (
           <button
             onClick={onAbort}
-            aria-label="Stop AI response"
+            aria-label={t('stopAriaLabel')}
             className="px-4 py-2.5 rounded-lg bg-red-500/10 text-red-400 text-sm hover:bg-red-500/20 transition-colors flex-shrink-0"
           >
-            Stop
+            {t('stop')}
           </button>
         ) : (
           <button
             onClick={handleSend}
             disabled={!text.trim()}
-            aria-label="Send message"
+            aria-label={t('sendAriaLabel')}
             className="px-4 py-2.5 rounded-lg bg-accent text-white text-sm hover:bg-accent-hover transition-colors
               disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0"
           >
-            Send
+            {t('send')}
           </button>
         )}
       </div>

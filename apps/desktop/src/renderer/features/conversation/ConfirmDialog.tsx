@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface ConfirmAction {
   toolName: string;
@@ -19,19 +20,20 @@ const riskStyles = {
   high: 'border-red-400/30 bg-red-400/5',
 };
 
-const riskLabels = {
-  low: 'Low risk',
-  medium: 'Medium risk',
-  high: 'High risk',
-};
-
 export function ConfirmDialog({ action, onAllow, onDeny }: Props) {
+  const { t } = useTranslation('chat');
   const [rememberChoice, setRememberChoice] = useState(false);
+
+  const riskLabels = {
+    low: t('riskLow'),
+    medium: t('riskMedium'),
+    high: t('riskHigh'),
+  };
 
   return (
     <div className={`p-4 rounded-lg border ${riskStyles[action.risk]}`}>
       <div className="flex items-center gap-2 mb-2">
-        <span className="text-sm font-medium text-text-primary">Action Confirmation</span>
+        <span className="text-sm font-medium text-text-primary">{t('actionConfirmation')}</span>
         <span className={`text-[10px] px-1.5 py-0.5 rounded ${
           action.risk === 'high' ? 'bg-red-400/20 text-red-400' :
           action.risk === 'medium' ? 'bg-yellow-400/20 text-yellow-400' :
@@ -60,7 +62,7 @@ export function ConfirmDialog({ action, onAllow, onDeny }: Props) {
             onChange={(e) => setRememberChoice(e.target.checked)}
             className="accent-accent"
           />
-          Always allow this action
+          {t('alwaysAllow')}
         </label>
 
         <div className="flex items-center gap-2">
@@ -69,13 +71,13 @@ export function ConfirmDialog({ action, onAllow, onDeny }: Props) {
             className="px-3 py-1.5 text-xs text-text-secondary hover:text-text-primary
               border border-border rounded transition-colors"
           >
-            Deny
+            {t('deny')}
           </button>
           <button
             onClick={() => onAllow(rememberChoice)}
             className="px-3 py-1.5 text-xs bg-accent text-white rounded hover:bg-accent/90 transition-colors"
           >
-            Allow
+            {t('allow')}
           </button>
         </div>
       </div>

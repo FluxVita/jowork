@@ -1,6 +1,8 @@
+import { useTranslation } from 'react-i18next';
 import { useLauncherStore } from './hooks/useLauncher';
 
 export function LauncherResults() {
+  const { t } = useTranslation('chat');
   const { response, recentQueries, isStreaming, setQuery, submit } = useLauncherStore();
 
   if (response) {
@@ -17,7 +19,7 @@ export function LauncherResults() {
   if (recentQueries.length > 0) {
     return (
       <div className="flex-1 overflow-y-auto px-4 py-3">
-        <p className="text-xs text-text-secondary mb-2">Recent</p>
+        <p className="text-xs text-text-secondary mb-2">{t('recent')}</p>
         <div className="space-y-1">
           {recentQueries.map((q, i) => (
             <button
@@ -39,7 +41,7 @@ export function LauncherResults() {
 
   return (
     <div className="flex-1 flex items-center justify-center text-text-secondary text-xs">
-      Press Enter to ask, Esc to close
+      {t('launcherHint')}
     </div>
   );
 }
