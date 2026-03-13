@@ -1,4 +1,4 @@
-import { useRef, useCallback, type ReactNode } from 'react';
+import { useRef, useEffect, type ReactNode } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 
 interface VirtualListProps<T> {
@@ -35,13 +35,20 @@ export function VirtualList<T>({
 
   // Scroll to bottom when items change (for chat)
   const prevCount = useRef(items.length);
+  const rafRef = useRef<number>();
+
   if (stickToBottom && items.length > prevCount.current) {
-    // Schedule scroll after render
-    requestAnimationFrame(() => {
+    cancelAnimationFrame(rafRef.current!);
+    rafRef.current = requestAnimationFrame(() => {
       virtualizer.scrollToIndex(items.length - 1, { align: 'end' });
     });
   }
   prevCount.current = items.length;
+
+  // Cancel pending RAF on unmount
+  useEffect(() => {
+    return () => { cancelAnimationFrame(rafRef.current!); };
+  }, []);
 
   const virtualItems = virtualizer.getVirtualItems();
 

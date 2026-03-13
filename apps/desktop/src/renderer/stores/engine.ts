@@ -19,6 +19,8 @@ interface EngineStore {
   installEngine: (id: EngineId) => Promise<void>;
 }
 
+let _detectVersion = 0;
+
 export const useEngineStore = create<EngineStore>((set) => ({
   engines: {},
   activeEngineId: 'claude-code',
@@ -26,12 +28,16 @@ export const useEngineStore = create<EngineStore>((set) => ({
   isInstalling: false,
 
   detect: async () => {
+    const version = ++_detectVersion;
     set({ isDetecting: true });
     try {
       const result = await window.jowork.engine.detect();
       const active = await window.jowork.engine.getActive();
+      // Discard stale response if a newer detect() was called
+      if (version !== _detectVersion) return;
       set({ engines: result, activeEngineId: active as EngineId, isDetecting: false });
     } catch {
+      if (version !== _detectVersion) return;
       set({ isDetecting: false });
     }
   },

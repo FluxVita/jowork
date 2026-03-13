@@ -18,12 +18,20 @@ function applyTheme(theme: Theme): void {
   document.documentElement.classList.toggle('dark', isDark);
 }
 
-// Listen for OS color-scheme changes when using "system" theme
+// Listen for OS color-scheme changes when using "system" theme.
+// Named handler so it can be removed if needed (e.g. HMR / test teardown).
 const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-mediaQuery.addEventListener('change', () => {
+function handleSchemeChange() {
   const state = useAppStore.getState();
   if (state.theme === 'system') applyTheme('system');
-});
+}
+mediaQuery.addEventListener('change', handleSchemeChange);
+// HMR cleanup: remove stale listener before re-adding
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => {
+    mediaQuery.removeEventListener('change', handleSchemeChange);
+  });
+}
 
 export const useAppStore = create<AppState>((set) => ({
   sidebarOpen: true,

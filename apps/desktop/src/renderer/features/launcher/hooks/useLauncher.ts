@@ -11,6 +11,8 @@ interface LauncherStore {
   clear: () => void;
 }
 
+let _activeUnsub: (() => void) | null = null;
+
 export const useLauncherStore = create<LauncherStore>((set, get) => ({
   query: '',
   isStreaming: false,
@@ -22,6 +24,10 @@ export const useLauncherStore = create<LauncherStore>((set, get) => ({
   submit: async () => {
     const { query } = get();
     if (!query.trim()) return;
+
+    // Tear down any previous listener to prevent accumulation
+    _activeUnsub?.();
+    _activeUnsub = null;
 
     set({ isStreaming: true, response: '' });
 
@@ -39,18 +45,25 @@ export const useLauncherStore = create<LauncherStore>((set, get) => ({
       if (event.type === 'result' || event.type === 'error') {
         set({ isStreaming: false });
         unsub();
+        _activeUnsub = null;
       }
     });
+    _activeUnsub = unsub;
 
     try {
       await window.jowork.chat.send({ message: query });
     } catch {
       set({ isStreaming: false });
       unsub();
+      _activeUnsub = null;
     }
 
     set({ query: '' });
   },
 
-  clear: () => set({ query: '', response: '', isStreaming: false }),
+  clear: () => {
+    _activeUnsub?.();
+    _activeUnsub = null;
+    set({ query: '', response: '', isStreaming: false });
+  },
 }));

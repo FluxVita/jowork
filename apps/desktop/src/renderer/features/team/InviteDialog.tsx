@@ -16,6 +16,12 @@ export function InviteDialog({ teamId, onClose }: InviteDialogProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout>>();
+
+  // Clean up copy timer on unmount
+  useEffect(() => {
+    return () => { clearTimeout(copyTimerRef.current); };
+  }, []);
 
   // Escape key to close
   useEffect(() => {
@@ -43,7 +49,8 @@ export function InviteDialog({ teamId, onClose }: InviteDialogProps) {
     if (!invite) return;
     await navigator.clipboard.writeText(invite.inviteUrl);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    clearTimeout(copyTimerRef.current);
+    copyTimerRef.current = setTimeout(() => setCopied(false), 2000);
   };
 
   return (
