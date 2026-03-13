@@ -22,7 +22,11 @@ export function ConversationPage() {
   const handleExport = useCallback(async (format: 'markdown' | 'json') => {
     if (!activeSessionId) return;
     setShowExportMenu(false);
-    await window.jowork.session.export(activeSessionId, format);
+    try {
+      await window.jowork.session.export(activeSessionId, format);
+    } catch (err) {
+      console.error('Export failed:', err);
+    }
   }, [activeSessionId]);
 
   // Close export menu on click outside or Escape

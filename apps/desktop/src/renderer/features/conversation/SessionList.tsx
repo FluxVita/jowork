@@ -14,7 +14,7 @@ export function SessionList() {
   }, [sessions, search]);
 
   return (
-    <div className="flex flex-col h-full" role="region" aria-label={t('newConversation')}>
+    <div className="flex flex-col h-full" role="region" aria-label={t('conversations', 'Conversations')}>
       <button
         onClick={createSession}
         aria-label={t('newConversation')}
@@ -58,7 +58,9 @@ export function SessionList() {
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                deleteSession(session.id);
+                if (window.confirm(t('deleteConfirm', 'Delete this conversation?'))) {
+                  deleteSession(session.id);
+                }
               }}
               aria-label={`${t('deleteConversation')}: ${session.title}`}
               className="opacity-0 group-hover:opacity-100 focus:opacity-100 text-text-secondary hover:text-red-400 ml-1 text-xs

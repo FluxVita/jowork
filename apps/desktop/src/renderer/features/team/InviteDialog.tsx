@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useTeam } from './hooks/useTeam';
 
@@ -14,12 +14,26 @@ export function InviteDialog({ teamId, onClose }: InviteDialogProps) {
   const [invite, setInvite] = useState<{ inviteCode: string; inviteUrl: string } | null>(null);
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  // Escape key to close
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [onClose]);
 
   const handleGenerate = async () => {
     setLoading(true);
+    setError(null);
     try {
       const result = await generateInvite(teamId);
       setInvite(result);
+    } catch {
+      setError(t('inviteError', 'Failed to generate invite link'));
     } finally {
       setLoading(false);
     }
@@ -33,8 +47,8 @@ export function InviteDialog({ teamId, onClose }: InviteDialogProps) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-surface-1 rounded-lg p-6 w-full max-w-md mx-4">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={onClose}>
+      <div ref={dialogRef} className="bg-surface-1 rounded-lg p-6 w-full max-w-md mx-4" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
         <h2 className="text-lg font-semibold mb-4">{t('inviteTitle')}</h2>
 
         {!invite ? (
@@ -49,6 +63,7 @@ export function InviteDialog({ teamId, onClose }: InviteDialogProps) {
             >
               {loading ? t('generating') : t('generateInviteLink')}
             </button>
+            {error && <p className="text-xs text-red-400 mt-2">{error}</p>}
           </div>
         ) : (
           <div className="space-y-3">

@@ -14,10 +14,10 @@ interface State {
 /**
  * Global error boundary — catches React render errors and displays a recovery UI.
  */
-export class ErrorBoundary extends Component<Props, State> {
+export class ErrorBoundary extends Component<Props, State & { retryCount: number }> {
   constructor(props: Props) {
     super(props);
-    this.state = { hasError: false, error: null };
+    this.state = { hasError: false, error: null, retryCount: 0 };
   }
 
   static getDerivedStateFromError(error: Error): State {
@@ -29,7 +29,12 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   handleRetry = (): void => {
-    this.setState({ hasError: false, error: null });
+    if (this.state.retryCount >= 2) {
+      // After 2 failed retries, reload the page
+      window.location.reload();
+      return;
+    }
+    this.setState((s) => ({ hasError: false, error: null, retryCount: s.retryCount + 1 }));
   };
 
   render(): ReactNode {
