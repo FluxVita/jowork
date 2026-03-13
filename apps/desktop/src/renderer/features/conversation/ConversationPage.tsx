@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useChat } from './hooks/useChat';
 import { MessageList } from './MessageList';
 import { InputBox } from './InputBox';
@@ -7,6 +8,7 @@ import { ConfirmDialog } from './ConfirmDialog';
 import { useConversationStore } from '../../stores/conversation';
 
 export function ConversationPage() {
+  const { t } = useTranslation('chat');
   const { sendMessage, abort, isStreaming, streamingText, messages } = useChat();
   const activeSessionId = useConversationStore((s) => s.activeSessionId);
   const pendingConfirm = useConversationStore((s) => s.pendingConfirm);
@@ -34,9 +36,9 @@ export function ConversationPage() {
                 onClick={() => setShowExportMenu(!showExportMenu)}
                 className="text-xs text-text-secondary hover:text-text-primary px-2 py-1 rounded
                   hover:bg-surface-2 transition-colors"
-                title="Export conversation"
+                title={t('exportConversation')}
               >
-                Export
+                {t('export')}
               </button>
               {showExportMenu && (
                 <div className="absolute right-0 top-full mt-1 bg-surface-2 border border-border rounded-md shadow-lg z-10 py-1 min-w-[140px]">
@@ -44,13 +46,13 @@ export function ConversationPage() {
                     onClick={() => handleExport('markdown')}
                     className="w-full text-left px-3 py-1.5 text-xs text-text-primary hover:bg-surface-1 transition-colors"
                   >
-                    Markdown (.md)
+                    {t('exportMarkdown')}
                   </button>
                   <button
                     onClick={() => handleExport('json')}
                     className="w-full text-left px-3 py-1.5 text-xs text-text-primary hover:bg-surface-1 transition-colors"
                   >
-                    JSON (.json)
+                    {t('exportJson')}
                   </button>
                 </div>
               )}
@@ -70,9 +72,9 @@ export function ConversationPage() {
           <div className="w-16 h-16 rounded-2xl bg-accent/10 flex items-center justify-center text-2xl">
             J
           </div>
-          <h2 className="text-lg font-medium">JoWork AI Assistant</h2>
+          <h2 className="text-lg font-medium">{t('title')}</h2>
           <p className="text-sm text-text-secondary text-center max-w-md">
-            Start a conversation with your AI assistant. It can help you with code, analysis, and more.
+            {t('emptyDescription')}
           </p>
         </div>
       ) : (

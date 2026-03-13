@@ -1,4 +1,5 @@
 import { useRef, useEffect, useCallback, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { MessageBubble } from './MessageBubble';
 import { ToolCallCard } from './ToolCallCard';
@@ -33,6 +34,7 @@ function renderMessage(msg: Message): ReactNode {
 }
 
 export function MessageList({ messages, streamingText, isStreaming, hasMore, isLoadingMore, onLoadMore }: MessageListProps) {
+  const { t } = useTranslation('chat');
   const parentRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const prevMessageCount = useRef(messages.length);
@@ -88,13 +90,13 @@ export function MessageList({ messages, streamingText, isStreaming, hasMore, isL
         {hasMore && (
           <div className="text-center py-2 mb-2">
             {isLoadingMore ? (
-              <span className="text-xs text-text-secondary">Loading older messages...</span>
+              <span className="text-xs text-text-secondary">{t('loadingOlder')}</span>
             ) : (
               <button
                 onClick={onLoadMore}
                 className="text-xs text-accent hover:text-accent/80 transition-colors"
               >
-                Load older messages
+                {t('loadOlder')}
               </button>
             )}
           </div>
@@ -142,7 +144,7 @@ export function MessageList({ messages, streamingText, isStreaming, hasMore, isL
               <span className="w-1.5 h-1.5 bg-accent rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
               <span className="w-1.5 h-1.5 bg-accent rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
             </div>
-            <span>Thinking...</span>
+            <span>{t('thinking')}</span>
           </div>
         )}
 

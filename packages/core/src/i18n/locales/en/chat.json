@@ -13,5 +13,12 @@
   "newConversation": "New conversation",
   "deleteConversation": "Delete conversation",
   "renameConversation": "Rename conversation",
-  "searchConversations": "Search conversations..."
+  "searchConversations": "Search conversations...",
+  "export": "Export",
+  "exportConversation": "Export conversation",
+  "exportMarkdown": "Markdown (.md)",
+  "exportJson": "JSON (.json)",
+  "loadOlder": "Load older messages",
+  "loadingOlder": "Loading older messages...",
+  "noMatchingConversations": "No matching conversations"
 }

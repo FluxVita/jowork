@@ -1,7 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Outlet, useNavigate } from 'react-router';
 import { Sidebar } from '../components/Sidebar';
 import { ContextPanel } from '../components/ContextPanel';
+import { GlobalSearch } from '../components/GlobalSearch';
 import { useAppStore } from '../stores/app';
 import { useConversationStore } from '../stores/conversation';
 
@@ -10,6 +11,9 @@ export function MainLayout() {
   const contextPanelOpen = useAppStore((s) => s.contextPanelOpen);
   const navigate = useNavigate();
   const createSession = useConversationStore((s) => s.createSession);
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  const closeSearch = useCallback(() => setSearchOpen(false), []);
 
   // Listen for menu accelerator events from main process
   useEffect(() => {
@@ -26,6 +30,18 @@ export function MainLayout() {
     });
     return () => { offNav(); offNewSession(); offExport(); };
   }, [navigate, createSession]);
+
+  // Cmd+K to toggle global search
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setSearchOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   return (
     <div className="flex h-screen bg-surface-0 text-text-primary">
@@ -58,6 +74,9 @@ export function MainLayout() {
           <ContextPanel />
         </aside>
       )}
+
+      {/* Global search command palette */}
+      <GlobalSearch open={searchOpen} onClose={closeSearch} />
     </div>
   );
 }

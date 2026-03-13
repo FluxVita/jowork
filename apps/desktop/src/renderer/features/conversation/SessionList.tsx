@@ -71,7 +71,7 @@ export function SessionList() {
 
         {filtered.length === 0 && (
           <li className="text-xs text-text-secondary px-3 py-4 text-center" role="presentation">
-            {search ? t('noResults', 'No matching conversations') : t('noConversations')}
+            {search ? t('noMatchingConversations') : t('noConversations')}
           </li>
         )}
       </ul>

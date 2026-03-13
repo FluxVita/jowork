@@ -14,5 +14,16 @@
   "updateDownloaded": "更新已下载，重启后安装",
   "restartToUpdate": "立即重启更新",
   "upToDate": "已是最新版本",
-  "checking": "检查中..."
+  "checking": "检查中...",
+  "keyboardShortcuts": "键盘快捷键",
+  "shortcutHint": "在 Windows/Linux 上，请用 Ctrl 替代 Cmd。",
+  "shortcutNewConversation": "新建对话",
+  "shortcutGlobalSearch": "全局搜索",
+  "shortcutQuickLauncher": "快捷启动器",
+  "shortcutExport": "导出对话",
+  "shortcutSettings": "设置",
+  "shortcutSend": "发送消息",
+  "shortcutStop": "停止 / 关闭",
+  "shortcutTerminal": "打开终端",
+  "shortcutCloseWindow": "关闭窗口"
 }

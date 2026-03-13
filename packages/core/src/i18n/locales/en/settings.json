@@ -14,5 +14,16 @@
   "updateDownloaded": "Update downloaded, restart to install",
   "restartToUpdate": "Restart to update",
   "upToDate": "Up to date",
-  "checking": "Checking..."
+  "checking": "Checking...",
+  "keyboardShortcuts": "Keyboard Shortcuts",
+  "shortcutHint": "On Windows/Linux, replace Cmd with Ctrl.",
+  "shortcutNewConversation": "New conversation",
+  "shortcutGlobalSearch": "Global search",
+  "shortcutQuickLauncher": "Quick launcher",
+  "shortcutExport": "Export conversation",
+  "shortcutSettings": "Settings",
+  "shortcutSend": "Send message",
+  "shortcutStop": "Stop / close",
+  "shortcutTerminal": "Open terminal",
+  "shortcutCloseWindow": "Close window"
 }
