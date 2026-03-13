@@ -189,14 +189,14 @@ describe('E2E: Complete user journey', () => {
       expect(body).toHaveProperty('walletBalance');
     });
 
-    it('Step 2: Stripe webhook rejects invalid payload gracefully', async () => {
+    it('Step 2: Stripe webhook rejects unsigned payload', async () => {
       const res = await request('/billing/webhook', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type: 'checkout.session.completed' }),
       });
-      // Should not crash (no Stripe signature verification in test env)
-      expect(res.status).toBeLessThan(500);
+      // 503 when secret not configured, 400 when missing/invalid signature
+      expect([400, 503]).toContain(res.status);
     });
   });
 

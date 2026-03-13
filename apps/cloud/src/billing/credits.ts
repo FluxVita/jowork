@@ -1,5 +1,5 @@
 import type { Context } from 'hono';
-import { eq, and, isNull } from 'drizzle-orm';
+import { eq, and, isNull, sql } from 'drizzle-orm';
 import { getDb } from '../db';
 import { credits } from '../db/schema';
 import { getCreditCost, PLANS } from './plans';
@@ -121,43 +121,48 @@ export async function consumeCredits(
   await ensureCreditRow(userId, 'free');
   await ensureDailyReset(userId);
 
-  const [row] = await db.select().from(credits)
-    .where(and(eq(credits.userId, userId), isNull(credits.teamId)));
+  // Atomic deduction using a transaction with SELECT ... FOR UPDATE to prevent overdraw.
+  // Deduction order: daily_free -> monthly_limit -> wallet_balance
+  return await db.transaction(async (tx) => {
+    const [row] = await tx.select().from(credits)
+      .where(and(eq(credits.userId, userId), isNull(credits.teamId)))
+      .for('update');
 
-  if (!row) {
-    return { success: false, cost, remaining: 0 };
-  }
+    if (!row) {
+      return { success: false, cost, remaining: 0 };
+    }
 
-  let remaining = cost;
+    let remaining = cost;
 
-  // 1. Deduct from daily free
-  const dailyFreeAvail = Math.max(0, (row.dailyFreeLimit ?? 0) - (row.dailyFreeUsed ?? 0));
-  const dailyDeduct = Math.min(remaining, dailyFreeAvail);
-  remaining -= dailyDeduct;
+    // 1. Deduct from daily free
+    const dailyFreeAvail = Math.max(0, (row.dailyFreeLimit ?? 0) - (row.dailyFreeUsed ?? 0));
+    const dailyDeduct = Math.min(remaining, dailyFreeAvail);
+    remaining -= dailyDeduct;
 
-  // 2. Deduct from monthly
-  const monthlyAvail = Math.max(0, (row.monthlyLimit ?? 0) - (row.used ?? 0));
-  const monthlyDeduct = Math.min(remaining, monthlyAvail);
-  remaining -= monthlyDeduct;
+    // 2. Deduct from monthly
+    const monthlyAvail = Math.max(0, (row.monthlyLimit ?? 0) - (row.used ?? 0));
+    const monthlyDeduct = Math.min(remaining, monthlyAvail);
+    remaining -= monthlyDeduct;
 
-  // 3. Deduct from wallet
-  const walletAvail = row.walletBalance ?? 0;
-  const walletDeduct = Math.min(remaining, walletAvail);
-  remaining -= walletDeduct;
+    // 3. Deduct from wallet
+    const walletAvail = row.walletBalance ?? 0;
+    const walletDeduct = Math.min(remaining, walletAvail);
+    remaining -= walletDeduct;
 
-  if (remaining > 0) {
-    return { success: false, cost, remaining: 0 };
-  }
+    if (remaining > 0) {
+      return { success: false, cost, remaining: 0 };
+    }
 
-  // Apply deductions
-  await db.update(credits).set({
-    dailyFreeUsed: (row.dailyFreeUsed ?? 0) + dailyDeduct,
-    used: (row.used ?? 0) + monthlyDeduct,
-    walletBalance: (row.walletBalance ?? 0) - walletDeduct,
-  }).where(eq(credits.id, row.id));
+    // Apply deductions atomically
+    await tx.update(credits).set({
+      dailyFreeUsed: sql`${credits.dailyFreeUsed} + ${dailyDeduct}`,
+      used: sql`${credits.used} + ${monthlyDeduct}`,
+      walletBalance: sql`${credits.walletBalance} - ${walletDeduct}`,
+    }).where(eq(credits.id, row.id));
 
-  const totalRemaining = (dailyFreeAvail - dailyDeduct) + (monthlyAvail - monthlyDeduct) + (walletAvail - walletDeduct);
-  return { success: true, cost, remaining: totalRemaining };
+    const totalRemaining = (dailyFreeAvail - dailyDeduct) + (monthlyAvail - monthlyDeduct) + (walletAvail - walletDeduct);
+    return { success: true, cost, remaining: totalRemaining };
+  });
 }
 
 /**

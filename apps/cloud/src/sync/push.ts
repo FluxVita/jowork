@@ -4,7 +4,9 @@ import type { SyncRecord, SyncPushResponse, SyncConflict } from '@jowork/core';
 /**
  * In-memory sync store (placeholder for DB-backed implementation).
  * In production, sync records would be stored in PostgreSQL.
+ * Capped at MAX_SYNC_RECORDS to prevent unbounded memory growth.
  */
+const MAX_SYNC_RECORDS = 100_000;
 const syncStore = new Map<string, SyncRecord>();
 let globalVersion = 0;
 
@@ -72,6 +74,12 @@ export async function handlePush(c: Context): Promise<Response> {
       record.syncVersion = globalVersion;
       syncStore.set(key, record);
       accepted++;
+    }
+
+    // Evict oldest entries when store exceeds cap
+    if (syncStore.size > MAX_SYNC_RECORDS) {
+      const firstKey = syncStore.keys().next().value;
+      if (firstKey !== undefined) syncStore.delete(firstKey);
     }
   }
 

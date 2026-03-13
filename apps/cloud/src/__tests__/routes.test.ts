@@ -354,14 +354,14 @@ describe('Global error handling', () => {
 });
 
 describe('Stripe webhook', () => {
-  it('POST /billing/webhook accepts request', async () => {
+  it('POST /billing/webhook rejects without STRIPE_WEBHOOK_SECRET', async () => {
     const res = await request('/billing/webhook', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type: 'test' }),
     });
-    // Won't have valid Stripe signature, but should not 500
-    expect(res.status).toBeLessThan(500);
+    // 503 when STRIPE_WEBHOOK_SECRET not configured, 400 when missing signature
+    expect([400, 503]).toContain(res.status);
   });
 });
 

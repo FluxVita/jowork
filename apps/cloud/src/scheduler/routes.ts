@@ -4,6 +4,17 @@ import { eq, and, desc } from 'drizzle-orm';
 import { getDb } from '../db';
 import { cloudScheduledTasks, taskExecutionLog } from '../db/schema';
 
+/** Validate a cron expression has 5 space-delimited fields with sane characters. */
+function isValidCron(expr: string): boolean {
+  const parts = expr.trim().split(/\s+/);
+  if (parts.length !== 5) return false;
+  // Each field: digits, *, /, -, comma only
+  return parts.every((p) => /^[\d*/,\-]+$/.test(p));
+}
+
+const MAX_NAME_LEN = 200;
+const MAX_CRON_LEN = 60;
+
 /**
  * POST /scheduler/tasks — create a scheduled task
  */
@@ -20,6 +31,14 @@ export async function createTask(c: Context): Promise<Response> {
 
   if (!body.name?.trim() || !body.cronExpression?.trim() || !body.type?.trim()) {
     return c.json({ error: 'name, cronExpression, and type are required' }, 400);
+  }
+
+  if (body.name.length > MAX_NAME_LEN) {
+    return c.json({ error: `name must be <= ${MAX_NAME_LEN} characters` }, 400);
+  }
+
+  if (body.cronExpression.length > MAX_CRON_LEN || !isValidCron(body.cronExpression)) {
+    return c.json({ error: 'Invalid cron expression (expected 5 fields: min hour dom month dow)' }, 400);
   }
 
   const id = `ctask_${randomBytes(8).toString('hex')}`;
@@ -87,9 +106,10 @@ export async function updateTask(c: Context): Promise<Response> {
   if (body.enabled !== undefined) updates.enabled = body.enabled;
 
   await db.update(cloudScheduledTasks).set(updates)
-    .where(eq(cloudScheduledTasks.id, taskId));
+    .where(and(eq(cloudScheduledTasks.id, taskId), eq(cloudScheduledTasks.userId, userId)));
 
-  const [updated] = await db.select().from(cloudScheduledTasks).where(eq(cloudScheduledTasks.id, taskId));
+  const [updated] = await db.select().from(cloudScheduledTasks)
+    .where(and(eq(cloudScheduledTasks.id, taskId), eq(cloudScheduledTasks.userId, userId)));
   return c.json(updated);
 }
 

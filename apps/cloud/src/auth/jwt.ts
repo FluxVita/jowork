@@ -7,6 +7,12 @@ import { createHmac } from 'crypto';
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
 const JWT_EXPIRY = 7 * 24 * 60 * 60; // 7 days in seconds
 
+// Warn loudly if using default secret in production
+if (JWT_SECRET === 'dev-secret-change-me' && process.env.NODE_ENV === 'production') {
+  console.error('[CRITICAL] JWT_SECRET is using the default value in production! Set JWT_SECRET env var.');
+  process.exit(1);
+}
+
 interface JwtPayload {
   sub: string;
   email: string;

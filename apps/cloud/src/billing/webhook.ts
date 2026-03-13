@@ -20,25 +20,38 @@ export async function handleWebhook(c: Context): Promise<Response> {
   const body = await c.req.text();
   const sig = c.req.header('stripe-signature');
 
-  // Verify signature if secret is configured
-  if (STRIPE_WEBHOOK_SECRET && sig) {
-    const crypto = await import('crypto');
-    const elements = sig.split(',');
-    const timestamp = elements.find((e) => e.startsWith('t='))?.slice(2);
-    const v1Sig = elements.find((e) => e.startsWith('v1='))?.slice(3);
+  // Verify Stripe webhook signature — required in production
+  if (!STRIPE_WEBHOOK_SECRET) {
+    console.error('[Webhook] STRIPE_WEBHOOK_SECRET not configured — rejecting request');
+    return c.json({ error: 'Webhook not configured' }, 503);
+  }
 
-    if (timestamp && v1Sig) {
-      const expected = crypto
-        .createHmac('sha256', STRIPE_WEBHOOK_SECRET)
-        .update(`${timestamp}.${body}`)
-        .digest('hex');
-
-      if (expected !== v1Sig) {
-        return c.json({ error: 'Invalid signature' }, 400);
-      }
-    }
-  } else if (!sig && STRIPE_WEBHOOK_SECRET) {
+  if (!sig) {
     return c.json({ error: 'Missing signature' }, 400);
+  }
+
+  const crypto = await import('crypto');
+  const elements = sig.split(',');
+  const timestamp = elements.find((e) => e.startsWith('t='))?.slice(2);
+  const v1Sig = elements.find((e) => e.startsWith('v1='))?.slice(3);
+
+  if (!timestamp || !v1Sig) {
+    return c.json({ error: 'Malformed signature' }, 400);
+  }
+
+  // Reject events older than 5 minutes (replay protection)
+  const age = Math.floor(Date.now() / 1000) - parseInt(timestamp, 10);
+  if (Number.isNaN(age) || age > 300) {
+    return c.json({ error: 'Stale signature' }, 400);
+  }
+
+  const expected = crypto
+    .createHmac('sha256', STRIPE_WEBHOOK_SECRET)
+    .update(`${timestamp}.${body}`)
+    .digest('hex');
+
+  if (expected !== v1Sig) {
+    return c.json({ error: 'Invalid signature' }, 400);
   }
 
   let event: StripeEvent;
