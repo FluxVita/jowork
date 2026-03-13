@@ -98,10 +98,24 @@ function buildAppMenu(): void {
 }
 
 app.whenReady().then(() => {
-  setupIPC();
+  try {
+    setupIPC();
+  } catch (err) {
+    console.error('[Main] setupIPC failed (DB init?):', err);
+    // Continue — window can still show an error state
+  }
+
   createMainWindow();
   buildAppMenu();
   setupTray();
+
+  // Guard against renderer load failure (prevents white screen)
+  if (mainWindow) {
+    mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription) => {
+      console.error(`[Main] Renderer failed to load: ${errorCode} ${errorDescription}`);
+      mainWindow?.loadURL(`data:text/html,<h2 style="font-family:sans-serif;padding:40px">Failed to load: ${errorDescription}</h2>`);
+    });
+  }
 
   // Rebuild menu when renderer changes language
   ipcMain.on('language-changed', (_event, lang: string) => {
@@ -138,6 +152,10 @@ app.on('activate', () => {
     createMainWindow();
     buildAppMenu();
     if (mainWindow) {
+      mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription) => {
+        console.error(`[Main] Renderer failed to load: ${errorCode} ${errorDescription}`);
+        mainWindow?.loadURL(`data:text/html,<h2 style="font-family:sans-serif;padding:40px">Failed to load: ${errorDescription}</h2>`);
+      });
       getNotificationManager().setMainWindow(mainWindow);
       getFileWatcher().setMainWindow(mainWindow);
       setupAutoUpdater(mainWindow);
