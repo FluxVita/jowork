@@ -80,33 +80,33 @@ export function MainLayout() {
   }, []);
 
   return (
-    <div className="relative h-screen w-screen bg-black text-foreground overflow-hidden font-sans">
+    <div className="relative h-screen w-screen text-foreground overflow-hidden font-sans">
       {/* Background Layer: 放大比例，提高透明度，确保可见 */}
-      <div className="absolute inset-0 z-0 opacity-40 scale-[1.2]">
+      <div className="absolute inset-0 z-0 opacity-40 scale-[1.1]">
         <BackgroundGradient />
       </div>
       
-      {/* Main Container: Flex Layout */}
-      <div className="relative z-10 flex h-full w-full">
+      {/* Main Container: Flex Layout with Top Padding for Traffic Lights */}
+      <div className="relative z-10 flex h-full w-full pt-8">
         
-        {/* macOS Traffic Lights Region */}
-        <div className="fixed top-0 left-0 right-0 h-8 drag-region z-50 pointer-events-none" />
+        {/* macOS Traffic Lights Region: Ensure it covers the top space for drag */}
+        <div className="fixed top-0 left-0 right-0 h-10 drag-region z-50 pointer-events-none" />
 
         {/* Sidebar: Glass Sidebar */}
         {sidebarOpen && (
-          <aside className="w-[260px] h-full flex-shrink-0 border-r border-white/5 bg-black/20 backdrop-blur-3xl flex flex-col pt-8 z-20">
+          <aside className="w-[260px] h-full flex-shrink-0 border-r border-white/5 bg-black/20 backdrop-blur-3xl flex flex-col z-20">
             <Sidebar />
           </aside>
         )}
 
         {/* Main Content: Flex Grow to fill space */}
-        <main id="main-content" className="flex-1 h-full flex flex-col pt-8 min-w-0 bg-transparent relative z-10 overflow-hidden">
+        <main id="main-content" className="flex-1 h-full flex flex-col min-w-0 bg-transparent relative z-10 overflow-hidden">
           <Outlet />
         </main>
 
         {/* Context Panel */}
         {contextPanelOpen && (
-          <aside className="w-[320px] h-full flex-shrink-0 border-l border-white/5 bg-black/20 backdrop-blur-3xl pt-8 z-20">
+          <aside className="w-[320px] h-full flex-shrink-0 border-l border-white/5 bg-black/20 backdrop-blur-3xl z-20">
             <ContextPanel />
           </aside>
         )}

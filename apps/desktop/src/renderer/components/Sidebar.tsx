@@ -40,7 +40,7 @@ export function Sidebar() {
       </div>
 
       {/* Nav Section */}
-      <nav className="flex flex-col gap-1.5 px-3 mb-6 overflow-y-auto custom-scrollbar">
+      <nav className="flex flex-col gap-1 px-2 mb-6 overflow-y-auto custom-scrollbar">
         {NAV_ITEMS.map((item) => {
           const label = t(item.key);
           const active = location.pathname === item.path;
@@ -48,7 +48,7 @@ export function Sidebar() {
             <button
               key={item.path}
               onClick={() => navigate(item.path)}
-              className={`group flex items-center gap-3.5 px-4 py-2.5 rounded-[14px] text-[13px] font-medium transition-all duration-300 min-h-[44px]
+              className={`group flex items-center gap-3.5 px-4 py-2 rounded-[14px] text-[13px] font-medium transition-all duration-300 min-h-[40px]
                 ${active
                   ? 'bg-primary text-white shadow-lg shadow-primary/20 scale-[1.02]'
                   : 'text-muted-foreground hover:bg-white/5 hover:text-white active:scale-[0.98]'}`}

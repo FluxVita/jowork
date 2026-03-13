@@ -46,17 +46,17 @@ export function InputBox({ onSend, onAbort, isStreaming, focusKey }: InputBoxPro
   };
 
   return (
-    <div className={`relative w-full max-w-4xl mx-auto transition-all duration-300 ${dragOver ? 'scale-[1.01]' : ''}`}>
+    <div className={`relative w-full max-w-3xl mx-auto transition-all duration-300 ${dragOver ? 'scale-[1.01]' : ''}`}>
       {/* Container with Glass Effect and stronger border */}
       <div 
-        className={`flex items-end gap-3 p-3 glass-effect rounded-[24px] border border-white/10 shadow-2xl transition-all duration-300
+        className={`flex items-end gap-3 p-2.5 glass-effect rounded-[22px] border border-white/10 shadow-2xl transition-all duration-300
           ${dragOver ? 'border-primary shadow-primary/20 bg-primary/5' : 'hover:border-white/20'}`}
         onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
         onDragLeave={() => setDragOver(false)}
         onDrop={(e) => { e.preventDefault(); setDragOver(false); }}
       >
         {/* Attach Button */}
-        <button className="flex-shrink-0 p-2.5 rounded-xl text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all active:scale-90">
+        <button className="flex-shrink-0 p-2 rounded-xl text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all active:scale-90">
           <Paperclip className="w-5 h-5" />
         </button>
         
@@ -68,7 +68,7 @@ export function InputBox({ onSend, onAbort, isStreaming, focusKey }: InputBoxPro
           onKeyDown={handleKeyDown}
           onInput={handleInput}
           placeholder={dragOver ? 'Drop files here...' : t('placeholder', { defaultValue: 'Ask anything...' })}
-          className="flex-1 bg-transparent border-none text-foreground text-[15px] leading-[1.6] py-2 focus:outline-none focus:ring-0 resize-none min-h-[44px] max-h-[200px] custom-scrollbar"
+          className="flex-1 bg-transparent border-none text-foreground text-[14.5px] leading-[1.6] py-2 focus:outline-none focus:ring-0 resize-none min-h-[40px] max-h-[200px] custom-scrollbar"
           rows={1}
         />
         
@@ -77,17 +77,17 @@ export function InputBox({ onSend, onAbort, isStreaming, focusKey }: InputBoxPro
           {isStreaming ? (
             <button
               onClick={onAbort}
-              className="p-3 rounded-2xl bg-red-500 text-white shadow-lg shadow-red-500/20 hover:bg-red-600 transition-all active:scale-95 flex items-center justify-center"
+              className="p-2.5 rounded-xl bg-red-500 text-white shadow-lg shadow-red-500/20 hover:bg-red-600 transition-all active:scale-95 flex items-center justify-center"
             >
-              <Square className="w-4 h-4 fill-current" />
+              <Square className="w-3.5 h-3.5 fill-current" />
             </button>
           ) : (
             <button
               onClick={handleSend}
               disabled={!text.trim()}
-              className="p-3 rounded-2xl bg-primary text-white shadow-lg shadow-primary/30 hover:opacity-90 transition-all active:scale-90 disabled:opacity-30 disabled:shadow-none disabled:cursor-not-allowed flex items-center justify-center"
+              className="p-2.5 rounded-xl bg-primary text-white shadow-lg shadow-primary/30 hover:opacity-90 transition-all active:scale-90 disabled:opacity-30 disabled:shadow-none disabled:cursor-not-allowed flex items-center justify-center"
             >
-              <Send className="w-4 h-4" />
+              <Send className="w-3.5 h-3.5" />
             </button>
           )}
         </div>

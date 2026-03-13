@@ -5,7 +5,7 @@
 export const BackgroundGradient = () => {
   return (
     <div
-      className="absolute inset-0 pointer-events-none z-[-1] opacity-20"
+      className="absolute inset-0 pointer-events-none z-0 opacity-20"
       aria-hidden="true"
       style={{
         background:
