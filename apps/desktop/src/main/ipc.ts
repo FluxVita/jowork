@@ -46,6 +46,10 @@ export function getEngineManager(): EngineManager {
   return engineManager;
 }
 
+export function getFileWatcher(): FileWatcher {
+  return fileWatcher;
+}
+
 export function setupIPC(): void {
   const cloudUrl = getApiBaseUrl();
   const healthUrl = getHealthBaseUrl();

@@ -2,7 +2,7 @@ import { app, BrowserWindow, shell, Menu, ipcMain } from 'electron';
 import { join } from 'path';
 import { is } from '@electron-toolkit/utils';
 import { i18n } from '@jowork/core';
-import { setupIPC, getLauncherWindow, getNotificationManager } from './ipc';
+import { setupIPC, getLauncherWindow, getNotificationManager, getFileWatcher } from './ipc';
 import { setupTray } from './tray';
 import { setupAutoUpdater } from './updater';
 
@@ -109,6 +109,7 @@ app.whenReady().then(() => {
 
   if (mainWindow) {
     getNotificationManager().setMainWindow(mainWindow);
+    getFileWatcher().setMainWindow(mainWindow);
     setupAutoUpdater(mainWindow);
   }
 });
@@ -125,6 +126,7 @@ app.on('activate', () => {
     buildAppMenu();
     if (mainWindow) {
       getNotificationManager().setMainWindow(mainWindow);
+      getFileWatcher().setMainWindow(mainWindow);
       setupAutoUpdater(mainWindow);
     }
   }
