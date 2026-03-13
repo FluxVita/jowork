@@ -1,20 +1,26 @@
 import { eq, and } from 'drizzle-orm';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { cloudCredentials } from '../db/schema';
+import { encryptCredential, decryptCredential } from './crypto';
 
 export class CredentialVault {
   constructor(private db: PostgresJsDatabase) {}
 
-  async authorize(userId: string, connectorId: string, encryptedCredentials: string): Promise<void> {
+  /**
+   * Store a credential encrypted with AES-256-GCM.
+   * The plaintext JSON is encrypted before reaching the DB.
+   */
+  async authorize(userId: string, connectorId: string, plaintextCredential: string): Promise<void> {
+    const encrypted = encryptCredential(plaintextCredential);
     await this.db.insert(cloudCredentials).values({
       id: `cc_${userId}_${connectorId}`,
       userId,
       connectorId,
-      encryptedCredentials,
+      encryptedCredentials: encrypted,
     }).onConflictDoUpdate({
       target: cloudCredentials.id,
       set: {
-        encryptedCredentials,
+        encryptedCredentials: encrypted,
         authorizedAt: new Date(),
       },
     });
@@ -44,6 +50,9 @@ export class CredentialVault {
     return rows;
   }
 
+  /**
+   * Retrieve and decrypt a stored credential. Returns decrypted plaintext JSON.
+   */
   async getCredential(userId: string, connectorId: string): Promise<string | null> {
     const row = await this.db.select().from(cloudCredentials).where(
       and(
@@ -52,6 +61,14 @@ export class CredentialVault {
       ),
     ).limit(1);
 
-    return row[0]?.encryptedCredentials ?? null;
+    const encrypted = row[0]?.encryptedCredentials;
+    if (!encrypted) return null;
+
+    try {
+      return decryptCredential(encrypted);
+    } catch {
+      console.error(`[Vault] Failed to decrypt credential for ${userId}/${connectorId}`);
+      return null;
+    }
   }
 }

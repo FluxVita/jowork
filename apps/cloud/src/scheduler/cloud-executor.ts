@@ -42,7 +42,7 @@ export class CloudExecutor {
     }
 
     try {
-      // Decrypt credential (encrypted is stored as-is for now; in production use AES)
+      // Vault returns decrypted plaintext JSON
       const credential = JSON.parse(encrypted) as { token?: string };
       const token = credential.token;
       if (!token) {

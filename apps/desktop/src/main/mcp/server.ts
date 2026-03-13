@@ -10,12 +10,22 @@ export interface McpServerOptions {
   dbPath: string;
 }
 
+/** Escape SQL LIKE wildcards so user input is matched literally. */
+function escapeLike(input: string): string {
+  return input.replace(/[%_\\]/g, '\\$&');
+}
+
 export function createJoWorkMcpServer(opts: McpServerOptions): McpServer {
   const sqlite = new Database(opts.dbPath);
   sqlite.pragma('journal_mode = WAL');
   const db = drizzle(sqlite);
 
   const server = new McpServer({ name: 'jowork', version: '0.0.1' });
+
+  // Ensure DB is closed when server shuts down
+  server.server.onclose = () => {
+    try { sqlite.close(); } catch { /* already closed */ }
+  };
 
   // search_data — FTS or LIKE search across objects
   server.tool(
@@ -43,8 +53,8 @@ export function createJoWorkMcpServer(opts: McpServerOptions): McpServer {
         // FTS table may not exist, fallback to LIKE
       }
 
-      // LIKE fallback
-      const pattern = `%${query}%`;
+      // LIKE fallback — escape wildcards in user input
+      const pattern = `%${escapeLike(query)}%`;
       let rows;
       if (source) {
         rows = db.select().from(objects)
@@ -128,7 +138,7 @@ export function createJoWorkMcpServer(opts: McpServerOptions): McpServer {
       limit: z.number().optional().default(10).describe('Max results'),
     },
     async ({ query, limit }) => {
-      const pattern = `%${query}%`;
+      const pattern = `%${escapeLike(query)}%`;
       const rows = db.select().from(memories)
         .where(or(
           like(memories.title, pattern),
