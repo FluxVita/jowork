@@ -39,5 +39,8 @@
   "tryAgain": "重试",
   "featureError": "{{name}} 出错",
   "menuFile": "文件",
-  "menuView": "视图"
+  "menuView": "视图",
+  "trayShow": "显示 JoWork",
+  "trayQuickChat": "快捷提问",
+  "trayQuit": "退出"
 }

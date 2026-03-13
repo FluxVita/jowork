@@ -39,5 +39,8 @@
   "tryAgain": "Try Again",
   "featureError": "{{name}} error",
   "menuFile": "File",
-  "menuView": "View"
+  "menuView": "View",
+  "trayShow": "Show JoWork",
+  "trayQuickChat": "Quick Chat",
+  "trayQuit": "Quit"
 }

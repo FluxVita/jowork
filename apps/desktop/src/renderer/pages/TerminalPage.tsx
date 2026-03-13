@@ -129,7 +129,7 @@ export function TerminalPage() {
       </div>
 
       {/* Terminal */}
-      <div ref={termRef} className="flex-1 bg-[#1a1a1e]" />
+      <div ref={termRef} className="flex-1 bg-surface-1" />
     </div>
   );
 }
