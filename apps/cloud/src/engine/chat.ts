@@ -26,6 +26,9 @@ export async function handleChat(c: Context): Promise<Response> {
   if (!body.message?.trim()) {
     return c.json({ error: 'Message is required' }, 400);
   }
+  if (body.message.length > 100_000) {
+    return c.json({ error: 'Message too long (max 100K characters)' }, 400);
+  }
 
   // Check credits before proceeding
   const credit = await consumeCredits(userId, 'chat');

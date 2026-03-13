@@ -75,6 +75,9 @@ export async function localLogin(c: Context): Promise<Response> {
   if (!body.username?.trim() || body.username.trim().length < 2) {
     return c.json({ error: 'Username must be at least 2 characters' }, 400);
   }
+  if (body.username.length > 100) {
+    return c.json({ error: 'Username must be <= 100 characters' }, 400);
+  }
 
   return issueCompatAuth(c, buildLocalUser(body));
 }
@@ -89,6 +92,9 @@ export async function compatLogin(c: Context): Promise<Response> {
 
   if (!body.feishu_open_id?.trim() || !body.name?.trim()) {
     return c.json({ error: 'Missing feishu_open_id or name' }, 400);
+  }
+  if ((body.feishu_open_id?.length ?? 0) > 200 || (body.name?.length ?? 0) > 200) {
+    return c.json({ error: 'Input too long' }, 400);
   }
 
   return issueCompatAuth(c, buildLocalUser(body));

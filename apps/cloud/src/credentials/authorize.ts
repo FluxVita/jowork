@@ -16,6 +16,12 @@ export async function authorizeConnector(c: Context): Promise<Response> {
   if (!connectorId || !encryptedCredentials) {
     return c.json({ error: 'connectorId and encryptedCredentials are required' }, 400);
   }
+  if (typeof connectorId !== 'string' || connectorId.length > 100) {
+    return c.json({ error: 'Invalid connectorId' }, 400);
+  }
+  if (typeof encryptedCredentials !== 'string' || encryptedCredentials.length > 10_000) {
+    return c.json({ error: 'Credential payload too large' }, 400);
+  }
 
   await getVault().authorize(userId, connectorId, encryptedCredentials);
   return c.json({ ok: true, connectorId, userId });
@@ -41,6 +47,9 @@ export async function authorizeAll(c: Context): Promise<Response> {
 
   if (!Array.isArray(credentials)) {
     return c.json({ error: 'credentials array required' }, 400);
+  }
+  if (credentials.length > 50) {
+    return c.json({ error: 'Too many credentials (max 50)' }, 400);
   }
 
   await getVault().authorizeAll(

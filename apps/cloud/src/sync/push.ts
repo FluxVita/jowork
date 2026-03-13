@@ -34,6 +34,9 @@ export async function handlePush(c: Context): Promise<Response> {
   if (!body.changes || !Array.isArray(body.changes)) {
     return c.json({ error: 'Missing changes array' }, 400);
   }
+  if (body.changes.length > 1000) {
+    return c.json({ error: 'Too many changes in single push (max 1000)' }, 400);
+  }
 
   const conflicts: SyncConflict[] = [];
   let accepted = 0;
