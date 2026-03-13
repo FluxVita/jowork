@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useChat } from './hooks/useChat';
 import { MessageList } from './MessageList';
@@ -17,12 +17,32 @@ export function ConversationPage() {
   const isLoadingMore = useConversationStore((s) => s.isLoadingMore);
   const loadMoreMessages = useConversationStore((s) => s.loadMoreMessages);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const exportMenuRef = useRef<HTMLDivElement>(null);
 
   const handleExport = useCallback(async (format: 'markdown' | 'json') => {
     if (!activeSessionId) return;
     setShowExportMenu(false);
     await window.jowork.session.export(activeSessionId, format);
   }, [activeSessionId]);
+
+  // Close export menu on click outside or Escape
+  useEffect(() => {
+    if (!showExportMenu) return;
+    const handleClick = (e: MouseEvent) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node)) {
+        setShowExportMenu(false);
+      }
+    };
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowExportMenu(false);
+    };
+    document.addEventListener('mousedown', handleClick);
+    document.addEventListener('keydown', handleKey);
+    return () => {
+      document.removeEventListener('mousedown', handleClick);
+      document.removeEventListener('keydown', handleKey);
+    };
+  }, [showExportMenu]);
 
   return (
     <div className="flex flex-col h-full">
@@ -31,9 +51,11 @@ export function ConversationPage() {
         <EngineIndicator />
         <div className="flex items-center gap-1">
           {activeSessionId && messages.length > 0 && (
-            <div className="relative">
+            <div className="relative" ref={exportMenuRef}>
               <button
                 onClick={() => setShowExportMenu(!showExportMenu)}
+                aria-expanded={showExportMenu}
+                aria-haspopup="menu"
                 className="text-xs text-text-secondary hover:text-text-primary px-2 py-1 rounded
                   hover:bg-surface-2 transition-colors"
                 title={t('exportConversation')}
@@ -41,14 +63,16 @@ export function ConversationPage() {
                 {t('export')}
               </button>
               {showExportMenu && (
-                <div className="absolute right-0 top-full mt-1 bg-surface-2 border border-border rounded-md shadow-lg z-10 py-1 min-w-[140px]">
+                <div role="menu" className="absolute right-0 top-full mt-1 bg-surface-2 border border-border rounded-md shadow-lg z-10 py-1 min-w-[140px]">
                   <button
+                    role="menuitem"
                     onClick={() => handleExport('markdown')}
                     className="w-full text-left px-3 py-1.5 text-xs text-text-primary hover:bg-surface-1 transition-colors"
                   >
                     {t('exportMarkdown')}
                   </button>
                   <button
+                    role="menuitem"
                     onClick={() => handleExport('json')}
                     className="w-full text-left px-3 py-1.5 text-xs text-text-primary hover:bg-surface-1 transition-colors"
                   >
