@@ -17,23 +17,23 @@ export class EngineRecovery {
     });
   }
 
+  /** Get the first live BrowserWindow, or null. */
+  private getLiveWindow(): BrowserWindow | null {
+    return BrowserWindow.getAllWindows().find((w) => !w.isDestroyed()) ?? null;
+  }
+
   private handleCrash(engineId: EngineId, code: number, signal: string | null): void {
     const retries = this.retryCounts.get(engineId) ?? 0;
 
     // Notify renderer
-    const win = BrowserWindow.getAllWindows()[0];
-    if (win) {
-      win.webContents.send('engine:crashed', { engineId, code, signal, retries });
-    }
+    this.getLiveWindow()?.webContents.send('engine:crashed', { engineId, code, signal, retries });
 
     if (retries >= MAX_RETRIES) {
       this.retryCounts.delete(engineId);
-      if (win) {
-        win.webContents.send('engine:crash-fatal', {
-          engineId,
-          message: `Engine ${engineId} failed after ${MAX_RETRIES} restart attempts.`,
-        });
-      }
+      this.getLiveWindow()?.webContents.send('engine:crash-fatal', {
+        engineId,
+        message: `Engine ${engineId} failed after ${MAX_RETRIES} restart attempts.`,
+      });
       return;
     }
 
@@ -42,9 +42,7 @@ export class EngineRecovery {
     // The actual restart is handled by EngineManager when the next chat() call is made.
     // Recovery just tracks retry state and notifies the UI.
     setTimeout(() => {
-      if (win) {
-        win.webContents.send('engine:restart-ready', { engineId });
-      }
+      this.getLiveWindow()?.webContents.send('engine:restart-ready', { engineId });
     }, RETRY_DELAYS[retries]);
   }
 

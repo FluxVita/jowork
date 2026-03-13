@@ -55,7 +55,7 @@ export class CloudEngine implements AgentEngine {
   async *chat(opts: ChatOpts): AsyncGenerator<EngineEvent> {
     const token = this.getToken();
     if (!token) {
-      yield { type: 'error' } as EngineEvent;
+      yield { type: 'error', message: 'Not signed in. Go to Settings > Auth to log in.' } as EngineEvent & { message: string };
       yield { type: 'done' };
       return;
     }

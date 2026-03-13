@@ -191,8 +191,8 @@ export class HistoryManager {
         if (rowid) {
           this.sqlite.prepare('INSERT INTO messages_fts(rowid, content) VALUES (?, ?)').run(rowid.rowid, msg.content);
         }
-      } catch {
-        // FTS index maintenance is non-critical
+      } catch (err) {
+        console.warn('[FTS] Failed to index message', id, err);
       }
     }
 
