@@ -25,5 +25,10 @@
   "shortcutSend": "发送消息",
   "shortcutStop": "停止 / 关闭",
   "shortcutTerminal": "打开终端",
-  "shortcutCloseWindow": "关闭窗口"
+  "shortcutCloseWindow": "关闭窗口",
+  "workstyleTitle": "工作风格",
+  "workstyleDescription": "定义 AI 如何配合你工作。此内容会注入每次对话。",
+  "workstylePlaceholder": "用 Markdown 编写你的工作风格指南...",
+  "workstyleHint": "支持 Markdown。此文档会作为上下文注入每次 AI 对话。",
+  "saved": "已保存！"
 }

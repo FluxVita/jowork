@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { Team } from './hooks/useTeam';
 
 interface TeamSettingsProps {
@@ -6,6 +7,9 @@ interface TeamSettingsProps {
 }
 
 export function TeamSettings({ team }: TeamSettingsProps) {
+  const { t } = useTranslation('team');
+  const { t: ts } = useTranslation('settings');
+  const { t: tc } = useTranslation('common');
   const [name, setName] = useState(team.name);
   const [saved, setSaved] = useState(false);
 
@@ -17,10 +21,10 @@ export function TeamSettings({ team }: TeamSettingsProps) {
 
   return (
     <div className="bg-surface rounded-lg p-5">
-      <h3 className="font-medium mb-4">Team Settings</h3>
+      <h3 className="font-medium mb-4">{t('settings')}</h3>
       <div className="space-y-4">
         <div>
-          <label className="text-sm text-text-secondary block mb-1">Team Name</label>
+          <label className="text-sm text-text-secondary block mb-1">{t('teamName')}</label>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -28,7 +32,7 @@ export function TeamSettings({ team }: TeamSettingsProps) {
           />
         </div>
         <div>
-          <label className="text-sm text-text-secondary block mb-1">Team ID</label>
+          <label className="text-sm text-text-secondary block mb-1">{t('teamId')}</label>
           <input
             readOnly
             value={team.id}
@@ -40,9 +44,9 @@ export function TeamSettings({ team }: TeamSettingsProps) {
             onClick={handleSave}
             className="px-4 py-2 rounded-md bg-accent text-white text-sm font-medium hover:bg-accent/90 transition-colors"
           >
-            Save
+            {tc('save')}
           </button>
-          {saved && <span className="text-xs text-accent">Saved!</span>}
+          {saved && <span className="text-xs text-accent">{ts('saved')}</span>}
         </div>
       </div>
     </div>

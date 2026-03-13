@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 const DEFAULT_TEMPLATE = `# My Work Style
 
@@ -17,6 +18,8 @@ const DEFAULT_TEMPLATE = `# My Work Style
 `;
 
 export function WorkstyleEditor() {
+  const { t } = useTranslation('settings');
+  const { t: tc } = useTranslation('common');
   const [content, setContent] = useState('');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -42,18 +45,18 @@ export function WorkstyleEditor() {
     <div className="flex-1 p-8 overflow-y-auto">
       <div className="max-w-3xl">
         <div className="flex items-center justify-between mb-1">
-          <h1 className="text-xl font-semibold">Work Style</h1>
+          <h1 className="text-xl font-semibold">{t('workstyleTitle')}</h1>
           <button
             onClick={handleSave}
             disabled={saving}
             className="px-3 py-1.5 text-sm bg-accent text-white rounded-md hover:bg-accent/90
               disabled:opacity-50 transition-colors"
           >
-            {saved ? 'Saved!' : saving ? 'Saving...' : 'Save'}
+            {saved ? t('saved') : saving ? tc('saving') : tc('save')}
           </button>
         </div>
         <p className="text-sm text-text-secondary mb-4">
-          Define how the AI should work with you. This is injected into every conversation.
+          {t('workstyleDescription')}
         </p>
 
         <textarea
@@ -66,11 +69,11 @@ export function WorkstyleEditor() {
           className="w-full px-4 py-3 text-sm font-mono bg-surface-2 border border-border rounded-lg
             text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-1
             focus:ring-accent resize-y leading-relaxed"
-          placeholder="Write your work style guide in Markdown..."
+          placeholder={t('workstylePlaceholder')}
         />
 
         <p className="text-xs text-text-secondary mt-2">
-          Supports Markdown. This document is included in every AI conversation as context.
+          {t('workstyleHint')}
         </p>
       </div>
     </div>

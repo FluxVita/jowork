@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useTeam, type TeamMember } from './hooks/useTeam';
 
 interface MemberListProps {
@@ -8,13 +9,14 @@ interface MemberListProps {
 }
 
 export function MemberList({ teamId, members, currentUserId, isOwner }: MemberListProps) {
+  const { t } = useTranslation('team');
   const { removeMember, updateRole } = useTeam();
 
   const roleLabel = (role: string) => {
     switch (role) {
-      case 'owner': return 'Owner';
-      case 'admin': return 'Admin';
-      default: return 'Member';
+      case 'owner': return t('owner');
+      case 'admin': return t('admin');
+      default: return t('member');
     }
   };
 
@@ -51,14 +53,14 @@ export function MemberList({ teamId, members, currentUserId, isOwner }: MemberLi
                   onChange={(e) => updateRole(teamId, m.userId, e.target.value)}
                   className="text-xs bg-surface-2 border border-border rounded px-1 py-0.5"
                 >
-                  <option value="member">Member</option>
-                  <option value="admin">Admin</option>
+                  <option value="member">{t('member')}</option>
+                  <option value="admin">{t('admin')}</option>
                 </select>
                 <button
                   onClick={() => removeMember(teamId, m.userId)}
                   className="text-xs text-red-500 hover:text-red-400 ml-1"
                 >
-                  Remove
+                  {t('remove')}
                 </button>
               </div>
             )}

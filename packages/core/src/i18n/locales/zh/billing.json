@@ -16,5 +16,10 @@
   "teamPlan": "团队版",
   "perMonth": "/月",
   "usageChart": "用量统计",
-  "dailyUsage": "每日用量"
+  "dailyUsage": "每日用量（7天）",
+  "creditsLeft": "剩余 {{count}}",
+  "walletBalance": "+{{count}} 钱包",
+  "creditsPerMonth": "{{count}} 积分/月",
+  "downgrade": "降级",
+  "dailyLimit": "限额：{{limit}}/天"
 }

@@ -16,5 +16,10 @@
   "teamPlan": "Team",
   "perMonth": "/mo",
   "usageChart": "Usage",
-  "dailyUsage": "Daily usage"
+  "dailyUsage": "Daily Usage (7 days)",
+  "creditsLeft": "{{count}} left",
+  "walletBalance": "+{{count}} wallet",
+  "creditsPerMonth": "{{count}} credits/month",
+  "downgrade": "Downgrade",
+  "dailyLimit": "Limit: {{limit}}/day"
 }

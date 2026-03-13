@@ -25,5 +25,10 @@
   "shortcutSend": "Send message",
   "shortcutStop": "Stop / close",
   "shortcutTerminal": "Open terminal",
-  "shortcutCloseWindow": "Close window"
+  "shortcutCloseWindow": "Close window",
+  "workstyleTitle": "Work Style",
+  "workstyleDescription": "Define how the AI should work with you. This is injected into every conversation.",
+  "workstylePlaceholder": "Write your work style guide in Markdown...",
+  "workstyleHint": "Supports Markdown. This document is included in every AI conversation as context.",
+  "saved": "Saved!"
 }

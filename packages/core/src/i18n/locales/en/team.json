@@ -18,5 +18,13 @@
   "linkCopied": "Copied",
   "removeMember": "Remove member",
   "changeRole": "Change role",
-  "leaveTeam": "Leave team"
+  "leaveTeam": "Leave team",
+  "inviteTitle": "Invite Team Members",
+  "inviteDescription": "Generate an invite link to share with your team members.",
+  "generating": "Generating...",
+  "generateInviteLink": "Generate Invite Link",
+  "inviteUrl": "Invite URL",
+  "inviteExpiry": "This link expires in 7 days. Anyone with this link can join the team.",
+  "teamId": "Team ID",
+  "remove": "Remove"
 }

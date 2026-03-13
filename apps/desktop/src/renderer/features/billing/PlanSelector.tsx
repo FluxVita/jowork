@@ -1,7 +1,9 @@
+import { useTranslation } from 'react-i18next';
 import { useBilling } from './hooks/useBilling';
 
 /** Plan comparison cards with upgrade buttons. */
 export function PlanSelector() {
+  const { t } = useTranslation('billing');
   const { plans, currentPlan, openCheckout } = useBilling();
 
   return (
@@ -19,11 +21,11 @@ export function PlanSelector() {
               <h3 className="text-lg font-semibold">{plan.name}</h3>
               <p className="text-2xl font-bold mt-1">
                 ${plan.price}
-                <span className="text-sm font-normal text-text-secondary">/mo</span>
+                <span className="text-sm font-normal text-text-secondary">{t('perMonth')}</span>
               </p>
               {plan.creditsPerMonth && (
                 <p className="text-xs text-text-secondary mt-1">
-                  {plan.creditsPerMonth.toLocaleString()} credits/month
+                  {t('creditsPerMonth', { count: plan.creditsPerMonth.toLocaleString() })}
                 </p>
               )}
             </div>
@@ -37,14 +39,14 @@ export function PlanSelector() {
             </ul>
             {isCurrent ? (
               <div className="text-center text-sm text-accent font-medium py-2">
-                Current Plan
+                {t('currentPlan')}
               </div>
             ) : (
               <button
                 onClick={() => openCheckout(plan.id)}
                 className="w-full py-2 rounded-md text-sm font-medium bg-accent text-white hover:bg-accent/90 transition-colors"
               >
-                {plan.price === 0 ? 'Downgrade' : 'Upgrade'}
+                {plan.price === 0 ? t('downgrade') : t('upgrade')}
               </button>
             )}
           </div>

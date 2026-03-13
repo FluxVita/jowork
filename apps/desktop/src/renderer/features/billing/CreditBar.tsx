@@ -1,8 +1,10 @@
 import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useBilling } from './hooks/useBilling';
 
 /** Compact credit bar for sidebar bottom. */
 export function CreditBar() {
+  const { t } = useTranslation('billing');
   const { credits, loadCredits } = useBilling();
 
   useEffect(() => {
@@ -19,8 +21,8 @@ export function CreditBar() {
   return (
     <div className="px-4 py-2">
       <div className="flex justify-between text-xs text-text-secondary mb-1">
-        <span>Credits</span>
-        <span>{credits.remaining} left</span>
+        <span>{t('credits')}</span>
+        <span>{t('creditsLeft', { count: credits.remaining })}</span>
       </div>
       <div className="h-1.5 bg-surface-2 rounded-full overflow-hidden">
         <div
@@ -30,7 +32,7 @@ export function CreditBar() {
       </div>
       {credits.walletBalance > 0 && (
         <div className="text-[10px] text-text-secondary mt-0.5">
-          +{credits.walletBalance} wallet
+          {t('walletBalance', { count: credits.walletBalance })}
         </div>
       )}
     </div>

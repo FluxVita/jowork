@@ -18,5 +18,13 @@
   "linkCopied": "已复制",
   "removeMember": "移除成员",
   "changeRole": "更改角色",
-  "leaveTeam": "离开团队"
+  "leaveTeam": "离开团队",
+  "inviteTitle": "邀请团队成员",
+  "inviteDescription": "生成邀请链接并分享给你的团队成员。",
+  "generating": "生成中...",
+  "generateInviteLink": "生成邀请链接",
+  "inviteUrl": "邀请链接",
+  "inviteExpiry": "此链接 7 天后过期。任何人都可以通过此链接加入团队。",
+  "teamId": "团队 ID",
+  "remove": "移除"
 }
