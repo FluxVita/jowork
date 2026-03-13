@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useOnboarding } from '../hooks/useOnboarding';
 import { useAuth } from '../../auth/hooks/useAuth';
@@ -13,15 +14,20 @@ export function LoginStep() {
   };
 
   const handleLogin = async () => {
-    await loginWithGoogle();
-    nextStep();
+    try {
+      await loginWithGoogle();
+      nextStep();
+    } catch {
+      // Login failed/cancelled — stay on this step
+    }
   };
 
-  // Already logged in — auto-advance
-  if (user) {
-    nextStep();
-    return null;
-  }
+  // Already logged in — auto-advance (in effect, not during render)
+  useEffect(() => {
+    if (user) nextStep();
+  }, [user, nextStep]);
+
+  if (user) return null;
 
   return (
     <div className="flex flex-col items-center justify-center text-center px-8 py-12">

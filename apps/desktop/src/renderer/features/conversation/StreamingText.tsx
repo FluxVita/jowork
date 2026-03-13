@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { marked } from 'marked';
+import DOMPurify from 'dompurify';
 
 interface StreamingTextProps {
   text: string;
@@ -28,7 +29,7 @@ export function StreamingText({ text }: StreamingTextProps) {
       safeText += '\n```';
     }
 
-    return marked.parse(safeText, { async: false }) as string;
+    return DOMPurify.sanitize(marked.parse(safeText, { async: false }) as string);
   }, [text]);
 
   if (!html) return null;

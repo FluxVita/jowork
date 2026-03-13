@@ -9,6 +9,7 @@ interface AppState {
   toggleSidebar: () => void;
   toggleContextPanel: () => void;
   setTheme: (theme: Theme) => void;
+  initTheme: () => Promise<void>;
 }
 
 function applyTheme(theme: Theme): void {
@@ -16,6 +17,13 @@ function applyTheme(theme: Theme): void {
     theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
   document.documentElement.classList.toggle('dark', isDark);
 }
+
+// Listen for OS color-scheme changes when using "system" theme
+const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+mediaQuery.addEventListener('change', () => {
+  const state = useAppStore.getState();
+  if (state.theme === 'system') applyTheme('system');
+});
 
 export const useAppStore = create<AppState>((set) => ({
   sidebarOpen: true,
@@ -26,6 +34,20 @@ export const useAppStore = create<AppState>((set) => ({
   setTheme: (theme) => {
     applyTheme(theme);
     set({ theme });
+    window.jowork.settings.set('theme', theme).catch(() => {});
+  },
+  initTheme: async () => {
+    try {
+      const saved = await window.jowork.settings.get('theme');
+      if (saved && (saved === 'light' || saved === 'dark' || saved === 'system')) {
+        applyTheme(saved as Theme);
+        set({ theme: saved as Theme });
+        return;
+      }
+    } catch {
+      // ignore
+    }
+    applyTheme('dark');
   },
 }));
 

@@ -7,10 +7,20 @@ function listen<T = unknown>(channel: string, cb: (data: T) => void) {
   return () => { ipcRenderer.removeListener(channel, handler); };
 }
 
+// Allowlisted channels for the generic `on` listener
+const ALLOWED_CHANNELS = new Set([
+  'pty:data', 'pty:exit', 'chat:event', 'session:created',
+  'engine:crashed', 'engine:crash-fatal', 'engine:restart-ready',
+  'nav:goto', 'shortcut:new-session', 'shortcut:export',
+]);
+
 const api = {
-  // Generic IPC (escape hatch for untyped channels)
-  invoke: (channel: string, ...args: unknown[]) => ipcRenderer.invoke(channel, ...args),
+  // Channel-restricted event listener (only allows known channels)
   on: (channel: string, callback: (...args: unknown[]) => void) => {
+    if (!ALLOWED_CHANNELS.has(channel)) {
+      console.warn(`[preload] Blocked listener on unknown channel: ${channel}`);
+      return () => {};
+    }
     const handler = (_event: Electron.IpcRendererEvent, ...args: unknown[]) => callback(...args);
     ipcRenderer.on(channel, handler);
     return () => { ipcRenderer.removeListener(channel, handler); };

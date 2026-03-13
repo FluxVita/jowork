@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useBilling } from './hooks/useBilling';
 import { PlanSelector } from './PlanSelector';
@@ -18,15 +18,15 @@ export function BillingPage() {
     loadCredits();
   }, [loadCredits]);
 
-  // Placeholder usage data (7 days)
-  const usageData = Array.from({ length: 7 }, (_, i) => {
+  // Placeholder usage data (7 days) — memoized to prevent re-render flicker
+  const usageData = useMemo(() => Array.from({ length: 7 }, (_, i) => {
     const d = new Date();
     d.setDate(d.getDate() - (6 - i));
     return {
       date: d.toISOString().split('T')[0],
-      credits: Math.floor(Math.random() * 30),
+      credits: Math.floor((i + 1) * 4.3), // deterministic placeholder
     };
-  });
+  }), []);
 
   if (!user) {
     return (

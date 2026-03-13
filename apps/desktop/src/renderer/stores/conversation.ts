@@ -1,5 +1,10 @@
 import { create } from 'zustand';
 
+let _msgSeq = 0;
+function uniqueId(prefix: string): string {
+  return `${prefix}-${Date.now()}-${++_msgSeq}`;
+}
+
 interface Session {
   id: string;
   title: string;
@@ -147,7 +152,7 @@ export const useConversationStore = create<ConversationStore>((set, get) => ({
       messages: [
         ...s.messages,
         {
-          id: `tmp-${Date.now()}`,
+          id: uniqueId('tmp'),
           sessionId: activeSessionId ?? '',
           role: 'user' as const,
           content,
@@ -177,7 +182,7 @@ export const useConversationStore = create<ConversationStore>((set, get) => ({
           messages: [
             ...s.messages,
             {
-              id: `msg-${Date.now()}`,
+              id: uniqueId('msg'),
               sessionId: sid ?? '',
               role: 'assistant' as const,
               content: streamingText,
@@ -194,10 +199,14 @@ export const useConversationStore = create<ConversationStore>((set, get) => ({
 
   abort: async () => {
     await window.jowork.chat.abort();
-    set({ isStreaming: false, pendingConfirm: null });
+    set({ isStreaming: false, pendingConfirm: null, streamingText: '' });
   },
 
   handleChatEvent: (event) => {
+    // Ignore events from a different session
+    const { activeSessionId } = get();
+    if (event.sessionId && activeSessionId && event.sessionId !== activeSessionId) return;
+
     switch (event.type) {
       case 'text':
         if (event.content) {
@@ -227,7 +236,7 @@ export const useConversationStore = create<ConversationStore>((set, get) => ({
           messages: [
             ...s.messages,
             {
-              id: `tc-${Date.now()}`,
+              id: uniqueId('tc'),
               sessionId: event.sessionId,
               role: 'tool_call' as const,
               content: event.input ?? '',
@@ -242,7 +251,7 @@ export const useConversationStore = create<ConversationStore>((set, get) => ({
           messages: [
             ...s.messages,
             {
-              id: `tr-${Date.now()}`,
+              id: uniqueId('tr'),
               sessionId: event.sessionId,
               role: 'tool_result' as const,
               content: event.result ?? '',
@@ -257,7 +266,7 @@ export const useConversationStore = create<ConversationStore>((set, get) => ({
           messages: [
             ...s.messages,
             {
-              id: `err-${Date.now()}`,
+              id: uniqueId('err'),
               sessionId: event.sessionId,
               role: 'system' as const,
               content: `Error: ${event.message}`,
@@ -281,6 +290,8 @@ export const useConversationStore = create<ConversationStore>((set, get) => ({
     const { pendingConfirm } = get();
     if (!pendingConfirm) return;
 
+    // Send the decision back to the main process so the engine can proceed
+    window.jowork.confirm.evaluate(pendingConfirm.toolName).catch(() => {});
     if (allowed && alwaysAllow) {
       window.jowork.confirm.alwaysAllow(pendingConfirm.toolName);
     }

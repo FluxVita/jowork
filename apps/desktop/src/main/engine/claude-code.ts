@@ -108,13 +108,13 @@ export class ClaudeCodeEngine implements AgentEngine {
         return { type: 'system' };
       case 'assistant':
         if (raw.subtype === 'thinking') {
-          return { type: 'thinking' };
+          return { type: 'thinking', content: (raw.content as string) ?? '' };
         }
-        return { type: 'text' };
+        return { type: 'text', content: (raw.content as string) ?? (raw.message as string) ?? '' };
       case 'result':
-        return { type: 'usage' };
+        return { type: 'usage', content: JSON.stringify(raw.usage ?? raw) };
       default:
-        return { type: 'text' };
+        return { type: 'text', content: (raw.content as string) ?? (raw.message as string) ?? '' };
     }
   }
 

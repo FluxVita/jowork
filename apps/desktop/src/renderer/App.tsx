@@ -53,7 +53,7 @@ function OnboardingGuard({ children }: { children: React.ReactNode }) {
       setNeedsOnboarding(true);
       setChecked(true);
     });
-  }, []);
+  }, [location.pathname]); // Re-check on navigation (e.g. after onboarding completes)
 
   if (!checked) return <PageFallback />;
 
@@ -111,6 +111,8 @@ export function App() {
               <Route path="settings" element={
                 <FeatureErrorBoundary name="Settings"><Suspense fallback={<PageFallback />}><SettingsPage /></Suspense></FeatureErrorBoundary>
               } />
+              {/* Catch-all: redirect unknown routes to home */}
+              <Route path="*" element={<Navigate to="/" replace />} />
             </Route>
           </Routes>
           </OnboardingGuard>
