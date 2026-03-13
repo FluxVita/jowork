@@ -14,11 +14,12 @@ export function AhaMomentStep() {
   const { t } = useTranslation('onboarding');
   const { t: tc } = useTranslation('common');
   const { t: tChat } = useTranslation('chat');
-  const { completeOnboarding, connectedDuringOnboarding } = useOnboarding();
+  const { completeOnboarding, connectedDuringOnboarding, skippedLogin } = useOnboarding();
   const [selectedQuestion, setSelectedQuestion] = useState<string | null>(null);
   const [response, setResponse] = useState<string | null>(null);
   const [streamingText, setStreamingText] = useState('');
   const [loading, setLoading] = useState(false);
+  const [fallbackInfo, setFallbackInfo] = useState<string | null>(null);
   const unsubRef = useRef<(() => void) | null>(null);
 
   // Listen for streaming events
@@ -36,11 +37,48 @@ export function AhaMomentStep() {
         .slice(0, 3)
     : [t('defaultQ1'), t('defaultQ2'), t('defaultQ3')];
 
+  /**
+   * Ensure an engine is available before chatting.
+   * If local engine is not installed and user is logged in, switch to cloud engine.
+   */
+  async function ensureEngine(): Promise<boolean> {
+    try {
+      const engines = await window.jowork.engine.detect();
+      const active = await window.jowork.engine.getActive();
+
+      // Current active engine is available — good to go
+      if (engines[active]?.installed) return true;
+
+      // Local engine unavailable — try cloud fallback if user is logged in
+      if (!skippedLogin) {
+        const user = await window.jowork.auth.getUser();
+        if (user && engines['jowork-cloud']?.installed) {
+          await window.jowork.engine.switchEngine('jowork-cloud');
+          setFallbackInfo(t('cloudFallback'));
+          return true;
+        }
+      }
+
+      return false;
+    } catch {
+      return false;
+    }
+  }
+
   const handleAsk = async (question: string) => {
     setSelectedQuestion(question);
     setLoading(true);
     setResponse(null);
     setStreamingText('');
+    setFallbackInfo(null);
+
+    // Check engine availability with cloud fallback
+    const engineReady = await ensureEngine();
+    if (!engineReady) {
+      setLoading(false);
+      setResponse(skippedLogin ? t('loginForCloud') : t('engineUnavailable'));
+      return;
+    }
 
     // Subscribe to chat events to display real AI response
     unsubRef.current?.();
@@ -71,6 +109,10 @@ export function AhaMomentStep() {
       <div className="text-5xl mb-6">✨</div>
       <h1 className="text-xl font-bold mb-2">{t('step3Title')}</h1>
       <p className="text-text-secondary mb-8 max-w-md">{t('step3Description')}</p>
+
+      {fallbackInfo && (
+        <p className="text-xs text-accent mb-4">{fallbackInfo}</p>
+      )}
 
       {!selectedQuestion ? (
         <div className="w-full max-w-md space-y-3 mb-8">

@@ -9,6 +9,42 @@ function getInviteBaseUrl(): string {
 }
 
 /**
+ * GET /teams — list teams for current user
+ */
+export async function listTeams(c: Context): Promise<Response> {
+  const userId = c.get('userId') as string;
+  const db = getDb();
+
+  const memberships = await db.select({
+    teamId: teamMembers.teamId,
+    role: teamMembers.role,
+    joinedAt: teamMembers.joinedAt,
+  }).from(teamMembers).where(eq(teamMembers.userId, userId));
+
+  if (memberships.length === 0) {
+    return c.json([]);
+  }
+
+  const teamsById = new Map(
+    (await db.select().from(teams)).map((team) => [team.id, team]),
+  );
+
+  return c.json(
+    memberships
+      .map((membership) => {
+        const team = teamsById.get(membership.teamId);
+        if (!team) return null;
+        return {
+          ...team,
+          role: membership.role,
+          joinedAt: membership.joinedAt,
+        };
+      })
+      .filter(Boolean),
+  );
+}
+
+/**
  * POST /teams — create a new team
  */
 export async function createTeam(c: Context): Promise<Response> {

@@ -6,7 +6,7 @@ import { users } from '../db/schema';
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
-const REDIRECT_URI = process.env.AUTH_REDIRECT_URI || 'http://localhost:3000/auth/google/callback';
+const REDIRECT_URI = process.env.AUTH_REDIRECT_URI || 'http://localhost:3000/api/auth/google/callback';
 
 /**
  * Redirect to Google OAuth consent screen.
@@ -115,7 +115,7 @@ export async function refreshToken(c: Context): Promise<Response> {
   let token: string | undefined;
   try {
     const body = await c.req.json();
-    token = body.token;
+    token = body.token || body.refreshToken;
   } catch {
     return c.json({ error: 'Invalid JSON body' }, 400);
   }

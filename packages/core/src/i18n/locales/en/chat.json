@@ -41,6 +41,7 @@
   "launcherPlaceholder": "Ask JoWork anything...",
   "recent": "Recent",
   "launcherHint": "Press Enter to ask, Esc to close",
+  "skillsLabel": "Available Skills",
   "engineCrashed": "AI engine crashed, restarting... (attempt {{retries}})",
   "engineCrashFatal": "AI engine failed after {{max}} restart attempts. Try switching engines in Settings.",
   "engineRestartReady": "AI engine restarted successfully.",

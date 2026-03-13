@@ -37,6 +37,11 @@ describe('Auth routes (no auth required)', () => {
     expect([200, 302, 400]).toContain(res.status);
   });
 
+  it('GET /api/auth/google returns redirect or HTML', async () => {
+    const res = await request('/api/auth/google');
+    expect([200, 302, 400]).toContain(res.status);
+  });
+
   it('POST /auth/refresh without body returns error', async () => {
     const res = await request('/auth/refresh', {
       method: 'POST',
@@ -59,8 +64,18 @@ describe('Protected routes without auth', () => {
     expect(res.status).toBe(401);
   });
 
+  it('GET /api/billing/credits returns 401 without token', async () => {
+    const res = await request('/api/billing/credits');
+    expect(res.status).toBe(401);
+  });
+
   it('POST /teams returns 401 without token', async () => {
     const res = await request('/teams', { method: 'POST' });
+    expect(res.status).toBe(401);
+  });
+
+  it('GET /api/teams returns 401 without token', async () => {
+    const res = await request('/api/teams');
     expect(res.status).toBe(401);
   });
 
@@ -101,6 +116,19 @@ describe('Protected routes with valid auth', () => {
     expect(body.name).toBe('Test Team');
     expect(body.id).toMatch(/^team_/);
     expect(body.inviteCode).toBeTruthy();
+  });
+
+  it('GET /teams lists teams (requires DB)', async () => {
+    const res = await request('/teams', {
+      headers: authHeaders(),
+    });
+    if (!hasDb) {
+      expect(res.status).toBe(500);
+      return;
+    }
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(Array.isArray(body)).toBe(true);
   });
 
   it('POST /teams returns 400 for missing name', async () => {
@@ -250,5 +278,188 @@ describe('Stripe webhook', () => {
     });
     // Won't have valid Stripe signature, but should not 500
     expect(res.status).toBeLessThan(500);
+  });
+});
+
+// ─── Engine Chat ────────────────────────────────────────────
+
+describe('Engine chat endpoint', () => {
+  const hasDb = !!process.env.DATABASE_URL;
+
+  it('POST /engine/chat returns 401 without token', async () => {
+    const res = await request('/engine/chat', { method: 'POST' });
+    expect(res.status).toBe(401);
+  });
+
+  it('POST /engine/chat returns 400 for missing message', async () => {
+    const res = await request('/engine/chat', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({}),
+    });
+    if (!hasDb) {
+      // consumeCredits will fail without DB — returns 500
+      expect(res.status).toBeGreaterThanOrEqual(400);
+      return;
+    }
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toContain('Message is required');
+  });
+
+  it('POST /engine/chat returns 400 for empty/whitespace message', async () => {
+    const res = await request('/engine/chat', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ message: '   ' }),
+    });
+    if (!hasDb) {
+      expect(res.status).toBeGreaterThanOrEqual(400);
+      return;
+    }
+    expect(res.status).toBe(400);
+  });
+
+  it('POST /engine/chat returns 402 or 503 with valid message (requires DB)', async () => {
+    // Without ANTHROPIC_API_KEY: 503 (after credits pass).
+    // Without credits row: consumeCredits returns { success: false } → 402.
+    const res = await request('/engine/chat', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ message: 'Hello' }),
+    });
+    if (!hasDb) {
+      expect(res.status).toBe(500);
+      return;
+    }
+    // Either 402 (no credits) or 503 (no API key) depending on credit state
+    expect([402, 503]).toContain(res.status);
+  });
+});
+
+// ─── Scheduler ──────────────────────────────────────────────
+
+describe('Scheduler task endpoints', () => {
+  const hasDb = !!process.env.DATABASE_URL;
+
+  it('POST /scheduler/tasks returns 401 without token', async () => {
+    const res = await request('/scheduler/tasks', { method: 'POST' });
+    expect(res.status).toBe(401);
+  });
+
+  it('GET /scheduler/tasks returns 401 without token', async () => {
+    const res = await request('/scheduler/tasks');
+    expect(res.status).toBe(401);
+  });
+
+  it('POST /scheduler/tasks returns 400 for missing fields', async () => {
+    const res = await request('/scheduler/tasks', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ name: 'Test' }),
+    });
+    if (!hasDb) {
+      expect(res.status).toBeGreaterThanOrEqual(400);
+      return;
+    }
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toContain('required');
+  });
+
+  it('POST /scheduler/tasks returns 400 for empty name', async () => {
+    const res = await request('/scheduler/tasks', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ name: '', cronExpression: '*/5 * * * *', type: 'reminder' }),
+    });
+    if (!hasDb) {
+      expect(res.status).toBeGreaterThanOrEqual(400);
+      return;
+    }
+    expect(res.status).toBe(400);
+  });
+
+  it('POST /scheduler/tasks creates a task (requires DB)', async () => {
+    const res = await request('/scheduler/tasks', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({
+        name: 'Daily Standup Reminder',
+        cronExpression: '0 10 * * *',
+        timezone: 'Asia/Shanghai',
+        type: 'reminder',
+        config: { message: 'Time for standup!' },
+      }),
+    });
+    if (!hasDb) {
+      expect(res.status).toBe(500);
+      return;
+    }
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(body.id).toMatch(/^ctask_/);
+    expect(body.name).toBe('Daily Standup Reminder');
+    expect(body.cronExpression).toBe('0 10 * * *');
+    expect(body.type).toBe('reminder');
+    expect(body.enabled).toBe(true);
+  });
+
+  it('GET /scheduler/tasks lists user tasks (requires DB)', async () => {
+    const res = await request('/scheduler/tasks', {
+      headers: authHeaders(),
+    });
+    if (!hasDb) {
+      expect(res.status).toBe(500);
+      return;
+    }
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(Array.isArray(body)).toBe(true);
+  });
+
+  it('PATCH /scheduler/tasks/:id returns 404 for non-existent task', async () => {
+    const res = await request('/scheduler/tasks/ctask_nonexistent', {
+      method: 'PATCH',
+      headers: authHeaders(),
+      body: JSON.stringify({ name: 'Updated' }),
+    });
+    if (!hasDb) {
+      expect(res.status).toBe(500);
+      return;
+    }
+    expect(res.status).toBe(404);
+  });
+
+  it('DELETE /scheduler/tasks/:id returns 404 for non-existent task', async () => {
+    const res = await request('/scheduler/tasks/ctask_nonexistent', {
+      method: 'DELETE',
+      headers: authHeaders(),
+    });
+    if (!hasDb) {
+      expect(res.status).toBe(500);
+      return;
+    }
+    expect(res.status).toBe(404);
+  });
+});
+
+describe('Scheduler execution history', () => {
+  const hasDb = !!process.env.DATABASE_URL;
+
+  it('GET /scheduler/executions/:taskId returns 401 without token', async () => {
+    const res = await request('/scheduler/executions/ctask_123');
+    expect(res.status).toBe(401);
+  });
+
+  it('GET /scheduler/executions/:taskId returns 404 for non-existent task', async () => {
+    const res = await request('/scheduler/executions/ctask_nonexistent', {
+      headers: authHeaders(),
+    });
+    if (!hasDb) {
+      expect(res.status).toBe(500);
+      return;
+    }
+    expect(res.status).toBe(404);
   });
 });

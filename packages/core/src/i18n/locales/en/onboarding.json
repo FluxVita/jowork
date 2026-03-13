@@ -27,6 +27,8 @@
   "roleOther": "Other",
   "responseGenerated": "Response generated.",
   "engineUnavailable": "Engine unavailable right now. Try again after setup.",
+  "cloudFallback": "Local engine unavailable. Switched to cloud engine.",
+  "loginForCloud": "Local engine unavailable. Sign in to use the cloud AI engine.",
   "defaultQ1": "Help me write a README.md",
   "defaultQ2": "Explain what an MCP Server is",
   "defaultQ3": "Help me plan a new project architecture",

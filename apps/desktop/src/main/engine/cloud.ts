@@ -1,5 +1,5 @@
 import type { AgentEngine, EngineEvent, ChatOpts, InstallStatus } from './types';
-import { getApiBaseUrl } from '../config/urls';
+import { getApiBaseUrl, getHealthBaseUrl } from '../config/urls';
 
 /**
  * Cloud Engine adapter.
@@ -11,16 +11,21 @@ export class CloudEngine implements AgentEngine {
   readonly type = 'cloud' as const;
   private abortController?: AbortController;
   private apiUrl: string;
+  private healthUrl: string;
   private getToken: () => string | null;
 
-  constructor(opts?: { apiUrl?: string; getToken?: () => string | null }) {
+  constructor(opts?: { apiUrl?: string; healthUrl?: string; getToken?: () => string | null }) {
     this.apiUrl = opts?.apiUrl ?? getApiBaseUrl();
+    this.healthUrl = opts?.healthUrl ?? getHealthBaseUrl();
     this.getToken = opts?.getToken ?? (() => null);
   }
 
-  updateConfig(opts?: { apiUrl?: string; getToken?: () => string | null }): void {
+  updateConfig(opts?: { apiUrl?: string; healthUrl?: string; getToken?: () => string | null }): void {
     if (opts?.apiUrl) {
       this.apiUrl = opts.apiUrl;
+    }
+    if (opts?.healthUrl) {
+      this.healthUrl = opts.healthUrl;
     }
     if (opts?.getToken) {
       this.getToken = opts.getToken;
@@ -37,7 +42,7 @@ export class CloudEngine implements AgentEngine {
     }
 
     try {
-      const res = await fetch(`${this.apiUrl}/health`, { signal: AbortSignal.timeout(5000) });
+      const res = await fetch(`${this.healthUrl}/health`, { signal: AbortSignal.timeout(5000) });
       if (res.ok) {
         return { installed: true, version: 'cloud' };
       }

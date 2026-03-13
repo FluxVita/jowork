@@ -38,7 +38,24 @@ describe('E2E: Desktop user journey', () => {
     );
   });
 
+  function resetState(): void {
+    scheduler.stopAll();
+    offlineQueue.clear();
+    hm.getSqliteInstance().exec(`
+      DELETE FROM task_executions;
+      DELETE FROM scheduled_tasks;
+      DELETE FROM context_docs;
+      DELETE FROM memories;
+      DELETE FROM sync_queue;
+      DELETE FROM settings;
+      DELETE FROM engine_session_mappings;
+      DELETE FROM messages;
+      DELETE FROM sessions;
+    `);
+  }
+
   afterAll(() => {
+    scheduler.stopAll();
     hm.close();
     if (existsSync(TEST_DB)) unlinkSync(TEST_DB);
     if (existsSync(TEST_DB + '-wal')) unlinkSync(TEST_DB + '-wal');
@@ -49,6 +66,10 @@ describe('E2E: Desktop user journey', () => {
   // FLOW 1: First launch (Personal mode)
   // ==========================================
   describe('Flow 1: First launch in Personal mode', () => {
+    beforeAll(() => {
+      resetState();
+    });
+
     it('Step 1: App starts in personal mode, no login required', () => {
       const state = modeManager.getState();
       expect(state.mode).toBe('personal');
@@ -73,6 +94,10 @@ describe('E2E: Desktop user journey', () => {
   // ==========================================
   describe('Flow 2: User starts a conversation', () => {
     let sessionId: string;
+
+    beforeAll(() => {
+      resetState();
+    });
 
     it('Step 1: Create a new session', () => {
       const session = hm.createSession('claude-code', 'My first question');
@@ -131,6 +156,10 @@ describe('E2E: Desktop user journey', () => {
   // ==========================================
   describe('Flow 3: User manages memories', () => {
     let memId: string;
+
+    beforeAll(() => {
+      resetState();
+    });
 
     it('Step 1: Create a memory', () => {
       const mem = memStore.create({
@@ -192,6 +221,10 @@ describe('E2E: Desktop user journey', () => {
   // FLOW 4: Settings management
   // ==========================================
   describe('Flow 4: User configures settings', () => {
+    beforeAll(() => {
+      resetState();
+    });
+
     it('Step 1: Set theme preference', () => {
       hm.setSetting('theme', 'dark');
       expect(hm.getSetting('theme')).toBe('dark');
@@ -217,6 +250,10 @@ describe('E2E: Desktop user journey', () => {
   // FLOW 5: Mode switching (Personal → Team)
   // ==========================================
   describe('Flow 5: Mode switching', () => {
+    beforeAll(() => {
+      resetState();
+    });
+
     it('Step 1: User logs in (simulate cloud auth)', () => {
       modeManager.setCloudUser('cloud_user_aiden');
       expect(modeManager.isLoggedIn()).toBe(true);
@@ -256,6 +293,10 @@ describe('E2E: Desktop user journey', () => {
   // FLOW 6: Multiple conversations
   // ==========================================
   describe('Flow 6: Multiple conversations', () => {
+    beforeAll(() => {
+      resetState();
+    });
+
     it('Step 1: Create multiple sessions', async () => {
       hm.createSession('claude-code', 'React help');
       await new Promise((r) => setTimeout(r, 5));
@@ -290,6 +331,10 @@ describe('E2E: Desktop user journey', () => {
   // FLOW 7: Context rebuild
   // ==========================================
   describe('Flow 7: Context rebuild for engine switching', () => {
+    beforeAll(() => {
+      resetState();
+    });
+
     it('Rebuilds conversation context from history', () => {
       const session = hm.createSession('claude-code', 'Context test');
       hm.appendMessage(session.id, { sessionId: session.id, role: 'user', content: 'What is TypeScript?' });
@@ -306,6 +351,10 @@ describe('E2E: Desktop user journey', () => {
   // ==========================================
   describe('Flow 8: Context docs CRUD', () => {
     let docId: string;
+
+    beforeAll(() => {
+      resetState();
+    });
 
     it('Step 1: Create a context doc', () => {
       const doc = contextDocs.create({
@@ -342,6 +391,10 @@ describe('E2E: Desktop user journey', () => {
   // FLOW 9: Offline sync queue
   // ==========================================
   describe('Flow 9: Offline sync queue', () => {
+    beforeAll(() => {
+      resetState();
+    });
+
     it('Step 1: Queue starts empty', () => {
       expect(offlineQueue.count()).toBe(0);
     });
@@ -390,6 +443,10 @@ describe('E2E: Desktop user journey', () => {
   describe('Flow 10: Scheduler CRUD', () => {
     let taskId: string;
 
+    beforeAll(() => {
+      resetState();
+    });
+
     it('Step 1: Create a scheduled task', () => {
       const task = scheduler.create({
         name: 'Daily scan',
@@ -429,6 +486,10 @@ describe('E2E: Desktop user journey', () => {
   // FLOW 11: Shared SQLite verification
   // ==========================================
   describe('Flow 11: Shared SQLite verification', () => {
+    beforeAll(() => {
+      resetState();
+    });
+
     it('All modules share the same database', () => {
       const session = hm.createSession('claude-code', 'Shared DB test');
       const memory = memStore.create({ title: 'Shared test', content: 'Works' });

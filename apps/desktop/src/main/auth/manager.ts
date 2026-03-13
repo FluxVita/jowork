@@ -92,13 +92,13 @@ export class AuthManager {
 
   async refreshToken(): Promise<boolean> {
     const tokens = this.tokenStore.load();
-    if (!tokens?.refreshToken) return false;
+    if (!tokens?.accessToken) return false;
 
     try {
       const res = await fetch(`${this.cloudUrl}/auth/refresh`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refreshToken: tokens.refreshToken }),
+        body: JSON.stringify({ token: tokens.accessToken }),
       });
 
       if (!res.ok) return false;

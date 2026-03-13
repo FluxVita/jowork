@@ -356,7 +356,7 @@ describe.skipIf(skip)('Integration: Claude Code Engine', () => {
 //  6. Cloud Engine Health Check
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 describe.skipIf(skip)('Integration: Cloud Engine', () => {
-  const cloudUrl = testEnv.JOWORK_CLOUD_URL || testEnv.JOWORK_API_URL || 'https://jowork.work';
+  const cloudUrl = testEnv.JOWORK_BASE_URL || testEnv.JOWORK_HEALTH_URL || 'https://jowork.work';
 
   it('should check cloud service health endpoint', async () => {
     try {

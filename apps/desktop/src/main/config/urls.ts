@@ -7,14 +7,15 @@ function firstDefined(...values: Array<string | undefined>): string | undefined 
 }
 
 const DEFAULT_BASE_URL = 'https://jowork.work';
+const DEFAULT_API_PATH = '/api';
 
 export function getApiBaseUrl(): string {
+  const explicit = firstDefined(
+    process.env['JOWORK_API_URL'],
+    process.env['JOWORK_CLOUD_URL'],
+  );
   return normalizeBaseUrl(
-    firstDefined(
-      process.env['JOWORK_API_URL'],
-      process.env['JOWORK_CLOUD_URL'],
-      process.env['JOWORK_BASE_URL'],
-    ) ?? DEFAULT_BASE_URL,
+    explicit ?? `${getWebBaseUrl()}${DEFAULT_API_PATH}`,
   );
 }
 
@@ -25,6 +26,17 @@ export function getWebBaseUrl(): string {
       process.env['JOWORK_WEB_URL'],
       process.env['JOWORK_BASE_URL'],
       process.env['JOWORK_API_URL'],
+    ) ?? DEFAULT_BASE_URL,
+  );
+}
+
+export function getHealthBaseUrl(): string {
+  return normalizeBaseUrl(
+    firstDefined(
+      process.env['JOWORK_HEALTH_URL'],
+      process.env['JOWORK_BASE_URL'],
+      process.env['JOWORK_WEB_URL'],
+      process.env['JOWORK_APP_URL'],
     ) ?? DEFAULT_BASE_URL,
   );
 }

@@ -32,7 +32,7 @@ export class EngineManager {
     return this.activeEngineId;
   }
 
-  configureCloudEngine(opts?: { apiUrl?: string; getToken?: () => string | null }): void {
+  configureCloudEngine(opts?: { apiUrl?: string; healthUrl?: string; getToken?: () => string | null }): void {
     this.cloudEngine.updateConfig(opts);
   }
 

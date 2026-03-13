@@ -27,6 +27,8 @@
   "roleOther": "其他",
   "responseGenerated": "回答已生成。",
   "engineUnavailable": "引擎暂时不可用，完成设置后再试。",
+  "cloudFallback": "本地引擎不可用，已切换到云端引擎。",
+  "loginForCloud": "本地引擎不可用。登录即可使用云端 AI 引擎。",
   "defaultQ1": "帮我写一段 README.md",
   "defaultQ2": "解释一下什么是 MCP Server",
   "defaultQ3": "帮我规划一个新项目的架构",
