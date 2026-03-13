@@ -11,17 +11,30 @@ permissions:
 jobs:
   build:
     strategy:
+      fail-fast: false
       matrix:
         include:
-          - os: macos-latest
+          - os: macos-14
             platform: mac
+            arch_flag: "--arm64"
+          - os: macos-13
+            platform: mac
+            arch_flag: "--x64"
           - os: windows-latest
             platform: win
+            arch_flag: ""
+          - os: ubuntu-latest
+            platform: linux
+            arch_flag: ""
 
     runs-on: ${{ matrix.os }}
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Install Linux build deps
+        if: matrix.platform == 'linux'
+        run: sudo apt-get update && sudo apt-get install -y build-essential python3 libsecret-1-dev
 
       - uses: pnpm/action-setup@v4
         with:
@@ -34,31 +47,25 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - name: Build & Package
+      - name: Build app
+        run: pnpm --filter @jowork/desktop build
+
+      - name: Package
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: pnpm --filter @jowork/desktop build:${{ matrix.platform }}
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: |
+          cd apps/desktop
+          npx electron-builder --${{ matrix.platform }} ${{ matrix.arch_flag }} --publish always
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: jowork-${{ matrix.platform }}
-          path: apps/desktop/dist/*
+          name: jowork-${{ matrix.platform }}-${{ matrix.os }}
+          path: |
+            apps/desktop/dist/*.dmg
+            apps/desktop/dist/*.zip
+            apps/desktop/dist/*.exe
+            apps/desktop/dist/*.AppImage
+            apps/desktop/dist/latest*.yml
           if-no-files-found: warn
-
-  publish:
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-          merge-multiple: true
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: artifacts/**/*
-          generate_release_notes: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
