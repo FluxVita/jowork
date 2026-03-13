@@ -1,4 +1,5 @@
 import { Component, type ReactNode, type ErrorInfo } from 'react';
+import { i18n } from '@jowork/core';
 
 interface Props {
   children: ReactNode;
@@ -40,15 +41,15 @@ export class ErrorBoundary extends Component<Props, State> {
       return (
         <div className="flex flex-col items-center justify-center h-full p-8 text-center">
           <div className="text-4xl mb-4">⚠️</div>
-          <h2 className="text-lg font-semibold mb-2">Something went wrong</h2>
+          <h2 className="text-lg font-semibold mb-2">{i18n.t('somethingWentWrong', { ns: 'common' })}</h2>
           <p className="text-sm text-text-secondary mb-4 max-w-md">
-            {this.state.error?.message ?? 'An unexpected error occurred.'}
+            {this.state.error?.message ?? i18n.t('unexpectedError', { ns: 'common' })}
           </p>
           <button
             onClick={this.handleRetry}
             className="px-4 py-2 rounded-md bg-accent text-white text-sm font-medium hover:bg-accent/90 transition-colors"
           >
-            Try Again
+            {i18n.t('tryAgain', { ns: 'common' })}
           </button>
         </div>
       );
@@ -93,12 +94,14 @@ export class FeatureErrorBoundary extends Component<FeatureErrorProps, FeatureEr
       return (
         <div className="flex items-center gap-3 p-4 bg-surface rounded-lg">
           <span className="text-yellow-500">⚠️</span>
-          <span className="text-sm text-text-secondary">{this.props.name} error</span>
+          <span className="text-sm text-text-secondary">
+            {i18n.t('featureError', { ns: 'common', name: this.props.name })}
+          </span>
           <button
             onClick={this.handleRetry}
             className="text-xs text-accent hover:underline ml-auto"
           >
-            Retry
+            {i18n.t('retry', { ns: 'common' })}
           </button>
         </div>
       );

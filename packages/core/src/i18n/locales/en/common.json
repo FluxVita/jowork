@@ -25,5 +25,9 @@
   "offline": "Offline",
   "syncing": "Syncing",
   "syncComplete": "Sync complete",
-  "version": "Version"
+  "version": "Version",
+  "somethingWentWrong": "Something went wrong",
+  "unexpectedError": "An unexpected error occurred.",
+  "tryAgain": "Try Again",
+  "featureError": "{{name}} error"
 }
