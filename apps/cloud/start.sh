@@ -2,4 +2,4 @@
 set -eu
 
 cd /app/apps/cloud
-exec npx tsx src/server.ts
+exec node_modules/.bin/tsx dist/server.js

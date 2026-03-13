@@ -4,9 +4,6 @@ primary_region = "sjc"
 [build]
   dockerfile = "apps/cloud/Dockerfile"
 
-[deploy]
-  release_command = "cd /app/apps/cloud && npx drizzle-kit push --force"
-
 [env]
   PORT = "3000"
   NODE_ENV = "production"

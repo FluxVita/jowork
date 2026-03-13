@@ -12,7 +12,7 @@ COPY apps/cloud/package.json apps/cloud/tsconfig.json apps/cloud/
 # Install all deps (tsx needed at runtime for TS imports)
 RUN pnpm install --frozen-lockfile --filter @jowork/cloud...
 
-# Copy source (core exports TS directly, tsx handles it at runtime)
+# Copy source and build cloud server ahead of time to minimize cold-start latency
 COPY packages/core/src packages/core/src
 COPY apps/cloud/src apps/cloud/src
 
@@ -24,5 +24,6 @@ COPY apps/cloud/drizzle.config.ts apps/cloud/
 COPY apps/cloud/public apps/cloud/public
 COPY apps/cloud/start.sh apps/cloud/
 RUN chmod +x apps/cloud/start.sh
+RUN pnpm --filter @jowork/core build && pnpm --filter @jowork/cloud build
 
 CMD ["sh", "apps/cloud/start.sh"]
