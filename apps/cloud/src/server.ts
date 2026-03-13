@@ -3,7 +3,7 @@ import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { healthCheck } from './health';
 import { authMiddleware } from './middleware/auth';
-import { googleLogin, googleCallback, refreshToken } from './auth/google';
+import { googleLogin, googleCallback, refreshToken, getGoogleStatus, getOAuthUrl } from './auth/google';
 import { localLogin, compatLogin, getCurrentUser, getSetupStatus } from './auth/local';
 import { createCheckout, createPortal, createTopUp } from './billing/stripe';
 import { getCredits } from './billing/credits';
@@ -24,6 +24,7 @@ import {
   clearSessions, agentChat, agentStop, listAgentTasks,
   getPreferences, setPreferences, searchSessions,
 } from './compat/agent';
+import { getMyServices } from './compat/legacy';
 
 const app = new Hono();
 
@@ -51,6 +52,8 @@ app.get('/auth/google/callback', googleCallback);
 app.post('/auth/refresh', refreshToken);
 app.get('/api/auth/google', googleLogin);
 app.get('/api/auth/google/callback', googleCallback);
+app.get('/api/auth/google/status', getGoogleStatus);
+app.get('/api/auth/oauth/url', getOAuthUrl);
 app.post('/api/auth/refresh', refreshToken);
 app.post('/api/auth/local', localLogin);
 app.post('/api/auth/login', compatLogin);
@@ -159,13 +162,24 @@ app.post('/api/agent/stop', agentStop);
 app.get('/api/agent/tasks', listAgentTasks);
 app.get('/api/agent/preferences', getPreferences);
 app.post('/api/agent/preferences', setPreferences);
+app.get('/api/preferences', getPreferences);
+app.post('/api/preferences', setPreferences);
+app.put('/api/preferences', setPreferences);
+app.get('/api/services/mine', getMyServices);
 
 // API status
 app.get('/api/v1/status', (c) => c.json({ status: 'ok', phase: 7 }));
 
 // Static files — v1 frontend (shell.html, chat.html, etc.)
 // Must be after API routes so API paths take priority
-app.get('/', (c) => c.redirect('/shell.html'));
+app.get('/', async (c) => {
+  const { readFile } = await import('fs/promises');
+  const { join } = await import('path');
+  const filePath = join(process.cwd(), 'public', 'index.html');
+  const content = await readFile(filePath);
+  c.header('Content-Type', 'text/html; charset=UTF-8');
+  return c.body(content);
+});
 app.get('/*', async (c, next) => {
   // Only serve static for non-API paths
   const path = c.req.path;

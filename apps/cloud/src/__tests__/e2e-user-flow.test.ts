@@ -298,8 +298,7 @@ describe('E2E: Complete user journey', () => {
 
     it('Google OAuth redirect endpoint responds', async () => {
       const res = await request('/auth/google');
-      // Should either redirect (302) or return some response — not 500
-      expect(res.status).toBeLessThan(500);
+      expect([302, 503]).toContain(res.status);
     });
   });
 });

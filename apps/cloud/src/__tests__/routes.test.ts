@@ -33,13 +33,27 @@ describe('Health endpoint', () => {
 describe('Auth routes (no auth required)', () => {
   it('GET /auth/google returns redirect or HTML', async () => {
     const res = await request('/auth/google');
-    // The Google OAuth route redirects to Google or returns a URL
-    expect([200, 302, 400]).toContain(res.status);
+    expect([302, 503]).toContain(res.status);
   });
 
   it('GET /api/auth/google returns redirect or HTML', async () => {
     const res = await request('/api/auth/google');
-    expect([200, 302, 400]).toContain(res.status);
+    expect([302, 503]).toContain(res.status);
+  });
+
+  it('GET /api/auth/google/status reports OAuth availability', async () => {
+    const res = await request('/api/auth/google/status');
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).toHaveProperty('enabled');
+    expect(body.provider).toBe('google');
+  });
+
+  it('GET /api/auth/oauth/url returns a compat payload', async () => {
+    const res = await request('/api/auth/oauth/url');
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).toHaveProperty('enabled');
   });
 
   it('POST /auth/refresh without body returns error', async () => {
@@ -131,6 +145,34 @@ describe('Protected routes with valid auth', () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body).toHaveProperty('totalAvailable');
+  });
+
+  it('GET /api/preferences returns compat prefs payload', async () => {
+    const res = await request('/api/preferences', {
+      headers: authHeaders(),
+    });
+    expect(res.status).toBe(200);
+  });
+
+  it('PUT /api/preferences stores compat prefs', async () => {
+    const res = await request('/api/preferences', {
+      method: 'PUT',
+      headers: authHeaders(),
+      body: JSON.stringify({ theme: 'dark' }),
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.ok).toBe(true);
+  });
+
+  it('GET /api/services/mine returns builtin compat services', async () => {
+    const res = await request('/api/services/mine', {
+      headers: authHeaders(),
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(Array.isArray(body.services)).toBe(true);
+    expect(body.services.some((service: { service_id: string }) => service.service_id === 'svc_page_chat')).toBe(true);
   });
 
   it('POST /teams creates a team (requires DB)', async () => {

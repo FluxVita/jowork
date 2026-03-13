@@ -8,10 +8,11 @@ const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
 const REDIRECT_URI = process.env.AUTH_REDIRECT_URI || 'http://localhost:3000/api/auth/google/callback';
 
-/**
- * Redirect to Google OAuth consent screen.
- */
-export function googleLogin(c: Context): Response {
+function hasGoogleOAuth(): boolean {
+  return Boolean(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET);
+}
+
+function buildGoogleAuthUrl(): string {
   const params = new URLSearchParams({
     client_id: GOOGLE_CLIENT_ID,
     redirect_uri: REDIRECT_URI,
@@ -21,7 +22,40 @@ export function googleLogin(c: Context): Response {
     prompt: 'consent',
   });
 
-  return c.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params}`);
+  return `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
+}
+
+/**
+ * Redirect to Google OAuth consent screen.
+ */
+export function googleLogin(c: Context): Response {
+  if (!hasGoogleOAuth()) {
+    return c.json({ error: 'Google login is not configured' }, 503);
+  }
+
+  return c.redirect(buildGoogleAuthUrl());
+}
+
+export function getGoogleStatus(c: Context): Response {
+  return c.json({
+    enabled: hasGoogleOAuth(),
+    provider: 'google',
+  });
+}
+
+export function getOAuthUrl(c: Context): Response {
+  if (!hasGoogleOAuth()) {
+    return c.json({
+      enabled: false,
+      error: 'Google login is not configured',
+    });
+  }
+
+  return c.json({
+    enabled: true,
+    provider: 'google',
+    url: buildGoogleAuthUrl(),
+  });
 }
 
 /**

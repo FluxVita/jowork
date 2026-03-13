@@ -1342,6 +1342,50 @@ const loginForm = window.Vue
   : { username: '', displayName: '' };
 const loadedPanels = new Set();
 
+function hidePanelLoading(panelName) {
+  const loading = document.getElementById('panel-loading');
+  if (!loading) return;
+  if (panelName && shellState.activePanel !== panelName) return;
+  loading.classList.add('hidden');
+}
+
+function watchFrameReady(frame, panelName) {
+  let settled = false;
+  const finish = () => {
+    if (settled) return;
+    settled = true;
+    hidePanelLoading(panelName);
+  };
+
+  frame.onload = () => {
+    injectToken(frame);
+    setTimeout(() => injectToken(frame), 200);
+    finish();
+  };
+
+  let attempts = 0;
+  const timer = setInterval(() => {
+    attempts += 1;
+    try {
+      const readyState = frame.contentDocument?.readyState;
+      if (readyState === 'complete' && frame.contentDocument?.body) {
+        clearInterval(timer);
+        finish();
+        return;
+      }
+    } catch {
+      clearInterval(timer);
+      finish();
+      return;
+    }
+
+    if (attempts >= 40) {
+      clearInterval(timer);
+      finish();
+    }
+  }, 250);
+}
+
 // ── Theme ──
 ThemeManager.initShell();
 
@@ -1812,7 +1856,7 @@ function forceReload() {
     const sep = src.includes('?') ? '&' : '?';
     const loading = document.getElementById('panel-loading');
     loading.classList.remove('hidden');
-    frame.onload = () => { injectToken(frame); setTimeout(() => injectToken(frame), 200); loading.classList.add('hidden'); };
+    watchFrameReady(frame, shellState.activePanel);
     frame.src = src + sep + '_t=' + ts + '#token=' + encodeURIComponent(shellState.token || '');
     loadedPanels.add(shellState.activePanel);
   }
@@ -1978,8 +2022,10 @@ function switchPanel(name) {
     const src = frame.dataset.src;
     const loading = document.getElementById('panel-loading');
     loading.classList.remove('hidden');
-    frame.onload = () => { injectToken(frame); setTimeout(() => injectToken(frame), 200); loading.classList.add('hidden'); };
+    watchFrameReady(frame, name);
     frame.src = src + '#token=' + encodeURIComponent(shellState.token || '');
+  } else {
+    hidePanelLoading(name);
   }
 }
 
@@ -1994,7 +2040,13 @@ window.addEventListener('message', (e) => {
       document.getElementById('frame-files-tree'),
     ].filter(Boolean);
     allFrames.forEach(f => {
-      try { if (f.contentWindow === e.source) injectToken(f); } catch {}
+      try {
+        if (f.contentWindow === e.source) {
+          injectToken(f);
+          const panelName = f.id.startsWith('frame-') ? f.id.slice('frame-'.length) : undefined;
+          hidePanelLoading(panelName);
+        }
+      } catch {}
     });
   }
   if (e.data?.type === 'LOGOUT') logout();
