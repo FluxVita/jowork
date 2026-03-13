@@ -15,8 +15,8 @@ export function EngineIndicator() {
 
   if (isDetecting) {
     return (
-      <div className="flex items-center gap-1.5 text-xs text-text-secondary px-3 py-1">
-        <span className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse" />
+      <div className="flex items-center gap-2 text-[12px] text-text-secondary/60 px-3 py-2">
+        <span className="w-[6px] h-[6px] bg-yellow-500/80 rounded-full animate-[dotPulse_1.4s_ease-in-out_infinite]" />
         {t('detectingEngines')}
       </div>
     );
@@ -26,11 +26,11 @@ export function EngineIndicator() {
   const label = engineLabels[activeEngineId] ?? activeEngineId;
 
   return (
-    <div className="flex items-center gap-1.5 text-xs text-text-secondary px-3 py-1">
-      <span className={`w-2 h-2 rounded-full ${installed ? 'bg-green-400' : 'bg-red-400'}`} />
+    <div className="flex items-center gap-2 text-[12px] text-text-secondary/70 px-3 py-2">
+      <span className={`w-[6px] h-[6px] rounded-full ${installed ? 'bg-green-500' : 'bg-red-500'}`} />
       <span>{label}</span>
-      {status?.version && <span className="opacity-60">v{status.version}</span>}
-      {!installed && <span className="text-red-400 ml-1">{t('notInstalled')}</span>}
+      {status?.version && <span className="opacity-40 font-mono text-[11px]">v{status.version}</span>}
+      {!installed && <span className="text-red-400/80 ml-0.5">{t('notInstalled')}</span>}
     </div>
   );
 }

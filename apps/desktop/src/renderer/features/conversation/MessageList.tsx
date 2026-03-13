@@ -88,13 +88,13 @@ export function MessageList({ messages, streamingText, isStreaming, hasMore, isL
       <div className="max-w-3xl mx-auto">
         {/* Load more indicator */}
         {hasMore && (
-          <div className="text-center py-2 mb-2">
+          <div className="text-center py-3 mb-2">
             {isLoadingMore ? (
-              <span className="text-xs text-text-secondary">{t('loadingOlder')}</span>
+              <span className="text-[12px] text-text-secondary/60">{t('loadingOlder')}</span>
             ) : (
               <button
                 onClick={onLoadMore}
-                className="text-xs text-accent hover:text-accent/80 transition-colors"
+                className="text-[12px] text-accent/70 hover:text-accent transition-colors duration-150"
               >
                 {t('loadOlder')}
               </button>
@@ -130,21 +130,22 @@ export function MessageList({ messages, streamingText, isStreaming, hasMore, isL
 
         {/* Streaming text (outside virtualizer — always at the bottom) */}
         {isStreaming && streamingText && (
-          <div className="mb-4">
-            <div className="max-w-[80%] rounded-2xl rounded-bl-md px-4 py-2.5 bg-surface-2">
+          <div className="mb-4 animate-[fadeIn_0.2s_ease-out]">
+            <div className="max-w-[80%] rounded-[20px] rounded-bl-lg px-4 py-2.5 bg-surface-2/70 shadow-[inset_0_0.5px_0_rgba(255,255,255,0.06)]">
               <StreamingText text={streamingText} />
             </div>
           </div>
         )}
 
+        {/* Thinking indicator */}
         {isStreaming && !streamingText && (
-          <div className="flex items-center gap-2 text-sm text-text-secondary py-2">
-            <div className="flex gap-1">
-              <span className="w-1.5 h-1.5 bg-accent rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-              <span className="w-1.5 h-1.5 bg-accent rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-              <span className="w-1.5 h-1.5 bg-accent rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+          <div className="flex items-center gap-2.5 py-3 animate-[fadeIn_0.3s_ease-out]">
+            <div className="flex items-center gap-[5px]">
+              <span className="w-[6px] h-[6px] bg-accent rounded-full animate-[dotPulse_1.4s_ease-in-out_infinite]" style={{ animationDelay: '0ms' }} />
+              <span className="w-[6px] h-[6px] bg-accent rounded-full animate-[dotPulse_1.4s_ease-in-out_infinite]" style={{ animationDelay: '200ms' }} />
+              <span className="w-[6px] h-[6px] bg-accent rounded-full animate-[dotPulse_1.4s_ease-in-out_infinite]" style={{ animationDelay: '400ms' }} />
             </div>
-            <span>{t('thinking')}</span>
+            <span className="text-[13px] text-text-secondary/60">{t('thinking')}</span>
           </div>
         )}
 

@@ -18,8 +18,9 @@ export function SessionList() {
       <button
         onClick={createSession}
         aria-label={t('newConversation')}
-        className="mx-3 mb-2 px-3 py-1.5 text-sm rounded-md bg-accent text-white hover:bg-accent-hover transition-colors
-          focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1"
+        className="mx-3 mb-2 px-3 py-[7px] text-[13px] font-medium rounded-[10px] bg-accent/10 text-accent
+          hover:bg-accent/15 active:scale-[0.98] transition-all duration-150
+          focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
       >
         + {t('newConversation')}
       </button>
@@ -31,12 +32,13 @@ export function SessionList() {
           onChange={(e) => setSearch(e.target.value)}
           placeholder={t('searchConversations')}
           aria-label={t('searchConversations')}
-          className="w-full px-2 py-1 text-xs bg-surface-2 border border-border rounded
-            text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-1 focus:ring-accent"
+          className="w-full px-2.5 py-[5px] text-[12px] bg-surface-2/60 border border-border/30 rounded-lg
+            text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:border-accent/30
+            transition-colors duration-200"
         />
       </div>
 
-      <ul className="flex-1 overflow-y-auto px-1" role="listbox" aria-label={t('conversations')}>
+      <ul className="flex-1 overflow-y-auto px-1.5" role="listbox" aria-label={t('conversations')}>
         {filtered.map((session) => (
           <li
             key={session.id}
@@ -50,9 +52,11 @@ export function SessionList() {
                 selectSession(session.id);
               }
             }}
-            className={`group flex items-center justify-between px-3 py-2 mx-1 rounded-md cursor-pointer text-sm transition-colors
-              focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1
-              ${activeSessionId === session.id ? 'bg-accent/10 text-accent' : 'text-text-secondary hover:bg-surface-2'}`}
+            className={`group flex items-center justify-between px-2.5 py-[7px] mx-0.5 rounded-[10px] cursor-pointer text-[13px] transition-all duration-150
+              focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40
+              ${activeSessionId === session.id
+                ? 'bg-accent/10 text-accent font-medium'
+                : 'text-text-secondary hover:bg-surface-2/60 hover:text-text-primary active:scale-[0.98]'}`}
           >
             <span className="truncate flex-1">{session.title}</span>
             <button
@@ -63,8 +67,8 @@ export function SessionList() {
                 }
               }}
               aria-label={`${t('deleteConversation')}: ${session.title}`}
-              className="opacity-0 group-hover:opacity-100 focus:opacity-100 text-text-secondary hover:text-red-400 ml-1 text-xs
-                focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 rounded"
+              className="opacity-0 group-hover:opacity-100 focus:opacity-100 text-text-secondary/50 hover:text-red-400 ml-1 text-[11px]
+                focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 rounded transition-all duration-150"
             >
               ×
             </button>
@@ -72,7 +76,7 @@ export function SessionList() {
         ))}
 
         {filtered.length === 0 && (
-          <li className="text-xs text-text-secondary px-3 py-4 text-center" role="presentation">
+          <li className="text-[12px] text-text-secondary/60 px-3 py-6 text-center" role="presentation">
             {search ? t('noMatchingConversations') : t('noConversations')}
           </li>
         )}

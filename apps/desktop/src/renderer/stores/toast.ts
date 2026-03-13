@@ -16,6 +16,7 @@ interface ToastStore {
 }
 
 let nextId = 0;
+const timerMap = new Map<string, ReturnType<typeof setTimeout>>();
 
 export const useToastStore = create<ToastStore>((set) => ({
   toasts: [],
@@ -25,13 +26,20 @@ export const useToastStore = create<ToastStore>((set) => ({
     set((s) => ({ toasts: [...s.toasts, { id, type, message, duration }] }));
 
     if (duration > 0) {
-      setTimeout(() => {
+      const timer = setTimeout(() => {
+        timerMap.delete(id);
         set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) }));
       }, duration);
+      timerMap.set(id, timer);
     }
   },
 
   removeToast: (id) => {
+    const timer = timerMap.get(id);
+    if (timer) {
+      clearTimeout(timer);
+      timerMap.delete(id);
+    }
     set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) }));
   },
 }));

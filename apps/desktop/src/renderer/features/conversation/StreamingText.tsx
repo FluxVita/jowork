@@ -38,18 +38,19 @@ export function StreamingText({ text }: StreamingTextProps) {
     <div className="streaming-text">
       <div
         className="prose prose-sm prose-invert max-w-none
-          [&_pre]:bg-surface-0 [&_pre]:rounded-md [&_pre]:p-3 [&_pre]:my-2 [&_pre]:overflow-x-auto
-          [&_code]:text-sm [&_code]:text-accent
+          [&_pre]:bg-surface-0/80 [&_pre]:rounded-xl [&_pre]:p-3.5 [&_pre]:my-2.5 [&_pre]:overflow-x-auto [&_pre]:text-[13px] [&_pre]:border [&_pre]:border-border/20
+          [&_code]:text-[13px] [&_code]:text-accent
           [&_pre_code]:text-text-primary [&_pre_code]:bg-transparent
           [&_a]:text-accent [&_a]:no-underline hover:[&_a]:underline
-          [&_table]:border-collapse [&_th]:border [&_th]:border-border [&_th]:p-2
-          [&_td]:border [&_td]:border-border [&_td]:p-2
-          [&_blockquote]:border-l-2 [&_blockquote]:border-accent/40 [&_blockquote]:pl-3 [&_blockquote]:text-text-secondary
+          [&_table]:border-collapse [&_th]:border [&_th]:border-border/30 [&_th]:p-2
+          [&_td]:border [&_td]:border-border/30 [&_td]:p-2
+          [&_blockquote]:border-l-2 [&_blockquote]:border-accent/30 [&_blockquote]:pl-3 [&_blockquote]:text-text-secondary
           [&_ul]:list-disc [&_ol]:list-decimal [&_li]:ml-4
-          [&_hr]:border-border"
+          [&_hr]:border-border/30
+          [&_p]:my-1.5 first:[&_p]:mt-0 last:[&_p]:mb-0"
         dangerouslySetInnerHTML={{ __html: html }}
       />
-      <span className="inline-block w-2 h-4 bg-accent/60 animate-pulse ml-0.5" />
+      <span className="inline-block w-[3px] h-[18px] bg-accent/70 rounded-full ml-0.5 animate-[cursorBlink_1s_ease-in-out_infinite]" />
     </div>
   );
 }

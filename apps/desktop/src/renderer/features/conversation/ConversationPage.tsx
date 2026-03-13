@@ -51,7 +51,7 @@ export function ConversationPage() {
   return (
     <div className="flex flex-col h-full">
       {/* Engine status bar */}
-      <div className="flex items-center justify-between border-b border-border px-2">
+      <div className="flex items-center justify-between border-b border-border/30 px-2">
         <EngineIndicator />
         <div className="flex items-center gap-1">
           {activeSessionId && messages.length > 0 && (
@@ -60,25 +60,25 @@ export function ConversationPage() {
                 onClick={() => setShowExportMenu(!showExportMenu)}
                 aria-expanded={showExportMenu}
                 aria-haspopup="menu"
-                className="text-xs text-text-secondary hover:text-text-primary px-2 py-1 rounded
-                  hover:bg-surface-2 transition-colors"
+                className="text-[12px] text-text-secondary/70 hover:text-text-primary px-2.5 py-1.5 rounded-lg
+                  hover:bg-surface-2/60 active:scale-[0.97] transition-all duration-150"
                 title={t('exportConversation')}
               >
                 {t('export')}
               </button>
               {showExportMenu && (
-                <div role="menu" className="absolute right-0 top-full mt-1 bg-surface-2 border border-border rounded-md shadow-lg z-10 py-1 min-w-[140px]">
+                <div role="menu" className="glass absolute right-0 top-full mt-1.5 rounded-xl z-10 py-1 min-w-[140px] animate-[fadeScale_0.15s_ease-out]">
                   <button
                     role="menuitem"
                     onClick={() => handleExport('markdown')}
-                    className="w-full text-left px-3 py-1.5 text-xs text-text-primary hover:bg-surface-1 transition-colors"
+                    className="w-full text-left px-3 py-2 text-[13px] text-text-primary hover:bg-surface-2/40 transition-colors duration-150 rounded-lg mx-0"
                   >
                     {t('exportMarkdown')}
                   </button>
                   <button
                     role="menuitem"
                     onClick={() => handleExport('json')}
-                    className="w-full text-left px-3 py-1.5 text-xs text-text-primary hover:bg-surface-1 transition-colors"
+                    className="w-full text-left px-3 py-2 text-[13px] text-text-primary hover:bg-surface-2/40 transition-colors duration-150 rounded-lg mx-0"
                   >
                     {t('exportJson')}
                   </button>
@@ -87,7 +87,7 @@ export function ConversationPage() {
             </div>
           )}
           {activeSessionId && (
-            <span className="text-xs text-text-secondary px-2 py-1 truncate max-w-[200px]">
+            <span className="text-[11px] text-text-secondary/40 px-2 py-1 truncate max-w-[200px] font-mono">
               {activeSessionId}
             </span>
           )}
@@ -96,12 +96,12 @@ export function ConversationPage() {
 
       {/* Messages */}
       {messages.length === 0 && !isStreaming ? (
-        <div className="flex-1 flex flex-col items-center justify-center gap-4 p-8">
-          <div className="w-16 h-16 rounded-2xl bg-accent/10 flex items-center justify-center text-2xl">
+        <div className="flex-1 flex flex-col items-center justify-center gap-5 p-8 animate-[fadeIn_0.4s_ease-out]">
+          <div className="w-16 h-16 rounded-[18px] bg-gradient-to-br from-accent/20 to-accent/5 flex items-center justify-center text-2xl font-semibold text-accent shadow-[inset_0_0.5px_0_rgba(255,255,255,0.1)]">
             J
           </div>
-          <h2 className="text-lg font-medium">{t('title')}</h2>
-          <p className="text-sm text-text-secondary text-center max-w-md">
+          <h2 className="text-[18px] font-semibold tracking-tight">{t('title')}</h2>
+          <p className="text-[14px] text-text-secondary text-center max-w-md leading-relaxed">
             {t('emptyDescription')}
           </p>
         </div>
@@ -118,7 +118,7 @@ export function ConversationPage() {
 
       {/* Confirm dialog for tool calls requiring approval */}
       {pendingConfirm && (
-        <div className="px-4 pb-2">
+        <div className="px-4 pb-2 animate-[slideUp_0.2s_cubic-bezier(0.2,0.8,0.2,1)]">
           <ConfirmDialog
             action={pendingConfirm}
             onAllow={(alwaysAllow) => resolveConfirm(true, alwaysAllow)}

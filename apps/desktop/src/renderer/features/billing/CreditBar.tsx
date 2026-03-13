@@ -19,19 +19,19 @@ export function CreditBar() {
   const isLow = pct > 80;
 
   return (
-    <div className="px-4 py-2">
-      <div className="flex justify-between text-xs text-text-secondary mb-1">
+    <div className="px-4 py-2.5">
+      <div className="flex justify-between text-[11px] text-text-secondary/60 mb-1.5">
         <span>{t('credits')}</span>
         <span>{t('creditsLeft', { count: credits.remaining })}</span>
       </div>
-      <div className="h-1.5 bg-surface-2 rounded-full overflow-hidden">
+      <div className="h-[3px] bg-surface-2/60 rounded-full overflow-hidden">
         <div
-          className={`h-full rounded-full transition-all ${isLow ? 'bg-red-500' : 'bg-accent'}`}
+          className={`h-full rounded-full transition-all duration-500 ${isLow ? 'bg-red-500' : 'bg-accent/70'}`}
           style={{ width: `${pct}%` }}
         />
       </div>
       {credits.walletBalance > 0 && (
-        <div className="text-[10px] text-text-secondary mt-0.5">
+        <div className="text-[10px] text-text-secondary/40 mt-1">
           {t('walletBalance', { count: credits.walletBalance })}
         </div>
       )}

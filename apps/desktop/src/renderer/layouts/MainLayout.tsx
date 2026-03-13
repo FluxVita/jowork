@@ -91,29 +91,29 @@ export function MainLayout() {
       {/* Skip to main content (keyboard accessibility) */}
       <a
         href="#main-content"
-        className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[100] focus:px-4 focus:py-2 focus:bg-accent focus:text-white focus:rounded-md"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[100] focus:px-4 focus:py-2 focus:bg-accent focus:text-white focus:rounded-lg"
       >
         {t('skipToMainContent')}
       </a>
 
       {/* Drag region for macOS traffic lights */}
-      <div className="fixed top-0 left-0 right-0 h-10 [-webkit-app-region:drag] z-50" aria-hidden="true" />
+      <div className="fixed top-0 left-0 right-0 h-12 [-webkit-app-region:drag] z-50" aria-hidden="true" />
 
       {/* Sidebar */}
       {sidebarOpen && (
-        <div className="w-[220px] flex-shrink-0 border-r border-border bg-surface-1 flex flex-col pt-10">
+        <div className="w-[240px] flex-shrink-0 border-r border-border/50 bg-surface-1/80 backdrop-blur-xl flex flex-col pt-12">
           <Sidebar />
         </div>
       )}
 
       {/* Main content */}
-      <main id="main-content" className="flex-1 flex flex-col pt-10 min-w-0" role="main" tabIndex={-1}>
+      <main id="main-content" className="flex-1 flex flex-col pt-12 min-w-0" role="main" tabIndex={-1}>
         <Outlet />
       </main>
 
       {/* Context panel */}
       {contextPanelOpen && (
-        <aside className="w-[320px] flex-shrink-0 border-l border-border bg-surface-1 pt-10" aria-label="Context panel">
+        <aside className="w-[320px] flex-shrink-0 border-l border-border/50 bg-surface-1/80 backdrop-blur-xl pt-12" aria-label="Context panel">
           <ContextPanel />
         </aside>
       )}

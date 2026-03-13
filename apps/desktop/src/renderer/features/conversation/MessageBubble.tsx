@@ -16,8 +16,8 @@ export function MessageBubble({ role, content }: MessageBubbleProps) {
 
   if (role === 'system') {
     return (
-      <div className="flex justify-center py-2">
-        <span className="text-xs text-text-secondary bg-surface-2 px-3 py-1 rounded-full">
+      <div className="flex justify-center py-3">
+        <span className="text-[11px] text-text-secondary/70 bg-surface-2/60 px-3.5 py-1 rounded-full backdrop-blur-sm">
           {content}
         </span>
       </div>
@@ -29,10 +29,10 @@ export function MessageBubble({ role, content }: MessageBubbleProps) {
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-4`}>
       <div
-        className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed
+        className={`max-w-[80%] rounded-[20px] px-4 py-2.5 text-[14px] leading-relaxed
           ${isUser
-            ? 'bg-accent text-white rounded-br-md'
-            : 'bg-surface-2 text-text-primary rounded-bl-md'
+            ? 'bg-accent text-white rounded-br-lg'
+            : 'bg-surface-2/70 text-text-primary rounded-bl-lg shadow-[inset_0_0.5px_0_rgba(255,255,255,0.06)]'
           }`}
       >
         {isUser ? (
@@ -40,11 +40,12 @@ export function MessageBubble({ role, content }: MessageBubbleProps) {
         ) : (
           <div
             className="prose prose-sm prose-invert max-w-none
-              [&_pre]:bg-surface-0 [&_pre]:rounded-md [&_pre]:p-3 [&_pre]:my-2 [&_pre]:overflow-x-auto
-              [&_code]:text-sm [&_code]:text-accent
+              [&_pre]:bg-surface-0/80 [&_pre]:rounded-xl [&_pre]:p-3.5 [&_pre]:my-2.5 [&_pre]:overflow-x-auto [&_pre]:text-[13px]
+              [&_code]:text-[13px] [&_code]:text-accent
               [&_pre_code]:text-text-primary [&_pre_code]:bg-transparent
               [&_a]:text-accent [&_a]:no-underline hover:[&_a]:underline
-              [&_ul]:list-disc [&_ol]:list-decimal [&_li]:ml-4"
+              [&_ul]:list-disc [&_ol]:list-decimal [&_li]:ml-4
+              [&_p]:my-1.5 first:[&_p]:mt-0 last:[&_p]:mb-0"
             dangerouslySetInnerHTML={{ __html: renderedHtml }}
           />
         )}

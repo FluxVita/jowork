@@ -122,33 +122,41 @@ export function GlobalSearch({ open, onClose }: { open: boolean; onClose: () => 
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-start justify-center pt-[20vh]" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/40" />
+    <div
+      className="fixed inset-0 z-[200] flex items-start justify-center pt-[18vh] animate-[fadeIn_0.15s_ease-out]"
+      onClick={onClose}
+    >
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+
+      {/* Modal */}
       <div
-        className="relative w-full max-w-lg bg-surface-1 border border-border rounded-xl shadow-2xl overflow-hidden"
+        className="glass relative w-full max-w-lg rounded-2xl overflow-hidden animate-[fadeScale_0.2s_cubic-bezier(0.2,0.8,0.2,1)]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Search input */}
-        <div className="flex items-center px-4 border-b border-border">
-          <span className="text-text-secondary mr-2" aria-hidden="true">🔍</span>
+        <div className="flex items-center px-4 border-b border-border/30">
+          <svg className="w-4 h-4 text-text-secondary mr-2.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
           <input
             ref={inputRef}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={t('search') + '...'}
-            className="flex-1 py-3 bg-transparent text-sm text-text-primary placeholder:text-text-secondary focus:outline-none"
+            className="flex-1 py-3.5 bg-transparent text-[14px] text-text-primary placeholder:text-text-secondary/60 focus:outline-none"
             aria-label={t('search')}
           />
-          <kbd className="text-xs font-mono px-1.5 py-0.5 bg-surface-2 border border-border rounded text-text-secondary" aria-label={t('close')}>
+          <kbd className="text-[10px] font-medium px-1.5 py-0.5 bg-surface-2/60 border border-border/30 rounded-md text-text-secondary" aria-label={t('close')}>
             Esc
           </kbd>
         </div>
 
         {/* Results */}
-        <ul className="max-h-[300px] overflow-y-auto py-1" role="listbox">
+        <ul className="max-h-[320px] overflow-y-auto py-1.5" role="listbox">
           {results.length === 0 && (
-            <li className="px-4 py-6 text-center text-sm text-text-secondary">{t('noResults')}</li>
+            <li className="px-4 py-8 text-center text-sm text-text-secondary">{t('noResults')}</li>
           )}
           {results.map((r, i) => (
             <li
@@ -157,14 +165,18 @@ export function GlobalSearch({ open, onClose }: { open: boolean; onClose: () => 
               aria-selected={i === activeIndex}
               onClick={() => handleSelect(r)}
               onMouseEnter={() => setActiveIndex(i)}
-              className={`flex items-center justify-between px-4 py-2 cursor-pointer text-sm transition-colors
-                ${i === activeIndex ? 'bg-accent/10 text-accent' : 'text-text-primary hover:bg-surface-2'}`}
+              className={`flex items-center justify-between mx-1.5 px-3 py-2 cursor-pointer text-[13px] rounded-lg transition-all duration-150
+                ${i === activeIndex
+                  ? 'bg-accent/12 text-accent'
+                  : 'text-text-primary hover:bg-surface-2/50'}`}
             >
               <div className="flex-1 min-w-0">
                 <span className={`truncate block ${r.type === 'message' ? 'text-xs' : ''}`}>{r.title}</span>
               </div>
-              {r.subtitle && <span className="text-xs text-text-secondary ml-2 flex-shrink-0">{r.subtitle}</span>}
-              {r.type === 'page' && <span className="text-xs text-text-secondary ml-2 flex-shrink-0">↵</span>}
+              {r.subtitle && <span className="text-[11px] text-text-secondary ml-2 flex-shrink-0">{r.subtitle}</span>}
+              {r.type === 'page' && (
+                <span className="text-[11px] text-text-secondary/50 ml-2 flex-shrink-0">↵</span>
+              )}
             </li>
           ))}
         </ul>

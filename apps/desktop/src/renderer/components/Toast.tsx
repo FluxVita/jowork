@@ -1,25 +1,18 @@
 import { useToastStore, type ToastType } from '../stores/toast';
 import { useTranslation } from 'react-i18next';
 
-const ICONS: Record<ToastType, string> = {
-  info: 'ℹ️',
-  success: '✓',
-  warning: '⚠️',
-  error: '✗',
-};
-
 const STYLES: Record<ToastType, string> = {
-  info: 'border-accent/30 bg-accent/5',
-  success: 'border-green-400/30 bg-green-400/5',
-  warning: 'border-yellow-400/30 bg-yellow-400/5',
-  error: 'border-red-400/30 bg-red-400/5',
+  info: 'border-accent/20',
+  success: 'border-green-500/20',
+  warning: 'border-yellow-500/20',
+  error: 'border-red-500/20',
 };
 
-const ICON_STYLES: Record<ToastType, string> = {
-  info: 'text-accent',
-  success: 'text-green-400',
-  warning: 'text-yellow-400',
-  error: 'text-red-400',
+const DOT_STYLES: Record<ToastType, string> = {
+  info: 'bg-accent',
+  success: 'bg-green-500',
+  warning: 'bg-yellow-500',
+  error: 'bg-red-500',
 };
 
 export function ToastContainer() {
@@ -31,7 +24,7 @@ export function ToastContainer() {
 
   return (
     <div
-      className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm"
+      className="fixed bottom-5 right-5 z-50 flex flex-col gap-2.5 max-w-sm"
       aria-live="polite"
       aria-atomic="true"
     >
@@ -39,17 +32,15 @@ export function ToastContainer() {
         <div
           key={toast.id}
           role="status"
-          className={`flex items-start gap-2 px-3 py-2.5 rounded-lg border shadow-lg backdrop-blur-sm
-            animate-[slideIn_0.2s_ease-out] ${STYLES[toast.type]}`}
+          className={`glass flex items-start gap-2.5 px-3.5 py-3 rounded-xl border
+            animate-[slideIn_0.3s_cubic-bezier(0.2,0.8,0.2,1)] ${STYLES[toast.type]}`}
         >
-          <span className={`text-sm shrink-0 ${ICON_STYLES[toast.type]}`}>
-            {ICONS[toast.type]}
-          </span>
-          <p className="text-sm text-text-primary flex-1">{toast.message}</p>
+          <span className={`w-2 h-2 rounded-full mt-1 flex-shrink-0 ${DOT_STYLES[toast.type]}`} />
+          <p className="text-[13px] text-text-primary flex-1 leading-snug">{toast.message}</p>
           <button
             onClick={() => removeToast(toast.id)}
             aria-label={t('dismissNotification')}
-            className="text-text-secondary hover:text-text-primary text-xs shrink-0 ml-1"
+            className="text-text-secondary/60 hover:text-text-primary text-xs flex-shrink-0 ml-1 transition-colors duration-150"
           >
             ✕
           </button>

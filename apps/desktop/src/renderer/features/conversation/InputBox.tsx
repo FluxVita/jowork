@@ -85,12 +85,17 @@ export function InputBox({ onSend, onAbort, isStreaming, focusKey }: InputBoxPro
 
   return (
     <div
-      className={`border-t border-border p-4 transition-colors ${dragOver ? 'bg-accent/5 border-accent' : ''}`}
+      className={`p-4 transition-all duration-200 ${dragOver ? 'bg-accent/5' : ''}`}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
-      <div className="flex gap-2 items-end max-w-3xl mx-auto">
+      <div className={`flex gap-2.5 items-end max-w-3xl mx-auto rounded-2xl border bg-surface-1 px-3 py-2 transition-all duration-200
+        ${dragOver
+          ? 'border-accent/40 shadow-[0_0_0_3px_rgba(94,92,230,0.1)]'
+          : 'border-border/40 shadow-[0_1px_3px_rgba(0,0,0,0.08)]'
+        }`}
+      >
         <textarea
           ref={textareaRef}
           value={text}
@@ -100,15 +105,16 @@ export function InputBox({ onSend, onAbort, isStreaming, focusKey }: InputBoxPro
           placeholder={dragOver ? t('dropFilesHere') : t('placeholder')}
           aria-label={t('inputAriaLabel')}
           rows={1}
-          className="flex-1 resize-none bg-surface-2 text-text-primary rounded-lg px-4 py-2.5 text-sm
-            placeholder:text-text-secondary focus:outline-none focus:ring-1 focus:ring-accent
-            min-h-[40px] max-h-[200px]"
+          className="flex-1 resize-none bg-transparent text-text-primary text-[14px] leading-relaxed py-1.5 px-1
+            placeholder:text-text-secondary/50 focus:outline-none
+            min-h-[36px] max-h-[200px]"
         />
         {isStreaming ? (
           <button
             onClick={onAbort}
             aria-label={t('stopAriaLabel')}
-            className="px-4 py-2.5 rounded-lg bg-red-500/10 text-red-400 text-sm hover:bg-red-500/20 transition-colors flex-shrink-0"
+            className="px-3.5 py-1.5 rounded-xl bg-red-500/10 text-red-400 text-[13px] font-medium
+              hover:bg-red-500/20 active:scale-[0.96] transition-all duration-150 flex-shrink-0"
           >
             {t('stop')}
           </button>
@@ -117,10 +123,13 @@ export function InputBox({ onSend, onAbort, isStreaming, focusKey }: InputBoxPro
             onClick={handleSend}
             disabled={!text.trim()}
             aria-label={t('sendAriaLabel')}
-            className="px-4 py-2.5 rounded-lg bg-accent text-white text-sm hover:bg-accent-hover transition-colors
-              disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0"
+            className="p-2 rounded-xl bg-accent text-white
+              hover:bg-accent-hover active:scale-[0.94] transition-all duration-150
+              disabled:opacity-30 disabled:cursor-not-allowed disabled:active:scale-100 flex-shrink-0"
           >
-            {t('send')}
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14M12 5l7 7-7 7" />
+            </svg>
           </button>
         )}
       </div>
