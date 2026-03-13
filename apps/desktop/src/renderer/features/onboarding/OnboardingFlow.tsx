@@ -18,7 +18,7 @@ const STEPS: Record<number, React.FC> = {
 };
 
 export function OnboardingFlow() {
-  const { step, completed, loadState } = useOnboarding();
+  const { step, completed, loadState, prevStep } = useOnboarding();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -49,7 +49,16 @@ export function OnboardingFlow() {
       </div>
 
       {/* Step content */}
-      <div className="flex-1 flex items-center justify-center overflow-y-auto">
+      <div className="flex-1 flex items-center justify-center overflow-y-auto relative">
+        {step > 1 && (
+          <button
+            onClick={prevStep}
+            className="absolute top-4 left-6 text-sm text-text-secondary hover:text-text-primary transition-colors"
+            aria-label="Back"
+          >
+            ← Back
+          </button>
+        )}
         <StepComponent />
       </div>
     </div>

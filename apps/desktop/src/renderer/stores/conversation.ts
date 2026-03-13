@@ -181,8 +181,9 @@ export const useConversationStore = create<ConversationStore>((set, get) => ({
       console.error('Chat error:', err);
     } finally {
       // Finalize streaming: convert streamingText to a real message
-      const { streamingText, activeSessionId: sid } = get();
-      if (streamingText) {
+      // Guard: only materialize if we're still streaming (error event may have already stopped it)
+      const { streamingText, activeSessionId: sid, isStreaming: stillStreaming } = get();
+      if (stillStreaming && streamingText) {
         set((s) => ({
           isStreaming: false,
           messages: [
@@ -197,7 +198,7 @@ export const useConversationStore = create<ConversationStore>((set, get) => ({
           ],
           streamingText: '',
         }));
-      } else {
+      } else if (stillStreaming) {
         set({ isStreaming: false });
       }
     }

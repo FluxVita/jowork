@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useOnboarding } from '../hooks/useOnboarding';
 
@@ -17,7 +17,16 @@ export function AhaMomentStep() {
   const { completeOnboarding, connectedDuringOnboarding } = useOnboarding();
   const [selectedQuestion, setSelectedQuestion] = useState<string | null>(null);
   const [response, setResponse] = useState<string | null>(null);
+  const [streamingText, setStreamingText] = useState('');
   const [loading, setLoading] = useState(false);
+  const unsubRef = useRef<(() => void) | null>(null);
+
+  // Listen for streaming events
+  useEffect(() => {
+    return () => {
+      unsubRef.current?.();
+    };
+  }, []);
 
   // Build suggested questions based on connected connectors
   const questions = connectedDuringOnboarding.length > 0
@@ -31,14 +40,29 @@ export function AhaMomentStep() {
     setSelectedQuestion(question);
     setLoading(true);
     setResponse(null);
+    setStreamingText('');
+
+    // Subscribe to chat events to display real AI response
+    unsubRef.current?.();
+    let accumulated = '';
+    unsubRef.current = window.jowork.on('chat:event', (...args: unknown[]) => {
+      const event = args[0] as { type?: string; content?: string };
+      if (event?.type === 'text' && event.content) {
+        accumulated += event.content;
+        setStreamingText(accumulated);
+      }
+    });
 
     try {
       await window.jowork.chat.send({ message: question });
-      setResponse(t('responseGenerated'));
+      // Use accumulated streaming text as the final response
+      setResponse(accumulated || t('responseGenerated'));
     } catch {
-      setResponse(t('engineUnavailable'));
+      setResponse(accumulated || t('engineUnavailable'));
     } finally {
       setLoading(false);
+      unsubRef.current?.();
+      unsubRef.current = null;
     }
   };
 
@@ -66,10 +90,12 @@ export function AhaMomentStep() {
             {selectedQuestion}
           </div>
           <div className="bg-surface-1 rounded-lg p-4 text-sm text-left min-h-[80px]">
-            {loading ? (
+            {loading && !streamingText ? (
               <div className="text-text-secondary animate-pulse">
                 {tChat('thinking')}
               </div>
+            ) : loading && streamingText ? (
+              <div className="whitespace-pre-wrap">{streamingText}<span className="inline-block w-2 h-4 bg-accent/60 animate-pulse ml-0.5" /></div>
             ) : (
               <div className="whitespace-pre-wrap">{response}</div>
             )}

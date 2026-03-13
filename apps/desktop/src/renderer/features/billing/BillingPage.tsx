@@ -14,9 +14,11 @@ export function BillingPage() {
   const { user, loginWithGoogle } = useAuth();
   const [topUpAmount, setTopUpAmount] = useState(500);
 
+  const { loadPlans } = useBilling();
   useEffect(() => {
     loadCredits();
-  }, [loadCredits]);
+    loadPlans();
+  }, [loadCredits, loadPlans]);
 
   // Placeholder usage data (7 days) — memoized to prevent re-render flicker
   const usageData = useMemo(() => Array.from({ length: 7 }, (_, i) => {

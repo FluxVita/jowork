@@ -35,8 +35,10 @@ export function ConnectorCard({
   const badgeKey = tierBadge(tier);
 
   const handleConnect = () => {
-    if (!hasCredential && tokenInput) {
-      onConnect(id, { accessToken: tokenInput });
+    if (!hasCredential && showConfig) {
+      // Require token before connecting
+      if (!tokenInput.trim()) return;
+      onConnect(id, { accessToken: tokenInput.trim() });
       setTokenInput('');
       setShowConfig(false);
     } else {
