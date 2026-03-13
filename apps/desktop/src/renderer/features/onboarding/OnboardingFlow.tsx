@@ -18,7 +18,7 @@ const STEPS: Record<number, React.FC> = {
 };
 
 export function OnboardingFlow() {
-  const { step, completed, loadState, prevStep } = useOnboarding();
+  const { step, completed, loadState, prevStep, goToStep } = useOnboarding();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -37,12 +37,16 @@ export function OnboardingFlow() {
   return (
     <div className="h-screen flex flex-col bg-surface-0 text-text-primary">
       {/* Progress indicator */}
-      <div className="flex justify-center gap-2 pt-8 pb-4">
+      <div className="flex justify-center gap-2 pt-8 pb-4" role="tablist" aria-label="Onboarding progress">
         {[1, 2, 3, 4, 5, 6].map((s) => (
-          <div
+          <button
             key={s}
+            onClick={() => s <= step && goToStep(s)}
+            disabled={s > step}
+            aria-label={`Step ${s}`}
+            aria-current={s === step ? 'step' : undefined}
             className={`h-1.5 rounded-full transition-all duration-300 ${
-              s <= step ? 'w-8 bg-accent' : 'w-4 bg-surface-2'
+              s <= step ? 'w-8 bg-accent cursor-pointer hover:bg-accent/80' : 'w-4 bg-surface-2 cursor-default'
             }`}
           />
         ))}

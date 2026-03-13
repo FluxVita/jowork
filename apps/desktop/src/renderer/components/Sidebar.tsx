@@ -1,23 +1,10 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useLocation } from 'react-router';
 import { SessionList } from '../features/conversation/SessionList';
 import { useAuth } from '../features/auth/hooks/useAuth';
 import { CreditBar } from '../features/billing/CreditBar';
-
-const navItems = [
-  { path: '/', key: 'conversation', icon: '💬' },
-  { path: '/connectors', key: 'connectors', icon: '🔌' },
-  { path: '/memories', key: 'memories', icon: '🧠' },
-  { path: '/skills', key: 'skills', icon: '⚡' },
-  { path: '/workstyle', key: 'workstyle', icon: '✏️' },
-  { path: '/scheduler', key: 'scheduler', icon: '🕐' },
-  { path: '/notifications', key: 'notifications', icon: '🔔' },
-  { path: '/terminal', key: 'terminal', icon: '>' },
-  { path: '/billing', key: 'billing', icon: '$' },
-  { path: '/team', key: 'team', icon: '👥' },
-  { path: '/settings', key: 'settings', icon: '⚙️' },
-] as const;
+import { NAV_ITEMS } from '../constants/navigation';
 
 export function Sidebar() {
   const { t } = useTranslation('sidebar');
@@ -26,9 +13,11 @@ export function Sidebar() {
   const location = useLocation();
   const isConversation = location.pathname === '/';
   const { modeState, loadModeState, user } = useAuth();
+  const [version, setVersion] = useState('');
 
   useEffect(() => {
     loadModeState();
+    window.jowork.app.getVersion().then(setVersion).catch(() => {});
   }, [loadModeState]);
 
   const modeBadge = modeState?.mode === 'team' && modeState.teamName
@@ -47,7 +36,7 @@ export function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex flex-col gap-0.5 px-3 mb-2" aria-label="Page navigation">
-        {navItems.map((item) => {
+        {NAV_ITEMS.map((item) => {
           const label = t(item.key);
           const active = location.pathname === item.path;
           return (
@@ -86,7 +75,7 @@ export function Sidebar() {
 
       {/* Bottom */}
       <div className="text-xs text-text-secondary px-5 py-2 border-t border-border" aria-label={tc('version')}>
-        JoWork v0.0.1
+        JoWork {version ? `v${version}` : ''}
       </div>
     </aside>
   );

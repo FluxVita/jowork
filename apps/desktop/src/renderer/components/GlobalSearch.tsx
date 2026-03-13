@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { useConversationStore } from '../stores/conversation';
+import { NAV_ITEMS } from '../constants/navigation';
 
 interface SearchResult {
   type: 'page' | 'session' | 'action';
@@ -10,20 +11,6 @@ interface SearchResult {
   subtitle?: string;
   path?: string;
 }
-
-const NAV_PAGES: Array<{ key: string; path: string; icon: string }> = [
-  { key: 'conversation', path: '/', icon: '💬' },
-  { key: 'connectors', path: '/connectors', icon: '🔌' },
-  { key: 'memories', path: '/memories', icon: '🧠' },
-  { key: 'skills', path: '/skills', icon: '⚡' },
-  { key: 'workstyle', path: '/workstyle', icon: '✏️' },
-  { key: 'scheduler', path: '/scheduler', icon: '🕐' },
-  { key: 'notifications', path: '/notifications', icon: '🔔' },
-  { key: 'terminal', path: '/terminal', icon: '>' },
-  { key: 'billing', path: '/billing', icon: '$' },
-  { key: 'team', path: '/team', icon: '👥' },
-  { key: 'settings', path: '/settings', icon: '⚙️' },
-];
 
 export function GlobalSearch({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t } = useTranslation('common');
@@ -42,7 +29,7 @@ export function GlobalSearch({ open, onClose }: { open: boolean; onClose: () => 
   const q = query.toLowerCase().trim();
 
   // Pages
-  NAV_PAGES.forEach((p) => {
+  NAV_ITEMS.forEach((p) => {
     const label = tSidebar(p.key);
     if (!q || label.toLowerCase().includes(q) || p.key.includes(q)) {
       results.push({ type: 'page', id: `page:${p.path}`, title: `${p.icon} ${label}`, path: p.path });
