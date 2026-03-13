@@ -202,7 +202,7 @@ export { app };
 // Start server (skip in test environment)
 if (process.env.NODE_ENV !== 'test' && !process.env.VITEST) {
   import('@hono/node-server').then(({ serve }) => {
-    serve({ fetch: app.fetch, port });
-    console.log(`Cloud server running on port ${port}`);
+    serve({ fetch: app.fetch, port, hostname: '0.0.0.0' });
+    console.log(`Cloud server running on 0.0.0.0:${port}`);
   });
 }
