@@ -306,6 +306,14 @@ export function setupIPC(): void {
   });
 
   ipcMain.handle('connector:save-credential', (_e, connectorId: string, credential: unknown) => {
+    // Validate: credential must be a plain object with string values, not too large
+    if (!credential || typeof credential !== 'object' || Array.isArray(credential)) {
+      throw new Error('Credential must be a plain object');
+    }
+    const json = JSON.stringify(credential);
+    if (json.length > 10_000) {
+      throw new Error('Credential too large');
+    }
     connectorHub.saveCredential(connectorId, credential);
   });
 

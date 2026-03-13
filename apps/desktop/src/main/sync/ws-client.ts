@@ -39,7 +39,6 @@ export class RemoteChannel {
     this.ws.on('open', () => {
       this.connected = true;
       this.reconnectAttempts = 0;
-      console.log('[RemoteChannel] Connected to cloud');
     });
 
     this.ws.on('message', async (data) => {
@@ -58,8 +57,8 @@ export class RemoteChannel {
       this.scheduleReconnect(cloudUrl, token);
     });
 
-    this.ws.on('error', (err) => {
-      console.error('[RemoteChannel] WebSocket error:', err.message);
+    this.ws.on('error', () => {
+      // Connection errors are handled by the 'close' event + reconnect logic
     });
   }
 
@@ -123,7 +122,6 @@ export class RemoteChannel {
 
   private scheduleReconnect(cloudUrl: string, token: string): void {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.log('[RemoteChannel] Max reconnect attempts reached');
       return;
     }
 
@@ -131,7 +129,6 @@ export class RemoteChannel {
     this.reconnectAttempts++;
 
     this.reconnectTimer = setTimeout(() => {
-      console.log(`[RemoteChannel] Reconnecting (attempt ${this.reconnectAttempts})...`);
       this.connect(cloudUrl, token);
     }, delay);
   }

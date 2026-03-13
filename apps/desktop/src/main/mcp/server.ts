@@ -112,9 +112,9 @@ export function createJoWorkMcpServer(opts: McpServerOptions): McpServer {
       body: z.string().describe('Notification body'),
     },
     async ({ title, body }) => {
-      // In standalone mode, just log. In Electron main process, would use Notification API.
-      console.log(`[notify] ${title}: ${body}`);
-      return { content: [{ type: 'text' as const, text: `Notification sent: ${title}` }] };
+      // In standalone MCP mode, return acknowledgement.
+      // In Electron main process context, the NotificationManager handles actual delivery.
+      return { content: [{ type: 'text' as const, text: `Notification sent: ${title} — ${body}` }] };
     },
   );
 
