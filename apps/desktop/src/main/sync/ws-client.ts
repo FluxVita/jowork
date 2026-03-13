@@ -43,7 +43,15 @@ export class RemoteChannel {
 
     this.ws.on('message', async (data) => {
       try {
-        const task: RemoteTask = JSON.parse(data.toString());
+        const msg = JSON.parse(data.toString());
+
+        // Handle queued tasks (from offline queue) — these need user confirmation
+        if (msg.type === 'queued_task') {
+          this.handleQueuedTask(msg.payload);
+          return;
+        }
+
+        const task: RemoteTask = msg;
         const result = await this.executeLocally(task);
         this.send({ taskId: task.id, result });
       } catch (err) {
@@ -118,6 +126,39 @@ export class RemoteChannel {
       default:
         throw new Error(`Unknown task type: ${task.type}`);
     }
+  }
+
+  /**
+   * Handle a queued task that was waiting while the desktop was offline.
+   * Shows a system notification asking the user to confirm execution.
+   */
+  private handleQueuedTask(payload: Record<string, unknown>): void {
+    const { Notification } = require('electron') as typeof import('electron');
+    const source = (payload.source as string) || 'remote';
+    const text = (payload.text as string) || JSON.stringify(payload);
+    const taskId = payload.taskId as string;
+
+    const notification = new Notification({
+      title: `Queued task from ${source}`,
+      body: text.slice(0, 200),
+      actions: [{ type: 'button', text: 'Execute' }],
+    });
+
+    notification.on('click', async () => {
+      try {
+        const task: RemoteTask = {
+          id: taskId || `qt_${Date.now()}`,
+          type: (payload.originalType as RemoteTask['type']) || 'chat',
+          payload: payload as Record<string, unknown>,
+        };
+        const result = await this.executeLocally(task);
+        this.send({ taskId: task.id, result });
+      } catch (err) {
+        console.error('[RemoteChannel] Queued task execution failed:', err);
+      }
+    });
+
+    notification.show();
   }
 
   private scheduleReconnect(cloudUrl: string, token: string): void {

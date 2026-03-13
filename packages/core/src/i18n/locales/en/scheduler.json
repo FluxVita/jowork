@@ -58,5 +58,8 @@
   "dayThu": "Thu",
   "dayFri": "Fri",
   "daySat": "Sat",
-  "invalidCron": "Invalid cron expression (requires 5 fields: min hour day month dow)"
+  "invalidCron": "Invalid cron expression (requires 5 fields: min hour day month dow)",
+  "nlPlaceholder": "Natural language (e.g. \"every morning at 10\", \"every 30 minutes\")",
+  "nlNoMatch": "Unrecognized. Use the cron field or presets below.",
+  "applyNl": "Apply"
 }

@@ -1,5 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
+import { parseNaturalLanguageCron } from '../../utils/nl-cron';
 
 interface Props {
   value: string;
@@ -61,11 +62,55 @@ function isValidCron(cron: string): boolean {
 export function CronPicker({ value, onChange }: Props) {
   const { t } = useTranslation('scheduler');
   const [showPresets, setShowPresets] = useState(false);
+  const [nlInput, setNlInput] = useState('');
+  const [nlResult, setNlResult] = useState<string | null>(null);
   const describeCron = useDescribeCron();
   const valid = useMemo(() => !value.trim() || isValidCron(value), [value]);
 
+  const handleNlParse = useCallback(() => {
+    const result = parseNaturalLanguageCron(nlInput);
+    setNlResult(result);
+    if (result) {
+      onChange(result);
+      setNlInput('');
+      setNlResult(null);
+    }
+  }, [nlInput, onChange]);
+
   return (
     <div className="space-y-2">
+      {/* Natural language input */}
+      <div className="flex items-center gap-2">
+        <input
+          type="text"
+          value={nlInput}
+          onChange={(e) => {
+            setNlInput(e.target.value);
+            // Auto-parse on typing
+            const result = parseNaturalLanguageCron(e.target.value);
+            setNlResult(result);
+          }}
+          onKeyDown={(e) => { if (e.key === 'Enter') handleNlParse(); }}
+          placeholder={t('nlPlaceholder')}
+          className="flex-1 px-3 py-2 text-sm bg-surface-2 border border-border rounded-md
+            text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-1 focus:ring-accent"
+        />
+        {nlResult && (
+          <button
+            onClick={handleNlParse}
+            className="px-3 py-2 text-xs bg-accent text-white rounded-md shrink-0"
+          >
+            {t('applyNl')}
+          </button>
+        )}
+      </div>
+      {nlInput && (
+        <p className="text-[11px] text-text-secondary">
+          {nlResult ? `→ ${nlResult}` : t('nlNoMatch')}
+        </p>
+      )}
+
+      {/* Cron expression input */}
       <div className="flex items-center gap-2">
         <input
           type="text"

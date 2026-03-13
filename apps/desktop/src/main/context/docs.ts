@@ -15,6 +15,17 @@ export interface ContextDoc {
   updatedAt: number;
 }
 
+interface CloudContextDoc {
+  id: string;
+  title: string;
+  content: string;
+  scope: string;
+  category: string | null;
+  priority: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export class ContextDocsStore {
   private db: BetterSQLite3Database;
   private sqlite: Database.Database;
@@ -70,6 +81,70 @@ export class ContextDocsStore {
       .orderBy(desc(contextDocs.priority))
       .all()
       .map((r) => this.toDoc(r));
+  }
+
+  /**
+   * Sync team docs from cloud API to local cache.
+   * Cloud is the source of truth for team-scoped docs.
+   * Upserts cloud docs locally and removes local team docs that no longer exist in cloud.
+   */
+  async syncTeamDocs(apiUrl: string, token: string, teamId: string): Promise<{ synced: number; removed: number }> {
+    const res = await fetch(`${apiUrl}/teams/${teamId}/context-docs`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (!res.ok) {
+      throw new Error(`Failed to fetch team docs: ${res.status}`);
+    }
+
+    const cloudDocs = await res.json() as CloudContextDoc[];
+    const cloudIds = new Set(cloudDocs.map((d) => d.id));
+
+    // Upsert cloud docs into local DB
+    let synced = 0;
+    for (const doc of cloudDocs) {
+      const existing = this.get(doc.id);
+      const createdAt = new Date(doc.createdAt).getTime();
+      const updatedAt = new Date(doc.updatedAt).getTime();
+
+      if (existing) {
+        // Update if cloud version is newer
+        if (updatedAt > existing.updatedAt) {
+          this.db.update(contextDocs).set({
+            title: doc.title,
+            content: doc.content,
+            category: doc.category ?? 'standard',
+            priority: doc.priority ?? 0,
+            updatedAt,
+          }).where(eq(contextDocs.id, doc.id)).run();
+          synced++;
+        }
+      } else {
+        this.db.insert(contextDocs).values({
+          id: doc.id,
+          title: doc.title,
+          content: doc.content,
+          scope: 'team',
+          category: doc.category ?? 'standard',
+          priority: doc.priority ?? 0,
+          createdAt,
+          updatedAt,
+        }).run();
+        synced++;
+      }
+    }
+
+    // Remove local team docs that no longer exist in cloud
+    const localTeamDocs = this.listByScope('team');
+    let removed = 0;
+    for (const local of localTeamDocs) {
+      if (!cloudIds.has(local.id)) {
+        this.delete(local.id);
+        removed++;
+      }
+    }
+
+    return { synced, removed };
   }
 
   private toDoc(row: typeof contextDocs.$inferSelect): ContextDoc {

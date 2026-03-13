@@ -14,6 +14,7 @@ export class SkillLoader {
     const results = await Promise.allSettled([
       this.loadClaudeCodeCommands(),
       this.loadClaudeCodeSkills(),
+      this.loadOpenClawSkills(),
       this.loadBuiltinSkills(),
     ]);
 
@@ -28,6 +29,24 @@ export class SkillLoader {
   private async loadClaudeCodeSkills(): Promise<Skill[]> {
     const dir = join(homedir(), '.claude', 'skills');
     return this.scanMarkdownDir(dir, 'claude-code');
+  }
+
+  /**
+   * Load skills from OpenClaw skill directories.
+   * Auto-discovers common paths: ~/.openclaw/skills/, ~/.config/openclaw/skills/
+   */
+  private async loadOpenClawSkills(): Promise<Skill[]> {
+    const candidates = [
+      join(homedir(), '.openclaw', 'skills'),
+      join(homedir(), '.config', 'openclaw', 'skills'),
+    ];
+
+    const allSkills: Skill[] = [];
+    for (const dir of candidates) {
+      const skills = await this.scanMarkdownDir(dir, 'openclaw');
+      allSkills.push(...skills);
+    }
+    return allSkills;
   }
 
   private async scanMarkdownDir(dir: string, source: Skill['source']): Promise<Skill[]> {
