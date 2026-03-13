@@ -4,6 +4,10 @@ directories:
   output: dist
   buildResources: build
 
+asarUnpack:
+  - "**/*.node"
+  - "**/spawn-helper"
+
 mac:
   target: [dmg, zip]
   category: public.app-category.productivity
@@ -17,9 +21,6 @@ win:
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
-
-asar:
-  unpack: "{**/*.node,**/spawn-helper}"
 
 publish:
   provider: github

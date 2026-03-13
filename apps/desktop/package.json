@@ -1,6 +1,8 @@
 {
   "name": "@jowork/desktop",
   "version": "0.0.1",
+  "description": "JoWork — AI-powered work assistant desktop app",
+  "author": "FluxVita <hello@fluxvita.work>",
   "private": true,
   "main": "./out/main/index.js",
   "scripts": {
@@ -8,7 +10,7 @@
     "build": "electron-vite build",
     "lint": "tsc --noEmit",
     "test": "vitest run",
-    "postinstall:phase1": "electron-rebuild -f -w better-sqlite3",
+    "postinstall": "electron-builder install-app-deps",
     "preview": "electron-vite preview",
     "build:mac": "electron-vite build && electron-builder --mac",
     "build:win": "electron-vite build && electron-builder --win"
@@ -32,18 +34,19 @@
     "react-dom": "^19.1.0",
     "react-i18next": "^15.5.0",
     "react-router": "^7.6.0",
+    "ws": "8.18.3",
     "zod": "^3.25.0",
     "zustand": "^5.0.0"
   },
   "devDependencies": {
     "@electron-toolkit/preload": "^3.0.0",
     "@electron-toolkit/utils": "^4.0.0",
-    "@electron/rebuild": "^3.7.0",
     "@tailwindcss/vite": "^4.2.1",
     "@types/dompurify": "^3.2.0",
     "@types/marked": "^6.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "@types/ws": "^8.18.1",
     "@vitejs/plugin-react": "^4.5.0",
     "autoprefixer": "^10.4.21",
     "electron": "^35.7.5",
