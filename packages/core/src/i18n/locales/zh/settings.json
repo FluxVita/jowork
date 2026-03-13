@@ -30,5 +30,7 @@
   "workstyleDescription": "定义 AI 如何配合你工作。此内容会注入每次对话。",
   "workstylePlaceholder": "用 Markdown 编写你的工作风格指南...",
   "workstyleHint": "支持 Markdown。此文档会作为上下文注入每次 AI 对话。",
-  "saved": "已保存！"
+  "saved": "已保存！",
+  "workstyleTemplate": "# 我的工作风格\n\n## 角色\n[你的职位和职责]\n\n## 沟通偏好\n- 回复风格: [简洁/详细]\n- 语言: [中文/英文/双语]\n\n## 工作习惯\n[你的日常工作流程]\n\n## 重要规则\n[AI 必须遵守的规则]\n",
+  "terminalTab": "终端 {{n}}"
 }

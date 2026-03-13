@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { HashRouter, Routes, Route } from 'react-router';
+import { useTranslation } from 'react-i18next';
 import { ErrorBoundary, FeatureErrorBoundary } from './components/ErrorBoundary';
 import { MainLayout } from './layouts/MainLayout';
 
@@ -21,9 +22,10 @@ const TerminalPage = lazy(() => import('./pages/TerminalPage').then((m) => ({ de
 const SettingsPage = lazy(() => import('./pages/SettingsPage').then((m) => ({ default: m.SettingsPage })));
 
 function PageFallback() {
+  const { t } = useTranslation();
   return (
     <div className="flex-1 flex items-center justify-center">
-      <div className="text-sm text-text-secondary animate-pulse">Loading...</div>
+      <div className="text-sm text-text-secondary animate-pulse">{t('loading')}</div>
     </div>
   );
 }

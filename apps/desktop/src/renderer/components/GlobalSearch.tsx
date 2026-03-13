@@ -117,8 +117,8 @@ export function GlobalSearch({ open, onClose }: { open: boolean; onClose: () => 
             className="flex-1 py-3 bg-transparent text-sm text-text-primary placeholder:text-text-secondary focus:outline-none"
             aria-label={t('search')}
           />
-          <kbd className="text-xs font-mono px-1.5 py-0.5 bg-surface-2 border border-border rounded text-text-secondary">
-            esc
+          <kbd className="text-xs font-mono px-1.5 py-0.5 bg-surface-2 border border-border rounded text-text-secondary" aria-label={t('close')}>
+            Esc
           </kbd>
         </div>
 

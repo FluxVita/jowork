@@ -21,6 +21,7 @@ const navItems = [
 
 export function Sidebar() {
   const { t } = useTranslation('sidebar');
+  const { t: tc } = useTranslation('common');
   const navigate = useNavigate();
   const location = useLocation();
   const isConversation = location.pathname === '/';
@@ -31,7 +32,7 @@ export function Sidebar() {
   }, [loadModeState]);
 
   const modeBadge = modeState?.mode === 'team' && modeState.teamName
-    ? `Team: ${modeState.teamName}`
+    ? tc('teamMode', { name: modeState.teamName })
     : t('personal');
 
   return (
@@ -84,7 +85,7 @@ export function Sidebar() {
       )}
 
       {/* Bottom */}
-      <div className="text-xs text-text-secondary px-5 py-2 border-t border-border" aria-label="Version info">
+      <div className="text-xs text-text-secondary px-5 py-2 border-t border-border" aria-label={tc('version')}>
         JoWork v0.0.1
       </div>
     </aside>

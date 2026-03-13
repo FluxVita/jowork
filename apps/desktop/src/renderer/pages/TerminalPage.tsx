@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface TerminalTab {
   id: string;
@@ -6,6 +7,7 @@ interface TerminalTab {
 }
 
 export function TerminalPage() {
+  const { t } = useTranslation('settings');
   const termRef = useRef<HTMLDivElement>(null);
   const [tabs, setTabs] = useState<TerminalTab[]>([]);
   const [activeTab, setActiveTab] = useState<string | null>(null);
@@ -14,7 +16,7 @@ export function TerminalPage() {
 
   const createTab = useCallback(async () => {
     const id = await window.jowork.pty.create();
-    const tab: TerminalTab = { id, title: `Terminal ${tabs.length + 1}` };
+    const tab: TerminalTab = { id, title: t('terminalTab', { n: tabs.length + 1 }) };
     setTabs((prev) => [...prev, tab]);
     setActiveTab(id);
     return id;

@@ -1,22 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-const DEFAULT_TEMPLATE = `# My Work Style
-
-## Role
-[Your title and responsibilities]
-
-## Communication Preferences
-- Reply style: [concise/detailed]
-- Language: [Chinese/English/bilingual]
-
-## Work Habits
-[Your daily workflow]
-
-## Important Rules
-[Rules the AI must follow]
-`;
-
 export function WorkstyleEditor() {
   const { t } = useTranslation('settings');
   const { t: tc } = useTranslation('common');
@@ -26,9 +10,9 @@ export function WorkstyleEditor() {
 
   useEffect(() => {
     window.jowork.settings.get('workstyle').then((val) => {
-      setContent(val || DEFAULT_TEMPLATE);
+      setContent(val || t('workstyleTemplate'));
     });
-  }, []);
+  }, [t]);
 
   const handleSave = async () => {
     setSaving(true);

@@ -6,8 +6,10 @@ import { GlobalSearch } from '../components/GlobalSearch';
 import { ToastContainer } from '../components/Toast';
 import { useAppStore } from '../stores/app';
 import { useConversationStore } from '../stores/conversation';
+import { useTranslation } from 'react-i18next';
 
 export function MainLayout() {
+  const { t } = useTranslation();
   const sidebarOpen = useAppStore((s) => s.sidebarOpen);
   const contextPanelOpen = useAppStore((s) => s.contextPanelOpen);
   const navigate = useNavigate();
@@ -51,7 +53,7 @@ export function MainLayout() {
         href="#main-content"
         className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[100] focus:px-4 focus:py-2 focus:bg-accent focus:text-white focus:rounded-md"
       >
-        Skip to main content
+        {t('skipToMainContent')}
       </a>
 
       {/* Drag region for macOS traffic lights */}

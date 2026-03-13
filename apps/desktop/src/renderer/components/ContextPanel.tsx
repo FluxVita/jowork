@@ -23,11 +23,11 @@ export function ContextPanel() {
       {/* Connectors */}
       <section className="p-4 border-b border-border">
         <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-2">
-          {t('context.connectors', { defaultValue: 'Connectors' })}
+          {t('contextConnectors')}
         </h3>
         {activeConnectors.length === 0 ? (
           <p className="text-xs text-text-secondary">
-            {t('context.noConnectors', { defaultValue: 'No active connectors' })}
+            {t('contextNoConnectors')}
           </p>
         ) : (
           <ul className="space-y-1.5">
@@ -42,7 +42,7 @@ export function ContextPanel() {
         )}
         {connectors.length > activeConnectors.length && (
           <p className="text-[10px] text-text-secondary mt-1.5">
-            +{connectors.length - activeConnectors.length} {t('context.inactive', { defaultValue: 'inactive' })}
+            +{connectors.length - activeConnectors.length} {t('contextInactive')}
           </p>
         )}
       </section>
@@ -50,11 +50,11 @@ export function ContextPanel() {
       {/* Pinned Memories */}
       <section className="p-4 border-b border-border">
         <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-2">
-          {t('context.pinnedMemories', { defaultValue: 'Pinned Memories' })}
+          {t('contextPinnedMemories')}
         </h3>
         {pinnedMemories.length === 0 ? (
           <p className="text-xs text-text-secondary">
-            {t('context.noMemories', { defaultValue: 'No pinned memories' })}
+            {t('contextNoMemories')}
           </p>
         ) : (
           <ul className="space-y-2">
@@ -81,7 +81,7 @@ export function ContextPanel() {
       {memories.filter((m) => !m.pinned).length > 0 && (
         <section className="p-4">
           <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-2">
-            {t('context.recentMemories', { defaultValue: 'Recent' })}
+            {t('contextRecent')}
           </h3>
           <ul className="space-y-1.5">
             {memories.filter((m) => !m.pinned).slice(0, 5).map((m) => (

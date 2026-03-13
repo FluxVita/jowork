@@ -30,5 +30,7 @@
   "workstyleDescription": "Define how the AI should work with you. This is injected into every conversation.",
   "workstylePlaceholder": "Write your work style guide in Markdown...",
   "workstyleHint": "Supports Markdown. This document is included in every AI conversation as context.",
-  "saved": "Saved!"
+  "saved": "Saved!",
+  "workstyleTemplate": "# My Work Style\n\n## Role\n[Your title and responsibilities]\n\n## Communication Preferences\n- Reply style: [concise/detailed]\n- Language: [Chinese/English/bilingual]\n\n## Work Habits\n[Your daily workflow]\n\n## Important Rules\n[Rules the AI must follow]\n",
+  "terminalTab": "Terminal {{n}}"
 }
