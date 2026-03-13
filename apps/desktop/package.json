@@ -11,8 +11,9 @@
     "lint": "tsc --noEmit",
     "test": "vitest run",
     "preview": "electron-vite preview",
-    "build:mac": "electron-vite build && electron-builder --mac",
-    "build:win": "electron-vite build && electron-builder --win"
+    "build:mac": "electron-vite build && electron-builder --mac && bash scripts/rebuild-native.sh",
+    "build:win": "electron-vite build && electron-builder --win",
+    "rebuild:native": "bash scripts/rebuild-native.sh"
   },
   "dependencies": {
     "@jowork/core": "workspace:*",
