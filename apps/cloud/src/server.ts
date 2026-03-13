@@ -182,21 +182,28 @@ app.get('/', async (c) => {
 });
 app.get('/*', async (c, next) => {
   // Only serve static for non-API paths
-  const path = c.req.path;
-  if (path.startsWith('/api/') || path.startsWith('/auth/') || path.startsWith('/engine/') ||
-      path.startsWith('/billing/') || path.startsWith('/teams/') || path.startsWith('/scheduler/') ||
-      path.startsWith('/credentials/') || path.startsWith('/sync/') || path.startsWith('/channels/') ||
-      path.startsWith('/invite/') || path.startsWith('/ws/')) {
+  const reqPath = c.req.path;
+  if (reqPath.startsWith('/api/') || reqPath.startsWith('/auth/') || reqPath.startsWith('/engine/') ||
+      reqPath.startsWith('/billing/') || reqPath.startsWith('/teams/') || reqPath.startsWith('/scheduler/') ||
+      reqPath.startsWith('/credentials/') || reqPath.startsWith('/sync/') || reqPath.startsWith('/channels/') ||
+      reqPath.startsWith('/invite/') || reqPath.startsWith('/ws/')) {
     return next();
   }
 
-  // Try to serve static file
+  // Try to serve static file (with path traversal protection)
   try {
     const { readFile } = await import('fs/promises');
-    const { join } = await import('path');
-    const filePath = join(process.cwd(), 'public', path);
+    const { join, resolve, normalize } = await import('path');
+    const publicDir = resolve(process.cwd(), 'public');
+    const filePath = resolve(publicDir, normalize(reqPath).replace(/^\/+/, ''));
+
+    // Block path traversal: resolved path must stay within publicDir
+    if (!filePath.startsWith(publicDir + '/') && filePath !== publicDir) {
+      return c.json({ error: 'Forbidden' }, 403);
+    }
+
     const content = await readFile(filePath);
-    const ext = path.split('.').pop() || '';
+    const ext = reqPath.split('.').pop() || '';
     const mimeTypes: Record<string, string> = {
       html: 'text/html', js: 'application/javascript', css: 'text/css',
       png: 'image/png', jpg: 'image/jpeg', svg: 'image/svg+xml',

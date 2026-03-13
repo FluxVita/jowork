@@ -709,3 +709,16 @@ describe('Scheduler execution history', () => {
     expect(res.status).toBe(404);
   });
 });
+
+describe('Static file serving security', () => {
+  it('blocks path traversal with ../', async () => {
+    const res = await request('/../../../etc/passwd');
+    // Should return 403 (blocked) or 404 (not found), never 200
+    expect([403, 404]).toContain(res.status);
+  });
+
+  it('blocks encoded path traversal', async () => {
+    const res = await request('/..%2F..%2Fetc/passwd');
+    expect([403, 404]).toContain(res.status);
+  });
+});

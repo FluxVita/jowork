@@ -26,4 +26,7 @@ COPY apps/cloud/start.sh apps/cloud/
 RUN chmod +x apps/cloud/start.sh
 RUN pnpm --filter @jowork/core build && pnpm --filter @jowork/cloud build
 
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD node -e "fetch('http://localhost:3000/health').then(r=>{if(!r.ok)throw 1}).catch(()=>process.exit(1))"
+
 CMD ["sh", "apps/cloud/start.sh"]
