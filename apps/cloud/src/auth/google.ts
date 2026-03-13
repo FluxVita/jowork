@@ -211,24 +211,39 @@ export async function refreshToken(c: Context): Promise<Response> {
     return c.json({ error: 'Missing token' }, 400);
   }
 
-  // Decode without full verification (we accept recently expired tokens for refresh)
+  // Verify signature (accept recently expired tokens for refresh)
   try {
-    const [, body] = (token as string).split('.');
-    if (!body) return c.json({ error: 'Invalid token format' }, 400);
+    const { verifyJwt } = await import('./jwt');
 
-    const payload = JSON.parse(Buffer.from(body, 'base64url').toString('utf-8')) as {
-      sub: string;
-      exp: number;
-    };
+    // Try normal verification first
+    let payload = verifyJwt(token as string);
+
+    if (!payload) {
+      // Token may be expired — decode manually but verify HMAC signature
+      const [header, body, signature] = (token as string).split('.');
+      if (!header || !body || !signature) {
+        return c.json({ error: 'Invalid token format' }, 400);
+      }
+
+      // Verify signature is valid (even if expired)
+      const { createHmac: hmac } = await import('crypto');
+      const secret = process.env.JWT_SECRET || 'dev-secret-change-me';
+      const expected = hmac('sha256', secret).update(`${header}.${body}`).digest('base64url');
+      if (signature !== expected) {
+        return c.json({ error: 'Invalid token signature' }, 401);
+      }
+
+      payload = JSON.parse(Buffer.from(body, 'base64url').toString('utf-8'));
+    }
 
     // Only allow refresh within 30 days of expiry
     const now = Math.floor(Date.now() / 1000);
-    if (payload.exp < now - 30 * 24 * 60 * 60) {
+    if (payload!.exp < now - 30 * 24 * 60 * 60) {
       return c.json({ error: 'Token too old to refresh' }, 401);
     }
 
     const db = getDb();
-    const [user] = await db.select().from(users).where(eq(users.id, payload.sub));
+    const [user] = await db.select().from(users).where(eq(users.id, payload!.sub));
     if (!user) {
       return c.json({ error: 'User not found' }, 404);
     }
