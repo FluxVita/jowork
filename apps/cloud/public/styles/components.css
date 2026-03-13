@@ -1,0 +1,346 @@
+/**
+ * FluxVita Components — 公共组件样式
+ * 按钮、卡片、表格、徽章等可复用组件
+ * 全面支持 dark/light 主题切换
+ */
+
+/* ═══════════════════════════════════════
+   按钮系统
+   ═══════════════════════════════════════ */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 14px;
+  font-size: var(--font-sm, 13px);
+  font-weight: 500;
+  font-family: var(--font);
+  border-radius: var(--radius-sm, 8px);
+  border: 0.5px solid var(--border);
+  background: var(--surface2);
+  color: var(--text);
+  cursor: pointer;
+  transition: background .12s, border-color .12s, opacity .12s;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.btn:hover { background: var(--surface-hover); border-color: var(--border-hover); }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+.btn:active:not(:disabled) { transform: scale(0.97); opacity: 0.8; transition-duration: 0.06s; }
+
+/* Primary — 主操作 */
+.btn-primary, .btn.primary {
+  background: var(--accent);
+  color: #000;
+  border-color: transparent;
+  font-weight: 600;
+}
+.btn-primary:hover, .btn.primary:hover {
+  opacity: 0.88;
+  background: var(--accent);
+}
+
+/* Secondary — 次级 */
+.btn-secondary, .btn.secondary {
+  background: var(--surface2);
+  color: var(--text);
+  border-color: var(--border);
+}
+
+/* Ghost — 辅助操作 */
+.btn-ghost, .btn.ghost {
+  border-color: transparent;
+  color: var(--text2);
+  background: transparent;
+}
+.btn-ghost:hover, .btn.ghost:hover {
+  background: var(--surface2);
+  color: var(--text);
+  border-color: transparent;
+}
+
+/* Danger — 危险操作 */
+.btn-danger, .btn.danger {
+  border-color: transparent;
+  color: var(--red);
+  background: var(--red-bg);
+}
+.btn-danger:hover, .btn.danger:hover {
+  opacity: .85;
+}
+
+/* Small — 内联/图标按钮 */
+.btn-sm { padding: 4px 10px; font-size: var(--font-xs, 11px); }
+
+/* Large — CTA 按钮 */
+.btn-lg { padding: 10px 20px; font-size: var(--font-body, 14px); }
+
+/* ═══════════════════════════════════════
+   卡片
+   ═══════════════════════════════════════ */
+
+.card {
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-md, 12px);
+  padding: var(--space-card, 20px);
+  box-shadow: var(--shadow-sm);
+  transition: border-color .3s var(--ease-spring, cubic-bezier(0.16,1,0.3,1)),
+              transform .3s var(--ease-spring, cubic-bezier(0.16,1,0.3,1)),
+              box-shadow .3s var(--ease-spring, cubic-bezier(0.16,1,0.3,1));
+}
+.card:hover {
+  border-color: var(--border-hover);
+  transform: translateY(-2px) scale(1.003);
+  box-shadow: var(--shadow-md);
+}
+
+/* ═══════════════════════════════════════
+   表格
+   ═══════════════════════════════════════ */
+
+.table-wrap {
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+.table-wrap table { width: 100%; border-collapse: collapse; }
+.table-wrap th {
+  text-align: left;
+  padding: 10px 20px;
+  color: var(--text2);
+  font-weight: 500;
+  font-size: var(--font-xs, 11px);
+  letter-spacing: 0.3px;
+  border-bottom: 0.5px solid var(--border);
+}
+.table-wrap td {
+  padding: 10px 20px;
+  font-size: var(--font-sm, 13px);
+  color: var(--text);
+  border-bottom: 0.5px solid var(--border);
+}
+.table-wrap tr:last-child td { border-bottom: none; }
+.table-wrap tr:hover td { background: var(--surface-hover); }
+
+/* ═══════════════════════════════════════
+   徽章 / Badge — 使用 CSS 变量实现主题适配
+   ═══════════════════════════════════════ */
+
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  font-size: var(--font-xs, 11px);
+  font-weight: 500;
+  border-radius: var(--radius-xs, 4px);
+  border: 0.5px solid var(--border);
+  color: var(--text2);
+  background: var(--surface2);
+}
+.badge-green  { color: var(--green);  border-color: var(--green-bg);  background: var(--green-bg); }
+.badge-red    { color: var(--red);    border-color: var(--red-bg);    background: var(--red-bg); }
+.badge-blue   { color: var(--blue);   border-color: var(--blue-bg);   background: var(--blue-bg); }
+.badge-orange { color: var(--orange); border-color: var(--orange-bg); background: var(--orange-bg); }
+.badge-purple { color: var(--purple); border-color: var(--purple-border); background: var(--purple-bg); }
+.badge-yellow { color: var(--yellow); border-color: var(--yellow-border); background: var(--yellow-bg); }
+.badge-cyan   { color: var(--cyan);   border-color: var(--cyan-border);   background: var(--cyan-bg); }
+.badge-coral  { color: var(--coral);  border-color: var(--coral-border);  background: var(--coral-bg); }
+.badge-amber  { color: var(--amber);  border-color: var(--amber-border);  background: var(--amber-bg); }
+.badge-accent { color: var(--text-inverse); border-color: var(--accent); background: var(--accent); }
+
+/* ═══════════════════════════════════════
+   空状态
+   ═══════════════════════════════════════ */
+
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text2);
+}
+.empty-state .empty-icon {
+  font-size: 32px;
+  margin-bottom: 12px;
+  opacity: 0.5;
+}
+.empty-state .empty-title {
+  font-size: var(--font-body, 14px);
+  font-weight: 500;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+.empty-state .empty-desc {
+  font-size: var(--font-sm, 13px);
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
+
+/* ═══════════════════════════════════════
+   Sub-Tab 导航（页面内二级 Tab）
+   ═══════════════════════════════════════ */
+
+.subtab-bar {
+  display: flex;
+  gap: 4px;
+  padding: 8px 20px;
+  border-bottom: 0.5px solid var(--border);
+  background: var(--surface);
+}
+.subtab {
+  padding: 6px 14px;
+  font-size: var(--font-sm, 13px);
+  color: var(--text2);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all .15s ease;
+  border: none;
+  background: transparent;
+  font-family: var(--font);
+}
+.subtab:hover { color: var(--text); background: var(--surface2); }
+.subtab.active { color: var(--accent-text); background: var(--surface2); }
+
+/* ═══════════════════════════════════════
+   表单输入
+   ═══════════════════════════════════════ */
+
+input, textarea, select {
+  background: var(--surface2);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-sm, 8px);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: var(--font-sm, 13px);
+  /* 内凹阴影模拟 macOS 文本框 */
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.12);
+  transition: border-color .15s, box-shadow .15s;
+}
+input::placeholder, textarea::placeholder {
+  color: var(--text2);
+  opacity: 0.7;
+}
+input:focus, textarea:focus, select:focus {
+  border-color: var(--accent);
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.08), 0 0 0 3px var(--focus-ring, rgba(157,216,74,0.45));
+  outline: none;
+}
+
+/* ═══════════════════════════════════════
+   主题切换按钮
+   ═══════════════════════════════════════ */
+
+.theme-toggle {
+  position: relative;
+  width: 36px;
+  height: 20px;
+  border-radius: var(--radius-md, 12px);
+  border: 0.5px solid var(--border);
+  background: var(--surface2);
+  cursor: pointer;
+  transition: all .35s cubic-bezier(0.16, 1, 0.3, 1);
+  flex-shrink: 0;
+}
+.theme-toggle::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--text2);
+  transition: all .35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+/* 亮色模式下滑块右移 + accent 高亮 */
+[data-theme="light"] .theme-toggle {
+  background: var(--accent-bg);
+  border-color: var(--accent-border);
+}
+[data-theme="light"] .theme-toggle::after {
+  left: 18px;
+  background: var(--accent);
+}
+
+/* 切换器图标提示 */
+.theme-toggle-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--font-sm, 13px);
+  color: var(--text2);
+  user-select: none;
+}
+.theme-toggle-icon {
+  font-size: var(--font-body, 14px);
+  line-height: 1;
+}
+
+/* ═══════════════════════════════════════
+   入场动画
+   ═══════════════════════════════════════ */
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.animate-in {
+  animation: fadeUp .5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* ═══════════════════════════════════════
+   品牌渐变分隔线
+   ═══════════════════════════════════════ */
+
+.brand-line {
+  height: 2px;
+  background: var(--gradient-brand);
+  opacity: 0.4;
+  border: none;
+}
+
+/* ═══════════════════════════════════════
+   数据字体 (Mono)
+   ═══════════════════════════════════════ */
+
+.font-mono {
+  font-family: var(--font-mono);
+}
+
+.data-value {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+/* ═══════════════════════════════════════
+   毛玻璃 / Liquid Glass 工具类
+   ═══════════════════════════════════════ */
+
+.glass {
+  background: var(--glass-sidebar-dark, rgba(28,28,30,0.72));
+  backdrop-filter: var(--glass-blur, blur(20px) saturate(180%));
+  -webkit-backdrop-filter: var(--glass-blur, blur(20px) saturate(180%));
+  border: 0.5px solid rgba(255,255,255,0.08);
+}
+[data-theme="light"] .glass {
+  background: var(--glass-sidebar-light, rgba(242,242,239,0.82));
+  border-color: rgba(0,0,0,0.06);
+}
+
+.glass-card {
+  background: rgba(28,28,30,0.78);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  border: 0.5px solid rgba(255,255,255,0.08);
+  border-radius: var(--radius-lg, 16px);
+  box-shadow: 0 16px 48px rgba(0,0,0,0.35), 0 1px 0 rgba(255,255,255,0.04) inset;
+}
+[data-theme="light"] .glass-card {
+  background: rgba(255,255,255,0.88);
+  border-color: rgba(0,0,0,0.07);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.08), 0 1px 0 rgba(255,255,255,0.9) inset;
+}

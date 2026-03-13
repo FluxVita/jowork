@@ -4,6 +4,7 @@ import { logger } from 'hono/logger';
 import { healthCheck } from './health';
 import { authMiddleware } from './middleware/auth';
 import { googleLogin, googleCallback, refreshToken } from './auth/google';
+import { localLogin, compatLogin, getCurrentUser, getSetupStatus } from './auth/local';
 import { createCheckout, createPortal, createTopUp } from './billing/stripe';
 import { getCredits } from './billing/credits';
 import { handleWebhook } from './billing/webhook';
@@ -11,12 +12,18 @@ import { handleFeishuWebhook } from './channels/feishu-bot';
 import { listTeams, createTeam, getTeam, createInvite, joinTeam } from './team/teams';
 import { removeMember, updateMemberRole } from './team/members';
 import { getInviteDetails } from './team/invites';
+import { listTeamContextDocs, createTeamContextDoc } from './team/context-docs';
 import { authorizeConnector, revokeConnector, authorizeAll, getStatus } from './credentials/authorize';
 import { handleChat } from './engine/chat';
 import { createTask, listTasks, updateTask, deleteTask, getExecutions } from './scheduler/routes';
 import { handlePush } from './sync/push';
 import { handlePull } from './sync/pull';
 import { handleStatus as handleSyncStatus } from './sync/status';
+import {
+  getEngines, setEngine, listSessions, getSession, deleteSession,
+  clearSessions, agentChat, agentStop, listAgentTasks,
+  getPreferences, setPreferences, searchSessions,
+} from './compat/agent';
 
 const app = new Hono();
 
@@ -36,6 +43,7 @@ app.use('*', cors());
 // Health (no auth)
 app.get('/health', healthCheck);
 app.get('/api/health', healthCheck);
+app.get('/api/system/setup-status', getSetupStatus);
 
 // Auth (no auth required)
 app.get('/auth/google', googleLogin);
@@ -44,6 +52,9 @@ app.post('/auth/refresh', refreshToken);
 app.get('/api/auth/google', googleLogin);
 app.get('/api/auth/google/callback', googleCallback);
 app.post('/api/auth/refresh', refreshToken);
+app.post('/api/auth/local', localLogin);
+app.post('/api/auth/login', compatLogin);
+app.get('/api/auth/me', getCurrentUser);
 
 // Stripe webhook (no auth — verified by signature)
 app.post('/billing/webhook', handleWebhook);
@@ -121,6 +132,12 @@ app.post('/api/teams/join/:code', joinTeam);
 app.delete('/api/teams/:id/members/:userId', removeMember);
 app.patch('/api/teams/:id/members/:userId', updateMemberRole);
 
+// Team Context Docs
+app.get('/teams/:id/context-docs', listTeamContextDocs);
+app.post('/teams/:id/context-docs', createTeamContextDoc);
+app.get('/api/teams/:id/context-docs', listTeamContextDocs);
+app.post('/api/teams/:id/context-docs', createTeamContextDoc);
+
 // Sync
 app.post('/sync/push', handlePush);
 app.post('/sync/pull', handlePull);
@@ -129,8 +146,54 @@ app.post('/api/sync/push', handlePush);
 app.post('/api/sync/pull', handlePull);
 app.get('/api/sync/status', handleSyncStatus);
 
+// V1-compat agent routes (used by legacy shell.html/chat.html frontend)
+app.get('/api/agent/engines', getEngines);
+app.post('/api/agent/engine', setEngine);
+app.get('/api/agent/sessions', listSessions);
+app.get('/api/agent/sessions/search', searchSessions);
+app.get('/api/agent/sessions/:id', getSession);
+app.delete('/api/agent/sessions/:id', deleteSession);
+app.post('/api/agent/sessions/clear', clearSessions);
+app.post('/api/agent/chat', agentChat);
+app.post('/api/agent/stop', agentStop);
+app.get('/api/agent/tasks', listAgentTasks);
+app.get('/api/agent/preferences', getPreferences);
+app.post('/api/agent/preferences', setPreferences);
+
 // API status
 app.get('/api/v1/status', (c) => c.json({ status: 'ok', phase: 7 }));
+
+// Static files — v1 frontend (shell.html, chat.html, etc.)
+// Must be after API routes so API paths take priority
+app.get('/', (c) => c.redirect('/shell.html'));
+app.get('/*', async (c, next) => {
+  // Only serve static for non-API paths
+  const path = c.req.path;
+  if (path.startsWith('/api/') || path.startsWith('/auth/') || path.startsWith('/engine/') ||
+      path.startsWith('/billing/') || path.startsWith('/teams/') || path.startsWith('/scheduler/') ||
+      path.startsWith('/credentials/') || path.startsWith('/sync/') || path.startsWith('/channels/') ||
+      path.startsWith('/invite/') || path.startsWith('/ws/')) {
+    return next();
+  }
+
+  // Try to serve static file
+  try {
+    const { readFile } = await import('fs/promises');
+    const { join } = await import('path');
+    const filePath = join(process.cwd(), 'public', path);
+    const content = await readFile(filePath);
+    const ext = path.split('.').pop() || '';
+    const mimeTypes: Record<string, string> = {
+      html: 'text/html', js: 'application/javascript', css: 'text/css',
+      png: 'image/png', jpg: 'image/jpeg', svg: 'image/svg+xml',
+      json: 'application/json', ico: 'image/x-icon', woff2: 'font/woff2',
+    };
+    c.header('Content-Type', mimeTypes[ext] || 'application/octet-stream');
+    return c.body(content);
+  } catch {
+    return next();
+  }
+});
 
 const port = parseInt(process.env.PORT || '3000', 10);
 

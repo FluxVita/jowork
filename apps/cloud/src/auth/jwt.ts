@@ -1,7 +1,8 @@
 /**
  * JWT utility functions for cloud auth.
- * Uses simple HMAC-SHA256 signing. In production, use jose or jsonwebtoken.
+ * Uses simple HMAC-SHA256 signing.
  */
+import { createHmac } from 'crypto';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
 const JWT_EXPIRY = 7 * 24 * 60 * 60; // 7 days in seconds
@@ -33,9 +34,7 @@ export function signJwt(payload: Omit<JwtPayload, 'iat' | 'exp'>): string {
   const data = `${header}.${body}`;
 
   // Simple HMAC signature
-  const crypto = require('crypto') as typeof import('crypto');
-  const signature = crypto
-    .createHmac('sha256', JWT_SECRET)
+  const signature = createHmac('sha256', JWT_SECRET)
     .update(data)
     .digest('base64url');
 
@@ -48,9 +47,7 @@ export function verifyJwt(token: string): JwtPayload | null {
     if (!header || !body || !signature) return null;
 
     // Verify signature
-    const crypto = require('crypto') as typeof import('crypto');
-    const expected = crypto
-      .createHmac('sha256', JWT_SECRET)
+    const expected = createHmac('sha256', JWT_SECRET)
       .update(`${header}.${body}`)
       .digest('base64url');
 

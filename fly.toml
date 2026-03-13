@@ -3,7 +3,6 @@ primary_region = "sjc"
 
 [build]
   dockerfile = "apps/cloud/Dockerfile"
-  # Build context is the repo root (Dockerfile uses paths like packages/core/...)
 
 [env]
   PORT = "3000"

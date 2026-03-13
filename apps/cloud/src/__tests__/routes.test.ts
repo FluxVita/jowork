@@ -51,6 +51,38 @@ describe('Auth routes (no auth required)', () => {
     // Should return some error for missing refresh token
     expect(res.status).toBeLessThan(500);
   });
+
+  it('POST /api/auth/local creates a local token', async () => {
+    const res = await request('/api/auth/local', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: 'localtester', display_name: 'Local Tester' }),
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.token).toBeTruthy();
+    expect(body.user.name).toBe('Local Tester');
+  });
+
+  it('POST /api/auth/login accepts compat login payload', async () => {
+    const res = await request('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ feishu_open_id: 'ou_xxx', name: 'Compat User' }),
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.token).toBeTruthy();
+    expect(body.user.name).toBe('Compat User');
+  });
+
+  it('GET /api/system/setup-status returns compat setup response', async () => {
+    const res = await request('/api/system/setup-status');
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.done).toBe(true);
+    expect(body.gateway_url).toBeTruthy();
+  });
 });
 
 describe('Protected routes without auth', () => {
@@ -156,6 +188,16 @@ describe('Protected routes with valid auth', () => {
     const body = await res.json();
     expect(body.status).toBe('ok');
     expect(body.phase).toBe(7);
+  });
+
+  it('GET /api/auth/me returns current user from token', async () => {
+    const res = await request('/api/auth/me', {
+      headers: authHeaders(),
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.user.email).toBe('test@example.com');
+    expect(body.user.id).toBe('test_user_1');
   });
 });
 
@@ -441,6 +483,168 @@ describe('Scheduler task endpoints', () => {
       return;
     }
     expect(res.status).toBe(404);
+  });
+});
+
+// ─── V1 Compat Agent Routes (real user flow) ─────────────────
+// Simulates the exact flow from shell.html/chat.html:
+// 1. POST /api/auth/local → get token
+// 2. Use token for /api/agent/* calls
+
+describe('V1 compat: full user flow', () => {
+  let userToken: string;
+
+  it('Step 1: POST /api/auth/local → get token (no auth)', async () => {
+    const res = await request('/api/auth/local', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: 'v1tester', display_name: 'V1 Tester' }),
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.token).toBeTruthy();
+    expect(body.user.name).toBe('V1 Tester');
+    userToken = body.token;
+  });
+
+  it('Step 2: GET /api/system/setup-status (no auth)', async () => {
+    const res = await request('/api/system/setup-status');
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.done).toBe(true);
+    expect(body.mode).toBe('solo');
+  });
+
+  it('Step 3: GET /api/agent/engines with token', async () => {
+    const res = await request('/api/agent/engines', {
+      headers: { Authorization: `Bearer ${userToken}` },
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.default).toBe('jowork-cloud');
+    expect(body.engines).toHaveLength(1);
+    expect(body.engines[0].id).toBe('jowork-cloud');
+    expect(body.engines[0].installed).toBe(true);
+  });
+
+  it('Step 4: GET /api/agent/sessions returns empty list (requires DB)', async () => {
+    const hasDb = !!process.env.DATABASE_URL;
+    const res = await request('/api/agent/sessions', {
+      headers: { Authorization: `Bearer ${userToken}` },
+    });
+    if (!hasDb) { expect(res.status).toBe(500); return; }
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.sessions).toBeDefined();
+    expect(Array.isArray(body.sessions)).toBe(true);
+  });
+
+  it('Step 5: GET /api/agent/preferences returns empty prefs', async () => {
+    const res = await request('/api/agent/preferences', {
+      headers: { Authorization: `Bearer ${userToken}` },
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(typeof body).toBe('object');
+  });
+
+  it('Step 6: POST /api/agent/preferences stores prefs', async () => {
+    const res = await request('/api/agent/preferences', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${userToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ theme: 'dark', language: 'zh' }),
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.ok).toBe(true);
+  });
+
+  it('Step 7: POST /api/agent/engine (no-op compat)', async () => {
+    const res = await request('/api/agent/engine', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${userToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ engine: 'jowork-cloud' }),
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.ok).toBe(true);
+  });
+
+  it('Step 8: GET /api/agent/tasks returns empty', async () => {
+    const res = await request('/api/agent/tasks', {
+      headers: { Authorization: `Bearer ${userToken}` },
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.tasks).toEqual([]);
+  });
+
+  it('Step 9: POST /api/agent/stop returns ok', async () => {
+    const res = await request('/api/agent/stop', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${userToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({}),
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.ok).toBe(true);
+  });
+
+  it('Step 10: GET /api/agent/sessions/search with empty query', async () => {
+    const res = await request('/api/agent/sessions/search?q=', {
+      headers: { Authorization: `Bearer ${userToken}` },
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.sessions).toEqual([]);
+  });
+});
+
+describe('V1 compat: auth required', () => {
+  it('GET /api/agent/engines returns 401 without token', async () => {
+    const res = await request('/api/agent/engines');
+    expect(res.status).toBe(401);
+  });
+
+  it('POST /api/agent/chat returns 401 without token', async () => {
+    const res = await request('/api/agent/chat', { method: 'POST' });
+    expect(res.status).toBe(401);
+  });
+
+  it('GET /api/agent/sessions returns 401 without token', async () => {
+    const res = await request('/api/agent/sessions');
+    expect(res.status).toBe(401);
+  });
+});
+
+describe('V1 compat: agent chat validation', () => {
+  it('POST /api/agent/chat returns 400 for empty message', async () => {
+    const res = await request('/api/agent/chat', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ message: '' }),
+    });
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toContain('Message is required');
+  });
+
+  it('POST /api/agent/chat returns 400 for whitespace message', async () => {
+    const res = await request('/api/agent/chat', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ message: '   ' }),
+    });
+    expect(res.status).toBe(400);
   });
 });
 

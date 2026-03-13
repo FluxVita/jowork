@@ -20,4 +20,7 @@ ENV NODE_ENV=production
 ENV PORT=3000
 EXPOSE 3000
 
-CMD ["pnpm", "--filter", "@jowork/cloud", "exec", "tsx", "src/server.ts"]
+COPY apps/cloud/drizzle.config.ts apps/cloud/
+COPY apps/cloud/public apps/cloud/public
+
+CMD ["sh", "-c", "cd apps/cloud && npx drizzle-kit push --force && npx tsx src/server.ts"]

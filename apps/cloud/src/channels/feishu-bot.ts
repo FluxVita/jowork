@@ -1,6 +1,7 @@
 import type { Context } from 'hono';
 import { routeTask, type RouteDecision } from './router';
 import { connections } from './connections';
+import { taskQueue } from './task-queue';
 import { CloudExecutor } from '../scheduler/cloud-executor';
 
 interface FeishuEvent {
@@ -107,9 +108,23 @@ export async function handleFeishuWebhook(c: Context): Promise<Response> {
       }
       break;
     }
-    case 'queue':
-      await replyToFeishu(senderId, message.chat_id, 'Your computer is offline. Task queued — will execute when you come back online.');
+    case 'queue': {
+      // Enqueue task for later execution when desktop comes back online
+      if (userId) {
+        taskQueue.enqueue(userId, {
+          userId,
+          type: 'feishu_message',
+          payload: { text, chatId: message.chat_id, senderId },
+          source: 'feishu',
+        });
+        const count = taskQueue.count(userId);
+        await replyToFeishu(senderId, message.chat_id,
+          `Your computer is offline. Task queued (${count} pending) — will execute when you come back online.`);
+      } else {
+        await replyToFeishu(senderId, message.chat_id, 'User not linked. Please link your Feishu account in JoWork settings.');
+      }
       break;
+    }
   }
 
   return c.json({ ok: true });
