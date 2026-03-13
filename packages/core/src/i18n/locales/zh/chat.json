@@ -39,5 +39,8 @@
   "engineJoworkCloud": "JoWork 云端",
   "launcherPlaceholder": "向 JoWork 提问...",
   "recent": "最近",
-  "launcherHint": "按 Enter 提问，Esc 关闭"
+  "launcherHint": "按 Enter 提问，Esc 关闭",
+  "engineCrashed": "AI 引擎崩溃，正在重启... (第 {{retries}} 次)",
+  "engineCrashFatal": "AI 引擎在 {{max}} 次重启后仍然失败，请在设置中切换引擎。",
+  "engineRestartReady": "AI 引擎已重新启动。"
 }

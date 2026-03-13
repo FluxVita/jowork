@@ -3,6 +3,7 @@ import { Outlet, useNavigate } from 'react-router';
 import { Sidebar } from '../components/Sidebar';
 import { ContextPanel } from '../components/ContextPanel';
 import { GlobalSearch } from '../components/GlobalSearch';
+import { ToastContainer } from '../components/Toast';
 import { useAppStore } from '../stores/app';
 import { useConversationStore } from '../stores/conversation';
 
@@ -77,6 +78,9 @@ export function MainLayout() {
 
       {/* Global search command palette */}
       <GlobalSearch open={searchOpen} onClose={closeSearch} />
+
+      {/* Toast notifications */}
+      <ToastContainer />
     </div>
   );
 }
