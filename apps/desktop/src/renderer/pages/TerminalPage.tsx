@@ -1,48 +1,59 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useAppStore } from '../stores/app';
 
 interface TerminalTab {
   id: string;
   title: string;
 }
 
+let tabCounter = 0;
+
 export function TerminalPage() {
   const { t } = useTranslation('settings');
   const termRef = useRef<HTMLDivElement>(null);
   const [tabs, setTabs] = useState<TerminalTab[]>([]);
   const [activeTab, setActiveTab] = useState<string | null>(null);
-  const xtermRef = useRef<unknown>(null);
   const cleanupRef = useRef<(() => void) | null>(null);
+  const theme = useAppStore((s) => s.theme);
 
   const createTab = useCallback(async () => {
     const id = await window.jowork.pty.create();
-    const tab: TerminalTab = { id, title: t('terminalTab', { n: tabs.length + 1 }) };
+    tabCounter++;
+    const tab: TerminalTab = { id, title: t('terminalTab', { n: tabCounter }) };
     setTabs((prev) => [...prev, tab]);
     setActiveTab(id);
     return id;
-  }, [tabs.length]);
+  }, [t]);
 
   const closeTab = useCallback(async (id: string) => {
     await window.jowork.pty.destroy(id);
-    setTabs((prev) => prev.filter((t) => t.id !== id));
-    setActiveTab((prev) => (prev === id ? tabs[0]?.id ?? null : prev));
-  }, [tabs]);
+    setTabs((prev) => {
+      const remaining = prev.filter((tab) => tab.id !== id);
+      // Use setter for activeTab to avoid stale closure
+      setActiveTab((current) => (current === id ? (remaining[0]?.id ?? null) : current));
+      return remaining;
+    });
+  }, []);
 
   useEffect(() => {
     if (!activeTab || !termRef.current) return;
 
-    let terminal: { write: (data: string) => void; onData: (cb: (data: string) => void) => void; open: (el: HTMLElement) => void; dispose: () => void } | null = null;
+    let terminal: { write: (data: string) => void; onData: (cb: (data: string) => void) => void; open: (el: HTMLElement) => void; dispose: () => void; loadAddon: (addon: unknown) => void } | null = null;
+    let fitAddon: { fit: () => void; proposeDimensions: () => { cols: number; rows: number } | undefined } | null = null;
 
     const init = async () => {
-      // Dynamically import xterm (renderer-only)
       const { Terminal } = await import('@xterm/xterm');
       const { FitAddon } = await import('@xterm/addon-fit');
       await import('@xterm/xterm/css/xterm.css');
 
+      // Theme-aware colors
+      const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+
       terminal = new Terminal({
         theme: {
-          background: '#1a1a1e',
-          foreground: '#e4e4e7',
+          background: isDark ? '#1a1a1e' : '#fafafa',
+          foreground: isDark ? '#e4e4e7' : '#27272a',
           cursor: '#4f46e5',
         },
         fontSize: 13,
@@ -50,31 +61,41 @@ export function TerminalPage() {
         cursorBlink: true,
       });
 
-      const fitAddon = new FitAddon();
+      fitAddon = new FitAddon();
       terminal.loadAddon(fitAddon);
 
       if (termRef.current) {
         terminal.open(termRef.current);
         fitAddon.fit();
 
-        // Resize IPC
         const { cols, rows } = fitAddon.proposeDimensions() ?? { cols: 80, rows: 24 };
         await window.jowork.pty.resize(activeTab, cols, rows);
       }
 
-      // Keyboard input → PTY
       terminal.onData((data: string) => {
         window.jowork.pty.write(activeTab, data);
       });
 
-      // PTY output → terminal
       const unsub = window.jowork.on('pty:data', (ptId: unknown, data: unknown) => {
         if (ptId === activeTab && terminal) {
           terminal.write(data as string);
         }
       });
 
+      // ResizeObserver to refit terminal when container changes size
+      const resizeObserver = new ResizeObserver(() => {
+        if (fitAddon && terminal) {
+          fitAddon.fit();
+          const dims = fitAddon.proposeDimensions();
+          if (dims) {
+            window.jowork.pty.resize(activeTab, dims.cols, dims.rows).catch(() => {});
+          }
+        }
+      });
+      if (termRef.current) resizeObserver.observe(termRef.current);
+
       cleanupRef.current = () => {
+        resizeObserver.disconnect();
         unsub();
         terminal?.dispose();
       };
@@ -85,7 +106,7 @@ export function TerminalPage() {
     return () => {
       cleanupRef.current?.();
     };
-  }, [activeTab]);
+  }, [activeTab, theme]);
 
   // Create first tab on mount
   useEffect(() => {
@@ -99,30 +120,36 @@ export function TerminalPage() {
       {/* Tab bar */}
       <div className="flex items-center gap-1 px-2 py-1 bg-surface-1 border-b border-border">
         {tabs.map((tab) => (
-          <button
+          <div
             key={tab.id}
+            role="tab"
+            tabIndex={0}
+            aria-selected={activeTab === tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-1 px-3 py-1 text-xs rounded-t transition-colors ${
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setActiveTab(tab.id); }}
+            className={`flex items-center gap-1 px-3 py-1 text-xs rounded-t transition-colors cursor-pointer ${
               activeTab === tab.id
                 ? 'bg-surface-2 text-text-primary'
                 : 'text-text-secondary hover:text-text-primary'
             }`}
           >
             <span>{tab.title}</span>
-            <span
+            <button
               onClick={(e) => {
                 e.stopPropagation();
                 closeTab(tab.id);
               }}
               className="ml-1 hover:text-red-400"
+              aria-label={t('common:close')}
             >
               x
-            </span>
-          </button>
+            </button>
+          </div>
         ))}
         <button
           onClick={createTab}
           className="px-2 py-1 text-xs text-text-secondary hover:text-accent transition-colors"
+          aria-label={t('common:create')}
         >
           +
         </button>

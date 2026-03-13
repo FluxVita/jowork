@@ -696,6 +696,10 @@ export function setupIPC(): void {
   // --- Shell ---
 
   ipcMain.handle('shell:open-external', async (_e, url: string) => {
+    // Security: only allow http/https URLs
+    if (typeof url !== 'string' || !(url.startsWith('https://') || url.startsWith('http://'))) {
+      throw new Error('Only http/https URLs are allowed');
+    }
     await shell.openExternal(url);
   });
 

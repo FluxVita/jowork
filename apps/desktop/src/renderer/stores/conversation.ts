@@ -125,14 +125,20 @@ export const useConversationStore = create<ConversationStore>((set, get) => ({
   },
 
   deleteSession: async (id) => {
+    const { activeSessionId, isStreaming } = get();
+    // Abort streaming if deleting the active session
+    if (activeSessionId === id && isStreaming) {
+      await window.jowork.chat.abort().catch(() => {});
+    }
     await window.jowork.session.delete(id);
-    const { activeSessionId } = get();
     set((s) => {
       const sessions = s.sessions.filter((sess) => sess.id !== id);
       return {
         sessions,
         activeSessionId: activeSessionId === id ? (sessions[0]?.id ?? null) : activeSessionId,
         messages: activeSessionId === id ? [] : s.messages,
+        isStreaming: activeSessionId === id ? false : s.isStreaming,
+        streamingText: activeSessionId === id ? '' : s.streamingText,
       };
     });
   },
