@@ -24,6 +24,17 @@ import { getApiBaseUrl, getHealthBaseUrl } from './config/urls';
 import type { SyncRecord } from '@jowork/core';
 import type { EngineId } from './engine/types';
 
+/** Safely send IPC to renderer — no-op if sender is destroyed (e.g. window closed during streaming). */
+function safeSend(sender: Electron.WebContents, channel: string, ...args: unknown[]): void {
+  try {
+    if (!sender.isDestroyed()) {
+      sender.send(channel, ...args);
+    }
+  } catch {
+    // Sender gone — swallow silently
+  }
+}
+
 let engineManager: EngineManager;
 let connectorHub: ConnectorHub;
 let memoryStore: MemoryStore;
@@ -130,7 +141,7 @@ export function setupIPC(): void {
     if (!sessionId) {
       const session = hm.createSession(activeEngine, opts.message.slice(0, 50));
       sessionId = session.id;
-      event.sender.send('session:created', session);
+      safeSend(event.sender, 'session:created', session);
     }
 
     // Save user message
@@ -171,14 +182,14 @@ export function setupIPC(): void {
           const toolName = toolEvent.toolName ?? '';
           const action = confirmRuleEngine.evaluate(toolName);
           const risk = confirmRuleEngine.getRisk(toolName);
-          event.sender.send('chat:event', {
+          safeSend(event.sender, 'chat:event', {
             sessionId,
             ...engineEvent,
             confirmAction: action,
             confirmRisk: risk,
           });
         } else {
-          event.sender.send('chat:event', { sessionId, ...engineEvent });
+          safeSend(event.sender, 'chat:event', { sessionId, ...engineEvent });
         }
 
         // Accumulate assistant text for persistence
@@ -203,7 +214,7 @@ export function setupIPC(): void {
       const allMessages = hm.getMessages(sessionId);
       autoExtractor.extractFromConversation(allMessages);
     } catch (err) {
-      event.sender.send('chat:event', {
+      safeSend(event.sender, 'chat:event', {
         sessionId,
         type: 'error',
         message: String(err),
@@ -401,17 +412,17 @@ export function setupIPC(): void {
     try {
       if (skill.type === 'workflow' && skill.steps?.length) {
         for await (const ev of executor.executeWorkflow(skill, vars, sessionId)) {
-          event.sender.send('chat:event', { sessionId, ...ev as object });
+          safeSend(event.sender, 'chat:event', { sessionId, ...ev as object });
         }
       } else {
         for await (const ev of executor.executeSimple(skill, vars, sessionId)) {
-          event.sender.send('chat:event', { sessionId, ...ev as object });
+          safeSend(event.sender, 'chat:event', { sessionId, ...ev as object });
         }
       }
     } catch (err) {
-      event.sender.send('chat:event', { sessionId, type: 'error', message: String(err) });
+      safeSend(event.sender, 'chat:event', { sessionId, type: 'error', message: String(err) });
     }
-    event.sender.send('chat:event', { sessionId, type: 'done' });
+    safeSend(event.sender, 'chat:event', { sessionId, type: 'done' });
   });
 
   // --- Notification Rules ---
@@ -472,14 +483,15 @@ export function setupIPC(): void {
 
   ipcMain.handle('pty:create', (event, opts?: { cwd?: string; shell?: string }) => {
     const id = ptyManager.create(opts);
+    const sender = event.sender;
 
-    // Forward PTY output to renderer
+    // Forward PTY output to renderer (safeSend guards against destroyed sender)
     ptyManager.onData(id, (data) => {
-      event.sender.send('pty:data', id, data);
+      safeSend(sender, 'pty:data', id, data);
     });
 
     ptyManager.onExit(id, (exitCode) => {
-      event.sender.send('pty:exit', id, exitCode);
+      safeSend(sender, 'pty:exit', id, exitCode);
     });
 
     return id;
