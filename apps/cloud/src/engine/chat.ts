@@ -69,9 +69,17 @@ export async function handleChat(c: Context): Promise<Response> {
     .where(eq(cloudMessages.sessionId, sessionId))
     .orderBy(cloudMessages.createdAt);
 
-  const chatMessages = history
+  const MAX_CONTEXT_CHARS = 24000;
+  let chatMessages = history
     .filter((m) => m.role === 'user' || m.role === 'assistant')
     .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }));
+
+  // Trim oldest messages to fit within token budget
+  let totalChars = chatMessages.reduce((sum, m) => sum + m.content.length, 0);
+  while (totalChars > MAX_CONTEXT_CHARS && chatMessages.length > 1) {
+    const removed = chatMessages.shift()!;
+    totalChars -= removed.content.length;
+  }
 
   // Stream response
   return stream(c, async (writable) => {

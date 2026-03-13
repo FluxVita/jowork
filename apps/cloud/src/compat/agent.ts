@@ -20,6 +20,67 @@ Key traits:
 - Support both English and Chinese — respond in whatever language the user writes in
 - If you don't know something, say so honestly rather than guessing`;
 
+// Rough char→token ratio (~4 chars per token). Keep context under model limit.
+const MAX_CONTEXT_CHARS = 24000; // ~6k tokens, safe for 8k context models
+
+/** Trim oldest messages to fit within token budget, always keeping the last user message. */
+function trimHistory(messages: { role: string; content: string }[]): { role: string; content: string }[] {
+  let totalChars = messages.reduce((sum, m) => sum + m.content.length, 0);
+  const trimmed = [...messages];
+
+  // Drop oldest messages (but never the last one) until within budget
+  while (totalChars > MAX_CONTEXT_CHARS && trimmed.length > 1) {
+    const removed = trimmed.shift()!;
+    totalChars -= removed.content.length;
+  }
+  return trimmed;
+}
+
+/** Generate a short title for a session based on the first user message. */
+async function generateSessionTitle(
+  provider: NonNullable<ReturnType<typeof resolveProvider>>,
+  userMessage: string,
+): Promise<string> {
+  const prompt = `Generate a very short title (max 6 words) for a conversation that starts with this message. Reply with ONLY the title, no quotes, no punctuation at the end. If the message is in Chinese, reply in Chinese.\n\nMessage: ${userMessage.slice(0, 200)}`;
+
+  try {
+    if (provider.format === 'openai') {
+      const res = await fetch(`${provider.baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${provider.apiKey}` },
+        body: JSON.stringify({
+          model: provider.model,
+          max_tokens: 30,
+          messages: [{ role: 'user', content: prompt }],
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json() as { choices?: { message?: { content?: string } }[] };
+        const title = data.choices?.[0]?.message?.content?.trim();
+        if (title && title.length > 0 && title.length <= 80) return title;
+      }
+    } else {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': provider.apiKey, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({
+          model: provider.model,
+          max_tokens: 30,
+          messages: [{ role: 'user', content: prompt }],
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json() as { content?: { text?: string }[] };
+        const title = data.content?.[0]?.text?.trim();
+        if (title && title.length > 0 && title.length <= 80) return title;
+      }
+    }
+  } catch {
+    // Fallback to truncation
+  }
+  return userMessage.slice(0, 50);
+}
+
 // --- Engines ---
 
 export function getEngines(c: Context): Response {
@@ -209,9 +270,18 @@ export async function agentChat(c: Context): Promise<Response> {
     .where(eq(cloudMessages.sessionId, sessionId))
     .orderBy(cloudMessages.createdAt);
 
-  const chatMessages = history
+  const allMessages = history
     .filter((m) => m.role === 'user' || m.role === 'assistant')
     .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }));
+
+  const chatMessages = trimHistory(allMessages);
+
+  // Generate AI title for new sessions (fire-and-forget, don't block streaming)
+  if (isNewSession) {
+    generateSessionTitle(provider, body.message).then((title) => {
+      db.update(cloudSessions).set({ title }).where(eq(cloudSessions.id, sessionId!)).catch(() => {});
+    });
+  }
 
   // Stream SSE with v1 event names
   return stream(c, async (writable) => {
