@@ -183,13 +183,22 @@ export class Scheduler {
     }
   }
 
+  /** Track running tasks to prevent concurrent execution of same job. */
+  private running = new Set<string>();
+
   private startJob(task: ScheduledTaskRecord): void {
     if (this.jobs.has(task.id)) return;
 
     const job = new Cron(task.cronExpression, {
       timezone: task.timezone,
     }, async () => {
-      await this.execute(task);
+      if (this.running.has(task.id)) return; // skip if previous run still active
+      this.running.add(task.id);
+      try {
+        await this.execute(task);
+      } finally {
+        this.running.delete(task.id);
+      }
     });
 
     this.jobs.set(task.id, job);
@@ -342,7 +351,7 @@ export class Scheduler {
       cronExpression: row.cronExpression,
       timezone: row.timezone ?? 'Asia/Shanghai',
       type: row.type as TaskType,
-      config: row.config ? JSON.parse(row.config) : {},
+      config: row.config ? (() => { try { return JSON.parse(row.config); } catch { return {}; } })() : {},
       enabled: row.enabled === 1,
       lastRunAt: row.lastRunAt,
       nextRunAt: row.nextRunAt,

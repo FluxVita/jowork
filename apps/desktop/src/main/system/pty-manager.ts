@@ -51,13 +51,18 @@ export class PtyManager {
     delete env.CLAUDECODE;
     delete env.TMUX;
 
-    const ptyProcess = pty.spawn(shell, [], {
-      name: 'xterm-256color',
-      cols: 80,
-      rows: 24,
-      cwd: opts?.cwd || process.env.HOME || '/',
-      env,
-    });
+    let ptyProcess: pty.IPty;
+    try {
+      ptyProcess = pty.spawn(shell, [], {
+        name: 'xterm-256color',
+        cols: 80,
+        rows: 24,
+        cwd: opts?.cwd || process.env.HOME || '/',
+        env,
+      });
+    } catch (err) {
+      throw new Error(`Failed to spawn shell "${shell}": ${err instanceof Error ? err.message : String(err)}`);
+    }
 
     this.sessions.set(id, { id, process: ptyProcess });
     return id;

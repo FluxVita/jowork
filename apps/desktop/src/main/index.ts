@@ -6,6 +6,14 @@ import { setupIPC, getLauncherWindow, getNotificationManager, getFileWatcher } f
 import { setupTray } from './tray';
 import { setupAutoUpdater, teardownAutoUpdater } from './updater';
 
+// Global error handlers — prevent silent crashes
+process.on('uncaughtException', (err) => {
+  console.error('[Main] Uncaught exception:', err);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('[Main] Unhandled rejection:', reason);
+});
+
 let mainWindow: BrowserWindow | null = null;
 
 function createMainWindow(): void {

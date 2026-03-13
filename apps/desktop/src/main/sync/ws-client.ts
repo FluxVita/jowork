@@ -55,8 +55,9 @@ export class RemoteChannel {
         const result = await this.executeLocally(task);
         this.send({ taskId: task.id, result });
       } catch (err) {
-        const parsed = JSON.parse(data.toString()) as { id?: string };
-        this.send({ taskId: parsed.id ?? 'unknown', result: null, error: String(err) });
+        let taskId = 'unknown';
+        try { taskId = (JSON.parse(data.toString()) as { id?: string }).id ?? 'unknown'; } catch { /* malformed */ }
+        this.send({ taskId, result: null, error: String(err) });
       }
     });
 
@@ -65,8 +66,8 @@ export class RemoteChannel {
       this.scheduleReconnect(cloudUrl, token);
     });
 
-    this.ws.on('error', () => {
-      // Connection errors are handled by the 'close' event + reconnect logic
+    this.ws.on('error', (err) => {
+      console.warn('[RemoteChannel] WebSocket error:', err.message);
     });
   }
 

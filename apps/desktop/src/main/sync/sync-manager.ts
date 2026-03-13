@@ -157,7 +157,7 @@ export class SyncManager {
     }
   }
 
-  /** Push pending records to server. */
+  /** Push pending records to server. Re-queues on network failure. */
   private async push(): Promise<number> {
     const changes = this.queue.drain(100);
     if (changes.length === 0) return 0;
@@ -165,17 +165,25 @@ export class SyncManager {
     const token = this.getToken();
     if (!token) return 0;
 
-    const res = await fetch(`${this.cloudUrl}/sync/push`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ changes, deviceId: this.deviceId }),
-    });
+    let res: Response;
+    try {
+      res = await fetch(`${this.cloudUrl}/sync/push`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ changes, deviceId: this.deviceId }),
+      });
+    } catch {
+      // Network error — re-queue drained records for retry
+      for (const c of changes) this.queue.enqueue(c);
+      throw new Error('fetch failed');
+    }
 
     if (!res.ok) {
-      // Keep in queue for retry
+      // Server error — re-queue for retry
+      for (const c of changes) this.queue.enqueue(c);
       return 0;
     }
 
@@ -204,14 +212,19 @@ export class SyncManager {
     const token = this.getToken();
     if (!token) return 0;
 
-    const res = await fetch(`${this.cloudUrl}/sync/pull`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ since: this.lastSyncVersion }),
-    });
+    let res: Response;
+    try {
+      res = await fetch(`${this.cloudUrl}/sync/pull`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ since: this.lastSyncVersion }),
+      });
+    } catch {
+      throw new Error('fetch failed');
+    }
 
     if (!res.ok) return 0;
 
