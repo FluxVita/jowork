@@ -37,5 +37,7 @@
   "somethingWentWrong": "出了点问题",
   "unexpectedError": "发生了意外错误。",
   "tryAgain": "重试",
-  "featureError": "{{name}} 出错"
+  "featureError": "{{name}} 出错",
+  "menuFile": "文件",
+  "menuView": "视图"
 }

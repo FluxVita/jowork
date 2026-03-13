@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { i18n } from '@jowork/core';
 import { useAppStore } from '../stores/app';
 
 const SHORTCUT_KEYS = [
@@ -16,6 +17,13 @@ const SHORTCUT_KEYS = [
 export function SettingsPage() {
   const { t } = useTranslation('settings');
   const { theme, setTheme } = useAppStore();
+  const currentLang = i18n.language;
+
+  const handleLanguageChange = (lang: string) => {
+    i18n.changeLanguage(lang);
+    window.jowork.settings.set('language', lang);
+    window.jowork.settings.notifyLanguageChanged(lang);
+  };
 
   return (
     <div className="flex-1 p-8 max-w-2xl">
@@ -36,6 +44,25 @@ export function SettingsPage() {
                   ${theme === opt ? 'bg-accent text-white' : 'bg-surface-2 text-text-secondary hover:text-text-primary'}`}
               >
                 {opt === 'light' ? t('themeLight') : opt === 'dark' ? t('themeDark') : t('themeSystem')}
+              </button>
+            ))}
+          </div>
+        </section>
+
+        {/* Language */}
+        <section>
+          <h2 className="text-sm font-medium text-text-secondary mb-3">
+            {t('language')}
+          </h2>
+          <div className="flex gap-2">
+            {([{ code: 'zh', label: '中文' }, { code: 'en', label: 'English' }] as const).map((lang) => (
+              <button
+                key={lang.code}
+                onClick={() => handleLanguageChange(lang.code)}
+                className={`px-3 py-1.5 rounded-md text-sm transition-colors
+                  ${currentLang === lang.code ? 'bg-accent text-white' : 'bg-surface-2 text-text-secondary hover:text-text-primary'}`}
+              >
+                {lang.label}
               </button>
             ))}
           </div>

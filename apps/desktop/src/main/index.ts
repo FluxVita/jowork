@@ -1,6 +1,7 @@
-import { app, BrowserWindow, shell, Menu } from 'electron';
+import { app, BrowserWindow, shell, Menu, ipcMain } from 'electron';
 import { join } from 'path';
 import { is } from '@electron-toolkit/utils';
+import { i18n } from '@jowork/core';
 import { setupIPC, getLauncherWindow, getNotificationManager } from './ipc';
 import { setupTray } from './tray';
 import { setupAutoUpdater } from './updater';
@@ -41,6 +42,7 @@ function createMainWindow(): void {
 }
 
 function buildAppMenu(): void {
+  const t = i18n.t.bind(i18n);
   const isMac = process.platform === 'darwin';
   const template: Electron.MenuItemConstructorOptions[] = [
     ...(isMac ? [{
@@ -48,7 +50,7 @@ function buildAppMenu(): void {
       submenu: [
         { role: 'about' as const },
         { type: 'separator' as const },
-        { label: 'Settings', accelerator: 'CmdOrCtrl+,', click: () => mainWindow?.webContents.send('nav:goto', '/settings') },
+        { label: t('title', { ns: 'settings' }), accelerator: 'CmdOrCtrl+,', click: () => mainWindow?.webContents.send('nav:goto', '/settings') },
         { type: 'separator' as const },
         { role: 'hide' as const },
         { role: 'hideOthers' as const },
@@ -58,19 +60,19 @@ function buildAppMenu(): void {
       ],
     }] : []),
     {
-      label: 'File',
+      label: t('menuFile'),
       submenu: [
-        { label: 'New Conversation', accelerator: 'CmdOrCtrl+N', click: () => mainWindow?.webContents.send('shortcut:new-session') },
-        { label: 'Export Conversation', accelerator: 'CmdOrCtrl+E', click: () => mainWindow?.webContents.send('shortcut:export') },
+        { label: t('newConversation', { ns: 'chat' }), accelerator: 'CmdOrCtrl+N', click: () => mainWindow?.webContents.send('shortcut:new-session') },
+        { label: t('exportConversation', { ns: 'chat' }), accelerator: 'CmdOrCtrl+E', click: () => mainWindow?.webContents.send('shortcut:export') },
         { type: 'separator' },
         isMac ? { role: 'close' } : { role: 'quit' },
       ],
     },
     { role: 'editMenu' },
     {
-      label: 'View',
+      label: t('menuView'),
       submenu: [
-        { label: 'Terminal', accelerator: 'CmdOrCtrl+Shift+T', click: () => mainWindow?.webContents.send('nav:goto', '/terminal') },
+        { label: t('terminal', { ns: 'sidebar' }), accelerator: 'CmdOrCtrl+Shift+T', click: () => mainWindow?.webContents.send('nav:goto', '/terminal') },
         { type: 'separator' },
         { role: 'reload' },
         { role: 'toggleDevTools' },
@@ -92,6 +94,14 @@ app.whenReady().then(() => {
   createMainWindow();
   buildAppMenu();
   setupTray(mainWindow);
+
+  // Rebuild menu when renderer changes language
+  ipcMain.on('language-changed', (_event, lang: string) => {
+    if (lang && (lang === 'zh' || lang === 'en')) {
+      i18n.changeLanguage(lang);
+      buildAppMenu();
+    }
+  });
 
   // Register launcher global shortcut and set main window reference
   const launcher = getLauncherWindow();

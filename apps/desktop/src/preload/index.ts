@@ -118,6 +118,7 @@ const api = {
   settings: {
     get: (key: string) => ipcRenderer.invoke('settings:get', key) as Promise<string | null>,
     set: (key: string, value: string) => ipcRenderer.invoke('settings:set', key, value) as Promise<void>,
+    notifyLanguageChanged: (lang: string) => ipcRenderer.send('language-changed', lang),
   },
 
   // ── Launcher ──

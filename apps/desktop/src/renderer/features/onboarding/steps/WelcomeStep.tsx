@@ -9,6 +9,7 @@ export function WelcomeStep() {
   const handleLanguageChange = (lang: string) => {
     setLanguage(lang);
     i18n.changeLanguage(lang);
+    window.jowork.settings.notifyLanguageChanged(lang);
   };
 
   return (
