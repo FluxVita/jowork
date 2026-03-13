@@ -196,7 +196,18 @@ export { app };
 // Start server (skip in test environment)
 if (process.env.NODE_ENV !== 'test' && !process.env.VITEST) {
   import('@hono/node-server').then(({ serve }) => {
-    serve({ fetch: app.fetch, port, hostname: '0.0.0.0' });
+    const server = serve({ fetch: app.fetch, port, hostname: '0.0.0.0' });
     console.log(`Cloud server running on 0.0.0.0:${port}`);
+
+    // Graceful shutdown: Fly.io sends SIGTERM before stopping a machine
+    const shutdown = async (signal: string) => {
+      console.log(`[${signal}] Shutting down gracefully...`);
+      server.close();
+      const { closeDb } = await import('./db/index.js');
+      await closeDb();
+      process.exit(0);
+    };
+    process.on('SIGTERM', () => shutdown('SIGTERM'));
+    process.on('SIGINT', () => shutdown('SIGINT'));
   });
 }
