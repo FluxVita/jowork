@@ -55,6 +55,12 @@ export async function createTeamContextDoc(c: Context): Promise<Response> {
   if (!body.title?.trim() || !body.content?.trim()) {
     return c.json({ error: 'title and content are required' }, 400);
   }
+  if (body.title.length > 500) {
+    return c.json({ error: 'title must be <= 500 characters' }, 400);
+  }
+  if (body.content.length > 50_000) {
+    return c.json({ error: 'content must be <= 50000 characters' }, 400);
+  }
 
   const db = getDb();
   const id = `tdoc_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;

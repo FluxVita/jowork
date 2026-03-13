@@ -20,6 +20,8 @@ interface QueuedTask {
   status: 'pending' | 'running' | 'completed' | 'failed';
 }
 
+const MAX_COMPLETED_TASKS = 100;
+
 export class TaskQueue {
   private queue: QueuedTask[] = [];
   private executor: CloudExecutor | null = null;
@@ -27,7 +29,7 @@ export class TaskQueue {
 
   enqueue(task: Omit<QueuedTask, 'status'>): void {
     this.queue.push({ ...task, status: 'pending' });
-    this.processNext();
+    this.processNext().catch((err) => console.error('[TaskQueue] processNext error:', err));
   }
 
   dequeue(): QueuedTask | undefined {
@@ -41,11 +43,29 @@ export class TaskQueue {
   complete(id: string): void {
     const task = this.queue.find((t) => t.id === id);
     if (task) task.status = 'completed';
+    this.evictFinished();
   }
 
   fail(id: string): void {
     const task = this.queue.find((t) => t.id === id);
     if (task) task.status = 'failed';
+    this.evictFinished();
+  }
+
+  /** Remove oldest completed/failed tasks when exceeding limit. */
+  private evictFinished(): void {
+    const finished = this.queue.filter((t) => t.status === 'completed' || t.status === 'failed');
+    if (finished.length <= MAX_COMPLETED_TASKS) return;
+    const toRemove = finished.length - MAX_COMPLETED_TASKS;
+    let removed = 0;
+    this.queue = this.queue.filter((t) => {
+      if (removed >= toRemove) return true;
+      if (t.status === 'completed' || t.status === 'failed') {
+        removed++;
+        return false;
+      }
+      return true;
+    });
   }
 
   getPending(): QueuedTask[] {
@@ -110,7 +130,7 @@ export class TaskQueue {
       this.processing = false;
       // Check if more pending
       if (this.queue.some((t) => t.status === 'pending')) {
-        this.processNext();
+        this.processNext().catch((err) => console.error('[TaskQueue] processNext error:', err));
       }
     }
   }

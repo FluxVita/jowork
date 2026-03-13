@@ -1,4 +1,5 @@
 import type { Context } from 'hono';
+import { createHmac, randomBytes } from 'crypto';
 import { eq, or } from 'drizzle-orm';
 import { signJwt } from './jwt';
 import { getDb } from '../db';
@@ -8,6 +9,7 @@ const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
 const REDIRECT_URI = process.env.AUTH_REDIRECT_URI || 'http://localhost:3000/api/auth/google/callback';
 const WEB_APP_URL = (process.env.APP_URL || process.env.JOWORK_APP_URL || 'https://jowork.work').replace(/\/+$/, '');
+const STATE_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
 
 type OAuthMode = 'desktop' | 'web';
 
@@ -19,17 +21,29 @@ function getOAuthMode(c: Context): OAuthMode {
   return c.req.query('mode') === 'desktop' ? 'desktop' : 'web';
 }
 
+/** Encode state with HMAC signature to prevent CSRF forgery. */
 function encodeState(mode: OAuthMode): string {
-  return Buffer.from(JSON.stringify({ mode }), 'utf-8').toString('base64url');
+  const nonce = randomBytes(8).toString('hex');
+  const payload = JSON.stringify({ mode, nonce });
+  const sig = createHmac('sha256', STATE_SECRET).update(payload).digest('hex').slice(0, 16);
+  return Buffer.from(`${sig}:${payload}`, 'utf-8').toString('base64url');
 }
 
-function decodeState(state: string | undefined): OAuthMode {
-  if (!state) return 'web';
+/** Decode and verify signed state. Returns mode or null if tampered. */
+function decodeState(state: string | undefined): OAuthMode | null {
+  if (!state) return null;
   try {
-    const parsed = JSON.parse(Buffer.from(state, 'base64url').toString('utf-8')) as { mode?: string };
+    const raw = Buffer.from(state, 'base64url').toString('utf-8');
+    const colonIdx = raw.indexOf(':');
+    if (colonIdx === -1) return null;
+    const sig = raw.slice(0, colonIdx);
+    const payload = raw.slice(colonIdx + 1);
+    const expected = createHmac('sha256', STATE_SECRET).update(payload).digest('hex').slice(0, 16);
+    if (sig !== expected) return null;
+    const parsed = JSON.parse(payload) as { mode?: string };
     return parsed.mode === 'desktop' ? 'desktop' : 'web';
   } catch {
-    return 'web';
+    return null;
   }
 }
 
@@ -90,6 +104,9 @@ export async function googleCallback(c: Context): Promise<Response> {
   }
 
   const mode = decodeState(c.req.query('state'));
+  if (mode === null) {
+    return c.json({ error: 'Invalid or missing state parameter' }, 400);
+  }
 
   try {
     // Exchange code for Google tokens
@@ -173,7 +190,8 @@ export async function googleCallback(c: Context): Promise<Response> {
 
     return c.redirect(callbackUrl);
   } catch (err) {
-    return c.json({ error: String(err) }, 500);
+    console.error('[OAuth] Callback error:', err);
+    return c.json({ error: 'Authentication failed' }, 500);
   }
 }
 

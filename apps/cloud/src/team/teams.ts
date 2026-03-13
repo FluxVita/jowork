@@ -1,6 +1,6 @@
 import type { Context } from 'hono';
 import { randomBytes } from 'crypto';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, inArray } from 'drizzle-orm';
 import { getDb } from '../db';
 import { teams, teamMembers } from '../db/schema';
 
@@ -25,9 +25,9 @@ export async function listTeams(c: Context): Promise<Response> {
     return c.json([]);
   }
 
-  const teamsById = new Map(
-    (await db.select().from(teams)).map((team) => [team.id, team]),
-  );
+  const teamIds = memberships.map((m) => m.teamId);
+  const userTeams = await db.select().from(teams).where(inArray(teams.id, teamIds));
+  const teamsById = new Map(userTeams.map((team) => [team.id, team]));
 
   return c.json(
     memberships
@@ -53,6 +53,9 @@ export async function createTeam(c: Context): Promise<Response> {
 
   if (!name?.trim()) {
     return c.json({ error: 'Team name required' }, 400);
+  }
+  if (name.length > 100) {
+    return c.json({ error: 'Team name must be <= 100 characters' }, 400);
   }
 
   const db = getDb();
