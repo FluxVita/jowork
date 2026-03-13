@@ -70,8 +70,8 @@ export class SyncManager {
       VALUES (@id, @title, @content, @tags, @scope, @pinned, @source, @last_used_at, @created_at, @updated_at)
     `);
     this.upsertStmts.context_doc = this.sqlite.prepare(`
-      INSERT OR REPLACE INTO context_docs (id, title, content, scope, token_count, created_at, updated_at)
-      VALUES (@id, @title, @content, @scope, @token_count, @created_at, @updated_at)
+      INSERT OR REPLACE INTO context_docs (id, title, content, scope, category, priority, created_at, updated_at)
+      VALUES (@id, @title, @content, @scope, @category, @priority, @created_at, @updated_at)
     `);
     this.upsertStmts.setting = this.sqlite.prepare(`
       INSERT OR REPLACE INTO settings (key, value, updated_at)
