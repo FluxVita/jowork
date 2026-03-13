@@ -5,11 +5,12 @@ import { useConversationStore } from '../stores/conversation';
 import { NAV_ITEMS } from '../constants/navigation';
 
 interface SearchResult {
-  type: 'page' | 'session' | 'action';
+  type: 'page' | 'session' | 'message' | 'action';
   id: string;
   title: string;
   subtitle?: string;
   path?: string;
+  sessionId?: string;
 }
 
 export function GlobalSearch({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -22,7 +23,34 @@ export function GlobalSearch({ open, onClose }: { open: boolean; onClose: () => 
 
   const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
+  const [messageResults, setMessageResults] = useState<SearchResult[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+
+  // Debounced message search
+  useEffect(() => {
+    const q = query.trim();
+    if (q.length < 2) {
+      setMessageResults([]);
+      return;
+    }
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const hits = await window.jowork.session.searchMessages(q, { limit: 8 });
+        setMessageResults(hits.map((h) => ({
+          type: 'message' as const,
+          id: `msg:${h.messageId}`,
+          title: h.snippet,
+          subtitle: h.sessionTitle,
+          sessionId: h.sessionId,
+        })));
+      } catch {
+        setMessageResults([]);
+      }
+    }, 200);
+    return () => clearTimeout(debounceRef.current);
+  }, [query]);
 
   // Build results based on query
   const results: SearchResult[] = [];
@@ -41,6 +69,11 @@ export function GlobalSearch({ open, onClose }: { open: boolean; onClose: () => 
     sessions.filter((s) => s.title.toLowerCase().includes(q)).slice(0, 8).forEach((s) => {
       results.push({ type: 'session', id: `session:${s.id}`, title: s.title, subtitle: tChat('title') });
     });
+  }
+
+  // Messages (from async FTS search)
+  if (q.length >= 2) {
+    results.push(...messageResults);
   }
 
   // Focus input on open
@@ -65,6 +98,9 @@ export function GlobalSearch({ open, onClose }: { open: boolean; onClose: () => 
       const sessionId = result.id.replace('session:', '');
       navigate('/');
       selectSession(sessionId);
+    } else if (result.type === 'message' && result.sessionId) {
+      navigate('/');
+      selectSession(result.sessionId);
     }
   }, [navigate, selectSession, onClose]);
 
@@ -124,7 +160,9 @@ export function GlobalSearch({ open, onClose }: { open: boolean; onClose: () => 
               className={`flex items-center justify-between px-4 py-2 cursor-pointer text-sm transition-colors
                 ${i === activeIndex ? 'bg-accent/10 text-accent' : 'text-text-primary hover:bg-surface-2'}`}
             >
-              <span className="truncate">{r.title}</span>
+              <div className="flex-1 min-w-0">
+                <span className={`truncate block ${r.type === 'message' ? 'text-xs' : ''}`}>{r.title}</span>
+              </div>
               {r.subtitle && <span className="text-xs text-text-secondary ml-2 flex-shrink-0">{r.subtitle}</span>}
               {r.type === 'page' && <span className="text-xs text-text-secondary ml-2 flex-shrink-0">↵</span>}
             </li>

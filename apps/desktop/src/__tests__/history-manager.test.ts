@@ -215,6 +215,58 @@ describe('HistoryManager', () => {
     });
   });
 
+  describe('Message search (FTS5)', () => {
+    it('finds messages by content via FTS5', () => {
+      const session = hm.createSession('claude-code', 'FTS test');
+      hm.appendMessage(session.id, { sessionId: session.id, role: 'user', content: 'How do I configure webpack loaders?' });
+      hm.appendMessage(session.id, { sessionId: session.id, role: 'assistant', content: 'You can use module.rules in your webpack config.' });
+      hm.appendMessage(session.id, { sessionId: session.id, role: 'user', content: 'What about TypeScript support?' });
+
+      const results = hm.searchMessages('webpack');
+      expect(results.length).toBeGreaterThanOrEqual(2);
+      expect(results.every((r) => r.sessionTitle === 'FTS test')).toBe(true);
+    });
+
+    it('returns empty for no match', () => {
+      const session = hm.createSession('claude-code');
+      hm.appendMessage(session.id, { sessionId: session.id, role: 'user', content: 'Hello world' });
+
+      const results = hm.searchMessages('nonexistentxyz');
+      expect(results).toHaveLength(0);
+    });
+
+    it('does not index tool_call/tool_result roles', () => {
+      const session = hm.createSession('claude-code');
+      hm.appendMessage(session.id, { sessionId: session.id, role: 'tool_call', content: 'secretToolPayload' });
+      hm.appendMessage(session.id, { sessionId: session.id, role: 'user', content: 'normal message' });
+
+      const results = hm.searchMessages('secretToolPayload');
+      expect(results).toHaveLength(0);
+    });
+
+    it('removes FTS entries when session is deleted', () => {
+      const session = hm.createSession('claude-code');
+      hm.appendMessage(session.id, { sessionId: session.id, role: 'user', content: 'uniqueSearchTerm42' });
+
+      expect(hm.searchMessages('uniqueSearchTerm42').length).toBe(1);
+      hm.deleteSession(session.id);
+      expect(hm.searchMessages('uniqueSearchTerm42')).toHaveLength(0);
+    });
+
+    it('searches across multiple sessions', () => {
+      const s1 = hm.createSession('claude-code', 'Session A');
+      const s2 = hm.createSession('claude-code', 'Session B');
+      hm.appendMessage(s1.id, { sessionId: s1.id, role: 'user', content: 'React component lifecycle' });
+      hm.appendMessage(s2.id, { sessionId: s2.id, role: 'assistant', content: 'React hooks replace lifecycle methods' });
+
+      const results = hm.searchMessages('React');
+      expect(results.length).toBe(2);
+      const titles = results.map((r) => r.sessionTitle);
+      expect(titles).toContain('Session A');
+      expect(titles).toContain('Session B');
+    });
+  });
+
   describe('SQLite instance', () => {
     it('exposes sqlite instance for sharing', () => {
       const sqlite = hm.getSqliteInstance();

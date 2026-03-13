@@ -12,6 +12,8 @@ import { createTeam, getTeam, createInvite, joinTeam } from './team/teams';
 import { removeMember, updateMemberRole } from './team/members';
 import { getInviteDetails } from './team/invites';
 import { authorizeConnector, revokeConnector, authorizeAll, getStatus } from './credentials/authorize';
+import { handleChat } from './engine/chat';
+import { createTask, listTasks, updateTask, deleteTask, getExecutions } from './scheduler/routes';
 import { handlePush } from './sync/push';
 import { handlePull } from './sync/pull';
 import { handleStatus as handleSyncStatus } from './sync/status';
@@ -50,10 +52,22 @@ app.get('/invite/:code', getInviteDetails);
 
 // --- Protected routes (require JWT) ---
 app.use('/api/*', authMiddleware);
+app.use('/engine/*', authMiddleware);
+app.use('/scheduler/*', authMiddleware);
 app.use('/billing/*', authMiddleware);
 app.use('/teams/*', authMiddleware);
 app.use('/credentials/*', authMiddleware);
 app.use('/sync/*', authMiddleware);
+
+// Engine (Cloud AI)
+app.post('/engine/chat', handleChat);
+
+// Scheduler (Cloud task management)
+app.post('/scheduler/tasks', createTask);
+app.get('/scheduler/tasks', listTasks);
+app.patch('/scheduler/tasks/:id', updateTask);
+app.delete('/scheduler/tasks/:id', deleteTask);
+app.get('/scheduler/executions/:taskId', getExecutions);
 
 // Billing
 app.post('/billing/checkout', createCheckout);

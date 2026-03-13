@@ -52,7 +52,71 @@ export class HistoryManager {
       );
       CREATE INDEX IF NOT EXISTS idx_messages_session ON messages(session_id);
       CREATE INDEX IF NOT EXISTS idx_sessions_updated ON sessions(updated_at);
+
+      -- Phase 2: Connector data tables (queried by MCP server)
+      CREATE TABLE IF NOT EXISTS connector_configs (
+        id TEXT PRIMARY KEY,
+        type TEXT NOT NULL,
+        name TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'disconnected',
+        config TEXT NOT NULL DEFAULT '{}',
+        last_sync_at INTEGER,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS objects (
+        id TEXT PRIMARY KEY,
+        source TEXT NOT NULL,
+        source_type TEXT NOT NULL,
+        uri TEXT NOT NULL UNIQUE,
+        title TEXT,
+        summary TEXT,
+        tags TEXT,
+        last_synced_at INTEGER,
+        created_at INTEGER
+      );
+      CREATE TABLE IF NOT EXISTS object_bodies (
+        object_id TEXT PRIMARY KEY REFERENCES objects(id),
+        content TEXT NOT NULL,
+        content_type TEXT,
+        fetched_at INTEGER
+      );
+      CREATE TABLE IF NOT EXISTS sync_cursors (
+        connector_id TEXT PRIMARY KEY,
+        cursor TEXT,
+        last_synced_at INTEGER
+      );
     `);
+
+    // FTS5 virtual tables — doesn't support IF NOT EXISTS, check manually
+    const ftsCheck = this.sqlite.prepare(
+      `SELECT name FROM sqlite_master WHERE type='table' AND name IN ('objects_fts', 'messages_fts')`,
+    ).all() as Array<{ name: string }>;
+    const existingFts = new Set(ftsCheck.map((r) => r.name));
+
+    if (!existingFts.has('objects_fts')) {
+      this.sqlite.exec(`
+        CREATE VIRTUAL TABLE objects_fts USING fts5(
+          title, summary, tags, source, source_type,
+          content=''
+        );
+      `);
+    }
+
+    if (!existingFts.has('messages_fts')) {
+      this.sqlite.exec(`
+        CREATE VIRTUAL TABLE messages_fts USING fts5(
+          content,
+          content='messages',
+          content_rowid='rowid'
+        );
+      `);
+      // Backfill existing messages (only user + assistant, skip tool noise)
+      this.sqlite.exec(`
+        INSERT INTO messages_fts(rowid, content)
+        SELECT rowid, content FROM messages WHERE role IN ('user', 'assistant');
+      `);
+    }
   }
 
   createSession(engineId: EngineId, title?: string): Session {
@@ -119,6 +183,18 @@ export class HistoryManager {
     };
 
     this.db.insert(messages).values(row).run();
+
+    // Maintain FTS index for user/assistant messages
+    if (msg.role === 'user' || msg.role === 'assistant') {
+      try {
+        const rowid = this.sqlite.prepare('SELECT rowid FROM messages WHERE id = ?').get(id) as { rowid: number } | undefined;
+        if (rowid) {
+          this.sqlite.prepare('INSERT INTO messages_fts(rowid, content) VALUES (?, ?)').run(rowid.rowid, msg.content);
+        }
+      } catch {
+        // FTS index maintenance is non-critical
+      }
+    }
 
     // Update session message count and timestamp
     this.sqlite.prepare(
@@ -240,6 +316,16 @@ export class HistoryManager {
   }
 
   deleteSession(sessionId: string): void {
+    // Remove FTS entries before deleting messages
+    try {
+      this.sqlite.prepare(`
+        INSERT INTO messages_fts(messages_fts, rowid, content)
+        SELECT 'delete', m.rowid, m.content FROM messages m
+        WHERE m.session_id = ? AND m.role IN ('user', 'assistant')
+      `).run(sessionId);
+    } catch {
+      // FTS cleanup is non-critical
+    }
     this.sqlite.prepare('DELETE FROM messages WHERE session_id = ?').run(sessionId);
     this.sqlite.prepare('DELETE FROM engine_session_mappings WHERE session_id = ?').run(sessionId);
     this.sqlite.prepare('DELETE FROM sessions WHERE id = ?').run(sessionId);
@@ -281,6 +367,77 @@ export class HistoryManager {
         set: { value, updatedAt: now },
       })
       .run();
+  }
+
+  /**
+   * Full-text search across messages. Uses FTS5 with LIKE fallback.
+   * Returns matching messages with their session info.
+   */
+  searchMessages(query: string, opts: { limit?: number } = {}): Array<{
+    messageId: string;
+    sessionId: string;
+    sessionTitle: string;
+    role: string;
+    snippet: string;
+    createdAt: Date;
+  }> {
+    const limit = opts.limit ?? 20;
+
+    // Try FTS5 first
+    try {
+      const rows = this.sqlite.prepare(`
+        SELECT m.id, m.session_id, s.title as session_title, m.role,
+               snippet(messages_fts, 0, '**', '**', '...', 40) as snippet,
+               m.created_at
+        FROM messages_fts f
+        JOIN messages m ON m.rowid = f.rowid
+        JOIN sessions s ON s.id = m.session_id
+        WHERE messages_fts MATCH ?
+        ORDER BY rank
+        LIMIT ?
+      `).all(query, limit) as Array<{
+        id: string; session_id: string; session_title: string;
+        role: string; snippet: string; created_at: number;
+      }>;
+
+      if (rows.length > 0) {
+        return rows.map((r) => ({
+          messageId: r.id,
+          sessionId: r.session_id,
+          sessionTitle: r.session_title,
+          role: r.role,
+          snippet: r.snippet,
+          createdAt: new Date(r.created_at),
+        }));
+      }
+    } catch {
+      // FTS unavailable, fall through to LIKE
+    }
+
+    // LIKE fallback
+    const pattern = `%${query}%`;
+    const rows = this.sqlite.prepare(`
+      SELECT m.id, m.session_id, s.title as session_title, m.role,
+             substr(m.content, max(1, instr(lower(m.content), lower(?)) - 40), 120) as snippet,
+             m.created_at
+      FROM messages m
+      JOIN sessions s ON s.id = m.session_id
+      WHERE m.role IN ('user', 'assistant') AND m.content LIKE ?
+      ORDER BY m.created_at DESC
+      LIMIT ?
+    `).all(query, pattern, limit) as Array<{
+      id: string; session_id: string; session_title: string;
+      role: string; snippet: string; created_at: number;
+    }>;
+
+    return rows.map((r) => ({
+      messageId: r.id,
+      sessionId: r.session_id,
+      sessionTitle: r.session_title,
+      role: r.role,
+      snippet: r.snippet,
+      createdAt: new Date(r.created_at),
+    }));
   }
 
   getSqliteInstance(): Database.Database {

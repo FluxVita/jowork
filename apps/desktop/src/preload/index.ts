@@ -66,6 +66,11 @@ const api = {
     rename: (id: string, title: string) => ipcRenderer.invoke('session:rename', id, title) as Promise<void>,
     export: (id: string, format: 'markdown' | 'json') =>
       ipcRenderer.invoke('session:export', id, format) as Promise<{ saved: boolean; path?: string }>,
+    searchMessages: (query: string, opts?: { limit?: number }) =>
+      ipcRenderer.invoke('session:search-messages', query, opts) as Promise<Array<{
+        messageId: string; sessionId: string; sessionTitle: string;
+        role: string; snippet: string; createdAt: string;
+      }>>,
     onCreated: (cb: (session: unknown) => void) => listen('session:created', cb),
   },
 

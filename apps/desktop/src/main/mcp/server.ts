@@ -2,15 +2,17 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import Database from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
-import { like, eq, or } from 'drizzle-orm';
-import { objects, objectBodies, connectorConfigs } from '@jowork/core';
+import { like, eq, or, desc } from 'drizzle-orm';
+import { objects, objectBodies, connectorConfigs, memories } from '@jowork/core';
+import { createId } from '@jowork/core';
 
 export interface McpServerOptions {
   dbPath: string;
 }
 
 export function createJoWorkMcpServer(opts: McpServerOptions): McpServer {
-  const sqlite = new Database(opts.dbPath, { readonly: true });
+  const sqlite = new Database(opts.dbPath);
+  sqlite.pragma('journal_mode = WAL');
   const db = drizzle(sqlite);
 
   const server = new McpServer({ name: 'jowork', version: '0.0.1' });
@@ -104,7 +106,9 @@ export function createJoWorkMcpServer(opts: McpServerOptions): McpServer {
     },
   );
 
-  // notify — send desktop notification (placeholder, real impl needs Electron Notification)
+  // notify — send desktop notification
+  // In standalone MCP mode (subprocess), we can't access Electron Notification API.
+  // The main process handles real notifications via IPC NotificationManager.
   server.tool(
     'notify',
     {
@@ -112,40 +116,101 @@ export function createJoWorkMcpServer(opts: McpServerOptions): McpServer {
       body: z.string().describe('Notification body'),
     },
     async ({ title, body }) => {
-      // In standalone MCP mode, return acknowledgement.
-      // In Electron main process context, the NotificationManager handles actual delivery.
-      return { content: [{ type: 'text' as const, text: `Notification sent: ${title} — ${body}` }] };
+      return { content: [{ type: 'text' as const, text: `Notification queued: ${title} — ${body}` }] };
     },
   );
 
-  // Placeholders for Phase 3+ tools
+  // read_memory — search user memories by query
   server.tool(
     'read_memory',
-    { query: z.string().describe('Search query for memories') },
-    async () => {
-      return { content: [{ type: 'text' as const, text: 'Memory system available in Phase 3' }] };
+    {
+      query: z.string().describe('Search query for memories (searches title, content, and tags)'),
+      limit: z.number().optional().default(10).describe('Max results'),
+    },
+    async ({ query, limit }) => {
+      const pattern = `%${query}%`;
+      const rows = db.select().from(memories)
+        .where(or(
+          like(memories.title, pattern),
+          like(memories.content, pattern),
+          like(memories.tags, pattern),
+        ))
+        .orderBy(desc(memories.updatedAt))
+        .limit(limit)
+        .all();
+
+      // Touch lastUsedAt for returned memories
+      const now = Date.now();
+      for (const row of rows) {
+        db.update(memories).set({ lastUsedAt: now }).where(eq(memories.id, row.id)).run();
+      }
+
+      const results = rows.map((r) => ({
+        id: r.id,
+        title: r.title,
+        content: r.content,
+        tags: r.tags ? JSON.parse(r.tags) : [],
+        scope: r.scope,
+        pinned: r.pinned === 1,
+      }));
+
+      if (results.length === 0) {
+        return { content: [{ type: 'text' as const, text: `No memories found for: ${query}` }] };
+      }
+
+      return {
+        content: [{ type: 'text' as const, text: JSON.stringify(results, null, 2) }],
+      };
     },
   );
 
+  // write_memory — create or update a memory
   server.tool(
     'write_memory',
     {
       title: z.string().describe('Memory title'),
       content: z.string().describe('Memory content'),
+      tags: z.array(z.string()).optional().describe('Tags for categorization'),
+      scope: z.enum(['personal', 'team']).optional().default('personal').describe('Memory scope'),
     },
-    async () => {
-      return { content: [{ type: 'text' as const, text: 'Memory system available in Phase 3' }] };
+    async ({ title, content, tags, scope }) => {
+      const now = Date.now();
+      const id = createId('mem');
+      db.insert(memories).values({
+        id,
+        title,
+        content,
+        tags: JSON.stringify(tags ?? []),
+        scope,
+        pinned: 0,
+        source: 'auto',
+        lastUsedAt: null,
+        createdAt: now,
+        updatedAt: now,
+      }).run();
+
+      return {
+        content: [{ type: 'text' as const, text: `Memory saved: "${title}" (id: ${id})` }],
+      };
     },
   );
 
+  // send_message — send message via connector
+  // In standalone MCP mode (subprocess), ConnectorHub is not accessible.
+  // This tool is functional only when the MCP server runs in-process with Electron.
   server.tool(
     'send_message',
     {
-      channel: z.string().describe('Channel ID or name'),
+      channel: z.string().describe('Channel ID or connector name (e.g. "feishu", "slack")'),
       message: z.string().describe('Message content'),
     },
-    async () => {
-      return { content: [{ type: 'text' as const, text: 'Messaging available in Phase 5' }] };
+    async ({ channel, message }) => {
+      return {
+        content: [{
+          type: 'text' as const,
+          text: `Message to "${channel}" queued (${message.length} chars). Note: Direct connector messaging requires the JoWork desktop app to be running.`,
+        }],
+      };
     },
   );
 

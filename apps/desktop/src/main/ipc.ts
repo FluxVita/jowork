@@ -20,7 +20,7 @@ import { AutoExtractor } from './memory/auto-extract';
 import { Scanner } from './scheduler/scanner';
 import { NotificationRuleManager } from './scheduler/notification-rules';
 import { ConfirmRuleEngine } from './engine/confirm-rules';
-import { getApiBaseUrl } from './config/urls';
+import { getApiBaseUrl, getHealthBaseUrl } from './config/urls';
 import type { SyncRecord } from '@jowork/core';
 import type { EngineId } from './engine/types';
 
@@ -48,6 +48,7 @@ export function getEngineManager(): EngineManager {
 
 export function setupIPC(): void {
   const cloudUrl = getApiBaseUrl();
+  const healthUrl = getHealthBaseUrl();
   engineManager = new EngineManager();
   connectorHub = new ConnectorHub(engineManager.getHistoryManager());
   memoryStore = new MemoryStore(engineManager.getHistoryManager().getSqliteInstance());
@@ -72,6 +73,7 @@ export function setupIPC(): void {
   authManager = new AuthManager(modeManager);
   engineManager.configureCloudEngine({
     apiUrl: cloudUrl,
+    healthUrl,
     getToken: () => authManager.getToken(),
   });
   contextAssembler = new ContextAssembler();
@@ -241,6 +243,10 @@ export function setupIPC(): void {
 
   ipcMain.handle('session:rename', (_e, sessionId: string, title: string) => {
     engineManager.getHistoryManager().renameSession(sessionId, title);
+  });
+
+  ipcMain.handle('session:search-messages', (_e, query: string, opts?: { limit?: number }) => {
+    return engineManager.getHistoryManager().searchMessages(query, opts);
   });
 
   ipcMain.handle('session:export', async (_e, sessionId: string, format: 'markdown' | 'json') => {
