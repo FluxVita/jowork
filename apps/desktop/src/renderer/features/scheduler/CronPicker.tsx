@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 interface Props {
@@ -50,10 +50,19 @@ function useDescribeCron() {
   };
 }
 
+function isValidCron(cron: string): boolean {
+  const parts = cron.trim().split(/\s+/);
+  if (parts.length !== 5) return false;
+  // Basic validation: each field matches cron token pattern
+  const pattern = /^(\*|[0-9]+(-[0-9]+)?(\/[0-9]+)?)(,(\*|[0-9]+(-[0-9]+)?(\/[0-9]+)?))*$|^\*\/[0-9]+$/;
+  return parts.every((p) => pattern.test(p));
+}
+
 export function CronPicker({ value, onChange }: Props) {
   const { t } = useTranslation('scheduler');
   const [showPresets, setShowPresets] = useState(false);
   const describeCron = useDescribeCron();
+  const valid = useMemo(() => !value.trim() || isValidCron(value), [value]);
 
   return (
     <div className="space-y-2">
@@ -63,8 +72,10 @@ export function CronPicker({ value, onChange }: Props) {
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder="* * * * *"
-          className="flex-1 px-3 py-2 text-sm font-mono bg-surface-2 border border-border rounded-md
-            text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+          className={`flex-1 px-3 py-2 text-sm font-mono bg-surface-2 border rounded-md
+            text-text-primary focus:outline-none focus:ring-1 ${
+              valid ? 'border-border focus:ring-accent' : 'border-red-400 focus:ring-red-400'
+            }`}
         />
         <button
           onClick={() => setShowPresets(!showPresets)}
@@ -75,8 +86,8 @@ export function CronPicker({ value, onChange }: Props) {
         </button>
       </div>
 
-      <p className="text-[11px] text-text-secondary">
-        {describeCron(value)}
+      <p className={`text-[11px] ${valid ? 'text-text-secondary' : 'text-red-400'}`}>
+        {!valid && value.trim() ? t('invalidCron') : describeCron(value)}
       </p>
 
       {showPresets && (

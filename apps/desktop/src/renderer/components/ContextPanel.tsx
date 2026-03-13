@@ -78,20 +78,24 @@ export function ContextPanel() {
       </section>
 
       {/* Recent Memories */}
-      {memories.filter((m) => !m.pinned).length > 0 && (
-        <section className="p-4">
-          <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-2">
-            {t('contextRecent')}
-          </h3>
-          <ul className="space-y-1.5">
-            {memories.filter((m) => !m.pinned).slice(0, 5).map((m) => (
-              <li key={m.id} className="text-xs text-text-secondary truncate">
-                {m.title}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+      {(() => {
+        const unpinned = memories.filter((m) => !m.pinned);
+        if (unpinned.length === 0) return null;
+        return (
+          <section className="p-4">
+            <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-2">
+              {t('contextRecent')}
+            </h3>
+            <ul className="space-y-1.5">
+              {unpinned.slice(0, 5).map((m) => (
+                <li key={m.id} className="text-xs text-text-secondary truncate">
+                  {m.title}
+                </li>
+              ))}
+            </ul>
+          </section>
+        );
+      })()}
     </div>
   );
 }

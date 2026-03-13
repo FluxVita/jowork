@@ -37,12 +37,32 @@ export const i18nNamespaces = [
 
 export type I18nNamespace = (typeof i18nNamespaces)[number];
 
+const SUPPORTED_LANGS = ['zh', 'en'] as const;
+
+function detectLanguage(): string {
+  // Browser / Electron renderer
+  if (typeof navigator !== 'undefined' && navigator.language) {
+    const tag = navigator.language.toLowerCase();
+    // Exact match first, then prefix (e.g. 'en-US' → 'en', 'zh-CN' → 'zh')
+    if (SUPPORTED_LANGS.includes(tag as typeof SUPPORTED_LANGS[number])) return tag;
+    const prefix = tag.split('-')[0];
+    if (SUPPORTED_LANGS.includes(prefix as typeof SUPPORTED_LANGS[number])) return prefix;
+  }
+  // Node.js main process
+  if (typeof process !== 'undefined' && process.env?.LANG) {
+    const lang = process.env.LANG.toLowerCase();
+    if (lang.startsWith('zh')) return 'zh';
+    if (lang.startsWith('en')) return 'en';
+  }
+  return 'zh';
+}
+
 export const i18n: I18nInstance = i18next.createInstance();
 
 i18n.init({
-  lng: 'zh',
+  lng: detectLanguage(),
   fallbackLng: 'zh',
-  supportedLngs: ['zh', 'en'],
+  supportedLngs: [...SUPPORTED_LANGS],
   ns: [...i18nNamespaces],
   defaultNS: 'common',
   interpolation: { escapeValue: false },

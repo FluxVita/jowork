@@ -57,5 +57,6 @@
   "dayWed": "Wed",
   "dayThu": "Thu",
   "dayFri": "Fri",
-  "daySat": "Sat"
+  "daySat": "Sat",
+  "invalidCron": "Invalid cron expression (requires 5 fields: min hour day month dow)"
 }

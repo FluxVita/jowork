@@ -10,7 +10,8 @@ export function WorkstyleEditor() {
 
   useEffect(() => {
     window.jowork.settings.get('workstyle').then((val) => {
-      setContent(val || t('workstyleTemplate'));
+      // Treat null, undefined, and empty string all as "no saved content"
+      setContent(val != null && val !== '' ? val : t('workstyleTemplate'));
     });
   }, [t]);
 

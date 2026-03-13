@@ -17,6 +17,12 @@ export function ProfileStep() {
   const { t: tc } = useTranslation('common');
   const { nextStep, setProfile, profile } = useOnboarding();
 
+  const handleNext = async () => {
+    // Persist profile to settings before advancing
+    await window.jowork.settings.set('profile', JSON.stringify(profile)).catch(() => {});
+    nextStep();
+  };
+
   return (
     <div className="flex flex-col items-center text-center px-8 py-12">
       <div className="text-5xl mb-6">👤</div>
@@ -98,7 +104,7 @@ export function ProfileStep() {
           {t('skip')}
         </button>
         <button
-          onClick={nextStep}
+          onClick={handleNext}
           className="px-8 py-3 rounded-lg bg-accent text-white font-medium hover:bg-accent/90 transition-colors"
         >
           {tc('next')}

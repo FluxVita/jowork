@@ -73,12 +73,17 @@ export function setupIPC(): void {
   autoExtractor = new AutoExtractor(memoryStore);
   confirmRuleEngine = new ConfirmRuleEngine(hm.getSqliteInstance());
 
+  let deviceId = hm.getSetting('device_id');
+  if (!deviceId) {
+    deviceId = `device_${Date.now()}`;
+    hm.setSetting('device_id', deviceId);
+  }
   syncManager = new SyncManager({
     sqlite: hm.getSqliteInstance(),
     cloudUrl: 'https://api.jowork.dev',
     getToken: () => authManager.getToken(),
     mode: modeManager.isTeam() ? 'team' : 'personal',
-    deviceId: hm.getSetting('device_id') || `device_${Date.now()}`,
+    deviceId,
   });
 
   // App

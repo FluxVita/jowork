@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNotificationStore } from './hooks/useNotifications';
 import { NotificationRules } from './NotificationRules';
@@ -7,8 +7,12 @@ type Tab = 'inbox' | 'rules';
 
 export function NotificationCenter() {
   const { t } = useTranslation('notifications');
-  const { notifications, unreadCount, markRead, markAllRead, clear } = useNotificationStore();
+  const { notifications, unreadCount, markRead, markAllRead, clear, loadNotifications } = useNotificationStore();
   const [tab, setTab] = useState<Tab>('inbox');
+
+  useEffect(() => {
+    loadNotifications();
+  }, [loadNotifications]);
 
   return (
     <div className="flex-1 p-8 overflow-y-auto">
