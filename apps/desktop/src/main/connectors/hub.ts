@@ -15,6 +15,8 @@ export interface ConnectorManifest {
   command: string;
   args: string[];
   env?: Record<string, string>;
+  /** Map of credential keys to CLI flag names (e.g. { LARK_APP_ID: '-a' }) */
+  credentialArgs?: Record<string, string>;
   oauth?: OAuthConfig;
   configSchema?: Record<string, unknown>;
 }
@@ -72,8 +74,8 @@ export class ConnectorHub {
         tier: 'ga',
         transport: 'stdio',
         command: 'npx',
-        args: ['-y', '@modelcontextprotocol/server-gitlab'],
-        env: { GITLAB_PERSONAL_ACCESS_TOKEN: '' },
+        args: ['-y', '@structured-world/gitlab-mcp'],
+        env: { GITLAB_TOKEN: '', GITLAB_API_URL: '' },
       },
       {
         id: 'figma',
@@ -87,8 +89,8 @@ export class ConnectorHub {
         env: { FIGMA_ACCESS_TOKEN: '' },
       },
       {
-        id: 'local-files',
-        name: 'Local Files',
+        id: 'local-folder',
+        name: 'Local Project',
         description: 'Local project folders',
         category: 'local',
         tier: 'ga',
@@ -105,8 +107,8 @@ export class ConnectorHub {
         tier: 'ga',
         transport: 'stdio',
         command: 'npx',
-        args: ['-y', 'lark-openapi-mcp'],
-        env: { LARK_APP_ID: '', LARK_APP_SECRET: '' },
+        args: ['-y', '@larksuiteoapi/lark-mcp', 'mcp'],
+        credentialArgs: { LARK_APP_ID: '-a', LARK_APP_SECRET: '-s' },
       },
     ];
 
@@ -149,18 +151,37 @@ export class ConnectorHub {
     const manifest = this.manifests.get(connectorId);
     if (!manifest) throw new Error(`Unknown connector: ${connectorId}`);
 
-    // Build env with credentials
+    const creds = this.credentials.get(connectorId) as Record<string, string> | null;
+
+    // Build env — only set keys when we have a real credential value;
+    // fall back to process.env (don't clobber with empty string).
     const env: Record<string, string> = { ...process.env as Record<string, string> };
     if (manifest.env) {
-      const creds = this.credentials.get(connectorId) as Record<string, string> | null;
       for (const [key, defaultVal] of Object.entries(manifest.env)) {
-        env[key] = creds?.[key] ?? creds?.accessToken ?? defaultVal;
+        const val = creds?.[key] ?? creds?.accessToken;
+        if (val) {
+          env[key] = val;
+        } else if (defaultVal && !env[key]) {
+          env[key] = defaultVal;
+        }
+        // If no credential and key already in process.env, keep it
+      }
+    }
+
+    // Build args — some connectors pass credentials via CLI flags
+    const args = [...manifest.args];
+    if (manifest.credentialArgs && creds) {
+      for (const [key, flag] of Object.entries(manifest.credentialArgs)) {
+        const val = creds[key];
+        if (val) {
+          args.push(flag, val);
+        }
       }
     }
 
     const transport = new StdioClientTransport({
       command: manifest.command,
-      args: manifest.args,
+      args,
       env,
     });
 

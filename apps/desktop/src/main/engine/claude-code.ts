@@ -32,6 +32,7 @@ export class ClaudeCodeEngine implements AgentEngine {
     const args = [
       '-p', opts.message,
       '--output-format', 'stream-json',
+      '--verbose',
     ];
     if (opts.systemContext) {
       args.push('--system-prompt', opts.systemContext);
