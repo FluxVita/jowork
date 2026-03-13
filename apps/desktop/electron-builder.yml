@@ -1,26 +1,60 @@
-appId: com.jowork.app
+appId: work.jowork.app
 productName: JoWork
+copyright: Copyright © 2026 FluxVita
+
 directories:
   output: dist
   buildResources: build
 
+files:
+  - out/**/*
+  - "!out/**/*.map"
+  - package.json
+
+asar: true
 asarUnpack:
   - "**/*.node"
   - "**/spawn-helper"
+  - node_modules/better-sqlite3/**
+  - node_modules/node-pty/**
+
+npmRebuild: true
 
 mac:
-  target: [dmg, zip]
+  target:
+    - target: dmg
+      arch: [arm64, x64]
+    - target: zip
+      arch: [arm64, x64]
   category: public.app-category.productivity
   icon: build/icon.png
   hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+
+dmg:
+  artifactName: JoWork-${version}-${arch}.dmg
 
 win:
-  target: nsis
+  target:
+    - target: nsis
+      arch: [x64]
   icon: build/icon.png
 
 nsis:
   oneClick: false
+  perMachine: false
   allowToChangeInstallationDirectory: true
+  artifactName: JoWork-Setup-${version}.exe
+
+linux:
+  target:
+    - target: AppImage
+      arch: [x64]
+  category: Office
 
 publish:
   provider: github
+  owner: FluxVita
+  repo: jowork
