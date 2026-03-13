@@ -38,6 +38,7 @@
   "unexpectedError": "An unexpected error occurred.",
   "tryAgain": "Try Again",
   "featureError": "{{name}} error",
+  "dismissNotification": "Dismiss notification",
   "menuFile": "File",
   "menuView": "View",
   "trayShow": "Show JoWork",

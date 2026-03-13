@@ -1,6 +1,7 @@
 import { BrowserWindow } from 'electron';
 import { TokenStore } from './token-store';
 import { ModeManager } from './mode';
+import { getApiBaseUrl } from '../config/urls';
 
 interface AuthUser {
   id: string;
@@ -26,7 +27,7 @@ export class AuthManager {
   ) {
     this.tokenStore = new TokenStore();
     this.modeManager = modeManager;
-    this.cloudUrl = cloudUrl || 'https://api.jowork.dev';
+    this.cloudUrl = cloudUrl || getApiBaseUrl();
   }
 
   async loginWithGoogle(): Promise<AuthUser> {

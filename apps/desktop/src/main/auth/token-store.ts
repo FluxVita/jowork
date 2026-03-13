@@ -19,13 +19,11 @@ export class TokenStore {
 
   save(tokens: { accessToken: string; refreshToken?: string; expiresAt?: number }): void {
     const data = JSON.stringify(tokens);
-    if (safeStorage.isEncryptionAvailable()) {
-      const encrypted = safeStorage.encryptString(data);
-      writeFileSync(this.filePath, encrypted);
-    } else {
-      // Fallback: store as plain JSON (not ideal but functional)
-      writeFileSync(this.filePath, data, 'utf-8');
+    if (!safeStorage.isEncryptionAvailable()) {
+      throw new Error('Token encryption is not available on this platform');
     }
+    const encrypted = safeStorage.encryptString(data);
+    writeFileSync(this.filePath, encrypted);
   }
 
   load(): { accessToken: string; refreshToken?: string; expiresAt?: number } | null {
@@ -33,11 +31,9 @@ export class TokenStore {
 
     try {
       const raw = readFileSync(this.filePath);
-      if (safeStorage.isEncryptionAvailable()) {
-        const decrypted = safeStorage.decryptString(raw);
-        return JSON.parse(decrypted);
-      }
-      return JSON.parse(raw.toString('utf-8'));
+      if (!safeStorage.isEncryptionAvailable()) return null;
+      const decrypted = safeStorage.decryptString(raw);
+      return JSON.parse(decrypted);
     } catch {
       return null;
     }

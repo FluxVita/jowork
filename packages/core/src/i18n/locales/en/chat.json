@@ -10,6 +10,7 @@
   "thinking": "Thinking...",
   "toolCall": "Tool call",
   "toolResult": "Tool result",
+  "conversations": "Conversations",
   "newConversation": "New conversation",
   "deleteConversation": "Delete conversation",
   "renameConversation": "Rename conversation",

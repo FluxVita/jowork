@@ -6,6 +6,7 @@ import { GlobalSearch } from '../components/GlobalSearch';
 import { ToastContainer } from '../components/Toast';
 import { useAppStore } from '../stores/app';
 import { useConversationStore } from '../stores/conversation';
+import { useToastStore } from '../stores/toast';
 import { useTranslation } from 'react-i18next';
 
 export function MainLayout() {
@@ -14,6 +15,8 @@ export function MainLayout() {
   const contextPanelOpen = useAppStore((s) => s.contextPanelOpen);
   const navigate = useNavigate();
   const createSession = useConversationStore((s) => s.createSession);
+  const selectSession = useConversationStore((s) => s.selectSession);
+  const addToast = useToastStore((s) => s.addToast);
   const [searchOpen, setSearchOpen] = useState(false);
 
   const closeSearch = useCallback(() => setSearchOpen(false), []);
@@ -31,8 +34,45 @@ export function MainLayout() {
       const sessionId = useConversationStore.getState().activeSessionId;
       if (sessionId) window.jowork.session.export(sessionId, 'markdown');
     });
-    return () => { offNav(); offNewSession(); offExport(); };
-  }, [navigate, createSession]);
+    const offNavigateSession = window.jowork.on('navigate:session', async (sessionId: unknown) => {
+      if (typeof sessionId !== 'string') return;
+      navigate('/');
+      await selectSession(sessionId);
+    });
+    const offUpdateChecking = window.jowork.on('update:checking', () => {
+      addToast('info', t('checking', { ns: 'settings' }), 2500);
+    });
+    const offUpdateAvailable = window.jowork.on('update:available', (payload: unknown) => {
+      const version = typeof payload === 'object' && payload !== null && 'version' in payload
+        ? String((payload as { version?: unknown }).version ?? '')
+        : '';
+      const base = t('updateAvailable', { ns: 'settings' });
+      addToast('info', version ? `${base}: ${version}` : base);
+    });
+    const offUpdateDownloaded = window.jowork.on('update:downloaded', (payload: unknown) => {
+      const version = typeof payload === 'object' && payload !== null && 'version' in payload
+        ? String((payload as { version?: unknown }).version ?? '')
+        : '';
+      const base = t('updateDownloaded', { ns: 'settings' });
+      addToast('success', version ? `${base}: ${version}` : base, 0);
+    });
+    const offUpdateError = window.jowork.on('update:error', (payload: unknown) => {
+      const message = typeof payload === 'object' && payload !== null && 'message' in payload
+        ? String((payload as { message?: unknown }).message ?? '')
+        : t('unexpectedError', { ns: 'common' });
+      addToast('error', message);
+    });
+    return () => {
+      offNav();
+      offNewSession();
+      offExport();
+      offNavigateSession();
+      offUpdateChecking();
+      offUpdateAvailable();
+      offUpdateDownloaded();
+      offUpdateError();
+    };
+  }, [navigate, createSession, selectSession, addToast, t]);
 
   // Cmd+K to toggle global search
   useEffect(() => {

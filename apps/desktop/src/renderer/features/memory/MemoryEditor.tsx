@@ -45,6 +45,7 @@ export function MemoryEditor({ initial, onSave, onCancel }: Props) {
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         placeholder={t('titlePlaceholder')}
+        aria-label={t('titlePlaceholder')}
         className="w-full px-3 py-2 text-sm bg-surface-2 border border-border rounded-md
           text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-1 focus:ring-accent"
       />
@@ -53,6 +54,7 @@ export function MemoryEditor({ initial, onSave, onCancel }: Props) {
         value={content}
         onChange={(e) => setContent(e.target.value)}
         placeholder={t('contentPlaceholder')}
+        aria-label={t('contentPlaceholder')}
         rows={4}
         className="w-full px-3 py-2 text-sm bg-surface-2 border border-border rounded-md
           text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-1 focus:ring-accent resize-none"
@@ -63,6 +65,7 @@ export function MemoryEditor({ initial, onSave, onCancel }: Props) {
         value={tagsInput}
         onChange={(e) => setTagsInput(e.target.value)}
         placeholder={t('tagsPlaceholder')}
+        aria-label={t('tagsPlaceholder')}
         className="w-full px-3 py-2 text-sm bg-surface-2 border border-border rounded-md
           text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-1 focus:ring-accent"
       />

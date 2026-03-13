@@ -1,4 +1,5 @@
 import { useToastStore, type ToastType } from '../stores/toast';
+import { useTranslation } from 'react-i18next';
 
 const ICONS: Record<ToastType, string> = {
   info: 'ℹ️',
@@ -22,16 +23,22 @@ const ICON_STYLES: Record<ToastType, string> = {
 };
 
 export function ToastContainer() {
+  const { t } = useTranslation('common');
   const toasts = useToastStore((s) => s.toasts);
   const removeToast = useToastStore((s) => s.removeToast);
 
   if (toasts.length === 0) return null;
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm">
+    <div
+      className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm"
+      aria-live="polite"
+      aria-atomic="true"
+    >
       {toasts.map((toast) => (
         <div
           key={toast.id}
+          role="status"
           className={`flex items-start gap-2 px-3 py-2.5 rounded-lg border shadow-lg backdrop-blur-sm
             animate-[slideIn_0.2s_ease-out] ${STYLES[toast.type]}`}
         >
@@ -41,6 +48,7 @@ export function ToastContainer() {
           <p className="text-sm text-text-primary flex-1">{toast.message}</p>
           <button
             onClick={() => removeToast(toast.id)}
+            aria-label={t('dismissNotification')}
             className="text-text-secondary hover:text-text-primary text-xs shrink-0 ml-1"
           >
             ✕

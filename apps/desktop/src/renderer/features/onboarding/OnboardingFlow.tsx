@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router';
+import { useTranslation } from 'react-i18next';
 import { useOnboarding } from './hooks/useOnboarding';
 import { WelcomeStep } from './steps/WelcomeStep';
 import { LoginStep } from './steps/LoginStep';
@@ -18,6 +19,7 @@ const STEPS: Record<number, React.FC> = {
 };
 
 export function OnboardingFlow() {
+  const { t } = useTranslation('common');
   const { step, completed, loadState, prevStep, goToStep } = useOnboarding();
   const navigate = useNavigate();
 
@@ -58,9 +60,9 @@ export function OnboardingFlow() {
           <button
             onClick={prevStep}
             className="absolute top-4 left-6 text-sm text-text-secondary hover:text-text-primary transition-colors"
-            aria-label="Back"
+            aria-label={t('back')}
           >
-            ← Back
+            ← {t('back')}
           </button>
         )}
         <StepComponent />

@@ -10,6 +10,7 @@
   "thinking": "思考中...",
   "toolCall": "工具调用",
   "toolResult": "工具结果",
+  "conversations": "对话",
   "newConversation": "新对话",
   "deleteConversation": "删除对话",
   "renameConversation": "重命名对话",

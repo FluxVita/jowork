@@ -11,6 +11,7 @@ export class EngineManager {
   private activeEngineId: EngineId = 'claude-code';
   private historyManager: HistoryManager;
   private recovery: EngineRecovery;
+  private cloudEngine: CloudEngine;
 
   constructor() {
     const dbPath = join(app.getPath('userData'), 'jowork.db');
@@ -19,7 +20,8 @@ export class EngineManager {
 
     // Register available engines
     this.engines.set('claude-code', new ClaudeCodeEngine());
-    this.engines.set('jowork-cloud', new CloudEngine());
+    this.cloudEngine = new CloudEngine();
+    this.engines.set('jowork-cloud', this.cloudEngine);
   }
 
   getHistoryManager(): HistoryManager {
@@ -28,6 +30,10 @@ export class EngineManager {
 
   getActiveEngineId(): EngineId {
     return this.activeEngineId;
+  }
+
+  configureCloudEngine(opts?: { apiUrl?: string; getToken?: () => string | null }): void {
+    this.cloudEngine.updateConfig(opts);
   }
 
   async detectEngines(): Promise<Map<EngineId, InstallStatus>> {

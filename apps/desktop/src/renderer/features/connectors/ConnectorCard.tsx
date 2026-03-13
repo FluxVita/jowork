@@ -70,6 +70,7 @@ export function ConnectorCard({
             value={tokenInput}
             onChange={(e) => setTokenInput(e.target.value)}
             placeholder={t('tokenPlaceholder')}
+            aria-label={t('tokenPlaceholder')}
             className="w-full bg-surface-0 border border-border rounded px-2 py-1.5 text-xs text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-1 focus:ring-accent"
           />
         </div>

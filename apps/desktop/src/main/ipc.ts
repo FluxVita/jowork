@@ -20,6 +20,7 @@ import { AutoExtractor } from './memory/auto-extract';
 import { Scanner } from './scheduler/scanner';
 import { NotificationRuleManager } from './scheduler/notification-rules';
 import { ConfirmRuleEngine } from './engine/confirm-rules';
+import { getApiBaseUrl } from './config/urls';
 import type { SyncRecord } from '@jowork/core';
 import type { EngineId } from './engine/types';
 
@@ -46,6 +47,7 @@ export function getEngineManager(): EngineManager {
 }
 
 export function setupIPC(): void {
+  const cloudUrl = getApiBaseUrl();
   engineManager = new EngineManager();
   connectorHub = new ConnectorHub(engineManager.getHistoryManager());
   memoryStore = new MemoryStore(engineManager.getHistoryManager().getSqliteInstance());
@@ -68,6 +70,10 @@ export function setupIPC(): void {
     (key, value) => hm.setSetting(key, value),
   );
   authManager = new AuthManager(modeManager);
+  engineManager.configureCloudEngine({
+    apiUrl: cloudUrl,
+    getToken: () => authManager.getToken(),
+  });
   contextAssembler = new ContextAssembler();
   contextDocsStore = new ContextDocsStore(hm.getSqliteInstance());
   autoExtractor = new AutoExtractor(memoryStore);
@@ -80,7 +86,7 @@ export function setupIPC(): void {
   }
   syncManager = new SyncManager({
     sqlite: hm.getSqliteInstance(),
-    cloudUrl: 'https://api.jowork.dev',
+    cloudUrl,
     getToken: () => authManager.getToken(),
     mode: modeManager.isTeam() ? 'team' : 'personal',
     deviceId,
@@ -557,7 +563,6 @@ export function setupIPC(): void {
     const token = authManager.getToken();
     if (!token) throw new Error('Not logged in');
 
-    const cloudUrl = 'https://api.jowork.dev';
     const res = await fetch(`${cloudUrl}/billing/credits`, {
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -569,7 +574,6 @@ export function setupIPC(): void {
     const token = authManager.getToken();
     if (!token) throw new Error('Not logged in');
 
-    const cloudUrl = 'https://api.jowork.dev';
     const res = await fetch(`${cloudUrl}/billing/checkout`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -584,7 +588,6 @@ export function setupIPC(): void {
     const token = authManager.getToken();
     if (!token) throw new Error('Not logged in');
 
-    const cloudUrl = 'https://api.jowork.dev';
     const res = await fetch(`${cloudUrl}/billing/portal`, {
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -597,7 +600,6 @@ export function setupIPC(): void {
     const token = authManager.getToken();
     if (!token) throw new Error('Not logged in');
 
-    const cloudUrl = 'https://api.jowork.dev';
     const res = await fetch(`${cloudUrl}/billing/top-up`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -614,7 +616,6 @@ export function setupIPC(): void {
     const token = authManager.getToken();
     if (!token) return [];
 
-    const cloudUrl = 'https://api.jowork.dev';
     try {
       const res = await fetch(`${cloudUrl}/teams`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -630,7 +631,6 @@ export function setupIPC(): void {
     const token = authManager.getToken();
     if (!token) throw new Error('Not logged in');
 
-    const cloudUrl = 'https://api.jowork.dev';
     const res = await fetch(`${cloudUrl}/teams/${teamId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -642,7 +642,6 @@ export function setupIPC(): void {
     const token = authManager.getToken();
     if (!token) throw new Error('Not logged in');
 
-    const cloudUrl = 'https://api.jowork.dev';
     const res = await fetch(`${cloudUrl}/teams`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -656,7 +655,6 @@ export function setupIPC(): void {
     const token = authManager.getToken();
     if (!token) throw new Error('Not logged in');
 
-    const cloudUrl = 'https://api.jowork.dev';
     const res = await fetch(`${cloudUrl}/teams/${teamId}/invite`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
@@ -669,7 +667,6 @@ export function setupIPC(): void {
     const token = authManager.getToken();
     if (!token) throw new Error('Not logged in');
 
-    const cloudUrl = 'https://api.jowork.dev';
     const res = await fetch(`${cloudUrl}/teams/${teamId}/members/${userId}`, {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${token}` },
@@ -682,7 +679,6 @@ export function setupIPC(): void {
     const token = authManager.getToken();
     if (!token) throw new Error('Not logged in');
 
-    const cloudUrl = 'https://api.jowork.dev';
     const res = await fetch(`${cloudUrl}/teams/${teamId}/members/${userId}`, {
       method: 'PATCH',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -696,7 +692,6 @@ export function setupIPC(): void {
     const token = authManager.getToken();
     if (!token) throw new Error('Not logged in');
 
-    const cloudUrl = 'https://api.jowork.dev';
     const res = await fetch(`${cloudUrl}/teams/${teamId}`, {
       method: 'PATCH',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },

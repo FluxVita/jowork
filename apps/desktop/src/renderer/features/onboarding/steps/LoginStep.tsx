@@ -5,7 +5,7 @@ import { useAuth } from '../../auth/hooks/useAuth';
 
 export function LoginStep() {
   const { t } = useTranslation('onboarding');
-  const { nextStep, setSkippedLogin } = useOnboarding();
+  const { step, nextStep, setSkippedLogin } = useOnboarding();
   const { loginWithGoogle, user } = useAuth();
 
   const handleSkip = () => {
@@ -24,8 +24,8 @@ export function LoginStep() {
 
   // Already logged in — auto-advance (in effect, not during render)
   useEffect(() => {
-    if (user) nextStep();
-  }, [user, nextStep]);
+    if (user && step === 2) nextStep();
+  }, [user, step, nextStep]);
 
   if (user) return null;
 

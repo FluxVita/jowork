@@ -14,7 +14,7 @@ export function SessionList() {
   }, [sessions, search]);
 
   return (
-    <div className="flex flex-col h-full" role="region" aria-label={t('conversations', 'Conversations')}>
+    <div className="flex flex-col h-full" role="region" aria-label={t('conversations')}>
       <button
         onClick={createSession}
         aria-label={t('newConversation')}
@@ -29,14 +29,14 @@ export function SessionList() {
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder={t('searchSessions', 'Search conversations...')}
-          aria-label={t('searchSessions', 'Search conversations')}
+          placeholder={t('searchConversations')}
+          aria-label={t('searchConversations')}
           className="w-full px-2 py-1 text-xs bg-surface-2 border border-border rounded
             text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-1 focus:ring-accent"
         />
       </div>
 
-      <ul className="flex-1 overflow-y-auto px-1" role="listbox" aria-label="Conversations">
+      <ul className="flex-1 overflow-y-auto px-1" role="listbox" aria-label={t('conversations')}>
         {filtered.map((session) => (
           <li
             key={session.id}

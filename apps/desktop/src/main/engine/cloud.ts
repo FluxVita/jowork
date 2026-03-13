@@ -1,4 +1,5 @@
 import type { AgentEngine, EngineEvent, ChatOpts, InstallStatus } from './types';
+import { getApiBaseUrl } from '../config/urls';
 
 /**
  * Cloud Engine adapter.
@@ -13,8 +14,17 @@ export class CloudEngine implements AgentEngine {
   private getToken: () => string | null;
 
   constructor(opts?: { apiUrl?: string; getToken?: () => string | null }) {
-    this.apiUrl = opts?.apiUrl ?? 'https://cloud.jowork.dev';
+    this.apiUrl = opts?.apiUrl ?? getApiBaseUrl();
     this.getToken = opts?.getToken ?? (() => null);
+  }
+
+  updateConfig(opts?: { apiUrl?: string; getToken?: () => string | null }): void {
+    if (opts?.apiUrl) {
+      this.apiUrl = opts.apiUrl;
+    }
+    if (opts?.getToken) {
+      this.getToken = opts.getToken;
+    }
   }
 
   async checkInstalled(): Promise<InstallStatus> {
@@ -48,7 +58,7 @@ export class CloudEngine implements AgentEngine {
     this.abortController = new AbortController();
 
     try {
-      const res = await fetch(`${this.apiUrl}/api/v1/chat`, {
+      const res = await fetch(`${this.apiUrl}/engine/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -12,6 +12,10 @@ const ALLOWED_CHANNELS = new Set([
   'pty:data', 'pty:exit', 'chat:event', 'session:created',
   'engine:crashed', 'engine:crash-fatal', 'engine:restart-ready',
   'nav:goto', 'shortcut:new-session', 'shortcut:export',
+  'navigate:session',
+  'update:checking', 'update:available', 'update:up-to-date',
+  'update:progress', 'update:downloaded', 'update:error',
+  'file:changed',
 ]);
 
 const api = {

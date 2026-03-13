@@ -4,6 +4,10 @@ import { eq, and } from 'drizzle-orm';
 import { getDb } from '../db';
 import { teams, teamMembers } from '../db/schema';
 
+function getInviteBaseUrl(): string {
+  return (process.env.APP_URL || process.env.JOWORK_APP_URL || 'https://jowork.work').replace(/\/+$/, '');
+}
+
 /**
  * POST /teams — create a new team
  */
@@ -93,7 +97,7 @@ export async function createInvite(c: Context): Promise<Response> {
   return c.json({
     teamId,
     inviteCode,
-    inviteUrl: `https://app.jowork.dev/join/${inviteCode}`,
+    inviteUrl: `${getInviteBaseUrl()}/join/${inviteCode}`,
     expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
   });
 }
