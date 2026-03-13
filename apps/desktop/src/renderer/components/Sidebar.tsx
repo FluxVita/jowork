@@ -25,20 +25,22 @@ export function Sidebar() {
     : t('personal');
 
   return (
-    <aside className="flex flex-col h-full py-3" role="navigation" aria-label="Main navigation">
-      {/* Brand + mode badge */}
-      <div className="flex items-center gap-2.5 px-5 mb-6">
-        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-lg shadow-primary/20">
-          <span className="text-[16px] font-bold text-white tracking-tight">J</span>
+    <div className="flex flex-col h-full py-4 overflow-hidden">
+      {/* Brand Header */}
+      <div className="flex items-center gap-3 px-6 mb-8">
+        <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-primary to-[#8b5cf6] flex items-center justify-center shadow-lg shadow-primary/20 flex-shrink-0">
+          <span className="text-lg font-bold text-white tracking-tighter">J</span>
         </div>
-        <span className="text-[17px] font-semibold tracking-tight text-foreground" aria-hidden="true">JoWork</span>
-        <span className="ml-auto text-[10px] font-medium px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20" role="status" aria-label={`Mode: ${modeBadge}`}>
-          {modeBadge}
-        </span>
+        <div className="flex flex-col min-w-0">
+          <span className="text-[16px] font-bold text-white tracking-tight leading-none mb-1">JoWork</span>
+          <span className="text-[10px] font-bold text-primary px-1.5 py-0.5 rounded-full bg-primary/10 border border-primary/20 w-fit uppercase tracking-wider">
+            {modeBadge}
+          </span>
+        </div>
       </div>
 
-      {/* Navigation */}
-      <nav className="flex flex-col gap-1 px-3 mb-4" aria-label="Page navigation">
+      {/* Nav Section */}
+      <nav className="flex flex-col gap-1.5 px-3 mb-6 overflow-y-auto custom-scrollbar">
         {NAV_ITEMS.map((item) => {
           const label = t(item.key);
           const active = location.pathname === item.path;
@@ -46,44 +48,39 @@ export function Sidebar() {
             <button
               key={item.path}
               onClick={() => navigate(item.path)}
-              aria-label={label}
-              aria-current={active ? 'page' : undefined}
-              className={`group flex items-center gap-3 px-3 py-2.5 rounded-[12px] text-[13px] transition-all duration-300 text-left
-                focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40
+              className={`group flex items-center gap-3.5 px-4 py-2.5 rounded-[14px] text-[13px] font-medium transition-all duration-300 min-h-[44px]
                 ${active
-                  ? 'bg-primary/15 text-primary font-semibold shadow-[0_4px_12px_rgba(var(--primary),0.08)] border border-primary/20'
-                  : 'text-muted-foreground hover:bg-surface-2/40 hover:text-foreground active:scale-[0.98]'}`}
+                  ? 'bg-primary text-white shadow-lg shadow-primary/20 scale-[1.02]'
+                  : 'text-muted-foreground hover:bg-white/5 hover:text-white active:scale-[0.98]'}`}
             >
-              <span className={`w-5 text-center transition-transform duration-300 ${active ? 'scale-110' : 'group-hover:scale-110'}`} aria-hidden="true">
+              <span className={`transition-transform duration-300 ${active ? 'scale-110' : 'group-hover:scale-110'}`}>
                 {item.icon}
               </span>
-              <span>{label}</span>
+              <span className="truncate">{label}</span>
             </button>
           );
         })}
       </nav>
 
-      {/* Session list (only on conversation page) */}
+      {/* Session List: Only for Chat */}
       {isConversation && (
-        <div className="flex-1 min-h-0 border-t border-border/20 pt-3" role="region" aria-label="Conversations">
+        <div className="flex-1 flex flex-col min-h-0 border-t border-white/5 pt-4">
           <SessionList />
         </div>
       )}
 
-      {/* Spacer when not on conversation page */}
+      {/* Bottom Footer */}
       {!isConversation && <div className="flex-1" />}
-
-      {/* Credit bar (when logged in) */}
+      
       {user && (
-        <div className="border-t border-border/20 p-3" role="region" aria-label="Credits">
+        <div className="px-4 py-2 border-t border-white/5">
           <CreditBar />
         </div>
       )}
-
-      {/* Bottom */}
-      <div className="text-[11px] text-muted-foreground/60 px-5 py-3 border-t border-border/20" aria-label={tc('version')}>
-        JoWork {version ? `v${version}` : ''}
+      
+      <div className="px-6 py-3 text-[10px] font-bold text-muted-foreground/40 tracking-widest uppercase border-t border-white/5 bg-black/10">
+        JoWork {version ? `v${version}` : 'v2.0.0'}
       </div>
-    </aside>
+    </div>
   );
 }

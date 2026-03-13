@@ -22,7 +22,6 @@ export function MainLayout() {
 
   const closeSearch = useCallback(() => setSearchOpen(false), []);
 
-  // Listen for menu accelerator events from main process
   useEffect(() => {
     const offNav = window.jowork.on('nav:goto', (path: unknown) => {
       if (typeof path === 'string') navigate(path);
@@ -64,18 +63,11 @@ export function MainLayout() {
       addToast('error', message);
     });
     return () => {
-      offNav();
-      offNewSession();
-      offExport();
-      offNavigateSession();
-      offUpdateChecking();
-      offUpdateAvailable();
-      offUpdateDownloaded();
-      offUpdateError();
+      offNav(); offNewSession(); offExport(); offNavigateSession();
+      offUpdateChecking(); offUpdateAvailable(); offUpdateDownloaded(); offUpdateError();
     };
   }, [navigate, createSession, selectSession, addToast, t]);
 
-  // Cmd+K to toggle global search
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
@@ -88,43 +80,39 @@ export function MainLayout() {
   }, []);
 
   return (
-    <div className="relative flex h-screen bg-background/80 text-foreground overflow-hidden">
-      <BackgroundGradient />
+    <div className="relative h-screen w-screen bg-black text-foreground overflow-hidden font-sans">
+      {/* Background Layer: 放大比例，提高透明度，确保可见 */}
+      <div className="absolute inset-0 z-0 opacity-40 scale-[1.2]">
+        <BackgroundGradient />
+      </div>
       
-      {/* Skip to main content (keyboard accessibility) */}
-      <a
-        href="#main-content"
-        className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[100] focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-lg"
-      >
-        {t('skipToMainContent')}
-      </a>
+      {/* Main Container: Flex Layout */}
+      <div className="relative z-10 flex h-full w-full">
+        
+        {/* macOS Traffic Lights Region */}
+        <div className="fixed top-0 left-0 right-0 h-8 drag-region z-50 pointer-events-none" />
 
-      {/* Drag region for macOS traffic lights */}
-      <div className="fixed top-0 left-0 right-0 h-12 [-webkit-app-region:drag] z-50" aria-hidden="true" />
+        {/* Sidebar: Glass Sidebar */}
+        {sidebarOpen && (
+          <aside className="w-[260px] h-full flex-shrink-0 border-r border-white/5 bg-black/20 backdrop-blur-3xl flex flex-col pt-8 z-20">
+            <Sidebar />
+          </aside>
+        )}
 
-      {/* Sidebar */}
-      {sidebarOpen && (
-        <div className="w-[260px] flex-shrink-0 border-r border-border/20 bg-surface-1/30 backdrop-blur-2xl flex flex-col pt-12 z-20 shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
-          <Sidebar />
-        </div>
-      )}
+        {/* Main Content: Flex Grow to fill space */}
+        <main id="main-content" className="flex-1 h-full flex flex-col pt-8 min-w-0 bg-transparent relative z-10 overflow-hidden">
+          <Outlet />
+        </main>
 
-      {/* Main content */}
-      <main id="main-content" className="flex-1 flex flex-col pt-12 min-w-0 bg-transparent z-10" role="main" tabIndex={-1}>
-        <Outlet />
-      </main>
+        {/* Context Panel */}
+        {contextPanelOpen && (
+          <aside className="w-[320px] h-full flex-shrink-0 border-l border-white/5 bg-black/20 backdrop-blur-3xl pt-8 z-20">
+            <ContextPanel />
+          </aside>
+        )}
+      </div>
 
-      {/* Context panel */}
-      {contextPanelOpen && (
-        <aside className="w-[320px] flex-shrink-0 border-l border-border/20 bg-surface-1/30 backdrop-blur-2xl pt-12 z-20 shadow-[-4px_0_24px_rgba(0,0,0,0.02)]" aria-label="Context panel">
-          <ContextPanel />
-        </aside>
-      )}
-
-      {/* Global search command palette */}
       <GlobalSearch open={searchOpen} onClose={closeSearch} />
-
-      {/* Toast notifications */}
       <ToastContainer />
     </div>
   );

@@ -30,7 +30,6 @@ export function ConversationPage() {
     }
   }, [activeSessionId]);
 
-  // Close export menu on click outside or Escape
   useEffect(() => {
     if (!showExportMenu) return;
     const handleClick = (e: MouseEvent) => {
@@ -50,84 +49,68 @@ export function ConversationPage() {
   }, [showExportMenu]);
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Engine status bar */}
-      <div className="flex items-center justify-between border-b border-border/20 px-3 py-1 bg-background/5 backdrop-blur-sm z-10">
+    <div className="flex flex-col h-full w-full relative overflow-hidden">
+      {/* Header Bar */}
+      <header className="flex items-center justify-between px-6 py-3 border-b border-white/5 bg-surface-1/20 backdrop-blur-md z-30">
         <EngineIndicator />
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           {activeSessionId && messages.length > 0 && (
             <div className="relative" ref={exportMenuRef}>
               <button
                 onClick={() => setShowExportMenu(!showExportMenu)}
-                aria-expanded={showExportMenu}
-                aria-haspopup="menu"
-                className="text-[12px] text-muted-foreground hover:text-foreground px-3 py-1.5 rounded-lg
-                  hover:bg-surface-2/40 active:scale-[0.97] transition-all duration-200 font-medium"
-                title={t('exportConversation')}
+                className="text-[12px] font-bold text-muted-foreground hover:text-primary bg-surface-2/40 px-3 py-1.5 rounded-xl border border-white/5 transition-all active:scale-95"
               >
                 {t('export')}
               </button>
               {showExportMenu && (
-                <div role="menu" className="glass-effect absolute right-0 top-full mt-2 rounded-xl z-10 py-1.5 min-w-[150px] animate-in fade-in zoom-in-95 duration-200 border border-border shadow-xl">
-                  <button
-                    role="menuitem"
-                    onClick={() => handleExport('markdown')}
-                    className="w-full text-left px-4 py-2 text-[13px] text-foreground hover:bg-primary/10 hover:text-primary transition-colors duration-150"
-                  >
-                    {t('exportMarkdown')}
-                  </button>
-                  <button
-                    role="menuitem"
-                    onClick={() => handleExport('json')}
-                    className="w-full text-left px-4 py-2 text-[13px] text-foreground hover:bg-primary/10 hover:text-primary transition-colors duration-150"
-                  >
-                    {t('exportJson')}
-                  </button>
+                <div className="absolute right-0 top-full mt-2 glass-effect border border-white/10 rounded-2xl z-50 p-1.5 min-w-[160px] shadow-2xl animate-in fade-in zoom-in-95">
+                  <button onClick={() => handleExport('markdown')} className="w-full text-left px-4 py-2.5 text-[13px] font-semibold hover:bg-primary hover:text-white rounded-xl transition-colors">{t('exportMarkdown')}</button>
+                  <button onClick={() => handleExport('json')} className="w-full text-left px-4 py-2.5 text-[13px] font-semibold hover:bg-primary hover:text-white rounded-xl transition-colors">{t('exportJson')}</button>
                 </div>
               )}
             </div>
           )}
         </div>
-      </div>
+      </header>
 
-      {/* Messages */}
-      {messages.length === 0 && !isStreaming ? (
-        <div className="flex-1 flex flex-col items-center justify-center gap-6 p-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-          <div className="w-20 h-20 rounded-[24px] bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-2xl shadow-primary/20 border border-white/10 relative overflow-hidden">
-            <div className="absolute inset-0 bg-white/20 blur-xl rounded-full" />
-            <Bot className="w-10 h-10 text-white relative z-10" />
-          </div>
-          <div className="text-center space-y-2">
-            <h2 className="text-2xl font-bold tracking-tight text-foreground">{t('title')}</h2>
-            <p className="text-[15px] text-muted-foreground max-w-md leading-relaxed">
-              {t('emptyDescription')}
+      {/* Main Content Area */}
+      <div className="flex-1 relative overflow-hidden flex flex-col">
+        {messages.length === 0 && !isStreaming ? (
+          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center animate-in fade-in slide-in-from-bottom-8 duration-1000">
+            <div className="relative mb-8 group">
+              <div className="absolute inset-0 bg-primary/30 blur-[60px] rounded-full group-hover:bg-primary/50 transition-all duration-700" />
+              <div className="relative w-24 h-24 rounded-[32px] bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-2xl border border-white/20">
+                <Bot className="w-12 h-12 text-white" />
+              </div>
+            </div>
+            <h1 className="text-4xl font-black tracking-tight mb-4">{t('title', { defaultValue: 'JoWork AI 助手' })}</h1>
+            <p className="text-lg text-muted-foreground max-w-lg leading-relaxed">
+              {t('emptyDescription', { defaultValue: '与 AI 助手对话，它可以帮你编码、分析数据等。' })}
             </p>
           </div>
-        </div>
-      ) : (
-        <MessageList
-          messages={messages}
-          streamingText={streamingText}
-          isStreaming={isStreaming}
-          hasMore={hasMoreMessages}
-          isLoadingMore={isLoadingMore}
-          onLoadMore={loadMoreMessages}
-        />
-      )}
-
-      {/* Confirm dialog for tool calls requiring approval */}
-      {pendingConfirm && (
-        <div className="px-4 pb-2 animate-in slide-in-from-bottom-4 duration-300">
-          <ConfirmDialog
-            action={pendingConfirm}
-            onAllow={(alwaysAllow) => resolveConfirm(true, alwaysAllow)}
-            onDeny={() => resolveConfirm(false)}
+        ) : (
+          <MessageList
+            messages={messages}
+            streamingText={streamingText}
+            isStreaming={isStreaming}
+            hasMore={hasMoreMessages}
+            isLoadingMore={isLoadingMore}
+            onLoadMore={loadMoreMessages}
           />
+        )}
+      </div>
+
+      {/* Confirm dialog */}
+      {pendingConfirm && (
+        <div className="absolute bottom-[100px] left-1/2 -translate-x-1/2 w-full max-w-2xl px-4 z-40 animate-in slide-in-from-bottom-4">
+          <ConfirmDialog action={pendingConfirm} onAllow={(a) => resolveConfirm(true, a)} onDeny={() => resolveConfirm(false)} />
         </div>
       )}
 
-      {/* Input */}
-      <InputBox onSend={sendMessage} onAbort={abort} isStreaming={isStreaming} focusKey={activeSessionId} />
+      {/* Bottom Input Area */}
+      <footer className="w-full pb-8 pt-2 px-6 z-30">
+        <InputBox onSend={sendMessage} onAbort={abort} isStreaming={isStreaming} focusKey={activeSessionId} />
+      </footer>
     </div>
   );
 }
