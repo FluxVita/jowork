@@ -1,11 +1,5 @@
+import { useTranslation } from 'react-i18next';
 import type { SkillInfo } from './hooks/useSkills';
-
-const sourceLabel: Record<string, string> = {
-  'claude-code': 'Claude Code',
-  openclaw: 'OpenClaw',
-  jowork: 'JoWork',
-  community: 'Community',
-};
 
 interface Props {
   skill: SkillInfo;
@@ -13,6 +7,18 @@ interface Props {
 }
 
 export function SkillCard({ skill, onSelect }: Props) {
+  const { t } = useTranslation('skills');
+
+  const sourceLabel = (source: string) => {
+    const map: Record<string, string> = {
+      'claude-code': t('sourceClaudeCode'),
+      jowork: t('sourceJowork'),
+      openclaw: t('sourceOpenclaw'),
+      community: t('sourceCommunity'),
+    };
+    return map[source] ?? source;
+  };
+
   return (
     <button
       onClick={() => onSelect(skill)}
@@ -22,7 +28,7 @@ export function SkillCard({ skill, onSelect }: Props) {
       <div className="flex items-center justify-between mb-1">
         <span className="text-sm font-medium text-text-primary">{skill.name}</span>
         <span className="text-[10px] px-1.5 py-0.5 bg-accent/10 text-accent rounded">
-          {sourceLabel[skill.source] ?? skill.source}
+          {sourceLabel(skill.source)}
         </span>
       </div>
       <p className="text-xs text-text-secondary line-clamp-2">{skill.description}</p>
@@ -32,7 +38,7 @@ export function SkillCard({ skill, onSelect }: Props) {
         </code>
         {skill.variables && skill.variables.length > 0 && (
           <span className="text-[10px] text-text-secondary">
-            {skill.variables.length} var{skill.variables.length > 1 ? 's' : ''}
+            {t('variableCount', { count: skill.variables.length })}
           </span>
         )}
       </div>

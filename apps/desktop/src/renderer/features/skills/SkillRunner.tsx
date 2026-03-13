@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { SkillInfo } from './hooks/useSkills';
 import { useSkillStore } from './hooks/useSkills';
 
@@ -8,6 +9,8 @@ interface Props {
 }
 
 export function SkillRunner({ skill, onClose }: Props) {
+  const { t } = useTranslation('skills');
+  const { t: tc } = useTranslation('common');
   const { runSkill, isRunning } = useSkillStore();
   const [vars, setVars] = useState<Record<string, string>>(() => {
     const initial: Record<string, string> = {};
@@ -32,7 +35,7 @@ export function SkillRunner({ skill, onClose }: Props) {
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-medium text-text-primary">{skill.name}</h3>
         <button onClick={onClose} className="text-xs text-text-secondary hover:text-text-primary">
-          Close
+          {tc('close')}
         </button>
       </div>
 
@@ -61,7 +64,7 @@ export function SkillRunner({ skill, onClose }: Props) {
                   className="w-full px-2 py-1.5 text-sm bg-surface-2 border border-border rounded
                     text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
                 >
-                  <option value="">Select...</option>
+                  <option value="">{t('selectPlaceholder')}</option>
                   {v.options?.map((opt) => (
                     <option key={opt} value={opt}>
                       {opt}
@@ -89,7 +92,7 @@ export function SkillRunner({ skill, onClose }: Props) {
           className="px-4 py-1.5 text-sm bg-accent text-white rounded-md hover:bg-accent/90
             disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
-          {isRunning ? 'Running...' : 'Run Skill'}
+          {isRunning ? t('running') : t('runSkill')}
         </button>
       </div>
     </div>

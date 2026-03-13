@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { RuleEditor, type NotificationRuleInfo } from './RuleEditor';
 
 export function NotificationRules() {
+  const { t } = useTranslation('notifications');
+  const { t: tc } = useTranslation('common');
   const [rules, setRules] = useState<NotificationRuleInfo[]>([]);
   const [editingRule, setEditingRule] = useState<NotificationRuleInfo | null>(null);
   const [showEditor, setShowEditor] = useState(false);
@@ -36,17 +39,17 @@ export function NotificationRules() {
   };
 
   const conditionLabel: Record<string, string> = {
-    mention_me: 'Mention me',
-    p0_issue: 'P0 issue',
-    pr_review_requested: 'PR review requested',
-    custom: 'Custom',
+    mention_me: t('condMentionMe'),
+    p0_issue: t('condP0Issue'),
+    pr_review_requested: t('condPrReview'),
+    custom: t('condCustom'),
   };
 
   return (
     <div>
       <div className="flex items-center justify-between mb-1">
         <p className="text-sm text-text-secondary">
-          Configure when and how you receive notifications from connectors.
+          {t('rulesDescription')}
         </p>
         <button
             onClick={() => {
@@ -55,7 +58,7 @@ export function NotificationRules() {
             }}
             className="px-3 py-1 text-xs bg-accent text-white rounded-md hover:bg-accent/90 transition-colors"
           >
-            {showEditor ? 'Cancel' : '+ New Rule'}
+            {showEditor ? tc('cancel') : t('newRule')}
           </button>
       </div>
 
@@ -74,8 +77,8 @@ export function NotificationRules() {
 
         {rules.length === 0 && !showEditor ? (
           <div className="text-center py-12 text-text-secondary text-sm">
-            <p>No notification rules configured.</p>
-            <p className="text-xs mt-1">Create a rule to get notified about connector events.</p>
+            <p>{t('noRules')}</p>
+            <p className="text-xs mt-1">{t('noRulesHint')}</p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -101,23 +104,23 @@ export function NotificationRules() {
                       }}
                       className="text-xs text-text-secondary hover:text-accent transition-colors"
                     >
-                      Edit
+                      {tc('edit')}
                     </button>
                     <button
                       onClick={() => handleDelete(rule.id)}
                       className="text-xs text-text-secondary hover:text-red-400 transition-colors"
                     >
-                      Delete
+                      {tc('delete')}
                     </button>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-3 text-[10px] text-text-secondary">
-                  <span>Channels: {rule.channels.join(', ')}</span>
+                  <span>{t('channels')}: {rule.channels.join(', ')}</span>
                   {rule.silentHours && (
-                    <span>Silent: {rule.silentHours.start}-{rule.silentHours.end}</span>
+                    <span>{t('silent')}: {rule.silentHours.start}-{rule.silentHours.end}</span>
                   )}
-                  {rule.aiSummary && <span>AI Summary</span>}
+                  {rule.aiSummary && <span>{t('aiSummary')}</span>}
                 </div>
               </div>
             ))}

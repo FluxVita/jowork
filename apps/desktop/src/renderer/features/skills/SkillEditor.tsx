@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useSkillStore, type SkillDraft } from './hooks/useSkills';
 
 interface Props {
@@ -15,6 +16,8 @@ const emptyDraft: SkillDraft = {
 };
 
 export function SkillEditor({ onClose }: Props) {
+  const { t } = useTranslation('skills');
+  const { t: tc } = useTranslation('common');
   const { saveSkill } = useSkillStore();
   const [draft, setDraft] = useState<SkillDraft>({ ...emptyDraft });
   const [saving, setSaving] = useState(false);
@@ -61,9 +64,9 @@ export function SkillEditor({ onClose }: Props) {
   return (
     <div className="p-4 bg-surface-1 border border-border rounded-lg">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-medium text-text-primary">Create Custom Skill</h3>
+        <h3 className="text-sm font-medium text-text-primary">{t('createCustomSkill')}</h3>
         <button onClick={onClose} className="text-xs text-text-secondary hover:text-text-primary">
-          Cancel
+          {tc('cancel')}
         </button>
       </div>
 
@@ -74,7 +77,7 @@ export function SkillEditor({ onClose }: Props) {
       <div className="space-y-3">
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs text-text-secondary mb-1">Name</label>
+            <label className="block text-xs text-text-secondary mb-1">{t('skillName')}</label>
             <input
               type="text"
               value={draft.name}
@@ -85,7 +88,7 @@ export function SkillEditor({ onClose }: Props) {
             />
           </div>
           <div>
-            <label className="block text-xs text-text-secondary mb-1">Trigger</label>
+            <label className="block text-xs text-text-secondary mb-1">{t('skillTrigger')}</label>
             <input
               type="text"
               value={draft.trigger}
@@ -98,38 +101,36 @@ export function SkillEditor({ onClose }: Props) {
         </div>
 
         <div>
-          <label className="block text-xs text-text-secondary mb-1">Description</label>
+          <label className="block text-xs text-text-secondary mb-1">{t('skillDescription')}</label>
           <input
             type="text"
             value={draft.description}
             onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))}
-            placeholder="What does this skill do?"
             className="w-full px-2 py-1.5 text-sm bg-surface-2 border border-border rounded
               text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
           />
         </div>
 
         <div>
-          <label className="block text-xs text-text-secondary mb-1">Prompt Template</label>
+          <label className="block text-xs text-text-secondary mb-1">{t('promptTemplate')}</label>
           <textarea
             value={draft.promptTemplate ?? ''}
             onChange={(e) => setDraft((d) => ({ ...d, promptTemplate: e.target.value }))}
             rows={6}
-            placeholder="Use {{variable_name}} for dynamic values..."
+            placeholder={t('promptPlaceholder')}
             className="w-full px-2 py-1.5 text-sm bg-surface-2 border border-border rounded
               text-text-primary font-mono focus:outline-none focus:ring-1 focus:ring-accent resize-none"
           />
         </div>
 
-        {/* Variables */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <label className="text-xs text-text-secondary">Variables</label>
+            <label className="text-xs text-text-secondary">{t('variables')}</label>
             <button
               onClick={addVariable}
               className="text-xs text-accent hover:text-accent/80"
             >
-              + Add Variable
+              {t('addVariable')}
             </button>
           </div>
           {(draft.variables ?? []).map((v, idx) => (
@@ -146,7 +147,7 @@ export function SkillEditor({ onClose }: Props) {
                 type="text"
                 value={v.label}
                 onChange={(e) => updateVariable(idx, 'label', e.target.value)}
-                placeholder="Label"
+                placeholder={t('varLabel')}
                 className="flex-1 px-2 py-1 text-xs bg-surface-2 border border-border rounded
                   text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
               />
@@ -156,9 +157,9 @@ export function SkillEditor({ onClose }: Props) {
                 className="px-2 py-1 text-xs bg-surface-2 border border-border rounded
                   text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
               >
-                <option value="text">Text</option>
-                <option value="multiline">Multiline</option>
-                <option value="select">Select</option>
+                <option value="text">{t('varTypeText')}</option>
+                <option value="multiline">{t('varTypeMultiline')}</option>
+                <option value="select">{t('varTypeSelect')}</option>
               </select>
               <label className="flex items-center gap-1 text-xs text-text-secondary">
                 <input
@@ -167,7 +168,7 @@ export function SkillEditor({ onClose }: Props) {
                   onChange={(e) => updateVariable(idx, 'required', e.target.checked)}
                   className="rounded"
                 />
-                Req
+                {t('varRequired')}
               </label>
               <button
                 onClick={() => removeVariable(idx)}
@@ -187,7 +188,7 @@ export function SkillEditor({ onClose }: Props) {
           className="px-4 py-1.5 text-sm bg-accent text-white rounded-md hover:bg-accent/90
             disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
-          {saving ? 'Saving...' : 'Save Skill'}
+          {saving ? tc('saving') : t('saveSkill')}
         </button>
       </div>
     </div>

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useSkillStore } from './hooks/useSkills';
 
 /** Placeholder marketplace — shows community skill directory with install action */
@@ -61,6 +62,8 @@ interface Props {
 }
 
 export function SkillMarketplace({ onClose }: Props) {
+  const { t } = useTranslation('skills');
+  const { t: tc } = useTranslation('common');
   const { saveSkill, loadSkills } = useSkillStore();
   const [installing, setInstalling] = useState<string | null>(null);
   const [installed, setInstalled] = useState<Set<string>>(new Set());
@@ -97,13 +100,13 @@ export function SkillMarketplace({ onClose }: Props) {
     <div className="p-4 bg-surface-1 border border-border rounded-lg">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h3 className="text-sm font-medium text-text-primary">Skill Marketplace</h3>
+          <h3 className="text-sm font-medium text-text-primary">{t('skillMarketplace')}</h3>
           <p className="text-xs text-text-secondary mt-0.5">
-            Browse and install community skills
+            {t('browseSkills')}
           </p>
         </div>
         <button onClick={onClose} className="text-xs text-text-secondary hover:text-text-primary">
-          Close
+          {tc('close')}
         </button>
       </div>
 
@@ -111,7 +114,7 @@ export function SkillMarketplace({ onClose }: Props) {
         type="text"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
-        placeholder="Search skills..."
+        placeholder={t('searchSkills')}
         className="w-full px-2 py-1.5 text-sm bg-surface-2 border border-border rounded mb-3
           text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-1 focus:ring-accent"
       />
@@ -132,7 +135,7 @@ export function SkillMarketplace({ onClose }: Props) {
               <p className="text-xs text-text-secondary line-clamp-2">{skill.description}</p>
               <div className="flex items-center gap-3 mt-1.5 text-[10px] text-text-secondary">
                 <span>{skill.author}</span>
-                <span>{skill.downloads.toLocaleString()} installs</span>
+                <span>{t('installCount', { count: skill.downloads })}</span>
               </div>
             </div>
             <button
@@ -141,7 +144,7 @@ export function SkillMarketplace({ onClose }: Props) {
               className="shrink-0 px-3 py-1 text-xs bg-accent text-white rounded hover:bg-accent/90
                 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {installed.has(skill.id) ? 'Installed' : installing === skill.id ? '...' : 'Install'}
+              {installed.has(skill.id) ? t('installed') : installing === skill.id ? '...' : t('install')}
             </button>
           </div>
         ))}
@@ -149,7 +152,7 @@ export function SkillMarketplace({ onClose }: Props) {
 
       {filtered.length === 0 && (
         <p className="text-xs text-text-secondary text-center py-6">
-          No skills match your search.
+          {t('noSkillsMatch')}
         </p>
       )}
     </div>

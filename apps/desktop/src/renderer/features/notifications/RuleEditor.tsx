@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 export interface NotificationRuleInfo {
   id: string;
@@ -10,19 +11,6 @@ export interface NotificationRuleInfo {
   aiSummary: boolean;
 }
 
-const CONDITIONS = [
-  { value: 'mention_me', label: 'Mention me' },
-  { value: 'p0_issue', label: 'P0 issue created' },
-  { value: 'pr_review_requested', label: 'PR review requested' },
-  { value: 'custom', label: 'Custom filter' },
-];
-
-const CHANNELS = [
-  { value: 'system', label: 'System notification' },
-  { value: 'app', label: 'In-app notification' },
-  { value: 'feishu', label: 'Feishu message' },
-];
-
 interface Props {
   initial?: NotificationRuleInfo;
   onSave: (rule: NotificationRuleInfo) => Promise<void>;
@@ -30,6 +18,22 @@ interface Props {
 }
 
 export function RuleEditor({ initial, onSave, onCancel }: Props) {
+  const { t } = useTranslation('notifications');
+  const { t: tc } = useTranslation('common');
+
+  const CONDITIONS = [
+    { value: 'mention_me', label: t('condMentionMe') },
+    { value: 'p0_issue', label: t('condP0Issue') },
+    { value: 'pr_review_requested', label: t('condPrReview') },
+    { value: 'custom', label: t('condCustom') },
+  ];
+
+  const CHANNELS = [
+    { value: 'system', label: t('channelSystem') },
+    { value: 'app', label: t('channelApp') },
+    { value: 'feishu', label: t('channelFeishu') },
+  ];
+
   const [connectorId, setConnectorId] = useState(initial?.connectorId ?? '');
   const [condition, setCondition] = useState(initial?.condition ?? 'mention_me');
   const [customFilter, setCustomFilter] = useState(initial?.customFilter ?? '');
@@ -68,27 +72,27 @@ export function RuleEditor({ initial, onSave, onCancel }: Props) {
     <div className="space-y-3 p-4 bg-surface-1 border border-border rounded-lg">
       <div className="flex items-center justify-between mb-1">
         <h3 className="text-sm font-medium text-text-primary">
-          {initial ? 'Edit Rule' : 'New Notification Rule'}
+          {initial ? t('editRule') : t('newRuleTitle')}
         </h3>
         <button onClick={onCancel} className="text-xs text-text-secondary hover:text-text-primary">
-          Cancel
+          {tc('cancel')}
         </button>
       </div>
 
       <div>
-        <label className="block text-xs text-text-secondary mb-1">Connector ID</label>
+        <label className="block text-xs text-text-secondary mb-1">{t('connectorId')}</label>
         <input
           type="text"
           value={connectorId}
           onChange={(e) => setConnectorId(e.target.value)}
-          placeholder="e.g. github, gitlab, feishu"
+          placeholder={t('connectorIdPlaceholder')}
           className="w-full px-2 py-1.5 text-sm bg-surface-2 border border-border rounded
             text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
         />
       </div>
 
       <div>
-        <label className="block text-xs text-text-secondary mb-1">Condition</label>
+        <label className="block text-xs text-text-secondary mb-1">{t('condition')}</label>
         <select
           value={condition}
           onChange={(e) => setCondition(e.target.value)}
@@ -103,12 +107,12 @@ export function RuleEditor({ initial, onSave, onCancel }: Props) {
 
       {condition === 'custom' && (
         <div>
-          <label className="block text-xs text-text-secondary mb-1">Custom Filter Expression</label>
+          <label className="block text-xs text-text-secondary mb-1">{t('customFilterExpression')}</label>
           <input
             type="text"
             value={customFilter}
             onChange={(e) => setCustomFilter(e.target.value)}
-            placeholder='e.g. title contains "urgent"'
+            placeholder={t('customFilterPlaceholder')}
             className="w-full px-2 py-1.5 text-sm bg-surface-2 border border-border rounded
               text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
           />
@@ -116,7 +120,7 @@ export function RuleEditor({ initial, onSave, onCancel }: Props) {
       )}
 
       <div>
-        <label className="block text-xs text-text-secondary mb-1.5">Delivery Channels</label>
+        <label className="block text-xs text-text-secondary mb-1.5">{t('deliveryChannels')}</label>
         <div className="flex items-center gap-4">
           {CHANNELS.map((ch) => (
             <label key={ch.value} className="flex items-center gap-1.5 text-xs text-text-secondary">
@@ -140,7 +144,7 @@ export function RuleEditor({ initial, onSave, onCancel }: Props) {
             onChange={(e) => setSilentEnabled(e.target.checked)}
             className="accent-accent"
           />
-          Silent hours
+          {t('silentHours')}
         </label>
         {silentEnabled && (
           <div className="flex items-center gap-2 mt-1.5 ml-5">
@@ -150,7 +154,7 @@ export function RuleEditor({ initial, onSave, onCancel }: Props) {
               onChange={(e) => setSilentStart(e.target.value)}
               className="px-2 py-1 text-xs bg-surface-2 border border-border rounded text-text-primary"
             />
-            <span className="text-xs text-text-secondary">to</span>
+            <span className="text-xs text-text-secondary">{t('silentTo')}</span>
             <input
               type="time"
               value={silentEnd}
@@ -168,7 +172,7 @@ export function RuleEditor({ initial, onSave, onCancel }: Props) {
           onChange={(e) => setAiSummary(e.target.checked)}
           className="accent-accent"
         />
-        AI-powered summary before delivery
+        {t('aiSummary')}
       </label>
 
       <div className="flex justify-end pt-1">
@@ -178,7 +182,7 @@ export function RuleEditor({ initial, onSave, onCancel }: Props) {
           className="px-4 py-1.5 text-sm bg-accent text-white rounded-md hover:bg-accent/90
             disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
-          {saving ? 'Saving...' : initial ? 'Update' : 'Create Rule'}
+          {saving ? tc('saving') : initial ? tc('update') : t('createRule')}
         </button>
       </div>
     </div>
