@@ -1,5 +1,5 @@
-import { lazy, Suspense } from 'react';
-import { HashRouter, Routes, Route } from 'react-router';
+import { lazy, Suspense, useEffect, useState } from 'react';
+import { HashRouter, Routes, Route, Navigate, useLocation } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { ErrorBoundary, FeatureErrorBoundary } from './components/ErrorBoundary';
 import { MainLayout } from './layouts/MainLayout';
@@ -30,11 +30,47 @@ function PageFallback() {
   );
 }
 
+/** Redirects to /onboarding on first launch (onboarding not yet completed). */
+function OnboardingGuard({ children }: { children: React.ReactNode }) {
+  const location = useLocation();
+  const [checked, setChecked] = useState(false);
+  const [needsOnboarding, setNeedsOnboarding] = useState(false);
+
+  useEffect(() => {
+    window.jowork.settings.get('onboarding').then((val) => {
+      if (val) {
+        try {
+          const parsed = typeof val === 'string' ? JSON.parse(val) : val;
+          setNeedsOnboarding(!parsed.completed);
+        } catch {
+          setNeedsOnboarding(true);
+        }
+      } else {
+        setNeedsOnboarding(true);
+      }
+      setChecked(true);
+    }).catch(() => {
+      setNeedsOnboarding(true);
+      setChecked(true);
+    });
+  }, []);
+
+  if (!checked) return <PageFallback />;
+
+  // Redirect to onboarding if not completed (but don't redirect if already on onboarding or launcher)
+  if (needsOnboarding && !location.pathname.startsWith('/onboarding') && !location.pathname.startsWith('/launcher')) {
+    return <Navigate to="/onboarding" replace />;
+  }
+
+  return <>{children}</>;
+}
+
 export function App() {
   return (
     <ErrorBoundary>
       <HashRouter>
         <Suspense fallback={<PageFallback />}>
+          <OnboardingGuard>
           <Routes>
             {/* Onboarding (first-time user) */}
             <Route path="onboarding" element={<OnboardingFlow />} />
@@ -77,6 +113,7 @@ export function App() {
               } />
             </Route>
           </Routes>
+          </OnboardingGuard>
         </Suspense>
       </HashRouter>
     </ErrorBoundary>
