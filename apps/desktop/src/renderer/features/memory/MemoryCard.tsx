@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import type { MemoryRecord } from './hooks/useMemory';
 
 interface Props {
@@ -8,6 +9,9 @@ interface Props {
 }
 
 export function MemoryCard({ memory, onEdit, onDelete, onTogglePin }: Props) {
+  const { t } = useTranslation('memory');
+  const { t: tc } = useTranslation('common');
+
   return (
     <div className="group p-3 bg-surface-2 border border-border rounded-lg hover:border-accent/30 transition-colors">
       <div className="flex items-start justify-between gap-2 mb-1">
@@ -16,7 +20,7 @@ export function MemoryCard({ memory, onEdit, onDelete, onTogglePin }: Props) {
           <button
             onClick={() => onTogglePin(memory.id, !memory.pinned)}
             className="p-1 text-xs text-text-secondary hover:text-accent"
-            title={memory.pinned ? 'Unpin' : 'Pin'}
+            title={memory.pinned ? t('unpin') : t('pin')}
           >
             {memory.pinned ? '📌' : '📍'}
           </button>
@@ -24,13 +28,13 @@ export function MemoryCard({ memory, onEdit, onDelete, onTogglePin }: Props) {
             onClick={() => onEdit(memory.id)}
             className="p-1 text-xs text-text-secondary hover:text-accent"
           >
-            Edit
+            {tc('edit')}
           </button>
           <button
             onClick={() => onDelete(memory.id)}
             className="p-1 text-xs text-text-secondary hover:text-red-400"
           >
-            Del
+            {tc('delete')}
           </button>
         </div>
       </div>
@@ -44,7 +48,7 @@ export function MemoryCard({ memory, onEdit, onDelete, onTogglePin }: Props) {
           </span>
         ))}
         <span className="text-[10px] text-text-secondary ml-auto">
-          {memory.source === 'auto' ? 'Auto' : 'Manual'}
+          {memory.source === 'auto' ? t('sourceAuto') : t('sourceManual')}
         </span>
       </div>
     </div>

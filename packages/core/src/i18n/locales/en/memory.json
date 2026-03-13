@@ -13,5 +13,9 @@
   "noMemoriesHint": "Create one manually or let AI learn from conversations.",
   "pin": "Pin",
   "unpin": "Unpin",
-  "searchMemories": "Search memories..."
+  "searchMemories": "Search memories...",
+  "sourceAuto": "Auto",
+  "sourceManual": "Manual",
+  "scopePersonal": "Personal",
+  "scopeTeam": "Team"
 }

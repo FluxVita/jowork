@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { NewMemory, MemoryRecord } from './hooks/useMemory';
 
 interface Props {
@@ -8,6 +9,8 @@ interface Props {
 }
 
 export function MemoryEditor({ initial, onSave, onCancel }: Props) {
+  const { t } = useTranslation('memory');
+  const { t: tc } = useTranslation('common');
   const [title, setTitle] = useState(initial?.title ?? '');
   const [content, setContent] = useState(initial?.content ?? '');
   const [tagsInput, setTagsInput] = useState(initial?.tags.join(', ') ?? '');
@@ -41,7 +44,7 @@ export function MemoryEditor({ initial, onSave, onCancel }: Props) {
         type="text"
         value={title}
         onChange={(e) => setTitle(e.target.value)}
-        placeholder="Memory title"
+        placeholder={t('titlePlaceholder')}
         className="w-full px-3 py-2 text-sm bg-surface-2 border border-border rounded-md
           text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-1 focus:ring-accent"
       />
@@ -49,7 +52,7 @@ export function MemoryEditor({ initial, onSave, onCancel }: Props) {
       <textarea
         value={content}
         onChange={(e) => setContent(e.target.value)}
-        placeholder="Memory content..."
+        placeholder={t('contentPlaceholder')}
         rows={4}
         className="w-full px-3 py-2 text-sm bg-surface-2 border border-border rounded-md
           text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-1 focus:ring-accent resize-none"
@@ -59,7 +62,7 @@ export function MemoryEditor({ initial, onSave, onCancel }: Props) {
         type="text"
         value={tagsInput}
         onChange={(e) => setTagsInput(e.target.value)}
-        placeholder="Tags (comma-separated)"
+        placeholder={t('tagsPlaceholder')}
         className="w-full px-3 py-2 text-sm bg-surface-2 border border-border rounded-md
           text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-1 focus:ring-accent"
       />
@@ -73,7 +76,7 @@ export function MemoryEditor({ initial, onSave, onCancel }: Props) {
             onChange={() => setScope('personal')}
             className="accent-accent"
           />
-          Personal
+          {t('scopePersonal')}
         </label>
         <label className="flex items-center gap-1.5 text-xs text-text-secondary">
           <input
@@ -83,7 +86,7 @@ export function MemoryEditor({ initial, onSave, onCancel }: Props) {
             onChange={() => setScope('team')}
             className="accent-accent"
           />
-          Team
+          {t('scopeTeam')}
         </label>
       </div>
 
@@ -92,7 +95,7 @@ export function MemoryEditor({ initial, onSave, onCancel }: Props) {
           onClick={onCancel}
           className="px-3 py-1.5 text-sm text-text-secondary hover:text-text-primary transition-colors"
         >
-          Cancel
+          {tc('cancel')}
         </button>
         <button
           onClick={handleSave}
@@ -100,7 +103,7 @@ export function MemoryEditor({ initial, onSave, onCancel }: Props) {
           className="px-3 py-1.5 text-sm bg-accent text-white rounded-md hover:bg-accent/90
             disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
-          {saving ? 'Saving...' : initial ? 'Update' : 'Create'}
+          {saving ? tc('saving') : initial ? tc('update') : tc('create')}
         </button>
       </div>
     </div>

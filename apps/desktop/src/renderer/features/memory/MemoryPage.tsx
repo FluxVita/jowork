@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useMemoryStore } from './hooks/useMemory';
 import { MemorySearch } from './MemorySearch';
 import { MemoryCard } from './MemoryCard';
@@ -6,6 +7,8 @@ import { MemoryEditor } from './MemoryEditor';
 import type { NewMemory, MemoryRecord } from './hooks/useMemory';
 
 export function MemoryPage() {
+  const { t } = useTranslation('memory');
+  const { t: tc } = useTranslation('common');
   const { memories, isLoading, loadMemories, create, update, remove, togglePin } = useMemoryStore();
   const [showEditor, setShowEditor] = useState(false);
   const [editingMemory, setEditingMemory] = useState<MemoryRecord | undefined>();
@@ -44,7 +47,7 @@ export function MemoryPage() {
     <div className="flex-1 p-8 overflow-y-auto">
       <div className="max-w-3xl">
         <div className="flex items-center justify-between mb-1">
-          <h1 className="text-xl font-semibold">Memories</h1>
+          <h1 className="text-xl font-semibold">{t('title')}</h1>
           <button
             onClick={() => {
               setEditingMemory(undefined);
@@ -52,11 +55,11 @@ export function MemoryPage() {
             }}
             className="px-3 py-1.5 text-sm bg-accent text-white rounded-md hover:bg-accent/90 transition-colors"
           >
-            + New
+            + {t('new')}
           </button>
         </div>
         <p className="text-sm text-text-secondary mb-4">
-          Things the AI remembers about you across conversations.
+          {t('description')}
         </p>
 
         <div className="mb-4">
@@ -66,7 +69,7 @@ export function MemoryPage() {
         {showEditor && (
           <div className="mb-4 p-4 bg-surface-1 border border-border rounded-lg">
             <h2 className="text-sm font-medium mb-3">
-              {editingMemory ? 'Edit Memory' : 'New Memory'}
+              {editingMemory ? t('editMemory') : t('newMemory')}
             </h2>
             <MemoryEditor
               initial={editingMemory}
@@ -77,12 +80,12 @@ export function MemoryPage() {
         )}
 
         {isLoading ? (
-          <p className="text-sm text-text-secondary">Loading...</p>
+          <p className="text-sm text-text-secondary">{tc('loading')}</p>
         ) : (
           <>
             {pinned.length > 0 && (
               <section className="mb-6">
-                <h2 className="text-sm font-medium text-text-secondary mb-2">Pinned</h2>
+                <h2 className="text-sm font-medium text-text-secondary mb-2">{t('pinned')}</h2>
                 <div className="space-y-2">
                   {pinned.map((m) => (
                     <MemoryCard
@@ -99,12 +102,12 @@ export function MemoryPage() {
 
             <section>
               {pinned.length > 0 && (
-                <h2 className="text-sm font-medium text-text-secondary mb-2">All Memories</h2>
+                <h2 className="text-sm font-medium text-text-secondary mb-2">{t('allMemories')}</h2>
               )}
               {unpinned.length === 0 && pinned.length === 0 ? (
                 <div className="text-center py-12 text-text-secondary text-sm">
-                  <p>No memories yet.</p>
-                  <p className="text-xs mt-1">Create one manually or let AI learn from conversations.</p>
+                  <p>{t('noMemories')}</p>
+                  <p className="text-xs mt-1">{t('noMemoriesHint')}</p>
                 </div>
               ) : (
                 <div className="space-y-2">

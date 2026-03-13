@@ -10,5 +10,7 @@
   "sourceCommunity": "社区",
   "loading": "加载技能...",
   "run": "运行",
-  "details": "详情"
+  "details": "详情",
+  "marketplace": "技能市场",
+  "createSkill": "创建"
 }

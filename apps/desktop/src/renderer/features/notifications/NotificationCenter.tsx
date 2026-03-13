@@ -1,10 +1,12 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNotificationStore } from './hooks/useNotifications';
 import { NotificationRules } from './NotificationRules';
 
 type Tab = 'inbox' | 'rules';
 
 export function NotificationCenter() {
+  const { t } = useTranslation('notifications');
   const { notifications, unreadCount, markRead, markAllRead, clear } = useNotificationStore();
   const [tab, setTab] = useState<Tab>('inbox');
 
@@ -13,7 +15,7 @@ export function NotificationCenter() {
       <div className="max-w-3xl">
         <div className="flex items-center justify-between mb-1">
           <h1 className="text-xl font-semibold">
-            Notifications
+            {t('title')}
             {unreadCount > 0 && (
               <span className="ml-2 text-sm bg-accent text-white px-2 py-0.5 rounded-full">
                 {unreadCount}
@@ -27,13 +29,13 @@ export function NotificationCenter() {
                   onClick={markAllRead}
                   className="text-xs text-text-secondary hover:text-accent transition-colors"
                 >
-                  Mark all read
+                  {t('markAllRead')}
                 </button>
                 <button
                   onClick={clear}
                   className="text-xs text-text-secondary hover:text-red-400 transition-colors"
                 >
-                  Clear all
+                  {t('clearAll')}
                 </button>
               </>
             )}
@@ -41,17 +43,17 @@ export function NotificationCenter() {
         </div>
 
         <div className="flex items-center gap-4 mb-4 border-b border-border">
-          {(['inbox', 'rules'] as const).map((t) => (
+          {(['inbox', 'rules'] as const).map((tabKey) => (
             <button
-              key={t}
-              onClick={() => setTab(t)}
+              key={tabKey}
+              onClick={() => setTab(tabKey)}
               className={`pb-2 text-sm transition-colors border-b-2 -mb-px ${
-                tab === t
+                tab === tabKey
                   ? 'border-accent text-text-primary font-medium'
                   : 'border-transparent text-text-secondary hover:text-text-primary'
               }`}
             >
-              {t === 'inbox' ? 'Inbox' : 'Rules'}
+              {t(tabKey)}
             </button>
           ))}
         </div>
@@ -60,7 +62,7 @@ export function NotificationCenter() {
           <NotificationRules />
         ) : notifications.length === 0 ? (
           <div className="text-center py-12 text-text-secondary text-sm">
-            <p>No notifications.</p>
+            <p>{t('noNotifications')}</p>
           </div>
         ) : (
           <div className="space-y-1">

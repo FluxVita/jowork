@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useSchedulerStore, type ScheduledTaskInfo } from './hooks/useScheduler';
 import { TaskCard } from './TaskCard';
 import { TaskEditor } from './TaskEditor';
 import { TaskHistory } from './TaskHistory';
 
 export function SchedulerPage() {
+  const { t } = useTranslation('scheduler');
+  const { t: tc } = useTranslation('common');
   const { tasks, isLoading, loadTasks, createTask, updateTask, deleteTask, toggleTask, executions, loadExecutions } = useSchedulerStore();
   const [showEditor, setShowEditor] = useState(false);
   const [editingTask, setEditingTask] = useState<ScheduledTaskInfo | undefined>();
@@ -41,7 +44,7 @@ export function SchedulerPage() {
     <div className="flex-1 p-8 overflow-y-auto">
       <div className="max-w-3xl">
         <div className="flex items-center justify-between mb-1">
-          <h1 className="text-xl font-semibold">Scheduled Tasks</h1>
+          <h1 className="text-xl font-semibold">{t('title')}</h1>
           <button
             onClick={() => {
               setEditingTask(undefined);
@@ -49,17 +52,17 @@ export function SchedulerPage() {
             }}
             className="px-3 py-1.5 text-sm bg-accent text-white rounded-md hover:bg-accent/90 transition-colors"
           >
-            + New Task
+            + {t('newTask')}
           </button>
         </div>
         <p className="text-sm text-text-secondary mb-4">
-          Automate recurring tasks like data scans, skill execution, and notifications.
+          {t('description')}
         </p>
 
         {showEditor && (
           <div className="mb-4 p-4 bg-surface-1 border border-border rounded-lg">
             <h2 className="text-sm font-medium mb-3">
-              {editingTask ? 'Edit Task' : 'New Task'}
+              {editingTask ? t('editTask') : t('newTask')}
             </h2>
             <TaskEditor
               initial={editingTask}
@@ -82,11 +85,11 @@ export function SchedulerPage() {
         )}
 
         {isLoading ? (
-          <p className="text-sm text-text-secondary">Loading...</p>
+          <p className="text-sm text-text-secondary">{tc('loading')}</p>
         ) : tasks.length === 0 ? (
           <div className="text-center py-12 text-text-secondary text-sm">
-            <p>No scheduled tasks yet.</p>
-            <p className="text-xs mt-1">Create one to automate your workflow.</p>
+            <p>{t('noTasks')}</p>
+            <p className="text-xs mt-1">{t('noTasksHint')}</p>
           </div>
         ) : (
           <div className="space-y-2">

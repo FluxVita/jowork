@@ -10,5 +10,7 @@
   "sourceCommunity": "Community",
   "loading": "Loading skills...",
   "run": "Run",
-  "details": "Details"
+  "details": "Details",
+  "marketplace": "Marketplace",
+  "createSkill": "Create"
 }

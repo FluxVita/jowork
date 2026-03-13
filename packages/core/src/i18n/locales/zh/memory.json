@@ -13,5 +13,9 @@
   "noMemoriesHint": "手动创建或让 AI 从对话中学习。",
   "pin": "置顶",
   "unpin": "取消置顶",
-  "searchMemories": "搜索记忆..."
+  "searchMemories": "搜索记忆...",
+  "sourceAuto": "自动",
+  "sourceManual": "手动",
+  "scopePersonal": "个人",
+  "scopeTeam": "团队"
 }

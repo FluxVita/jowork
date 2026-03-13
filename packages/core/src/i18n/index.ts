@@ -13,6 +13,7 @@ import zhSkills from './locales/zh/skills.json';
 import zhScheduler from './locales/zh/scheduler.json';
 import zhOnboarding from './locales/zh/onboarding.json';
 import zhAuth from './locales/zh/auth.json';
+import zhNotifications from './locales/zh/notifications.json';
 
 // en namespaces
 import enCommon from './locales/en/common.json';
@@ -27,10 +28,11 @@ import enSkills from './locales/en/skills.json';
 import enScheduler from './locales/en/scheduler.json';
 import enOnboarding from './locales/en/onboarding.json';
 import enAuth from './locales/en/auth.json';
+import enNotifications from './locales/en/notifications.json';
 
 export const i18nNamespaces = [
   'common', 'sidebar', 'chat', 'connectors', 'settings',
-  'billing', 'team', 'memory', 'skills', 'scheduler', 'onboarding', 'auth',
+  'billing', 'team', 'memory', 'skills', 'scheduler', 'onboarding', 'auth', 'notifications',
 ] as const;
 
 export type I18nNamespace = (typeof i18nNamespaces)[number];
@@ -58,6 +60,7 @@ i18n.init({
       scheduler: zhScheduler,
       onboarding: zhOnboarding,
       auth: zhAuth,
+      notifications: zhNotifications,
     },
     en: {
       common: enCommon,
@@ -72,6 +75,7 @@ i18n.init({
       scheduler: enScheduler,
       onboarding: enOnboarding,
       auth: enAuth,
+      notifications: enNotifications,
     },
   },
 });
