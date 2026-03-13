@@ -1,10 +1,30 @@
 node_modules/
 dist/
 out/
+
+# Database
 *.db
 *.db-wal
 *.db-shm
+
+# Environment
 .env
 .env.*
 .env.local
+
+# OS
 .DS_Store
+Thumbs.db
+
+# Build caches
+.turbo/
+*.tsbuildinfo
+
+# IDE
+.vscode/
+.idea/
+
+# Temp files
+findings.md
+progress.md
+task_plan.md
