@@ -18,25 +18,25 @@ export function MemoryCard({ memory, onEdit, onDelete, onTogglePin }: Props) {
     <GlassCard className="group p-4 flex flex-col gap-3">
       <div className="flex items-start justify-between gap-4">
         <h3 className="text-[15px] font-semibold text-foreground leading-snug line-clamp-1">{memory.title}</h3>
-        <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
           <button
             onClick={() => onTogglePin(memory.id, !memory.pinned)}
             className={`p-1.5 rounded-lg transition-colors ${memory.pinned ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-surface-2 hover:text-primary'}`}
-            title={memory.pinned ? t('unpin') : t('pin')}
+            aria-label={memory.pinned ? t('unpin') : t('pin')}
           >
             {memory.pinned ? <PinOff className="w-3.5 h-3.5" /> : <Pin className="w-3.5 h-3.5" />}
           </button>
           <button
             onClick={() => onEdit(memory.id)}
             className="p-1.5 text-muted-foreground hover:bg-surface-2 hover:text-foreground rounded-lg transition-colors"
-            title={tc('edit')}
+            aria-label={tc('edit')}
           >
             <Edit2 className="w-3.5 h-3.5" />
           </button>
           <button
             onClick={() => onDelete(memory.id)}
             className="p-1.5 text-muted-foreground hover:bg-red-500/10 hover:text-red-500 rounded-lg transition-colors"
-            title={tc('delete')}
+            aria-label={tc('delete')}
           >
             <Trash2 className="w-3.5 h-3.5" />
           </button>

@@ -32,6 +32,7 @@ export function LauncherResults() {
                 setQuery(q);
                 submit();
               }}
+              aria-label={`${t('recent')}: ${q}`}
               className="w-full text-left px-4 py-2.5 text-[14px] text-foreground rounded-xl
                 hover:bg-white/5 transition-colors truncate flex items-center gap-3 group"
             >

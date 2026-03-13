@@ -92,6 +92,7 @@ export function CronPicker({ value, onChange }: Props) {
           }}
           onKeyDown={(e) => { if (e.key === 'Enter') handleNlParse(); }}
           placeholder={t('nlPlaceholder')}
+          aria-label={t('nlPlaceholder')}
           className="flex-1 px-3 py-2 text-sm bg-surface-2 border border-border rounded-md
             text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-1 focus:ring-accent"
         />
@@ -117,6 +118,7 @@ export function CronPicker({ value, onChange }: Props) {
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder="* * * * *"
+          aria-label={t('cronExpression', 'Cron expression')}
           className={`flex-1 px-3 py-2 text-sm font-mono bg-surface-2 border rounded-md
             text-text-primary focus:outline-none focus:ring-1 ${
               valid ? 'border-border focus:ring-accent' : 'border-red-400 focus:ring-red-400'

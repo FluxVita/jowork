@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { useConversationStore } from '../stores/conversation';
@@ -119,6 +119,25 @@ export function GlobalSearch({ open, onClose }: { open: boolean; onClose: () => 
     }
   }, [results, activeIndex, handleSelect, onClose]);
 
+  // Focus trap: keep Tab within modal
+  const modalRef = useRef<HTMLDivElement>(null);
+  const handleTrapFocus = useCallback((e: ReactKeyboardEvent) => {
+    if (e.key !== 'Tab' || !modalRef.current) return;
+    const focusable = modalRef.current.querySelectorAll<HTMLElement>(
+      'input, button, [tabindex]:not([tabindex="-1"]), a[href], [role="option"]',
+    );
+    if (focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  }, []);
+
   if (!open) return null;
 
   return (
@@ -131,6 +150,11 @@ export function GlobalSearch({ open, onClose }: { open: boolean; onClose: () => 
 
       {/* Modal */}
       <div
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={t('search')}
+        onKeyDown={handleTrapFocus}
         className="glass relative w-full max-w-lg rounded-2xl overflow-hidden animate-[fadeScale_0.2s_cubic-bezier(0.2,0.8,0.2,1)]"
         onClick={(e) => e.stopPropagation()}
       >

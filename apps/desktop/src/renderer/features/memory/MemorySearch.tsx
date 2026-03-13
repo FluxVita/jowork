@@ -20,6 +20,7 @@ export function MemorySearch() {
       value={searchQuery}
       onChange={(e) => setSearchQuery(e.target.value)}
       placeholder={t('searchMemories')}
+      aria-label={t('searchMemories')}
       className="w-full px-3 py-2 text-sm bg-surface-2 border border-border rounded-md
         text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-1 focus:ring-accent"
     />

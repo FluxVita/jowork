@@ -14,6 +14,8 @@ export function ToolCallCard({ toolName, content }: ToolCallCardProps) {
     <div className="mb-3 ml-2">
       <button
         onClick={() => setExpanded(!expanded)}
+        aria-label={`${expanded ? t('collapse') : t('expand')} ${toolName}`}
+        aria-expanded={expanded}
         className="flex items-center gap-2 text-[12px] text-text-secondary/70 hover:text-text-primary transition-all duration-150 group"
       >
         <span className={`transition-transform duration-200 text-[10px] ${expanded ? 'rotate-90' : ''}`}>▶</span>
