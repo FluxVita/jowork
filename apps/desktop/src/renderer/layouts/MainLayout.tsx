@@ -8,6 +8,7 @@ import { useAppStore } from '../stores/app';
 import { useConversationStore } from '../stores/conversation';
 import { useToastStore } from '../stores/toast';
 import { useTranslation } from 'react-i18next';
+import { BackgroundGradient } from '../components/ui/background-gradient';
 
 export function MainLayout() {
   const { t } = useTranslation();
@@ -87,11 +88,13 @@ export function MainLayout() {
   }, []);
 
   return (
-    <div className="flex h-screen bg-surface-0 text-text-primary">
+    <div className="relative flex h-screen bg-background/80 text-foreground overflow-hidden">
+      <BackgroundGradient />
+      
       {/* Skip to main content (keyboard accessibility) */}
       <a
         href="#main-content"
-        className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[100] focus:px-4 focus:py-2 focus:bg-accent focus:text-white focus:rounded-lg"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[100] focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-lg"
       >
         {t('skipToMainContent')}
       </a>
@@ -101,19 +104,19 @@ export function MainLayout() {
 
       {/* Sidebar */}
       {sidebarOpen && (
-        <div className="w-[240px] flex-shrink-0 border-r border-border/50 bg-surface-1/80 backdrop-blur-xl flex flex-col pt-12">
+        <div className="w-[260px] flex-shrink-0 border-r border-border/20 bg-surface-1/30 backdrop-blur-2xl flex flex-col pt-12 z-20 shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
           <Sidebar />
         </div>
       )}
 
       {/* Main content */}
-      <main id="main-content" className="flex-1 flex flex-col pt-12 min-w-0" role="main" tabIndex={-1}>
+      <main id="main-content" className="flex-1 flex flex-col pt-12 min-w-0 bg-transparent z-10" role="main" tabIndex={-1}>
         <Outlet />
       </main>
 
       {/* Context panel */}
       {contextPanelOpen && (
-        <aside className="w-[320px] flex-shrink-0 border-l border-border/50 bg-surface-1/80 backdrop-blur-xl pt-12" aria-label="Context panel">
+        <aside className="w-[320px] flex-shrink-0 border-l border-border/20 bg-surface-1/30 backdrop-blur-2xl pt-12 z-20 shadow-[-4px_0_24px_rgba(0,0,0,0.02)]" aria-label="Context panel">
           <ContextPanel />
         </aside>
       )}

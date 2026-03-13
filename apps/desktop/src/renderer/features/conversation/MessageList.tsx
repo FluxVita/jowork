@@ -84,17 +84,20 @@ export function MessageList({ messages, streamingText, isStreaming, hasMore, isL
   }, [hasMore, isLoadingMore, onLoadMore]);
 
   return (
-    <div ref={parentRef} className="flex-1 overflow-y-auto px-4 py-6">
-      <div className="max-w-3xl mx-auto">
+    <div ref={parentRef} className="flex-1 overflow-y-auto px-4 py-8 custom-scrollbar">
+      <div className="max-w-4xl mx-auto">
         {/* Load more indicator */}
         {hasMore && (
-          <div className="text-center py-3 mb-2">
+          <div className="text-center py-4 mb-4">
             {isLoadingMore ? (
-              <span className="text-[12px] text-text-secondary/60">{t('loadingOlder')}</span>
+              <span className="text-[13px] text-muted-foreground/60 flex items-center justify-center gap-2">
+                <span className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                {t('loadingOlder')}
+              </span>
             ) : (
               <button
                 onClick={onLoadMore}
-                className="text-[12px] text-accent/70 hover:text-accent transition-colors duration-150"
+                className="text-[13px] text-primary/70 hover:text-primary bg-primary/5 hover:bg-primary/10 px-4 py-1.5 rounded-full transition-colors duration-200"
               >
                 {t('loadOlder')}
               </button>
@@ -130,8 +133,8 @@ export function MessageList({ messages, streamingText, isStreaming, hasMore, isL
 
         {/* Streaming text (outside virtualizer — always at the bottom) */}
         {isStreaming && streamingText && (
-          <div className="mb-4 animate-[fadeIn_0.2s_ease-out]">
-            <div className="max-w-[80%] rounded-[20px] rounded-bl-lg px-4 py-2.5 bg-surface-2/70 shadow-[inset_0_0.5px_0_rgba(255,255,255,0.06)]">
+          <div className="mb-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <div className="max-w-[85%] rounded-[24px] rounded-bl-md px-5 py-3.5 glass-effect text-foreground shadow-lg border-border/80">
               <StreamingText text={streamingText} />
             </div>
           </div>
@@ -139,17 +142,17 @@ export function MessageList({ messages, streamingText, isStreaming, hasMore, isL
 
         {/* Thinking indicator */}
         {isStreaming && !streamingText && (
-          <div className="flex items-center gap-2.5 py-3 animate-[fadeIn_0.3s_ease-out]">
-            <div className="flex items-center gap-[5px]">
-              <span className="w-[6px] h-[6px] bg-accent rounded-full animate-[dotPulse_1.4s_ease-in-out_infinite]" style={{ animationDelay: '0ms' }} />
-              <span className="w-[6px] h-[6px] bg-accent rounded-full animate-[dotPulse_1.4s_ease-in-out_infinite]" style={{ animationDelay: '200ms' }} />
-              <span className="w-[6px] h-[6px] bg-accent rounded-full animate-[dotPulse_1.4s_ease-in-out_infinite]" style={{ animationDelay: '400ms' }} />
+          <div className="flex items-center gap-3 py-4 pl-2 animate-in fade-in duration-300">
+            <div className="flex items-center gap-1.5 p-3 rounded-2xl glass-effect border-border/50">
+              <span className="w-2 h-2 bg-primary rounded-full animate-pulse" style={{ animationDelay: '0ms' }} />
+              <span className="w-2 h-2 bg-primary rounded-full animate-pulse" style={{ animationDelay: '200ms' }} />
+              <span className="w-2 h-2 bg-primary rounded-full animate-pulse" style={{ animationDelay: '400ms' }} />
             </div>
-            <span className="text-[13px] text-text-secondary/60">{t('thinking')}</span>
+            <span className="text-[14px] text-muted-foreground/80 font-medium">{t('thinking')}</span>
           </div>
         )}
 
-        <div ref={bottomRef} />
+        <div ref={bottomRef} className="h-4" />
       </div>
     </div>
   );

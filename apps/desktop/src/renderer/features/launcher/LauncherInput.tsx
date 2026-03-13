@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState, useCallback, type KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLauncherStore } from './hooks/useLauncher';
+import { Search, Terminal, Zap, Loader2 } from 'lucide-react';
 
 interface SkillItem {
   id: string;
@@ -87,42 +88,59 @@ export function LauncherInput() {
   };
 
   return (
-    <div className="relative">
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-white/10">
-        <span className="text-text-secondary text-lg">🔍</span>
+    <div className="relative z-20">
+      <div className="flex items-center gap-4 px-6 py-5 border-b border-white/10 transition-colors duration-300 focus-within:bg-white/5">
+        <div className="text-primary animate-in zoom-in duration-500">
+          <Search className="w-6 h-6" />
+        </div>
         <input
           ref={inputRef}
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={t('launcherPlaceholder')}
+          placeholder={t('launcherPlaceholder', { defaultValue: 'Ask JoWork or type / for skills...' })}
           disabled={isStreaming}
-          className="flex-1 bg-transparent text-sm text-text-primary placeholder:text-text-secondary
+          className="flex-1 bg-transparent text-xl font-medium text-foreground placeholder:text-muted-foreground/40
             focus:outline-none disabled:opacity-50"
         />
         {isStreaming && (
-          <span className="text-xs text-accent animate-pulse">{t('thinking')}</span>
+          <div className="flex items-center gap-2 text-primary font-bold text-xs bg-primary/10 px-3 py-1.5 rounded-full border border-primary/20 animate-pulse">
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            <span>{t('thinking')}</span>
+          </div>
         )}
       </div>
 
-      {/* Skill autocomplete dropdown */}
+      {/* Skill autocomplete dropdown in glass style */}
       {showSkills && filteredSkills.length > 0 && (
-        <div className="absolute left-0 right-0 top-full z-50 bg-surface-0 border border-white/10 rounded-b-lg shadow-lg max-h-60 overflow-y-auto">
-          <p className="px-3 py-1.5 text-xs text-text-secondary">{t('skillsLabel')}</p>
-          {filteredSkills.map((skill, i) => (
-            <button
-              key={skill.id}
-              onClick={() => selectSkill(skill)}
-              className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition-colors
-                ${i === selectedIdx ? 'bg-accent/15 text-text-primary' : 'text-text-secondary hover:bg-white/5'}`}
-            >
-              <span className="text-accent font-mono text-xs">/{skill.name}</span>
-              {skill.description && (
-                <span className="truncate text-xs text-text-secondary">{skill.description}</span>
-              )}
-            </button>
-          ))}
+        <div className="absolute left-4 right-4 top-[calc(100%+8px)] z-50 glass-effect border border-white/20 rounded-2xl shadow-2xl overflow-hidden animate-in slide-in-from-top-2 duration-200">
+          <div className="px-4 py-2 bg-surface-1/40 border-b border-white/5 text-[10px] font-bold text-muted-foreground/70 uppercase tracking-widest flex items-center gap-2">
+            <Terminal className="w-3 h-3" />
+            {t('skillsLabel', { defaultValue: 'Available Skills' })}
+          </div>
+          <div className="max-h-[300px] overflow-y-auto custom-scrollbar">
+            {filteredSkills.map((skill, i) => (
+              <button
+                key={skill.id}
+                onClick={() => selectSkill(skill)}
+                className={`w-full text-left px-4 py-3 text-[14px] flex items-center justify-between gap-4 transition-all duration-200
+                  ${i === selectedIdx ? 'bg-primary text-primary-foreground shadow-lg' : 'text-foreground hover:bg-white/5'}`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`p-1.5 rounded-lg ${i === selectedIdx ? 'bg-white/20' : 'bg-primary/10 text-primary'}`}>
+                    <Zap className="w-3.5 h-3.5 fill-current" />
+                  </div>
+                  <span className="font-semibold tracking-tight">/{skill.name}</span>
+                </div>
+                {skill.description && (
+                  <span className={`text-xs truncate max-w-[200px] italic ${i === selectedIdx ? 'text-white/70' : 'text-muted-foreground'}`}>
+                    {skill.description}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
         </div>
       )}
     </div>

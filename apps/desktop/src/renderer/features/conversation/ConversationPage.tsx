@@ -6,6 +6,7 @@ import { InputBox } from './InputBox';
 import { EngineIndicator } from './EngineIndicator';
 import { ConfirmDialog } from './ConfirmDialog';
 import { useConversationStore } from '../../stores/conversation';
+import { Bot } from 'lucide-react';
 
 export function ConversationPage() {
   const { t } = useTranslation('chat');
@@ -51,34 +52,34 @@ export function ConversationPage() {
   return (
     <div className="flex flex-col h-full">
       {/* Engine status bar */}
-      <div className="flex items-center justify-between border-b border-border/30 px-2">
+      <div className="flex items-center justify-between border-b border-border/20 px-3 py-1 bg-background/5 backdrop-blur-sm z-10">
         <EngineIndicator />
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
           {activeSessionId && messages.length > 0 && (
             <div className="relative" ref={exportMenuRef}>
               <button
                 onClick={() => setShowExportMenu(!showExportMenu)}
                 aria-expanded={showExportMenu}
                 aria-haspopup="menu"
-                className="text-[12px] text-text-secondary/70 hover:text-text-primary px-2.5 py-1.5 rounded-lg
-                  hover:bg-surface-2/60 active:scale-[0.97] transition-all duration-150"
+                className="text-[12px] text-muted-foreground hover:text-foreground px-3 py-1.5 rounded-lg
+                  hover:bg-surface-2/40 active:scale-[0.97] transition-all duration-200 font-medium"
                 title={t('exportConversation')}
               >
                 {t('export')}
               </button>
               {showExportMenu && (
-                <div role="menu" className="glass absolute right-0 top-full mt-1.5 rounded-xl z-10 py-1 min-w-[140px] animate-[fadeScale_0.15s_ease-out]">
+                <div role="menu" className="glass-effect absolute right-0 top-full mt-2 rounded-xl z-10 py-1.5 min-w-[150px] animate-in fade-in zoom-in-95 duration-200 border border-border shadow-xl">
                   <button
                     role="menuitem"
                     onClick={() => handleExport('markdown')}
-                    className="w-full text-left px-3 py-2 text-[13px] text-text-primary hover:bg-surface-2/40 transition-colors duration-150 rounded-lg mx-0"
+                    className="w-full text-left px-4 py-2 text-[13px] text-foreground hover:bg-primary/10 hover:text-primary transition-colors duration-150"
                   >
                     {t('exportMarkdown')}
                   </button>
                   <button
                     role="menuitem"
                     onClick={() => handleExport('json')}
-                    className="w-full text-left px-3 py-2 text-[13px] text-text-primary hover:bg-surface-2/40 transition-colors duration-150 rounded-lg mx-0"
+                    className="w-full text-left px-4 py-2 text-[13px] text-foreground hover:bg-primary/10 hover:text-primary transition-colors duration-150"
                   >
                     {t('exportJson')}
                   </button>
@@ -86,24 +87,22 @@ export function ConversationPage() {
               )}
             </div>
           )}
-          {activeSessionId && (
-            <span className="text-[11px] text-text-secondary/40 px-2 py-1 truncate max-w-[200px] font-mono">
-              {activeSessionId}
-            </span>
-          )}
         </div>
       </div>
 
       {/* Messages */}
       {messages.length === 0 && !isStreaming ? (
-        <div className="flex-1 flex flex-col items-center justify-center gap-5 p-8 animate-[fadeIn_0.4s_ease-out]">
-          <div className="w-16 h-16 rounded-[18px] bg-gradient-to-br from-accent/20 to-accent/5 flex items-center justify-center text-2xl font-semibold text-accent shadow-[inset_0_0.5px_0_rgba(255,255,255,0.1)]">
-            J
+        <div className="flex-1 flex flex-col items-center justify-center gap-6 p-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+          <div className="w-20 h-20 rounded-[24px] bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-2xl shadow-primary/20 border border-white/10 relative overflow-hidden">
+            <div className="absolute inset-0 bg-white/20 blur-xl rounded-full" />
+            <Bot className="w-10 h-10 text-white relative z-10" />
           </div>
-          <h2 className="text-[18px] font-semibold tracking-tight">{t('title')}</h2>
-          <p className="text-[14px] text-text-secondary text-center max-w-md leading-relaxed">
-            {t('emptyDescription')}
-          </p>
+          <div className="text-center space-y-2">
+            <h2 className="text-2xl font-bold tracking-tight text-foreground">{t('title')}</h2>
+            <p className="text-[15px] text-muted-foreground max-w-md leading-relaxed">
+              {t('emptyDescription')}
+            </p>
+          </div>
         </div>
       ) : (
         <MessageList
@@ -118,7 +117,7 @@ export function ConversationPage() {
 
       {/* Confirm dialog for tool calls requiring approval */}
       {pendingConfirm && (
-        <div className="px-4 pb-2 animate-[slideUp_0.2s_cubic-bezier(0.2,0.8,0.2,1)]">
+        <div className="px-4 pb-2 animate-in slide-in-from-bottom-4 duration-300">
           <ConfirmDialog
             action={pendingConfirm}
             onAllow={(alwaysAllow) => resolveConfirm(true, alwaysAllow)}
