@@ -28,6 +28,14 @@ import { getMyServices } from './compat/legacy';
 
 const app = new Hono();
 
+// --- Helper: register a route at both /{path} and /api/{path} ---
+type Method = 'get' | 'post' | 'patch' | 'delete';
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function dual(method: Method, path: string, handler: any): void {
+  (app[method] as any)(path, handler);
+  (app[method] as any)(`/api${path}`, handler);
+}
+
 // Global error handler — catches JSON parse errors (→400) and unhandled exceptions (→500)
 app.onError((err, c) => {
   if (err instanceof SyntaxError && err.message.includes('JSON')) {
@@ -70,84 +78,49 @@ app.get('/invite/:code', getInviteDetails);
 
 // --- Protected routes (require JWT) ---
 app.use('/api/*', authMiddleware);
-app.use('/engine/*', authMiddleware);
-app.use('/scheduler/*', authMiddleware);
-app.use('/billing/*', authMiddleware);
-app.use('/teams/*', authMiddleware);
-app.use('/credentials/*', authMiddleware);
-app.use('/sync/*', authMiddleware);
-app.use('/api/engine/*', authMiddleware);
-app.use('/api/scheduler/*', authMiddleware);
-app.use('/api/billing/*', authMiddleware);
-app.use('/api/teams/*', authMiddleware);
-app.use('/api/credentials/*', authMiddleware);
-app.use('/api/sync/*', authMiddleware);
+for (const prefix of ['/engine', '/scheduler', '/billing', '/teams', '/credentials', '/sync']) {
+  app.use(`${prefix}/*`, authMiddleware);
+}
 
 // Engine (Cloud AI)
-app.post('/engine/chat', handleChat);
-app.post('/api/engine/chat', handleChat);
+dual('post', '/engine/chat', handleChat);
 
 // Scheduler (Cloud task management)
-app.post('/scheduler/tasks', createTask);
-app.get('/scheduler/tasks', listTasks);
-app.patch('/scheduler/tasks/:id', updateTask);
-app.delete('/scheduler/tasks/:id', deleteTask);
-app.get('/scheduler/executions/:taskId', getExecutions);
-app.post('/api/scheduler/tasks', createTask);
-app.get('/api/scheduler/tasks', listTasks);
-app.patch('/api/scheduler/tasks/:id', updateTask);
-app.delete('/api/scheduler/tasks/:id', deleteTask);
-app.get('/api/scheduler/executions/:taskId', getExecutions);
+dual('post', '/scheduler/tasks', createTask);
+dual('get', '/scheduler/tasks', listTasks);
+dual('patch', '/scheduler/tasks/:id', updateTask);
+dual('delete', '/scheduler/tasks/:id', deleteTask);
+dual('get', '/scheduler/executions/:taskId', getExecutions);
 
 // Billing
-app.post('/billing/checkout', createCheckout);
-app.get('/billing/portal', createPortal);
-app.get('/billing/credits', getCredits);
-app.post('/billing/top-up', createTopUp);
-app.post('/api/billing/checkout', createCheckout);
-app.get('/api/billing/portal', createPortal);
-app.get('/api/billing/credits', getCredits);
-app.post('/api/billing/top-up', createTopUp);
+dual('post', '/billing/checkout', createCheckout);
+dual('get', '/billing/portal', createPortal);
+dual('get', '/billing/credits', getCredits);
+dual('post', '/billing/top-up', createTopUp);
 
 // Credentials (cloud execution authorization)
-app.post('/credentials/authorize', authorizeConnector);
-app.delete('/credentials/revoke/:id', revokeConnector);
-app.post('/credentials/authorize-all', authorizeAll);
-app.get('/credentials/status', getStatus);
-app.post('/api/credentials/authorize', authorizeConnector);
-app.delete('/api/credentials/revoke/:id', revokeConnector);
-app.post('/api/credentials/authorize-all', authorizeAll);
-app.get('/api/credentials/status', getStatus);
+dual('post', '/credentials/authorize', authorizeConnector);
+dual('delete', '/credentials/revoke/:id', revokeConnector);
+dual('post', '/credentials/authorize-all', authorizeAll);
+dual('get', '/credentials/status', getStatus);
 
 // Teams
-app.get('/teams', listTeams);
-app.post('/teams', createTeam);
-app.get('/teams/:id', getTeam);
-app.post('/teams/:id/invite', createInvite);
-app.post('/teams/join/:code', joinTeam);
-app.delete('/teams/:id/members/:userId', removeMember);
-app.patch('/teams/:id/members/:userId', updateMemberRole);
-app.get('/api/teams', listTeams);
-app.post('/api/teams', createTeam);
-app.get('/api/teams/:id', getTeam);
-app.post('/api/teams/:id/invite', createInvite);
-app.post('/api/teams/join/:code', joinTeam);
-app.delete('/api/teams/:id/members/:userId', removeMember);
-app.patch('/api/teams/:id/members/:userId', updateMemberRole);
+dual('get', '/teams', listTeams);
+dual('post', '/teams', createTeam);
+dual('get', '/teams/:id', getTeam);
+dual('post', '/teams/:id/invite', createInvite);
+dual('post', '/teams/join/:code', joinTeam);
+dual('delete', '/teams/:id/members/:userId', removeMember);
+dual('patch', '/teams/:id/members/:userId', updateMemberRole);
 
 // Team Context Docs
-app.get('/teams/:id/context-docs', listTeamContextDocs);
-app.post('/teams/:id/context-docs', createTeamContextDoc);
-app.get('/api/teams/:id/context-docs', listTeamContextDocs);
-app.post('/api/teams/:id/context-docs', createTeamContextDoc);
+dual('get', '/teams/:id/context-docs', listTeamContextDocs);
+dual('post', '/teams/:id/context-docs', createTeamContextDoc);
 
 // Sync
-app.post('/sync/push', handlePush);
-app.post('/sync/pull', handlePull);
-app.get('/sync/status', handleSyncStatus);
-app.post('/api/sync/push', handlePush);
-app.post('/api/sync/pull', handlePull);
-app.get('/api/sync/status', handleSyncStatus);
+dual('post', '/sync/push', handlePush);
+dual('post', '/sync/pull', handlePull);
+dual('get', '/sync/status', handleSyncStatus);
 
 // V1-compat agent routes (used by legacy shell.html/chat.html frontend)
 app.get('/api/agent/engines', getEngines);
