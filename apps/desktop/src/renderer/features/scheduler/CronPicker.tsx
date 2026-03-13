@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface Props {
   value: string;
@@ -6,48 +7,53 @@ interface Props {
 }
 
 interface Preset {
-  label: string;
+  labelKey: string;
   cron: string;
-  description: string;
+  descKey: string;
 }
 
 const PRESETS: Preset[] = [
-  { label: 'Every hour', cron: '0 * * * *', description: 'At minute 0 of every hour' },
-  { label: 'Every 2 hours', cron: '0 */2 * * *', description: 'At minute 0, every 2 hours' },
-  { label: 'Every morning (9am)', cron: '0 9 * * *', description: 'Every day at 09:00' },
-  { label: 'Every morning (10am)', cron: '0 10 * * *', description: 'Every day at 10:00' },
-  { label: 'Every evening (6pm)', cron: '0 18 * * *', description: 'Every day at 18:00' },
-  { label: 'Twice daily (9am, 6pm)', cron: '0 9,18 * * *', description: 'At 09:00 and 18:00' },
-  { label: 'Weekdays at 9am', cron: '0 9 * * 1-5', description: 'Mon-Fri at 09:00' },
-  { label: 'Every Monday 9am', cron: '0 9 * * 1', description: 'Every Monday at 09:00' },
-  { label: 'Every 15 minutes', cron: '*/15 * * * *', description: 'At :00, :15, :30, :45' },
-  { label: 'Every 30 minutes', cron: '*/30 * * * *', description: 'At :00 and :30' },
+  { labelKey: 'presetEveryHour', cron: '0 * * * *', descKey: 'descEveryHour' },
+  { labelKey: 'presetEvery2Hours', cron: '0 */2 * * *', descKey: 'descEvery2Hours' },
+  { labelKey: 'presetMorning9', cron: '0 9 * * *', descKey: 'descMorning9' },
+  { labelKey: 'presetMorning10', cron: '0 10 * * *', descKey: 'descMorning10' },
+  { labelKey: 'presetEvening6', cron: '0 18 * * *', descKey: 'descEvening6' },
+  { labelKey: 'presetTwiceDaily', cron: '0 9,18 * * *', descKey: 'descTwiceDaily' },
+  { labelKey: 'presetWeekdays9', cron: '0 9 * * 1-5', descKey: 'descWeekdays9' },
+  { labelKey: 'presetMonday9', cron: '0 9 * * 1', descKey: 'descMonday9' },
+  { labelKey: 'presetEvery15Min', cron: '*/15 * * * *', descKey: 'descEvery15Min' },
+  { labelKey: 'presetEvery30Min', cron: '*/30 * * * *', descKey: 'descEvery30Min' },
 ];
 
-function describeCron(cron: string): string {
-  const preset = PRESETS.find((p) => p.cron === cron);
-  if (preset) return preset.description;
+function useDescribeCron() {
+  const { t } = useTranslation('scheduler');
 
-  const parts = cron.trim().split(/\s+/);
-  if (parts.length !== 5) return 'Custom schedule';
+  return (cron: string): string => {
+    const preset = PRESETS.find((p) => p.cron === cron);
+    if (preset) return t(preset.descKey);
 
-  const [min, hour, dom, _mon, dow] = parts;
-  const pieces: string[] = [];
+    const parts = cron.trim().split(/\s+/);
+    if (parts.length !== 5) return t('customSchedule');
 
-  if (min !== '*' && min !== '0') pieces.push(`min ${min}`);
-  if (hour !== '*') pieces.push(`hour ${hour}`);
-  if (dom !== '*') pieces.push(`day ${dom}`);
-  if (dow !== '*') {
-    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    pieces.push(dow.split(',').map((d) => days[Number(d)] ?? d).join(', '));
-  }
+    const [min, hour, dom, _mon, dow] = parts;
+    const pieces: string[] = [];
 
-  return pieces.length > 0 ? pieces.join(', ') : 'Every minute';
+    if (min !== '*' && min !== '0') pieces.push(`min ${min}`);
+    if (hour !== '*') pieces.push(`hour ${hour}`);
+    if (dom !== '*') pieces.push(`day ${dom}`);
+    if (dow !== '*') {
+      const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      pieces.push(dow.split(',').map((d) => days[Number(d)] ?? d).join(', '));
+    }
+
+    return pieces.length > 0 ? pieces.join(', ') : t('everyMinute');
+  };
 }
 
 export function CronPicker({ value, onChange }: Props) {
+  const { t } = useTranslation('scheduler');
   const [showPresets, setShowPresets] = useState(false);
-  const activePreset = PRESETS.find((p) => p.cron === value);
+  const describeCron = useDescribeCron();
 
   return (
     <div className="space-y-2">
@@ -65,12 +71,12 @@ export function CronPicker({ value, onChange }: Props) {
           className="px-3 py-2 text-xs bg-surface-2 border border-border rounded-md
             text-text-secondary hover:text-text-primary transition-colors shrink-0"
         >
-          {showPresets ? 'Hide' : 'Presets'}
+          {showPresets ? t('hidePresets') : t('presets')}
         </button>
       </div>
 
       <p className="text-[11px] text-text-secondary">
-        {activePreset ? activePreset.description : describeCron(value)}
+        {describeCron(value)}
       </p>
 
       {showPresets && (
@@ -88,7 +94,7 @@ export function CronPicker({ value, onChange }: Props) {
                   : 'hover:bg-surface-2 text-text-secondary hover:text-text-primary'
               }`}
             >
-              <div className="font-medium">{preset.label}</div>
+              <div className="font-medium">{t(preset.labelKey)}</div>
               <code className="text-[10px] opacity-60">{preset.cron}</code>
             </button>
           ))}

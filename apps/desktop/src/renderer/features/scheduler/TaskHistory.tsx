@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import type { TaskExecution } from './hooks/useScheduler';
 
 interface Props {
@@ -12,17 +13,20 @@ const statusStyles: Record<string, string> = {
 };
 
 export function TaskHistory({ executions, onClose }: Props) {
+  const { t } = useTranslation('scheduler');
+  const { t: tc } = useTranslation('common');
+
   return (
     <div className="p-3 bg-surface-1 border border-border rounded-lg">
       <div className="flex items-center justify-between mb-2">
-        <h3 className="text-sm font-medium text-text-primary">Execution History</h3>
+        <h3 className="text-sm font-medium text-text-primary">{t('executionHistory')}</h3>
         <button onClick={onClose} className="text-xs text-text-secondary hover:text-text-primary">
-          Close
+          {tc('close')}
         </button>
       </div>
 
       {executions.length === 0 ? (
-        <p className="text-xs text-text-secondary py-2">No executions yet.</p>
+        <p className="text-xs text-text-secondary py-2">{t('noExecutions')}</p>
       ) : (
         <div className="space-y-1 max-h-60 overflow-y-auto">
           {executions.map((exec) => (

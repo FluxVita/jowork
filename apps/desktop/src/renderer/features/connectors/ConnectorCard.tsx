@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface ConnectorCardProps {
   id: string;
@@ -18,22 +19,23 @@ const STATUS_COLORS = {
   error: 'bg-red-400',
 } as const;
 
-const TIER_BADGES = {
-  ga: null,
-  beta: 'Beta',
-  planned: 'Planned',
-} as const;
-
 export function ConnectorCard({
   id, name, description, category, tier, status, hasCredential,
   onConnect, onDisconnect,
 }: ConnectorCardProps) {
+  const { t } = useTranslation('connectors');
   const [tokenInput, setTokenInput] = useState('');
   const [showConfig, setShowConfig] = useState(false);
 
+  const tierBadge = (t: string) => {
+    const map: Record<string, string | null> = { ga: null, beta: 'tierBeta', planned: 'tierPlanned' };
+    return map[t] ?? null;
+  };
+
+  const badgeKey = tierBadge(tier);
+
   const handleConnect = () => {
     if (!hasCredential && tokenInput) {
-      // For token-based auth, pass as generic credential
       onConnect(id, { accessToken: tokenInput });
       setTokenInput('');
       setShowConfig(false);
@@ -48,9 +50,9 @@ export function ConnectorCard({
         <div className="flex items-center gap-2">
           <span className={`w-2 h-2 rounded-full ${STATUS_COLORS[status]}`} />
           <h3 className="font-medium text-sm">{name}</h3>
-          {TIER_BADGES[tier as keyof typeof TIER_BADGES] && (
+          {badgeKey && (
             <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent/10 text-accent">
-              {TIER_BADGES[tier as keyof typeof TIER_BADGES]}
+              {t(badgeKey)}
             </span>
           )}
         </div>
@@ -65,7 +67,7 @@ export function ConnectorCard({
             type="password"
             value={tokenInput}
             onChange={(e) => setTokenInput(e.target.value)}
-            placeholder="Access token or API key"
+            placeholder={t('tokenPlaceholder')}
             className="w-full bg-surface-0 border border-border rounded px-2 py-1.5 text-xs text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-1 focus:ring-accent"
           />
         </div>
@@ -79,14 +81,14 @@ export function ConnectorCard({
                 onClick={() => setShowConfig(true)}
                 className="text-xs px-3 py-1 rounded bg-accent text-white hover:bg-accent-hover transition-colors"
               >
-                Configure
+                {t('configure')}
               </button>
             ) : (
               <button
                 onClick={handleConnect}
                 className="text-xs px-3 py-1 rounded bg-accent text-white hover:bg-accent-hover transition-colors"
               >
-                Connect
+                {t('connect')}
               </button>
             )}
           </>
@@ -95,7 +97,7 @@ export function ConnectorCard({
             onClick={() => onDisconnect(id)}
             className="text-xs px-3 py-1 rounded bg-surface-2 text-text-secondary hover:text-text-primary transition-colors"
           >
-            Disconnect
+            {t('disconnect')}
           </button>
         )}
       </div>

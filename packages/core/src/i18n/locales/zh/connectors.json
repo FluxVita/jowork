@@ -13,5 +13,15 @@
   "unhealthy": "异常",
   "lastSync": "上次同步",
   "authorize": "授权",
-  "revoke": "撤销授权"
+  "revoke": "撤销授权",
+  "tierBeta": "测试版",
+  "tierPlanned": "计划中",
+  "authorizeTitle": "授权 {{name}}",
+  "authorizeDescription": "将打开浏览器窗口，授权 JoWork 访问你的 {{name}} 数据。",
+  "noHealthData": "暂无健康数据。",
+  "status": "状态",
+  "syncedData": "已同步数据",
+  "noSyncedData": "暂无同步数据。",
+  "syncLog": "同步日志",
+  "noSyncActivity": "暂无同步活动。"
 }

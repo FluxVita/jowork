@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import type { ScheduledTaskInfo } from './hooks/useScheduler';
 
 interface Props {
@@ -13,13 +14,16 @@ function formatTime(ts: number | null): string {
   return new Date(ts).toLocaleString();
 }
 
-const typeLabel: Record<string, string> = {
-  scan: 'Scan',
-  skill: 'Skill',
-  notify: 'Notify',
-};
-
 export function TaskCard({ task, onEdit, onDelete, onToggle, onViewHistory }: Props) {
+  const { t } = useTranslation('scheduler');
+  const { t: tc } = useTranslation('common');
+
+  const typeLabel: Record<string, string> = {
+    scan: t('typeScan'),
+    skill: t('typeSkill'),
+    notify: t('typeNotify'),
+  };
+
   return (
     <div className="group p-3 bg-surface-2 border border-border rounded-lg hover:border-accent/30 transition-colors">
       <div className="flex items-center justify-between mb-1">
@@ -41,13 +45,13 @@ export function TaskCard({ task, onEdit, onDelete, onToggle, onViewHistory }: Pr
 
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           <button onClick={() => onViewHistory(task.id)} className="text-xs text-text-secondary hover:text-accent px-1">
-            History
+            {t('history')}
           </button>
           <button onClick={() => onEdit(task.id)} className="text-xs text-text-secondary hover:text-accent px-1">
-            Edit
+            {tc('edit')}
           </button>
           <button onClick={() => onDelete(task.id)} className="text-xs text-text-secondary hover:text-red-400 px-1">
-            Del
+            {tc('delete')}
           </button>
         </div>
       </div>
@@ -56,13 +60,13 @@ export function TaskCard({ task, onEdit, onDelete, onToggle, onViewHistory }: Pr
         <code className="px-1.5 py-0.5 bg-surface-1 rounded">{task.cronExpression}</code>
         <span className="px-1.5 py-0.5 bg-accent/10 text-accent rounded">{typeLabel[task.type]}</span>
         {task.cloudSync && (
-          <span className="px-1.5 py-0.5 bg-blue-400/10 text-blue-400 rounded">Cloud</span>
+          <span className="px-1.5 py-0.5 bg-blue-400/10 text-blue-400 rounded">{t('cloud')}</span>
         )}
       </div>
 
       <div className="flex items-center gap-4 mt-2 text-[10px] text-text-secondary">
-        <span>Last: {formatTime(task.lastRunAt)}</span>
-        <span>Next: {formatTime(task.nextRunAt)}</span>
+        <span>{t('lastRunShort')} {formatTime(task.lastRunAt)}</span>
+        <span>{t('nextRunShort')} {formatTime(task.nextRunAt)}</span>
       </div>
     </div>
   );

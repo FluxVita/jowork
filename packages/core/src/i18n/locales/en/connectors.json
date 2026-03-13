@@ -13,5 +13,15 @@
   "unhealthy": "Unhealthy",
   "lastSync": "Last sync",
   "authorize": "Authorize",
-  "revoke": "Revoke"
+  "revoke": "Revoke",
+  "tierBeta": "Beta",
+  "tierPlanned": "Planned",
+  "authorizeTitle": "Authorize {{name}}",
+  "authorizeDescription": "A browser window will open for you to authorize JoWork to access your {{name}} data.",
+  "noHealthData": "No health data available.",
+  "status": "Status",
+  "syncedData": "Synced Data",
+  "noSyncedData": "No data synced yet.",
+  "syncLog": "Sync Log",
+  "noSyncActivity": "No sync activity."
 }
