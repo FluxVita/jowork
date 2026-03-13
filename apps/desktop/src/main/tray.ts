@@ -4,13 +4,14 @@ import { i18n } from '@jowork/core';
 
 let tray: Tray | null = null;
 
-function buildTrayMenu(mainWindow: BrowserWindow | null): Menu {
+function buildTrayMenu(): Menu {
   const t = i18n.t.bind(i18n);
   return Menu.buildFromTemplate([
     {
       label: t('trayShow'),
       click: () => {
-        const win = mainWindow ?? BrowserWindow.getAllWindows()[0];
+        // Always pick the first live window (avoids stale reference to destroyed window)
+        const win = BrowserWindow.getAllWindows().find((w) => !w.isDestroyed());
         if (win) {
           win.show();
           win.focus();
@@ -24,7 +25,7 @@ function buildTrayMenu(mainWindow: BrowserWindow | null): Menu {
   ]);
 }
 
-export function setupTray(mainWindow: BrowserWindow | null): void {
+export function setupTray(): void {
   // Use a simple 18x18 template icon for macOS
   const iconPath = join(__dirname, '../../build/tray-icon.png');
   let icon: nativeImage;
@@ -36,11 +37,11 @@ export function setupTray(mainWindow: BrowserWindow | null): void {
   }
 
   tray = new Tray(icon);
-  tray.setContextMenu(buildTrayMenu(mainWindow));
+  tray.setContextMenu(buildTrayMenu());
   tray.setToolTip('JoWork');
 
   // Rebuild tray menu when language changes
   i18n.on('languageChanged', () => {
-    tray?.setContextMenu(buildTrayMenu(mainWindow));
+    tray?.setContextMenu(buildTrayMenu());
   });
 }

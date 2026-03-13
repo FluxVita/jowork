@@ -93,7 +93,7 @@ app.whenReady().then(() => {
   setupIPC();
   createMainWindow();
   buildAppMenu();
-  setupTray(mainWindow);
+  setupTray();
 
   // Rebuild menu when renderer changes language
   ipcMain.on('language-changed', (_event, lang: string) => {
@@ -122,5 +122,10 @@ app.on('window-all-closed', () => {
 app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) {
     createMainWindow();
+    buildAppMenu();
+    if (mainWindow) {
+      getNotificationManager().setMainWindow(mainWindow);
+      setupAutoUpdater(mainWindow);
+    }
   }
 });
