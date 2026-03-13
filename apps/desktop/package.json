@@ -6,10 +6,10 @@
   "private": true,
   "main": "./out/main/index.js",
   "scripts": {
-    "dev": "electron-vite dev",
+    "dev": "bash scripts/rebuild-for-electron.sh && electron-vite dev",
     "build": "electron-vite build",
     "lint": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "bash scripts/rebuild-native.sh && vitest run",
     "preview": "electron-vite preview",
     "build:mac": "electron-vite build && electron-builder --mac && bash scripts/rebuild-native.sh",
     "build:win": "electron-vite build && electron-builder --win",
