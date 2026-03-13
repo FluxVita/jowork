@@ -69,7 +69,7 @@ export async function handleChat(c: Context): Promise<Response> {
     .where(eq(cloudMessages.sessionId, sessionId))
     .orderBy(cloudMessages.createdAt);
 
-  const MAX_CONTEXT_CHARS = 24000;
+  const MAX_CONTEXT_CHARS = 64000;
   let chatMessages = history
     .filter((m) => m.role === 'user' || m.role === 'assistant')
     .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }));

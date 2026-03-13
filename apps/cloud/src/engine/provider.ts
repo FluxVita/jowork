@@ -1,9 +1,9 @@
 /**
  * AI provider configuration.
  * Resolves API key, base URL, and model from environment variables.
- * Supports: Moonshot, OpenAI, DeepSeek, or any OpenAI-compatible API.
+ * Supports: Moonshot, DeepSeek, OpenAI, or any OpenAI-compatible API + Anthropic.
  *
- * Priority: MOONSHOT_API_KEY → OPENAI_API_KEY → ANTHROPIC_API_KEY
+ * Priority: MOONSHOT → DEEPSEEK → OPENAI → ANTHROPIC
  * All use OpenAI chat/completions format except Anthropic.
  */
 
@@ -16,19 +16,31 @@ export interface ProviderConfig {
 }
 
 export function resolveProvider(): ProviderConfig | null {
-  // 1. Moonshot (OpenAI-compatible)
+  // 1. Moonshot / Kimi (OpenAI-compatible)
   const moonshotKey = process.env['MOONSHOT_API_KEY'];
   if (moonshotKey) {
     return {
       apiKey: moonshotKey,
       baseUrl: process.env['MOONSHOT_BASE_URL'] || 'https://api.moonshot.cn/v1',
-      model: process.env['MOONSHOT_MODEL'] || 'moonshot-v1-8k',
+      model: process.env['MOONSHOT_MODEL'] || 'kimi-k2.5',
       name: 'Moonshot',
       format: 'openai',
     };
   }
 
-  // 2. OpenAI
+  // 2. DeepSeek (OpenAI-compatible)
+  const deepseekKey = process.env['DEEPSEEK_API_KEY'];
+  if (deepseekKey) {
+    return {
+      apiKey: deepseekKey,
+      baseUrl: process.env['DEEPSEEK_BASE_URL'] || 'https://api.deepseek.com/v1',
+      model: process.env['DEEPSEEK_MODEL'] || 'deepseek-chat',
+      name: 'DeepSeek',
+      format: 'openai',
+    };
+  }
+
+  // 3. OpenAI
   const openaiKey = process.env['OPENAI_API_KEY'];
   if (openaiKey) {
     return {
@@ -40,7 +52,7 @@ export function resolveProvider(): ProviderConfig | null {
     };
   }
 
-  // 3. Anthropic (native format)
+  // 4. Anthropic (native format)
   const anthropicKey = process.env['ANTHROPIC_API_KEY'];
   if (anthropicKey) {
     return {

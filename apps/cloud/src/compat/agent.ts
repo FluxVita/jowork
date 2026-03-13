@@ -20,8 +20,9 @@ Key traits:
 - Support both English and Chinese — respond in whatever language the user writes in
 - If you don't know something, say so honestly rather than guessing`;
 
-// Rough char→token ratio (~4 chars per token). Keep context under model limit.
-const MAX_CONTEXT_CHARS = 24000; // ~6k tokens, safe for 8k context models
+// Rough char→token ratio (~4 chars per token). Keep well under model limit.
+// kimi-k2.5 supports 128k, but we cap at ~16k tokens to leave room for response.
+const MAX_CONTEXT_CHARS = 64000;
 
 /** Trim oldest messages to fit within token budget, always keeping the last user message. */
 function trimHistory(messages: { role: string; content: string }[]): { role: string; content: string }[] {
