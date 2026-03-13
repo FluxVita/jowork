@@ -29,23 +29,30 @@ export async function setupAutoUpdater(mainWindow: BrowserWindow): Promise<void>
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
 
+  /** Send IPC to main window, safely handling destroyed windows. */
+  function sendToWindow(channel: string, data?: unknown): void {
+    if (!mainWindow.isDestroyed()) {
+      mainWindow.webContents.send(channel, data);
+    }
+  }
+
   autoUpdater.on('checking-for-update', () => {
-    mainWindow.webContents.send('update:checking');
+    sendToWindow('update:checking');
   });
 
   autoUpdater.on('update-available', (info) => {
-    mainWindow.webContents.send('update:available', {
+    sendToWindow('update:available', {
       version: info.version,
       releaseDate: info.releaseDate,
     });
   });
 
   autoUpdater.on('update-not-available', () => {
-    mainWindow.webContents.send('update:up-to-date');
+    sendToWindow('update:up-to-date');
   });
 
   autoUpdater.on('download-progress', (progress) => {
-    mainWindow.webContents.send('update:progress', {
+    sendToWindow('update:progress', {
       percent: progress.percent,
       bytesPerSecond: progress.bytesPerSecond,
       transferred: progress.transferred,
@@ -54,13 +61,13 @@ export async function setupAutoUpdater(mainWindow: BrowserWindow): Promise<void>
   });
 
   autoUpdater.on('update-downloaded', (info) => {
-    mainWindow.webContents.send('update:downloaded', {
+    sendToWindow('update:downloaded', {
       version: info.version,
     });
   });
 
   autoUpdater.on('error', (err) => {
-    mainWindow.webContents.send('update:error', {
+    sendToWindow('update:error', {
       message: err.message,
     });
   });

@@ -244,7 +244,8 @@ export class Scheduler {
       }
     } catch (err) {
       status = 'failure';
-      error = String(err);
+      error = err instanceof Error ? `${err.message}\n${err.stack}` : String(err);
+      console.error(`[Scheduler] Task "${task.name}" (${task.id}) failed:`, err);
     }
 
     const durationMs = Date.now() - startTime;

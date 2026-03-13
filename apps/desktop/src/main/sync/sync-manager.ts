@@ -113,8 +113,7 @@ export class SyncManager {
   trackChange(record: SyncRecord): void {
     this.queue.enqueue(record);
     if (this.online) {
-      // Push immediately for critical operations
-      this.push();
+      this.push().catch(() => { /* handled by sync() error path */ });
     }
   }
 
@@ -274,7 +273,7 @@ export class SyncManager {
       if (online) {
         this.opts.onOnline?.();
         // Flush queue on reconnect
-        this.push();
+        this.push().catch(() => { /* will retry on next sync cycle */ });
       } else {
         this.opts.onOffline?.();
       }
