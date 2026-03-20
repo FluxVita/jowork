@@ -141,11 +141,12 @@ async function syncFeishu(db: DbManager, data: Record<string, string>): Promise<
           let content = '';
           try {
             const bodyContent = JSON.parse(msg.body?.content ?? '{}');
-            content = bodyContent.text ?? bodyContent.content ?? JSON.stringify(bodyContent);
+            const raw = bodyContent.text ?? bodyContent.content ?? bodyContent;
+            content = typeof raw === 'string' ? raw : JSON.stringify(raw);
           } catch {
             content = msg.body?.content ?? '';
           }
-          if (!content) continue;
+          if (!content || typeof content !== 'string') continue;
 
           const uri = `feishu://message/${msg.message_id}`;
           const hash = simpleHash(content);

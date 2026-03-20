@@ -10,9 +10,7 @@ export default defineConfig({
   splitting: true,
   clean: true,
   dts: false,
-  banner: {
-    js: '#!/usr/bin/env node',
-  },
   external: ['better-sqlite3'],
+  noExternal: ['@jowork/core'],
   shims: true,
 });
