@@ -1,3 +1,6 @@
+// Suppress i18next promotional banner before any imports that trigger it
+process.env['I18NEXT_DISABLE_BANNER'] = '1';
+
 import { Command } from 'commander';
 import { initCommand } from './commands/init.js';
 import { serveCommand } from './commands/serve.js';

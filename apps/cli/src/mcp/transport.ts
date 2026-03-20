@@ -1,3 +1,6 @@
+// Suppress i18next banner — stdout must be pure JSON for MCP protocol
+process.env['I18NEXT_DISABLE_BANNER'] = '1';
+
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { createJoWorkMcpServer } from './server.js';
 import { dbPath } from '../utils/paths.js';

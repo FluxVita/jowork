@@ -66,6 +66,7 @@ i18n.init({
   ns: [...i18nNamespaces],
   defaultNS: 'common',
   interpolation: { escapeValue: false },
+  showSupportNotice: false,
   resources: {
     zh: {
       common: zhCommon,

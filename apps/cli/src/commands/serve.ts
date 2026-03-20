@@ -15,7 +15,8 @@ export function serveCommand(program: Command): void {
     .description('Start MCP server (stdio mode for agents, or --daemon for background)')
     .option('--daemon', 'Run as background daemon with cron sync')
     .action(async (opts) => {
-      if (!existsSync(dbPath())) {
+      const resolvedDbPath = process.env['JOWORK_DB_PATH'] ?? dbPath();
+      if (!existsSync(resolvedDbPath)) {
         console.error('Error: JoWork not initialized. Run `jowork init` first.');
         process.exit(1);
       }
@@ -26,7 +27,7 @@ export function serveCommand(program: Command): void {
       }
 
       // stdio mode — MCP server for agents
-      const server = createJoWorkMcpServer({ dbPath: dbPath() });
+      const server = createJoWorkMcpServer({ dbPath: resolvedDbPath });
       const transport = new StdioServerTransport();
       await server.connect(transport);
     });
