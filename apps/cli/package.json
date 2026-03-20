@@ -1,0 +1,33 @@
+{
+  "name": "jowork",
+  "version": "0.1.0",
+  "type": "module",
+  "bin": { "jowork": "./dist/cli.js" },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "lint": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@jowork/core": "workspace:*",
+    "commander": "^13.0.0",
+    "better-sqlite3": "^12.6.2",
+    "drizzle-orm": "^0.44.0",
+    "@modelcontextprotocol/sdk": "^1.27.0",
+    "zod": "^3.24.0",
+    "ora": "^8.0.0",
+    "chalk": "^5.4.0",
+    "inquirer": "^12.0.0",
+    "croner": "^9.0.0",
+    "pino": "^9.0.0",
+    "pino-pretty": "^13.0.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.0",
+    "@types/inquirer": "^9.0.0",
+    "@types/node": "^22.0.0",
+    "tsup": "^8.4.0",
+    "typescript": "^5.9.0"
+  }
+}

@@ -1,0 +1,404 @@
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { z } from 'zod';
+import Database from 'better-sqlite3';
+import { drizzle } from 'drizzle-orm/better-sqlite3';
+import { like, eq, or, desc } from 'drizzle-orm';
+import { objects, objectBodies, connectorConfigs, memories, createId, buildFtsQuery, detectSourceFromQuery } from '@jowork/core';
+import { logInfo, logError } from '../utils/logger.js';
+
+export interface McpServerOptions {
+  dbPath: string;
+}
+
+/**
+ * Canonical list of all tool names exposed by JoWork MCP server.
+ * Used by inject/registration code — never duplicate tool names manually.
+ */
+export const JOWORK_MCP_TOOLS = [
+  'search_data',
+  'list_sources',
+  'fetch_content',
+  'fetch_doc_map',
+  'fetch_chunk',
+  'read_memory',
+  'write_memory',
+  'search_memory',
+  'get_environment',
+] as const;
+
+/** Escape SQL LIKE wildcards so user input is matched literally. */
+function escapeLike(input: string): string {
+  return input.replace(/[%_\\]/g, '\\$&');
+}
+
+/**
+ * Escape FTS5 special operators from user query.
+ * FTS5 treats AND, OR, NOT, NEAR as operators and * as wildcard prefix.
+ * Wrapping each token in double quotes makes them literal.
+ */
+function escapeFtsQuery(query: string): string {
+  // Split into tokens, quote any that look like FTS operators or contain special chars
+  return query
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((token) => {
+      if (/^(AND|OR|NOT|NEAR)$/i.test(token) || /[*"(){}:^~\-+[\]]/g.test(token)) {
+        return `"${token.replace(/"/g, '""')}"`;
+      }
+      return token;
+    })
+    .join(' ');
+}
+
+const MAX_MEMORIES = 100;
+
+export function createJoWorkMcpServer(opts: McpServerOptions): McpServer {
+  const sqlite = new Database(opts.dbPath);
+  sqlite.pragma('journal_mode = WAL');
+  const db = drizzle(sqlite);
+
+  const server = new McpServer({ name: 'jowork', version: '0.1.0' });
+
+  server.server.onclose = () => {
+    try { sqlite.close(); } catch { /* already closed */ }
+  };
+
+  // ── Data Tools ────────────────────────────────────────────────────────
+
+  server.tool(
+    'search_data',
+    {
+      query: z.string().describe('Keywords to search -- works like grep across all synced data'),
+      source: z.string().optional().describe('Filter by data source: github, feishu, gitlab, notion, slack, local'),
+      limit: z.number().optional().default(20).describe('Max results (default 20)'),
+    },
+    async ({ query, source, limit }) => {
+      const t0 = Date.now();
+      // Auto-detect source from query if not explicitly provided
+      if (!source) {
+        source = detectSourceFromQuery(query) ?? undefined;
+      }
+      // Build FTS match query (null if CJK-only -> skip FTS, go straight to LIKE)
+      const ftsMatchQuery = buildFtsQuery(query);
+
+      // Try FTS first (only if we have usable Latin tokens)
+      if (ftsMatchQuery) {
+        try {
+          const ftsQuery = source
+            ? `SELECT o.id, o.title, o.summary, o.source, o.source_type, o.uri, o.tags
+               FROM objects_fts JOIN objects o ON o.rowid = objects_fts.rowid
+               WHERE objects_fts MATCH ? AND o.source = ? LIMIT ?`
+            : `SELECT o.id, o.title, o.summary, o.source, o.source_type, o.uri, o.tags
+               FROM objects_fts JOIN objects o ON o.rowid = objects_fts.rowid
+               WHERE objects_fts MATCH ? LIMIT ?`;
+          const ftsArgs = source ? [ftsMatchQuery, source, limit] : [ftsMatchQuery, limit];
+          const ftsResults = sqlite.prepare(ftsQuery).all(...ftsArgs);
+
+          if (ftsResults.length > 0) {
+            logInfo('mcp', `search_data: "${query}" (FTS)`, { source, resultCount: ftsResults.length, ms: Date.now() - t0 });
+            return { content: [{ type: 'text' as const, text: JSON.stringify(ftsResults, null, 2) }] };
+          }
+        } catch { /* FTS unavailable, fallback to LIKE */ }
+      }
+
+      // LIKE fallback
+      const cleanedQuery = query
+        .replace(/飞书|feishu|lark|github|gitlab|notion|slack/gi, '')
+        .replace(/群里|最近|在|讨论|什么|话题|有哪些|是什么|怎么样|帮我|告诉我|查一下/g, '')
+        .trim();
+
+      let rows: unknown[] = [];
+      if (source && cleanedQuery.length >= 2) {
+        const segments = cleanedQuery.split(/\s+/).filter((s) => s.length >= 2);
+        if (segments.length > 0) {
+          const conditions = segments.map(() => '(title LIKE ? OR summary LIKE ? OR tags LIKE ?)').join(' OR ');
+          const params: unknown[] = [];
+          for (const seg of segments) {
+            const p = `%${escapeLike(seg)}%`;
+            params.push(p, p, p);
+          }
+          params.push(source, limit);
+          rows = sqlite.prepare(`
+            SELECT id, title, summary, source, source_type, uri, tags FROM objects
+            WHERE (${conditions}) AND source = ? ORDER BY last_synced_at DESC LIMIT ?
+          `).all(...params);
+        } else {
+          rows = [];
+        }
+      } else if (source) {
+        rows = sqlite.prepare(`
+          SELECT id, title, summary, source, source_type, uri, tags FROM objects
+          WHERE source = ? ORDER BY last_synced_at DESC LIMIT ?
+        `).all(source, limit);
+      } else if (cleanedQuery.length >= 2) {
+        const pattern = `%${escapeLike(cleanedQuery)}%`;
+        rows = sqlite.prepare(`
+          SELECT id, title, summary, source, source_type, uri, tags FROM objects
+          WHERE title LIKE ? OR summary LIKE ? OR tags LIKE ? OR source LIKE ? OR source_type LIKE ?
+          ORDER BY last_synced_at DESC LIMIT ?
+        `).all(pattern, pattern, pattern, pattern, pattern, limit);
+      } else {
+        rows = [];
+      }
+
+      logInfo('mcp', `search_data: "${query}"`, { source, resultCount: rows.length, ms: Date.now() - t0 });
+      return { content: [{ type: 'text' as const, text: JSON.stringify(rows, null, 2) }] };
+    },
+  );
+
+  server.tool(
+    'list_sources',
+    {},
+    async () => {
+      const sources = db.select().from(connectorConfigs).all();
+      const counts = sqlite.prepare(
+        `SELECT source, COUNT(*) as count FROM objects GROUP BY source`,
+      ).all() as Array<{ source: string; count: number }>;
+      return {
+        content: [{ type: 'text' as const, text: JSON.stringify({ connectors: sources, objectCounts: counts }, null, 2) }],
+      };
+    },
+  );
+
+  server.tool(
+    'fetch_content',
+    {
+      uri: z.string().describe('Object URI from search_data results'),
+    },
+    async ({ uri }) => {
+      const obj = db.select().from(objects).where(eq(objects.uri, uri)).get();
+      if (!obj) {
+        return { content: [{ type: 'text' as const, text: `Object not found: ${uri}` }] };
+      }
+      const body = db.select().from(objectBodies).where(eq(objectBodies.objectId, obj.id)).get();
+      return {
+        content: [{
+          type: 'text' as const,
+          text: JSON.stringify({ ...obj, body: body?.content ?? null, contentType: body?.contentType ?? null }, null, 2),
+        }],
+      };
+    },
+  );
+
+  server.tool(
+    'fetch_doc_map',
+    {
+      id: z.string().describe('Object ID from search_data results'),
+    },
+    async ({ id }) => {
+      const row = sqlite.prepare(`SELECT doc_map, title FROM objects WHERE id = ?`).get(id) as { doc_map: string | null; title: string } | undefined;
+      if (!row) return { content: [{ type: 'text' as const, text: `Object not found: ${id}` }] };
+      if (!row.doc_map) {
+        return { content: [{ type: 'text' as const, text: `"${row.title}" has no document map (too small). Use fetch_content instead.` }] };
+      }
+      return { content: [{ type: 'text' as const, text: row.doc_map }] };
+    },
+  );
+
+  server.tool(
+    'fetch_chunk',
+    {
+      id: z.string().describe('Object ID'),
+      idx: z.number().describe('Chunk index (0-based, see fetch_doc_map output for available indices)'),
+    },
+    async ({ id, idx }) => {
+      const chunk = sqlite.prepare(
+        `SELECT heading, content, tokens FROM object_chunks WHERE object_id = ? AND idx = ?`,
+      ).get(id, idx) as { heading: string | null; content: string; tokens: number } | undefined;
+      if (!chunk) {
+        return { content: [{ type: 'text' as const, text: 'Chunk not found. Call fetch_doc_map first to see available chunks.' }] };
+      }
+      return {
+        content: [{ type: 'text' as const, text: JSON.stringify({ heading: chunk.heading, tokens: chunk.tokens, content: chunk.content }, null, 2) }],
+      };
+    },
+  );
+
+  // ── Memory Tools ──────────────────────────────────────────────────────
+
+  server.tool(
+    'read_memory',
+    {
+      query: z.string().describe('Search keywords -- matches against title, content, and tags'),
+      limit: z.number().optional().default(10).describe('Max results'),
+    },
+    async ({ query, limit }) => {
+      const pattern = `%${escapeLike(query)}%`;
+      const rows = db.select().from(memories)
+        .where(or(like(memories.title, pattern), like(memories.content, pattern), like(memories.tags, pattern)))
+        .orderBy(desc(memories.updatedAt))
+        .limit(limit).all()
+        .filter((r) => r.scope === 'personal' || process.env['JOWORK_MODE'] === 'team');
+
+      const now = Date.now();
+      for (const row of rows) {
+        sqlite.prepare(`UPDATE memories SET last_used_at = ?, access_count = access_count + 1 WHERE id = ?`).run(now, row.id);
+      }
+
+      const results = rows.map((r) => ({
+        id: r.id, title: r.title, content: r.content,
+        tags: r.tags ? JSON.parse(r.tags) : [], scope: r.scope, pinned: r.pinned === 1,
+      }));
+
+      if (results.length === 0) return { content: [{ type: 'text' as const, text: `No memories found for: ${query}` }] };
+      return { content: [{ type: 'text' as const, text: JSON.stringify(results, null, 2) }] };
+    },
+  );
+
+  server.tool(
+    'write_memory',
+    {
+      title: z.string().describe('Short descriptive title for the memory'),
+      content: z.string().describe('Memory content -- what to remember'),
+      tags: z.array(z.string()).optional().describe('Tags for categorization (e.g. ["decision", "preference"])'),
+      scope: z.enum(['personal', 'team']).optional().default('personal').describe('Scope'),
+    },
+    async ({ title, content, tags, scope }) => {
+      const now = Date.now();
+      const id = createId('mem');
+      db.insert(memories).values({
+        id, title, content, tags: JSON.stringify(tags ?? []),
+        scope, pinned: 0, source: 'auto', lastUsedAt: null, createdAt: now, updatedAt: now,
+      }).run();
+
+      // Maintain FTS index
+      try {
+        const rowid = sqlite.prepare('SELECT rowid FROM memories WHERE id = ?').get(id) as { rowid: number } | undefined;
+        if (rowid) {
+          sqlite.prepare(
+            'INSERT INTO memories_fts(rowid, title, content, tags) VALUES (?, ?, ?, ?)',
+          ).run(rowid.rowid, title, content, JSON.stringify(tags ?? []));
+        }
+      } catch {
+        // FTS maintenance is non-critical
+      }
+
+      // Auto-truncate: keep at most MAX_MEMORIES, delete oldest unpinned
+      try {
+        const count = sqlite.prepare('SELECT COUNT(*) AS c FROM memories').get() as { c: number };
+        if (count.c > MAX_MEMORIES) {
+          const excess = count.c - MAX_MEMORIES;
+          const toDelete = sqlite.prepare(
+            `SELECT id, rowid, title, content, tags FROM memories WHERE pinned = 0 ORDER BY updated_at ASC LIMIT ?`,
+          ).all(excess) as Array<{ id: string; rowid: number; title: string; content: string; tags: string }>;
+          for (const row of toDelete) {
+            // Remove from FTS
+            try {
+              sqlite.prepare(
+                `INSERT INTO memories_fts(memories_fts, rowid, title, content, tags) VALUES ('delete', ?, ?, ?, ?)`,
+              ).run(row.rowid, row.title, row.content, row.tags ?? '');
+            } catch { /* non-critical */ }
+            sqlite.prepare('DELETE FROM memories WHERE id = ?').run(row.id);
+          }
+          logInfo('mcp', `write_memory: auto-truncated ${toDelete.length} old memories (cap: ${MAX_MEMORIES})`);
+        }
+      } catch {
+        // Truncation is non-critical
+      }
+
+      logInfo('mcp', `write_memory: "${title}"`, { id, tags, scope });
+      return { content: [{ type: 'text' as const, text: `Memory saved: "${title}" (id: ${id})` }] };
+    },
+  );
+
+  server.tool(
+    'search_memory',
+    {
+      query: z.string().describe('Search query -- uses full-text search with time-weighted ranking'),
+      limit: z.number().optional().default(10).describe('Max results'),
+    },
+    async ({ query, limit }) => {
+      const t0 = Date.now();
+      const escapedQuery = escapeFtsQuery(query);
+
+      // Try FTS first
+      let results: Array<Record<string, unknown>> = [];
+      try {
+        const ftsRows = sqlite.prepare(`
+          SELECT m.id, m.title, m.content, m.tags, m.scope, m.pinned,
+                 m.access_count, m.last_used_at, m.created_at, m.updated_at,
+                 rank
+          FROM memories_fts f
+          JOIN memories m ON m.rowid = f.rowid
+          WHERE memories_fts MATCH ?
+          ORDER BY rank
+          LIMIT ?
+        `).all(escapedQuery, limit) as Array<{
+          id: string; title: string; content: string; tags: string;
+          scope: string; pinned: number; access_count: number;
+          last_used_at: number | null; created_at: number; updated_at: number;
+          rank: number;
+        }>;
+
+        if (ftsRows.length > 0) {
+          // Time-weighted re-ranking: boost recently used/updated memories
+          const now = Date.now();
+          const scored = ftsRows.map((r) => {
+            const recency = r.last_used_at
+              ? Math.max(0, 1 - (now - r.last_used_at) / (30 * 24 * 60 * 60 * 1000)) // decay over 30 days
+              : 0;
+            const accessBoost = Math.min(r.access_count * 0.05, 0.5);
+            const pinnedBoost = r.pinned ? 0.3 : 0;
+            const score = -r.rank + recency * 2 + accessBoost + pinnedBoost;
+            return { ...r, score };
+          });
+          scored.sort((a, b) => b.score - a.score);
+
+          results = scored.map((r) => ({
+            id: r.id, title: r.title, content: r.content,
+            tags: r.tags ? JSON.parse(r.tags) : [], scope: r.scope,
+            pinned: r.pinned === 1, accessCount: r.access_count,
+          }));
+        }
+      } catch {
+        // FTS unavailable, fall through to LIKE
+      }
+
+      // LIKE fallback
+      if (results.length === 0) {
+        const pattern = `%${escapeLike(query)}%`;
+        const likeRows = db.select().from(memories)
+          .where(or(like(memories.title, pattern), like(memories.content, pattern), like(memories.tags, pattern)))
+          .orderBy(desc(memories.updatedAt))
+          .limit(limit).all();
+
+        results = likeRows.map((r) => ({
+          id: r.id, title: r.title, content: r.content,
+          tags: r.tags ? JSON.parse(r.tags) : [], scope: r.scope,
+          pinned: r.pinned === 1, accessCount: r.accessCount,
+        }));
+      }
+
+      // Touch accessed memories
+      const now = Date.now();
+      for (const r of results) {
+        sqlite.prepare('UPDATE memories SET last_used_at = ?, access_count = access_count + 1 WHERE id = ?').run(now, r.id);
+      }
+
+      logInfo('mcp', `search_memory: "${query}"`, { resultCount: results.length, ms: Date.now() - t0 });
+      if (results.length === 0) return { content: [{ type: 'text' as const, text: `No memories found for: ${query}` }] };
+      return { content: [{ type: 'text' as const, text: JSON.stringify(results, null, 2) }] };
+    },
+  );
+
+  // ── System Tools ──────────────────────────────────────────────────────
+
+  server.tool(
+    'get_environment',
+    {},
+    async () => {
+      const now = new Date();
+      const info: Record<string, string> = {
+        datetime: now.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }),
+        timezone: 'Asia/Shanghai',
+        platform: process.platform, arch: process.arch,
+        nodeVersion: process.version,
+        uptime: `${Math.round(process.uptime() / 60)} min`,
+        memoryUsage: `${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB heap`,
+      };
+      return { content: [{ type: 'text' as const, text: JSON.stringify(info, null, 2) }] };
+    },
+  );
+
+  return server;
+}
