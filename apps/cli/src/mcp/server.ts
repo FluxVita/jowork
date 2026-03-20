@@ -400,5 +400,74 @@ export function createJoWorkMcpServer(opts: McpServerOptions): McpServer {
     },
   );
 
+  // ── MCP Resources ───────────────────────────────────────────────────
+
+  server.resource(
+    'connectors',
+    'jowork://connectors',
+    async (uri) => {
+      const sources = db.select().from(connectorConfigs).all();
+      const counts = sqlite.prepare(
+        `SELECT source, COUNT(*) as count FROM objects GROUP BY source`,
+      ).all() as Array<{ source: string; count: number }>;
+      return {
+        contents: [{
+          uri: uri.href,
+          mimeType: 'application/json',
+          text: JSON.stringify({ connectors: sources, objectCounts: counts }, null, 2),
+        }],
+      };
+    },
+  );
+
+  server.resource(
+    'memories',
+    'jowork://memories',
+    async (uri) => {
+      const mems = sqlite.prepare(
+        `SELECT id, title, tags, scope, pinned, access_count, updated_at FROM memories ORDER BY updated_at DESC LIMIT 50`,
+      ).all();
+      return {
+        contents: [{
+          uri: uri.href,
+          mimeType: 'application/json',
+          text: JSON.stringify(mems, null, 2),
+        }],
+      };
+    },
+  );
+
+  server.resource(
+    'status',
+    'jowork://status',
+    async (uri) => {
+      const tables = ['objects', 'memories', 'connector_configs', 'object_links'];
+      const counts: Record<string, number> = {};
+      for (const table of tables) {
+        try {
+          const row = sqlite.prepare(`SELECT COUNT(*) as count FROM ${table}`).get() as { count: number };
+          counts[table] = row.count;
+        } catch {
+          counts[table] = 0;
+        }
+      }
+      // Last sync info
+      let lastSync: { connector: string; at: string } | null = null;
+      try {
+        const cursor = sqlite.prepare(
+          `SELECT connector_id, last_synced_at FROM sync_cursors ORDER BY last_synced_at DESC LIMIT 1`,
+        ).get() as { connector_id: string; last_synced_at: number } | undefined;
+        if (cursor) lastSync = { connector: cursor.connector_id, at: new Date(cursor.last_synced_at).toISOString() };
+      } catch { /* no cursors */ }
+      return {
+        contents: [{
+          uri: uri.href,
+          mimeType: 'application/json',
+          text: JSON.stringify({ tableCounts: counts, lastSync }, null, 2),
+        }],
+      };
+    },
+  );
+
   return server;
 }

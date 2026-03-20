@@ -5,6 +5,7 @@ import { dbPath } from '../utils/paths.js';
 import { loadCredential, listCredentials } from '../connectors/credential-store.js';
 import { logInfo, logError } from '../utils/logger.js';
 import { createId } from '@jowork/core';
+import { linkAllUnprocessed } from '../sync/linker.js';
 
 export function syncCommand(program: Command): void {
   program
@@ -51,6 +52,11 @@ export function syncCommand(program: Command): void {
           console.error(`  \u2717 ${source} sync failed: ${err}`);
         }
       }
+
+      // Run entity extraction on newly synced objects
+      console.log('Running entity extraction...');
+      const { processed, linksCreated } = linkAllUnprocessed(db.getSqlite());
+      console.log(`  \u2713 Extracted ${linksCreated} links from ${processed} objects`);
 
       db.close();
     });
