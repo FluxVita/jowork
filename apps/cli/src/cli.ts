@@ -1,23 +1,29 @@
 import { Command } from 'commander';
+import { initCommand } from './commands/init.js';
+import { serveCommand } from './commands/serve.js';
+import { registerCommand } from './commands/register.js';
+import { statusCommand } from './commands/status.js';
+import { doctorCommand } from './commands/doctor.js';
+import { exportCommand } from './commands/export.js';
+import { connectCommand } from './commands/connect.js';
+import { syncCommand } from './commands/sync.js';
+import { searchCommand } from './commands/search.js';
 
 const program = new Command();
 
 program
   .name('jowork')
-  .description('AI Agent Infrastructure — connect data sources, give agents awareness and goals')
+  .description('AI Agent Infrastructure — let AI agents truly understand your work')
   .version('0.1.0');
 
-// Commands will be added in Step 1.4
-program.command('init').description('Initialize JoWork (create local DB and config)').action(async () => {
-  console.log('jowork init — not yet implemented');
-});
-
-program.command('serve').description('Start MCP server').action(async () => {
-  console.log('jowork serve — not yet implemented');
-});
-
-program.command('status').description('Show system status').action(async () => {
-  console.log('jowork status — not yet implemented');
-});
+initCommand(program);
+serveCommand(program);
+registerCommand(program);
+connectCommand(program);
+syncCommand(program);
+statusCommand(program);
+doctorCommand(program);
+exportCommand(program);
+searchCommand(program);
 
 program.parse();
