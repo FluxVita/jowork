@@ -5,10 +5,11 @@ import { dbPath } from '../utils/paths.js';
 import { loadCredential, listCredentials } from '../connectors/credential-store.js';
 import { logError } from '../utils/logger.js';
 import { linkAllUnprocessed } from '../sync/linker.js';
-import { syncFeishu } from '../sync/feishu.js';
+import { syncFeishu, syncFeishuMeetings, syncFeishuDocs } from '../sync/feishu.js';
 import { syncGitHub } from '../sync/github.js';
 import { syncGitLab } from '../sync/gitlab.js';
 import { syncLinear } from '../sync/linear.js';
+import { syncPostHog } from '../sync/posthog.js';
 
 export function syncCommand(program: Command): void {
   program
@@ -49,6 +50,26 @@ export function syncCommand(program: Command): void {
               };
               const result = await syncFeishu(db.getSqlite(), cred.data, logger);
               console.log(`  \u2713 Synced ${result.totalMessages} messages (${result.newMessages} new) from ${result.chats} chats`);
+
+              // Also sync meetings/calendar
+              try {
+                const meetResult = await syncFeishuMeetings(db.getSqlite(), cred.data, logger);
+                if (meetResult.meetings > 0) {
+                  console.log(`  \u2713 Synced ${meetResult.meetings} calendar events (${meetResult.newObjects} new)`);
+                }
+              } catch (err) {
+                console.log(`  \u26A0 Meeting sync: ${err}`);
+              }
+
+              // Also sync documents
+              try {
+                const docResult = await syncFeishuDocs(db.getSqlite(), cred.data, logger);
+                if (docResult.docs > 0) {
+                  console.log(`  \u2713 Synced ${docResult.docs} documents (${docResult.newObjects} new)`);
+                }
+              } catch (err) {
+                console.log(`  \u26A0 Document sync: ${err}`);
+              }
               break;
             }
             case 'github': {
@@ -79,6 +100,16 @@ export function syncCommand(program: Command): void {
               };
               const linResult = await syncLinear(db.getSqlite(), cred.data, linLogger);
               console.log(`  \u2713 Synced ${linResult.issues} Linear issues (${linResult.newObjects} new)`);
+              break;
+            }
+            case 'posthog': {
+              const phLogger = {
+                info: (msg: string) => console.log(`  ${msg}`),
+                warn: (msg: string) => console.log(`  \u26A0 ${msg}`),
+                error: (msg: string) => console.error(`  \u2717 ${msg}`),
+              };
+              const phResult = await syncPostHog(db.getSqlite(), cred.data, phLogger);
+              console.log(`  \u2713 Synced ${phResult.insights} insights, ${phResult.events} events (${phResult.newObjects} new)`);
               break;
             }
             default:

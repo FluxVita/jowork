@@ -88,6 +88,11 @@ async function fetchMetricValue(
       if (!cred) return null;
       return fetchLinearMetric(cred.data, metric, config);
     }
+    case 'posthog': {
+      const cred = loadCredential('posthog');
+      if (!cred) return null;
+      return fetchPostHogMetric(cred.data, metric, config);
+    }
     case 'manual': {
       // Manual signals don't auto-poll — they're updated via MCP update_goal or CLI
       return null;
@@ -237,6 +242,67 @@ async function fetchLinearMetric(
       if (!res.ok) return null;
       const body = await res.json() as { data?: { issueConnection?: { pageInfo?: { totalCount?: number } } } };
       return body.data?.issueConnection?.pageInfo?.totalCount ?? null;
+    }
+    default:
+      return null;
+  }
+}
+
+async function fetchPostHogMetric(
+  data: Record<string, string>,
+  metric: string,
+  config: Record<string, unknown>,
+): Promise<number | null> {
+  const { apiKey, host, projectId: rawProjectId } = data;
+  if (!apiKey) return null;
+  const baseUrl = host || 'https://app.posthog.com';
+  const projectId = rawProjectId || '1';
+
+  const headers = {
+    Authorization: `Bearer ${apiKey}`,
+    'Content-Type': 'application/json',
+  };
+
+  switch (metric) {
+    case 'dau': {
+      // Query daily active users via trends
+      const res = await fetch(`${baseUrl}/api/projects/${projectId}/insights/trend/`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          events: [{ id: '$pageview', type: 'events', math: 'dau' }],
+          date_from: '-1d',
+        }),
+      });
+      if (!res.ok) return null;
+      const body = await res.json() as { result?: Array<{ data: number[] }> };
+      const values = body.result?.[0]?.data;
+      return values?.[values.length - 1] ?? null;
+    }
+    case 'retention': {
+      const res = await fetch(`${baseUrl}/api/projects/${projectId}/insights/retention/`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          target_event: { id: '$pageview', type: 'events' },
+          returning_event: { id: '$pageview', type: 'events' },
+          date_from: '-7d',
+          period: 'Day',
+        }),
+      });
+      if (!res.ok) return null;
+      const rdata = await res.json() as { result?: Array<{ values: Array<{ count: number }> }> };
+      // Return day-1 retention rate as percentage
+      const firstDay = rdata.result?.[0]?.values;
+      if (!firstDay || firstDay.length < 2) return null;
+      return Math.round((firstDay[1].count / firstDay[0].count) * 100);
+    }
+    case 'crash_rate': {
+      const eventName = (config.crashEvent as string) ?? '$exception';
+      const res = await fetch(`${baseUrl}/api/projects/${projectId}/events/?event=${eventName}&limit=1`, { headers });
+      if (!res.ok) return null;
+      const edata = await res.json() as { results?: unknown[] };
+      return edata.results?.length ?? 0;
     }
     default:
       return null;

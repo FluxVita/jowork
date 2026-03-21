@@ -5,12 +5,14 @@ export function connectCommand(program: Command): void {
   program
     .command('connect')
     .description('Connect a data source')
-    .argument('<source>', 'Data source: feishu, github, gitlab, linear')
+    .argument('<source>', 'Data source: feishu, github, gitlab, linear, posthog')
     .option('--app-id <id>', 'App ID (for Feishu)')
     .option('--app-secret <secret>', 'App Secret (for Feishu)')
     .option('--token <token>', 'Access token (for GitHub/GitLab)')
     .option('--api-url <url>', 'API base URL (for GitLab self-hosted)')
-    .option('--api-key <key>', 'API key (for Linear)')
+    .option('--api-key <key>', 'API key (for Linear/PostHog)')
+    .option('--host <host>', 'API host (for PostHog self-hosted)')
+    .option('--project-id <id>', 'Project ID (for PostHog)')
     .action(async (source: string, opts) => {
       switch (source) {
         case 'feishu':
@@ -25,8 +27,11 @@ export function connectCommand(program: Command): void {
         case 'linear':
           await connectLinear(opts);
           break;
+        case 'posthog':
+          await connectPostHog(opts);
+          break;
         default:
-          console.error(`Unknown source: ${source}. Supported: feishu, github, gitlab, linear`);
+          console.error(`Unknown source: ${source}. Supported: feishu, github, gitlab, linear, posthog`);
           process.exit(1);
       }
     });
@@ -216,4 +221,47 @@ async function connectLinear(opts: { apiKey?: string }): Promise<void> {
   });
 
   console.log('\u2713 Linear connected. Run `jowork sync` to start syncing data.');
+}
+
+async function connectPostHog(opts: { apiKey?: string; host?: string; projectId?: string }): Promise<void> {
+  let apiKey = opts.apiKey;
+  const host = opts.host ?? 'https://app.posthog.com';
+  const projectId = opts.projectId ?? '1';
+
+  if (!apiKey) apiKey = process.env['POSTHOG_API_KEY'];
+
+  if (!apiKey) {
+    const { default: inquirer } = await import('inquirer');
+    const answers = await inquirer.prompt([
+      { type: 'password', name: 'apiKey', message: 'PostHog Personal API Key:' },
+    ]);
+    apiKey = answers.apiKey;
+  }
+
+  if (!apiKey) {
+    console.error('Error: API key is required.');
+    process.exit(1);
+  }
+
+  // Verify credentials
+  console.log('Verifying PostHog credentials...');
+  try {
+    const res = await fetch(`${host}/api/projects/${projectId}/`, {
+      headers: { Authorization: `Bearer ${apiKey}` },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    console.log('\u2713 PostHog credentials verified');
+  } catch (err) {
+    console.error(`PostHog verification failed: ${err}`);
+    process.exit(1);
+  }
+
+  saveCredential('posthog', {
+    type: 'posthog',
+    data: { apiKey, host, projectId },
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  });
+
+  console.log('\u2713 PostHog connected. Run `jowork sync` to start syncing data.');
 }
