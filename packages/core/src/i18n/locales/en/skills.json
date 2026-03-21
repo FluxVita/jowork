@@ -38,5 +38,22 @@
   "installCount": "{{count}} installs",
   "install": "Install",
   "installed": "Installed",
-  "noSkillsMatch": "No skills match your search."
+  "noSkillsMatch": "No skills match your search.",
+  "skillLibrary": "Skill library",
+  "customSkillLabel": "Custom skill",
+  "fromConversation": "From Conversation",
+  "reviewAndSaveSkill": "Review & Save Skill",
+  "skillType": "Type",
+  "typeSimple": "Simple",
+  "typeWorkflow": "Workflow",
+  "workflowSteps": "Steps",
+  "addStep": "Add Step",
+  "noStepsYet": "No steps yet. Add a step to define the workflow.",
+  "step": "Step",
+  "stepPromptPlaceholder": "Step prompt…",
+  "outputVar": "Output variable (optional)",
+  "stepCondition": "Condition to run (optional)",
+  "namePlaceholder": "My Skill",
+  "triggerPlaceholder": "/my-skill",
+  "varNamePlaceholder": "var_name"
 }

@@ -32,3 +32,6 @@ task_plan.md
 # AI tool config
 .claude/
 GEMINI.md
+.collaborator
+.gstack/
+*.txt

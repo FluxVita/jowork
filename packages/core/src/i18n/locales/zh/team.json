@@ -26,5 +26,10 @@
   "inviteUrl": "邀请链接",
   "inviteExpiry": "此链接 7 天后过期。任何人都可以通过此链接加入团队。",
   "teamId": "团队 ID",
-  "remove": "移除"
+  "remove": "移除",
+  "createTeamDescription": "为你的组织创建一个新的协作空间。",
+  "removeConfirmTitle": "移除成员？",
+  "removeConfirmMessage": "该成员将失去团队资源的访问权限。",
+  "noTeams": "你还没有加入任何团队。",
+  "inviteError": "生成邀请链接失败"
 }

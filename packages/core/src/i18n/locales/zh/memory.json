@@ -16,6 +16,9 @@
   "searchMemories": "搜索记忆...",
   "sourceAuto": "自动",
   "sourceManual": "手动",
+  "scope": "范围",
   "scopePersonal": "个人",
-  "scopeTeam": "团队"
+  "scopeTeam": "团队",
+  "deleteConfirmTitle": "删除记忆？",
+  "deleteConfirmMessage": "此记忆将被永久删除。"
 }

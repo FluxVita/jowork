@@ -11,5 +11,19 @@
   "settings": "Settings",
   "billing": "Billing",
   "personal": "Personal",
-  "team": "Team"
+  "team": "Team",
+  "search": "Search",
+  "hideSidebar": "Hide sidebar",
+  "showSidebar": "Show sidebar",
+  "hidePanel": "Hide panel",
+  "showPanel": "Show panel",
+  "hideContext": "Hide context",
+  "showContext": "Show context",
+  "collapse": "Collapse",
+  "expand": "Expand",
+  "expandNav": "Expand navigation",
+  "collapseNav": "Collapse navigation",
+  "credits": "Credits",
+  "newConversation": "New conversation",
+  "searchPlaceholder": "Search (⌘K)"
 }

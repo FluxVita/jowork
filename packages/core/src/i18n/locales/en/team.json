@@ -26,5 +26,10 @@
   "inviteUrl": "Invite URL",
   "inviteExpiry": "This link expires in 7 days. Anyone with this link can join the team.",
   "teamId": "Team ID",
-  "remove": "Remove"
+  "remove": "Remove",
+  "createTeamDescription": "Create a new workspace for your organization.",
+  "removeConfirmTitle": "Remove member?",
+  "removeConfirmMessage": "They will lose access to team resources.",
+  "noTeams": "You haven't joined any teams yet.",
+  "inviteError": "Failed to generate invite link"
 }

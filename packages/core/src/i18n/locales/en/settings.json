@@ -32,5 +32,8 @@
   "workstyleHint": "Supports Markdown. This document is included in every AI conversation as context.",
   "saved": "Saved!",
   "workstyleTemplate": "# My Work Style\n\n## Role\n[Your title and responsibilities]\n\n## Communication Preferences\n- Reply style: [concise/detailed]\n- Language: [Chinese/English/bilingual]\n\n## Work Habits\n[Your daily workflow]\n\n## Important Rules\n[Rules the AI must follow]\n",
-  "terminalTab": "Terminal {{n}}"
+  "terminalTitle": "Terminal",
+  "terminalTab": "Terminal {{n}}",
+  "stylePrompt": "Style prompt",
+  "quickAccess": "Quick Access"
 }

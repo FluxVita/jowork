@@ -22,5 +22,6 @@
   "creditsPerMonth": "{{count}} credits/month",
   "downgrade": "Downgrade",
   "dailyLimit": "Limit: {{limit}}/day",
-  "usageHistory": "Usage History"
+  "usageHistory": "Usage History",
+  "creditOverview": "Credit overview"
 }

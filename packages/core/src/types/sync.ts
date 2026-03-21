@@ -19,6 +19,7 @@ export interface SyncRecord {
 export interface SyncPushRequest {
   changes: SyncRecord[];
   deviceId: string;
+  teamId?: string;
 }
 
 export interface SyncPushResponse {
@@ -31,6 +32,7 @@ export interface SyncPullRequest {
   since: number; // syncVersion watermark
   entities?: SyncEntity[];
   limit?: number;
+  teamId?: string;
 }
 
 export interface SyncPullResponse {

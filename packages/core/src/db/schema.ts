@@ -55,6 +55,8 @@ export const objects = sqliteTable('objects', {
   title: text('title'),
   summary: text('summary'),
   tags: text('tags'),
+  docMap: text('doc_map'),
+  contentHash: text('content_hash'),
   lastSyncedAt: integer('last_synced_at'),
   createdAt: integer('created_at'),
 });
@@ -72,6 +74,15 @@ export const syncCursors = sqliteTable('sync_cursors', {
   lastSyncedAt: integer('last_synced_at'),
 });
 
+export const objectChunks = sqliteTable('object_chunks', {
+  id: text('id').primaryKey(),
+  objectId: text('object_id').notNull().references(() => objects.id),
+  idx: integer('idx').notNull(),
+  heading: text('heading'),
+  content: text('content').notNull(),
+  tokens: integer('tokens'),
+});
+
 // --- Phase 3: Memory + Context + Skills ---
 
 export const memories = sqliteTable('memories', {
@@ -82,6 +93,7 @@ export const memories = sqliteTable('memories', {
   scope: text('scope').notNull(),
   pinned: integer('pinned').default(0),
   source: text('source'),
+  accessCount: integer('access_count').notNull().default(0),
   lastUsedAt: integer('last_used_at'),
   createdAt: integer('created_at').notNull(),
   updatedAt: integer('updated_at').notNull(),

@@ -38,5 +38,22 @@
   "installCount": "{{count}} 次安装",
   "install": "安装",
   "installed": "已安装",
-  "noSkillsMatch": "没有匹配的技能。"
+  "noSkillsMatch": "没有匹配的技能。",
+  "skillLibrary": "技能库",
+  "customSkillLabel": "自定义技能",
+  "fromConversation": "从对话创建",
+  "reviewAndSaveSkill": "审查并保存技能",
+  "skillType": "类型",
+  "typeSimple": "简单",
+  "typeWorkflow": "工作流",
+  "workflowSteps": "步骤",
+  "addStep": "添加步骤",
+  "noStepsYet": "暂无步骤，添加步骤来定义工作流。",
+  "step": "步骤",
+  "stepPromptPlaceholder": "步骤提示词…",
+  "outputVar": "输出变量（可选）",
+  "stepCondition": "执行条件（可选）",
+  "namePlaceholder": "我的技能",
+  "triggerPlaceholder": "/我的技能",
+  "varNamePlaceholder": "变量名"
 }

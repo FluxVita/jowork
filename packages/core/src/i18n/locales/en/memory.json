@@ -16,6 +16,9 @@
   "searchMemories": "Search memories...",
   "sourceAuto": "Auto",
   "sourceManual": "Manual",
+  "scope": "Scope",
   "scopePersonal": "Personal",
-  "scopeTeam": "Team"
+  "scopeTeam": "Team",
+  "deleteConfirmTitle": "Delete memory?",
+  "deleteConfirmMessage": "This memory will be permanently removed."
 }

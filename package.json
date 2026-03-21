@@ -6,7 +6,8 @@
     "dev": "turbo dev",
     "build": "turbo build",
     "lint": "turbo lint",
-    "test": "turbo test"
+    "test": "turbo test",
+    "release": "node -e \"const v=process.argv[1];if(!v){console.error('Usage: pnpm release <version>');process.exit(1);}const{execSync}=require('child_process');execSync('npm version '+v+' --no-git-tag-version --workspaces',{stdio:'inherit'});execSync('git add -A && git commit -m \"chore: release '+v+'\" && git tag v'+v,{stdio:'inherit'});console.log('Tagged v'+v+'. Run: git push && git push --tags')\" --"
   },
   "devDependencies": {
     "turbo": "^2.8.0",

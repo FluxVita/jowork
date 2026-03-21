@@ -50,10 +50,23 @@ jobs:
       - name: Build app
         run: pnpm --filter @jowork/desktop build
 
-      - name: Package
+      - name: Package (macOS with signing)
+        if: matrix.platform == 'mac'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+          CSC_LINK: ${{ secrets.MAC_CERTIFICATE_P12 }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CERTIFICATE_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          cd apps/desktop
+          npx electron-builder --${{ matrix.platform }} ${{ matrix.arch_flag }} --publish always
+
+      - name: Package (non-macOS)
+        if: matrix.platform != 'mac'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cd apps/desktop
           npx electron-builder --${{ matrix.platform }} ${{ matrix.arch_flag }} --publish always
@@ -69,3 +82,39 @@ jobs:
             apps/desktop/dist/*.AppImage
             apps/desktop/dist/latest*.yml
           if-no-files-found: warn
+
+  changelog:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          # Get previous tag
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          CURRENT_TAG=${GITHUB_REF#refs/tags/}
+
+          if [ -n "$PREV_TAG" ]; then
+            echo "## Changes since $PREV_TAG" > /tmp/changelog.md
+            echo "" >> /tmp/changelog.md
+            git log "$PREV_TAG..HEAD" --pretty=format:"- %s (%h)" --no-merges >> /tmp/changelog.md
+          else
+            echo "## First Release" > /tmp/changelog.md
+            echo "" >> /tmp/changelog.md
+            git log --pretty=format:"- %s (%h)" --no-merges -20 >> /tmp/changelog.md
+          fi
+
+          echo "" >> /tmp/changelog.md
+          echo "" >> /tmp/changelog.md
+          echo "**Full Changelog**: https://github.com/FluxVita/jowork/compare/${PREV_TAG}...${CURRENT_TAG}" >> /tmp/changelog.md
+
+      - name: Update release notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG=${GITHUB_REF#refs/tags/}
+          gh release edit "$TAG" --notes-file /tmp/changelog.md || true

@@ -34,9 +34,9 @@ Native modules (`better-sqlite3`) require rebuild for current Node.js version: `
 ```
 packages/core/     → Shared types, DB schema (Drizzle), i18n, ID generation (nanoid)
 apps/cli/          → CLI tool (primary product, npm install -g jowork)
-apps/desktop/      → Electron app (legacy, pending removal)
-apps/cloud/        → Hono backend (legacy, pending removal)
 ```
+
+> Desktop and cloud code removed in v3 pivot. Reference: `git tag v2-desktop-archive`
 
 ### CLI Architecture (apps/cli/)
 
@@ -76,93 +76,30 @@ jowork connect feishu → credential stored → jowork sync
   → Agent queries via MCP tools (search_data, read_memory, etc.)
 ```
 
-### Electron Process Boundaries (legacy)
-
-```
-Main Process (Node.js)
-├── index.ts              → Window creation, menu, setupIPC()
-├── ipc.ts                → 78 IPC handlers (engine, chat, session, connector, memory, ...)
-├── engine/
-│   ├── manager.ts        → EngineManager: dispatches to active engine adapter
-│   ├── claude-code.ts    → Spawns `claude` CLI with -p --output-format stream-json --verbose
-│   ├── cloud.ts          → SSE client to cloud API (requires auth)
-│   └── history.ts        → HistoryManager: SQLite persistence for sessions/messages
-├── connectors/hub.ts     → ConnectorHub: MCP stdio clients for GitHub/GitLab/Figma/Feishu/local
-├── mcp/
-│   ├── server.ts         → JoWork's own MCP server (search_data, read_memory, etc.)
-│   ├── inject.ts         → Registers MCP servers into ~/.claude.json via ToolsRegistry
-│   └── tools-registry.ts → In-memory registry, syncs to all engine configs
-├── memory/store.ts       → Memory CRUD + FTS search
-├── context/assembler.ts  → Builds system prompt (workstyle + memories + docs, 4K token budget)
-├── scheduler/index.ts    → Cron executor (croner)
-├── auth/manager.ts       → Google OAuth + JWT
-└── sync/sync-manager.ts  → Cloud sync for Team mode
-
-Preload (preload/index.ts)
-└── Exposes typed `window.jowork` API with channel allowlist (contextIsolation: true)
-
-Renderer (React 19 + TypeScript)
-├── App.tsx               → HashRouter routes (file:// needs hash routing)
-├── stores/conversation.ts → Zustand store (sessions, messages, streaming state)
-├── features/             → Feature modules (conversation, connectors, memory, skills, ...)
-└── styles/globals.css    → Design tokens, animations
-```
-
-### Chat Data Flow
-
-```
-InputBox → window.jowork.chat.send() → IPC
-  → EngineManager.chat() → assembleContext() → spawn claude CLI
-  → JSONL stream → parse EngineEvent → safeSend('chat:event', ...)
-  → Renderer listens on 'chat:event' → updates Zustand store
-```
-
-Key details:
-- Claude Code CLI is spawned with `stdio: ['ignore', 'pipe', 'pipe']` — stdin must be `ignore`
-- Session resume uses `--resume <engineSessionId>` from `engine_session_mappings` table
-- `safeSend()` guards against sending to destroyed renderer (`event.sender.isDestroyed()`)
-
-### MCP Two-Layer Design
-
-1. **JoWork MCP Server** — Exposes app data to Claude Code (search_data, fetch_content, read_memory, write_memory, send_message, notify)
-2. **Connector MCP Clients** — ConnectorHub manages external MCP servers (GitHub, GitLab, Figma, Feishu, local filesystem)
-
-The MCP server entry (`mcp-server-entry.ts`) has a stdout guard banner that redirects non-JSON output to stderr before any `require()` — this prevents i18next and other libraries from polluting the MCP JSON protocol.
-
 ### Database
 
-SQLite via better-sqlite3 + Drizzle ORM. Schema in `packages/core/src/db/schema.ts`. Tables created by `HistoryManager.ensureTables()`:
+SQLite via better-sqlite3 + Drizzle ORM. Schema in `packages/core/src/db/schema.ts`.
+Tables managed by `DbManager` with migration system (schema_version tracking):
 
-Core: `sessions`, `messages`, `engine_session_mappings`, `settings`, `connector_configs`, `objects`, `object_bodies`, `sync_cursors`
-FTS5: `objects_fts`, `messages_fts` (contentless, content-table mode)
-Other modules create: `memories`, `context_docs`, `scheduled_tasks`, `task_executions`, `sync_queue`
+Core: `settings`, `connector_configs`, `objects`, `object_bodies`, `object_chunks`, `sync_cursors`, `memories`, `object_links`
+FTS5: `objects_fts`, `memories_fts`
 
-WAL mode enabled. IDs use prefixed nanoid: `createId('ses')`, `createId('msg')`, etc.
-
-### Styling
-
-Tailwind CSS v3.4 with custom design tokens in `tailwind.config.ts`:
-- Solid colors (`surface-0`, `background`, `primary`, `accent`) use `solid()` function supporting `/opacity` modifier
-- Transparent colors (`surface-1`, `surface-2`, `border`, `text-secondary`) are plain strings — no opacity modifier support
-- shadcn/ui components via Radix primitives + `class-variance-authority` + `tailwind-merge`
-- Custom opacity values: 35, 92
+WAL mode + busy_timeout 5000ms. IDs use prefixed nanoid: `createId('obj')`, `createId('mem')`, etc.
 
 ### Error Logging
 
-Path: `~/Library/Application Support/@jowork/desktop/logs/errors.jsonl`
-Format: JSONL with `{ ts, level, category, msg, ctx, stack }`, category: `chat | engine | render | ipc | process`
+Path: `~/.jowork/logs/jowork.log`
+Daemon log: `~/.jowork/logs/daemon.log` (JSONL)
 
 ## Known Constraints
 
-- `ws` pinned to 8.18.3 (8.19.0 has ESM wrapper.mjs bug)
-- Electron `sandbox: false` on preload (needs Node API for IPC bridge)
-- HashRouter required — `file://` doesn't support HTML5 history API
 - pnpm must use copy mode (`pnpm config set package-import-method copy`) to avoid macOS hard-link mmap deadlock
-- MCP server stdout must be pure JSON — any `console.log` in dependencies breaks the protocol
+- MCP server stdout must be pure JSON — i18next banner suppressed via `showSupportNotice: false`
+- better-sqlite3 requires native rebuild per Node.js version: `pnpm rebuild better-sqlite3`
+- SQLite batch writes must use short transactions (100/txn) to avoid SQLITE_BUSY with concurrent MCP + daemon
 
 ## Project References
 
-- **Plan overview**: `PLAN.md`
-- **Phase details**: `plans/phase-X-*.md`
-- **Old codebase** (reference only): `/Users/signalz/Documents/augment-projects/jowork-v1-archived`
+- **Plan**: `plan-v3.md`
+- **Old codebase**: `git tag v2-desktop-archive`
 - **Domain**: jowork.work (not jowork.dev)
