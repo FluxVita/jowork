@@ -193,6 +193,28 @@ const MIGRATIONS: string[] = [
     CREATE INDEX IF NOT EXISTS idx_sync_queue_unsynced ON sync_queue(synced_at) WHERE synced_at IS NULL;
     CREATE INDEX IF NOT EXISTS idx_sync_queue_table ON sync_queue(table_name, record_id);
   `,
+
+  // 007 — Dashboard: active_context + active_sessions
+  `
+    CREATE TABLE IF NOT EXISTS active_context (
+      id TEXT PRIMARY KEY,
+      type TEXT NOT NULL,
+      value TEXT NOT NULL,
+      label TEXT,
+      session_id TEXT,
+      created_at INTEGER NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS active_sessions (
+      id TEXT PRIMARY KEY,
+      pid INTEGER,
+      engine TEXT,
+      working_dir TEXT,
+      connected_at INTEGER NOT NULL,
+      last_heartbeat INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_active_sessions_heartbeat ON active_sessions(last_heartbeat);
+  `,
 ];
 
 export class DbManager {

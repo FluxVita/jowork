@@ -106,14 +106,23 @@ export function createJoWorkMcpServer(opts: McpServerOptions): McpServer {
     {
       query: z.string().describe('Keywords to search -- works like grep across all synced data'),
       source: z.string().optional().describe('Filter by data source: github, feishu, gitlab, notion, slack, local'),
+      path: z.string().optional().describe('Filter local files by path prefix (only applies to source=local)'),
       limit: z.number().optional().default(20).describe('Max results (default 20)'),
     },
-    async ({ query, source, limit }) => {
+    async ({ query, source, path, limit }) => {
       const t0 = Date.now();
       // Auto-detect source from query if not explicitly provided
       if (!source) {
         source = detectSourceFromQuery(query) ?? undefined;
       }
+      // When path is specified, force source to 'local'
+      if (path) {
+        source = 'local';
+      }
+
+      // Build path filter clause
+      const pathFilter = path ? ` AND o.uri LIKE 'local://${escapeLike(path)}%'` : '';
+
       // Build FTS match query (null if CJK-only -> skip FTS, go straight to LIKE)
       const ftsMatchQuery = buildFtsQuery(query);
 
@@ -123,15 +132,15 @@ export function createJoWorkMcpServer(opts: McpServerOptions): McpServer {
           const ftsQuery = source
             ? `SELECT o.id, o.title, o.summary, o.source, o.source_type, o.uri, o.tags
                FROM objects_fts JOIN objects o ON o.rowid = objects_fts.rowid
-               WHERE objects_fts MATCH ? AND o.source = ? LIMIT ?`
+               WHERE objects_fts MATCH ? AND o.source = ?${pathFilter} LIMIT ?`
             : `SELECT o.id, o.title, o.summary, o.source, o.source_type, o.uri, o.tags
                FROM objects_fts JOIN objects o ON o.rowid = objects_fts.rowid
-               WHERE objects_fts MATCH ? LIMIT ?`;
+               WHERE objects_fts MATCH ?${pathFilter} LIMIT ?`;
           const ftsArgs = source ? [ftsMatchQuery, source, limit] : [ftsMatchQuery, limit];
           const ftsResults = sqlite.prepare(ftsQuery).all(...ftsArgs);
 
           if (ftsResults.length > 0) {
-            logInfo('mcp', `search_data: "${query}" (FTS)`, { source, resultCount: ftsResults.length, ms: Date.now() - t0 });
+            logInfo('mcp', `search_data: "${query}" (FTS)`, { source, path, resultCount: ftsResults.length, ms: Date.now() - t0 });
             const resultText = JSON.stringify(ftsResults, null, 2);
             const hint = ftsResults.length >= 3
               ? `\n\nShowing ${ftsResults.length} results (summaries only). Use fetch_content with a specific URI to get full content.`
@@ -147,6 +156,9 @@ export function createJoWorkMcpServer(opts: McpServerOptions): McpServer {
         .replace(/群里|最近|在|讨论|什么|话题|有哪些|是什么|怎么样|帮我|告诉我|查一下/g, '')
         .trim();
 
+      // Build path filter for LIKE queries
+      const likePathFilter = path ? ` AND uri LIKE 'local://${escapeLike(path)}%'` : '';
+
       let rows: unknown[] = [];
       if (source && cleanedQuery.length >= 2) {
         const segments = cleanedQuery.split(/\s+/).filter((s) => s.length >= 2);
@@ -160,7 +172,7 @@ export function createJoWorkMcpServer(opts: McpServerOptions): McpServer {
           params.push(source, limit);
           rows = sqlite.prepare(`
             SELECT id, title, summary, source, source_type, uri, tags FROM objects
-            WHERE (${conditions}) AND source = ? ORDER BY last_synced_at DESC LIMIT ?
+            WHERE (${conditions}) AND source = ?${likePathFilter} ORDER BY last_synced_at DESC LIMIT ?
           `).all(...params);
         } else {
           rows = [];
@@ -168,13 +180,13 @@ export function createJoWorkMcpServer(opts: McpServerOptions): McpServer {
       } else if (source) {
         rows = sqlite.prepare(`
           SELECT id, title, summary, source, source_type, uri, tags FROM objects
-          WHERE source = ? ORDER BY last_synced_at DESC LIMIT ?
+          WHERE source = ?${likePathFilter} ORDER BY last_synced_at DESC LIMIT ?
         `).all(source, limit);
       } else if (cleanedQuery.length >= 2) {
         const pattern = `%${escapeLike(cleanedQuery)}%`;
         rows = sqlite.prepare(`
           SELECT id, title, summary, source, source_type, uri, tags FROM objects
-          WHERE title LIKE ? OR summary LIKE ? OR tags LIKE ? OR source LIKE ? OR source_type LIKE ?
+          WHERE (title LIKE ? OR summary LIKE ? OR tags LIKE ? OR source LIKE ? OR source_type LIKE ?)${likePathFilter}
           ORDER BY last_synced_at DESC LIMIT ?
         `).all(pattern, pattern, pattern, pattern, pattern, limit);
       } else {
@@ -435,7 +447,7 @@ export function createJoWorkMcpServer(opts: McpServerOptions): McpServer {
     {},
     async () => {
       const now = new Date();
-      const info: Record<string, string> = {
+      const info: Record<string, unknown> = {
         datetime: now.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }),
         timezone: 'Asia/Shanghai',
         platform: process.platform, arch: process.arch,
@@ -443,6 +455,15 @@ export function createJoWorkMcpServer(opts: McpServerOptions): McpServer {
         uptime: `${Math.round(process.uptime() / 60)} min`,
         memoryUsage: `${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB heap`,
       };
+
+      // Include active context from dashboard
+      try {
+        const ctx = sqlite.prepare('SELECT type, value, label FROM active_context ORDER BY created_at DESC').all();
+        if (ctx.length > 0) {
+          info.active_context = ctx;
+        }
+      } catch { /* table may not exist yet */ }
+
       return { content: [{ type: 'text' as const, text: JSON.stringify(info, null, 2) }] };
     },
   );
@@ -785,6 +806,46 @@ export function createJoWorkMcpServer(opts: McpServerOptions): McpServer {
       return { content: [{ type: 'text' as const, text: parts.join('\n') }] };
     },
   );
+
+  // ── Session Registration ────────────────────────────────────────────
+  // Register this MCP server instance as an active session
+  const sessionId = createId('ses');
+  const engine = process.env['JOWORK_ENGINE'] ?? 'unknown';
+  const workingDir = process.cwd();
+  const pid = process.ppid ?? process.pid;
+  let heartbeatInterval: ReturnType<typeof setInterval> | undefined;
+
+  try {
+    sqlite.prepare(`
+      INSERT OR REPLACE INTO active_sessions (id, pid, engine, working_dir, connected_at, last_heartbeat)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run(sessionId, pid, engine, workingDir, Date.now(), Date.now());
+
+    // Heartbeat every 60s
+    heartbeatInterval = setInterval(() => {
+      try {
+        sqlite.prepare('UPDATE active_sessions SET last_heartbeat = ? WHERE id = ?').run(Date.now(), sessionId);
+      } catch { /* DB may be closed */ }
+    }, 60_000);
+
+    logInfo('mcp', `Session registered: ${sessionId}`, { engine, workingDir, pid });
+  } catch {
+    // active_sessions table may not exist (old DB without migration 007)
+  }
+
+  // Clean up session on server close
+  const originalOnClose = server.server.onclose;
+  server.server.onclose = () => {
+    // Clear heartbeat
+    if (heartbeatInterval) clearInterval(heartbeatInterval);
+    // Remove session
+    try {
+      sqlite.prepare('DELETE FROM active_sessions WHERE id = ?').run(sessionId);
+      logInfo('mcp', `Session removed: ${sessionId}`);
+    } catch { /* ignore */ }
+    // Call original onclose
+    if (originalOnClose) originalOnClose();
+  };
 
   return server;
 }

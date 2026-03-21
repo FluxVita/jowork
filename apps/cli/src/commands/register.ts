@@ -60,6 +60,7 @@ function registerClaudeCode(): void {
   config.mcpServers['jowork'] = {
     command: 'jowork',
     args: ['serve'],
+    env: { JOWORK_ENGINE: 'claude-code' },
   };
 
   writeFileSync(configPath, JSON.stringify(config, null, 2));
@@ -97,6 +98,7 @@ function registerOpenClaw(): void {
   (config['mcpServers'] as Record<string, unknown>)['jowork'] = {
     command: 'jowork',
     args: ['serve'],
+    env: { JOWORK_ENGINE: 'openclaw' },
   };
 
   writeFileSync(configPath, JSON.stringify(config, null, 2));
@@ -135,6 +137,9 @@ function registerCodex(): void {
 [mcp_servers.jowork]
 command = "jowork"
 args = ["serve"]
+
+[mcp_servers.jowork.env]
+JOWORK_ENGINE = "codex"
 `;
 
   writeFileSync(configPath, content + mcpEntry);
