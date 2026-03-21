@@ -6,6 +6,7 @@ import { loadCredential, listCredentials } from '../connectors/credential-store.
 import { logError } from '../utils/logger.js';
 import { linkAllUnprocessed } from '../sync/linker.js';
 import { syncFeishu } from '../sync/feishu.js';
+import { syncGitHub } from '../sync/github.js';
 
 export function syncCommand(program: Command): void {
   program
@@ -48,9 +49,16 @@ export function syncCommand(program: Command): void {
               console.log(`  \u2713 Synced ${result.totalMessages} messages (${result.newMessages} new) from ${result.chats} chats`);
               break;
             }
-            case 'github':
-              console.log(`  GitHub sync not yet implemented (Phase 4)`);
+            case 'github': {
+              const ghLogger = {
+                info: (msg: string) => console.log(`  ${msg}`),
+                warn: (msg: string) => console.log(`  \u26A0 ${msg}`),
+                error: (msg: string) => console.error(`  \u2717 ${msg}`),
+              };
+              const result = await syncGitHub(db.getSqlite(), cred.data, ghLogger);
+              console.log(`  \u2713 Synced ${result.repos} repos: ${result.issues} issues, ${result.prs} PRs (${result.newObjects} new)`);
               break;
+            }
             default:
               console.log(`  Unknown source: ${source}`);
           }

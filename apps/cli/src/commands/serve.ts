@@ -9,6 +9,7 @@ import { DbManager } from '../db/manager.js';
 import { listCredentials, loadCredential } from '../connectors/credential-store.js';
 import { linkAllUnprocessed } from '../sync/linker.js';
 import { syncFeishu, type FeishuSyncLogger } from '../sync/feishu.js';
+import { syncGitHub } from '../sync/github.js';
 
 export function serveCommand(program: Command): void {
   program
@@ -128,6 +129,9 @@ async function runSync(): Promise<void> {
         switch (source) {
           case 'feishu':
             await syncFeishu(sqlite, cred.data, daemonSyncLogger);
+            break;
+          case 'github':
+            await syncGitHub(sqlite, cred.data, daemonSyncLogger);
             break;
           default:
             daemonLog('info', `Source ${source} sync not implemented yet`);
