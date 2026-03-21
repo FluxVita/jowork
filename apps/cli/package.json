@@ -1,13 +1,36 @@
 {
   "name": "jowork",
   "version": "0.1.0",
+  "description": "AI Agent Infrastructure — let AI agents truly understand your work. Connect data sources, give agents awareness and goals. Local-first, one command.",
   "type": "module",
+  "license": "AGPL-3.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/FluxVita/jowork.git",
+    "directory": "apps/cli"
+  },
+  "homepage": "https://jowork.work",
+  "keywords": [
+    "ai", "agent", "mcp", "cli", "memory", "context",
+    "claude-code", "codex", "feishu", "goal-tracking",
+    "local-first", "sqlite", "agent-infrastructure"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "bin": { "jowork": "./dist/cli.js" },
+  "files": [
+    "dist/**/*.js",
+    "dist/**/*.d.ts",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
     "lint": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "prepublishOnly": "tsup"
   },
   "dependencies": {
     "@jowork/core": "workspace:*",

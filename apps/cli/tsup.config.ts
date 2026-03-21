@@ -1,4 +1,5 @@
 import { defineConfig } from 'tsup';
+import { readFileSync, writeFileSync } from 'node:fs';
 
 export default defineConfig({
   entry: {
@@ -13,4 +14,12 @@ export default defineConfig({
   external: ['better-sqlite3'],
   noExternal: ['@jowork/core'],
   shims: true,
+  onSuccess: async () => {
+    // Add shebang to cli.js only (not transport or chunks)
+    const cliPath = 'dist/cli.js';
+    const content = readFileSync(cliPath, 'utf-8');
+    if (!content.startsWith('#!')) {
+      writeFileSync(cliPath, '#!/usr/bin/env node\n' + content);
+    }
+  },
 });
