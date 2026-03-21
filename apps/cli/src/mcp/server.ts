@@ -658,7 +658,59 @@ export function createJoWorkMcpServer(opts: McpServerOptions): McpServer {
           return { content: [{ type: 'text' as const, text: `Error: ${err}` }] };
         }
       }
-      return { content: [{ type: 'text' as const, text: `Channel "${channel}" not yet supported. Available: feishu` }] };
+      if (channel === 'slack') {
+        try {
+          const credFile = join(process.env['HOME'] ?? '', '.jowork', 'credentials', 'slack.json');
+          if (!existsSync(credFile)) {
+            return { content: [{ type: 'text' as const, text: 'Slack not connected. Run `jowork connect slack` first.' }] };
+          }
+          const cred = JSON.parse(readFileSync(credFile, 'utf-8'));
+          const webhookUrl = cred.data?.webhookUrl;
+          if (!webhookUrl) {
+            return { content: [{ type: 'text' as const, text: 'Missing Slack webhook URL in credentials.' }] };
+          }
+
+          const res = await fetch(webhookUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: message }),
+          });
+          if (!res.ok) return { content: [{ type: 'text' as const, text: `Slack send failed: ${res.status}` }] };
+          logInfo('mcp', `push_to_channel: slack`, { length: message.length });
+          return { content: [{ type: 'text' as const, text: `✓ Message sent to Slack` }] };
+        } catch (err) {
+          return { content: [{ type: 'text' as const, text: `Error: ${err}` }] };
+        }
+      }
+
+      if (channel === 'telegram') {
+        try {
+          const credFile = join(process.env['HOME'] ?? '', '.jowork', 'credentials', 'telegram.json');
+          if (!existsSync(credFile)) {
+            return { content: [{ type: 'text' as const, text: 'Telegram not connected. Run `jowork connect telegram` first.' }] };
+          }
+          const cred = JSON.parse(readFileSync(credFile, 'utf-8'));
+          const { botToken, chatId: defaultChatId } = cred.data ?? {};
+          const chatTarget = target || defaultChatId;
+          if (!botToken || !chatTarget) {
+            return { content: [{ type: 'text' as const, text: 'Missing Telegram bot token or chat ID in credentials.' }] };
+          }
+
+          const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chat_id: chatTarget, text: message, parse_mode: 'Markdown' }),
+          });
+          const data = await res.json() as { ok: boolean; description?: string };
+          if (!data.ok) return { content: [{ type: 'text' as const, text: `Telegram send failed: ${data.description}` }] };
+          logInfo('mcp', `push_to_channel: telegram/${chatTarget}`, { length: message.length });
+          return { content: [{ type: 'text' as const, text: `✓ Message sent to Telegram chat ${chatTarget}` }] };
+        } catch (err) {
+          return { content: [{ type: 'text' as const, text: `Error: ${err}` }] };
+        }
+      }
+
+      return { content: [{ type: 'text' as const, text: `Channel "${channel}" not yet supported. Available: feishu, slack, telegram` }] };
     },
   );
 

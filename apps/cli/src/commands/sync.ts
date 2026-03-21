@@ -5,11 +5,12 @@ import { dbPath } from '../utils/paths.js';
 import { loadCredential, listCredentials } from '../connectors/credential-store.js';
 import { logError } from '../utils/logger.js';
 import { linkAllUnprocessed } from '../sync/linker.js';
-import { syncFeishu, syncFeishuMeetings, syncFeishuDocs } from '../sync/feishu.js';
+import { syncFeishu, syncFeishuMeetings, syncFeishuDocs, syncFeishuApprovals } from '../sync/feishu.js';
 import { syncGitHub } from '../sync/github.js';
 import { syncGitLab } from '../sync/gitlab.js';
 import { syncLinear } from '../sync/linear.js';
 import { syncPostHog } from '../sync/posthog.js';
+import { syncFirebase } from '../sync/firebase.js';
 
 export function syncCommand(program: Command): void {
   program
@@ -70,6 +71,16 @@ export function syncCommand(program: Command): void {
               } catch (err) {
                 console.log(`  \u26A0 Document sync: ${err}`);
               }
+
+              // Also sync approvals
+              try {
+                const approvalResult = await syncFeishuApprovals(db.getSqlite(), cred.data, logger);
+                if (approvalResult.approvals > 0) {
+                  console.log(`  \u2713 Synced ${approvalResult.approvals} approvals (${approvalResult.newObjects} new)`);
+                }
+              } catch (err) {
+                console.log(`  \u26A0 Approval sync: ${err}`);
+              }
               break;
             }
             case 'github': {
@@ -110,6 +121,16 @@ export function syncCommand(program: Command): void {
               };
               const phResult = await syncPostHog(db.getSqlite(), cred.data, phLogger);
               console.log(`  \u2713 Synced ${phResult.insights} insights, ${phResult.events} events (${phResult.newObjects} new)`);
+              break;
+            }
+            case 'firebase': {
+              const fbLogger = {
+                info: (msg: string) => console.log(`  ${msg}`),
+                warn: (msg: string) => console.log(`  \u26A0 ${msg}`),
+                error: (msg: string) => console.error(`  \u2717 ${msg}`),
+              };
+              const fbResult = await syncFirebase(db.getSqlite(), cred.data, fbLogger);
+              console.log(`  \u2713 Synced ${fbResult.events} Firebase events (${fbResult.newObjects} new)`);
               break;
             }
             default:

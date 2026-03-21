@@ -8,11 +8,12 @@ import { dbPath, joworkDir, logsDir } from '../utils/paths.js';
 import { DbManager } from '../db/manager.js';
 import { listCredentials, loadCredential } from '../connectors/credential-store.js';
 import { linkAllUnprocessed } from '../sync/linker.js';
-import { syncFeishu, syncFeishuMeetings, syncFeishuDocs, type FeishuSyncLogger } from '../sync/feishu.js';
+import { syncFeishu, syncFeishuMeetings, syncFeishuDocs, syncFeishuApprovals, type FeishuSyncLogger } from '../sync/feishu.js';
 import { syncGitHub } from '../sync/github.js';
 import { syncGitLab } from '../sync/gitlab.js';
 import { syncLinear } from '../sync/linear.js';
 import { syncPostHog } from '../sync/posthog.js';
+import { syncFirebase } from '../sync/firebase.js';
 import { pollSignals } from '../goals/signal-poller.js';
 import { evaluateTriggers } from '../goals/trigger-engine.js';
 import { runCompaction } from '../memory/compaction.js';
@@ -137,6 +138,7 @@ async function runSync(): Promise<void> {
             await syncFeishu(sqlite, cred.data, daemonSyncLogger);
             try { await syncFeishuMeetings(sqlite, cred.data, daemonSyncLogger); } catch (e) { daemonLog('warn', `Feishu meetings sync: ${e}`); }
             try { await syncFeishuDocs(sqlite, cred.data, daemonSyncLogger); } catch (e) { daemonLog('warn', `Feishu docs sync: ${e}`); }
+            try { await syncFeishuApprovals(sqlite, cred.data, daemonSyncLogger); } catch (e) { daemonLog('warn', `Feishu approvals sync: ${e}`); }
             break;
           case 'github':
             await syncGitHub(sqlite, cred.data, daemonSyncLogger);
@@ -149,6 +151,9 @@ async function runSync(): Promise<void> {
             break;
           case 'posthog':
             await syncPostHog(sqlite, cred.data, daemonSyncLogger);
+            break;
+          case 'firebase':
+            await syncFirebase(sqlite, cred.data, daemonSyncLogger);
             break;
           default:
             daemonLog('info', `Source ${source} sync not implemented yet`);

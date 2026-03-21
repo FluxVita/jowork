@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3';
 import { createId } from '@jowork/core';
-import { logInfo } from '../utils/logger.js';
+import { logInfo, logError } from '../utils/logger.js';
 
 /**
  * CompactionProvider interface — pluggable summarization backend.
@@ -15,7 +15,7 @@ export interface CompactionProvider {
  * No LLM cost. Good enough for Phase 5 launch.
  */
 export class RuleBasedCompaction implements CompactionProvider {
-  async summarize(texts: string[]): Promise<string> {
+  async summarize(texts: string[], _context?: string): Promise<string> {
     // Extract first meaningful sentence from each text
     const sentences: string[] = [];
     for (const text of texts) {
@@ -37,6 +37,61 @@ export class RuleBasedCompaction implements CompactionProvider {
   }
 }
 
+/**
+ * LLM-powered compaction using Anthropic Claude API.
+ * Requires ANTHROPIC_API_KEY in environment or credentials.
+ */
+export class AnthropicCompaction implements CompactionProvider {
+  private apiKey: string;
+  private model: string;
+
+  constructor(apiKey?: string, model: string = 'claude-sonnet-4-20250514') {
+    this.apiKey = apiKey ?? process.env['ANTHROPIC_API_KEY'] ?? '';
+    this.model = model;
+    if (!this.apiKey) {
+      throw new Error('ANTHROPIC_API_KEY required for LLM compaction. Set env var or use RuleBasedCompaction instead.');
+    }
+  }
+
+  async summarize(texts: string[], context?: string): Promise<string> {
+    const combined = texts.slice(0, 50).join('\n---\n'); // Cap input
+    const truncated = combined.length > 10000 ? combined.slice(0, 10000) + '\n...(truncated)' : combined;
+
+    const systemPrompt = context
+      ? `Summarize the following data concisely. Context: ${context}. Output in the same language as the input. Be factual, no opinions.`
+      : `Summarize the following data into a concise briefing. Highlight key decisions, action items, and notable events. Output in the same language as the input. Be factual, focus on what matters.`;
+
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': this.apiKey,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model: this.model,
+          max_tokens: 1024,
+          messages: [{ role: 'user', content: truncated }],
+          system: systemPrompt,
+        }),
+      });
+
+      if (!res.ok) {
+        logError('compaction', `Anthropic API error: ${res.status}`);
+        // Fallback to rule-based
+        return new RuleBasedCompaction().summarize(texts, context);
+      }
+
+      const data = await res.json() as { content: Array<{ type: string; text: string }> };
+      return data.content?.[0]?.text ?? '';
+    } catch (err) {
+      logError('compaction', `LLM compaction failed, falling back to rule-based`, { error: String(err) });
+      return new RuleBasedCompaction().summarize(texts, context);
+    }
+  }
+}
+
 export interface CompactionResult {
   hotEntries: number;
   warmEntries: number;
@@ -47,8 +102,19 @@ export interface CompactionResult {
  */
 export async function runCompaction(
   sqlite: Database.Database,
-  provider: CompactionProvider = new RuleBasedCompaction(),
+  provider?: CompactionProvider,
 ): Promise<CompactionResult> {
+  // Auto-detect provider: use LLM if API key available, else rule-based
+  if (!provider) {
+    const apiKey = process.env['ANTHROPIC_API_KEY'];
+    try {
+      provider = apiKey
+        ? new AnthropicCompaction(apiKey)
+        : new RuleBasedCompaction();
+    } catch {
+      provider = new RuleBasedCompaction();
+    }
+  }
   let hotEntries = 0;
   let warmEntries = 0;
 

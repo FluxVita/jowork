@@ -5,14 +5,18 @@ export function connectCommand(program: Command): void {
   program
     .command('connect')
     .description('Connect a data source')
-    .argument('<source>', 'Data source: feishu, github, gitlab, linear, posthog')
+    .argument('<source>', 'Data source: feishu, github, gitlab, linear, posthog, slack, telegram, firebase')
     .option('--app-id <id>', 'App ID (for Feishu)')
     .option('--app-secret <secret>', 'App Secret (for Feishu)')
     .option('--token <token>', 'Access token (for GitHub/GitLab)')
     .option('--api-url <url>', 'API base URL (for GitLab self-hosted)')
-    .option('--api-key <key>', 'API key (for Linear/PostHog)')
+    .option('--api-key <key>', 'API key (for Linear/PostHog/Firebase)')
     .option('--host <host>', 'API host (for PostHog self-hosted)')
-    .option('--project-id <id>', 'Project ID (for PostHog)')
+    .option('--project-id <id>', 'Project ID (for PostHog/Firebase)')
+    .option('--webhook-url <url>', 'Webhook URL (for Slack)')
+    .option('--bot-token <token>', 'Bot token (for Telegram)')
+    .option('--chat-id <id>', 'Chat ID (for Telegram)')
+    .option('--property-id <id>', 'Property ID (for Firebase GA4)')
     .action(async (source: string, opts) => {
       switch (source) {
         case 'feishu':
@@ -30,8 +34,17 @@ export function connectCommand(program: Command): void {
         case 'posthog':
           await connectPostHog(opts);
           break;
+        case 'slack':
+          await connectSlack(opts);
+          break;
+        case 'telegram':
+          await connectTelegram(opts);
+          break;
+        case 'firebase':
+          await connectFirebase(opts);
+          break;
         default:
-          console.error(`Unknown source: ${source}. Supported: feishu, github, gitlab, linear, posthog`);
+          console.error(`Unknown source: ${source}. Supported: feishu, github, gitlab, linear, posthog, slack, telegram, firebase`);
           process.exit(1);
       }
     });
@@ -264,4 +277,91 @@ async function connectPostHog(opts: { apiKey?: string; host?: string; projectId?
   });
 
   console.log('\u2713 PostHog connected. Run `jowork sync` to start syncing data.');
+}
+
+async function connectSlack(opts: Record<string, string | undefined>): Promise<void> {
+  let webhookUrl = opts.webhookUrl;
+  if (!webhookUrl) {
+    const { default: inquirer } = await import('inquirer');
+    const answers = await inquirer.prompt([
+      { type: 'input', name: 'webhookUrl', message: 'Slack Incoming Webhook URL:' },
+    ]);
+    webhookUrl = answers.webhookUrl;
+  }
+  if (!webhookUrl) {
+    console.error('Error: Webhook URL required.');
+    process.exit(1);
+  }
+
+  saveCredential('slack', {
+    type: 'slack',
+    data: { webhookUrl },
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  });
+  console.log('\u2713 Slack connected.');
+}
+
+async function connectTelegram(opts: Record<string, string | undefined>): Promise<void> {
+  let botToken = opts.botToken;
+  let chatId = opts.chatId;
+  if (!botToken || !chatId) {
+    const { default: inquirer } = await import('inquirer');
+    const answers = await inquirer.prompt([
+      { type: 'password', name: 'botToken', message: 'Telegram Bot Token:', when: !botToken },
+      { type: 'input', name: 'chatId', message: 'Default Chat ID:', when: !chatId },
+    ]);
+    botToken = botToken ?? answers.botToken;
+    chatId = chatId ?? answers.chatId;
+  }
+  if (!botToken) {
+    console.error('Error: Bot token required.');
+    process.exit(1);
+  }
+
+  saveCredential('telegram', {
+    type: 'telegram',
+    data: { botToken, chatId: chatId ?? '' },
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  });
+  console.log('\u2713 Telegram connected.');
+}
+
+async function connectFirebase(opts: Record<string, string | undefined>): Promise<void> {
+  let projectId = opts.projectId;
+  let apiKey = opts.apiKey;
+  let propertyId = opts.propertyId;
+
+  if (!projectId || !apiKey) {
+    const { default: inquirer } = await import('inquirer');
+    const answers = await inquirer.prompt([
+      { type: 'input', name: 'projectId', message: 'Firebase Project ID:', when: !projectId },
+      { type: 'password', name: 'apiKey', message: 'API Key (GA4 Data API):', when: !apiKey },
+      { type: 'input', name: 'propertyId', message: 'GA4 Property ID (optional, defaults to project ID):', when: !propertyId },
+    ]);
+    projectId = projectId ?? answers.projectId;
+    apiKey = apiKey ?? answers.apiKey;
+    propertyId = propertyId ?? answers.propertyId;
+  }
+
+  if (!projectId) {
+    console.error('Error: Project ID required.');
+    process.exit(1);
+  }
+  if (!apiKey) {
+    console.error('Error: API key required.');
+    process.exit(1);
+  }
+
+  const data: Record<string, string> = { projectId, apiKey };
+  if (propertyId) data.propertyId = propertyId;
+
+  saveCredential('firebase', {
+    type: 'firebase',
+    data,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  });
+  console.log('\u2713 Firebase connected. Run `jowork sync` to start syncing data.');
 }

@@ -27,6 +27,9 @@ const PATTERNS: Array<{ type: string; regex: RegExp; confidence: 'high' | 'mediu
 
   // @mentions (feishu user_id format)
   { type: 'mention', regex: /@([a-zA-Z0-9_]+)/g, confidence: 'medium' },
+
+  // Action items (Chinese + English)
+  { type: 'action_item', regex: /(?:需要|TODO|FIXME|待办|截止|deadline|action item|任务)[：:\s]+([^\n。.]{5,80})/gi, confidence: 'medium' },
 ];
 
 export function extractLinks(content: string): ExtractedLink[] {
@@ -50,10 +53,31 @@ export function extractLinks(content: string): ExtractedLink[] {
       // Skip commit SHAs that look like hex numbers less than 7 chars
       if (pattern.type === 'commit' && identifier.length < 7) continue;
 
+      // Extract metadata for action items: assignee (@mention) and due date
+      let metadata: Record<string, unknown> | undefined;
+      if (pattern.type === 'action_item') {
+        const surroundingText = content.slice(
+          Math.max(0, (match.index ?? 0) - 50),
+          Math.min(content.length, (match.index ?? 0) + match[0].length + 50),
+        );
+        // Look for @mention nearby
+        const mentionMatch = surroundingText.match(/@([a-zA-Z0-9_]+)/);
+        // Look for date patterns nearby (YYYY-MM-DD, MM/DD, M月D日)
+        const dateMatch = surroundingText.match(
+          /(\d{4}[-/]\d{1,2}[-/]\d{1,2}|\d{1,2}月\d{1,2}[日号]|\d{1,2}\/\d{1,2})/,
+        );
+        if (mentionMatch || dateMatch) {
+          metadata = {};
+          if (mentionMatch) metadata.assignee = mentionMatch[1];
+          if (dateMatch) metadata.dueDate = dateMatch[1];
+        }
+      }
+
       links.push({
         linkType: pattern.type,
         identifier,
         confidence: pattern.confidence,
+        ...(metadata ? { metadata } : {}),
       });
     }
   }

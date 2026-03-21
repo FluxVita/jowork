@@ -294,6 +294,130 @@ export async function syncFeishuMeetings(
   return { meetings, newObjects };
 }
 
+// ── Feishu Approvals ─────────────────────────────────────────────────
+
+export interface FeishuApprovalSyncResult {
+  approvals: number;
+  newObjects: number;
+}
+
+/**
+ * Sync Feishu approval instances.
+ * Requires scope: approval:approval:readonly
+ * API: GET /open-apis/approval/v4/instances
+ */
+export async function syncFeishuApprovals(
+  sqlite: Database.Database,
+  data: Record<string, string>,
+  logger: FeishuSyncLogger = defaultLogger,
+): Promise<FeishuApprovalSyncResult> {
+  const { appId, appSecret } = data;
+  if (!appId || !appSecret) throw new Error('Missing Feishu credentials');
+
+  const token = await getFeishuToken(appId, appSecret);
+  let approvals = 0, newObjects = 0;
+
+  try {
+    // List approval instances (last 30 days)
+    const res = await fetch('https://open.feishu.cn/open-apis/approval/v4/instances?page_size=50', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (!res.ok) {
+      logger.warn(`Approval API: ${res.status} (may need approval:approval:readonly scope)`);
+      return { approvals, newObjects };
+    }
+
+    const resData = await res.json() as {
+      code: number;
+      data: {
+        items?: Array<{
+          instance_id: string;
+          approval_name: string;
+          status: string;
+          user_id: string;
+          start_time: string;
+          end_time: string;
+          form: string; // JSON string of form fields
+        }>;
+      };
+    };
+
+    if (resData.code !== 0 || !resData.data?.items) {
+      logger.warn(`Approval list returned code ${resData.code}`);
+      return { approvals, newObjects };
+    }
+
+    const checkExists = sqlite.prepare('SELECT id FROM objects WHERE uri = ?');
+    const insertObj = sqlite.prepare(`
+      INSERT INTO objects (id, source, source_type, uri, title, summary, tags, content_hash, last_synced_at, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    const insertBody = sqlite.prepare(`
+      INSERT OR REPLACE INTO object_bodies (object_id, content, content_type, fetched_at)
+      VALUES (?, ?, ?, ?)
+    `);
+    const insertFts = sqlite.prepare(`
+      INSERT INTO objects_fts(rowid, title, summary, tags, source, source_type, body_excerpt)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `);
+    const getRowid = sqlite.prepare('SELECT rowid FROM objects WHERE id = ?');
+
+    const batch = sqlite.transaction((items: NonNullable<typeof resData.data.items>) => {
+      for (const approval of items) {
+        const uri = `feishu://approval/${approval.instance_id}`;
+        if (checkExists.get(uri)) continue;
+
+        const nowMs = Date.now();
+        const id = createId('obj');
+        const summary = `${approval.approval_name} [${approval.status}]`;
+        const tags = JSON.stringify(['feishu', 'approval', approval.status]);
+
+        let formText = '';
+        try {
+          const formData = JSON.parse(approval.form || '[]');
+          formText = Array.isArray(formData)
+            ? formData.map((f: { name: string; value: string }) => `${f.name}: ${f.value}`).join('\n')
+            : JSON.stringify(formData);
+        } catch {
+          formText = approval.form || '';
+        }
+
+        const body = [
+          `Approval: ${approval.approval_name}`,
+          `Status: ${approval.status}`,
+          `Submitted: ${approval.start_time}`,
+          `Completed: ${approval.end_time || 'pending'}`,
+          '',
+          formText,
+        ].join('\n');
+
+        const startTime = approval.start_time ? new Date(approval.start_time).getTime() : nowMs;
+        insertObj.run(id, 'feishu', 'approval', uri, approval.approval_name, summary, tags, contentHash(body), nowMs, startTime);
+        insertBody.run(id, body, 'text/plain', nowMs);
+
+        // Incremental FTS
+        try {
+          const rowid = getRowid.get(id) as { rowid: number } | undefined;
+          if (rowid) {
+            const excerpt = body.length > 500 ? body.slice(0, 500) : body;
+            insertFts.run(rowid.rowid, approval.approval_name ?? '', summary ?? '', tags, 'feishu', 'approval', excerpt);
+          }
+        } catch { /* FTS insert non-critical */ }
+
+        approvals++;
+        newObjects++;
+      }
+    });
+    batch(resData.data.items);
+  } catch (err) {
+    logger.error(`Approval sync error: ${err}`);
+  }
+
+  logger.info('Approval sync complete', { approvals, newObjects });
+  return { approvals, newObjects };
+}
+
 // ── Feishu Documents (Wiki / Docs) ───────────────────────────────────
 
 export interface FeishuDocsSyncResult {
