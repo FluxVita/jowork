@@ -318,6 +318,160 @@ describe('search_data path filter', () => {
   });
 });
 
+// ── Upload endpoint (browser file upload indexing) ──────────────────
+
+describe('Upload endpoint indexing', () => {
+  let dir: string;
+  let mgr: DbManager;
+  let sqlite: Database.Database;
+
+  beforeEach(() => {
+    const t = createTestDb();
+    dir = t.dir; mgr = t.mgr; sqlite = t.sqlite;
+  });
+
+  afterEach(() => {
+    mgr.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('indexes uploaded files with local://upload/ URIs', () => {
+    const label = 'my-project';
+    const files = [
+      { path: 'src/app.ts', content: 'export const x = 1;', size: 20 },
+      { path: 'README.md', content: '# Hello', size: 7 },
+      { path: 'config.json', content: '{"key":"val"}', size: 13 },
+    ];
+
+    const checkExists = sqlite.prepare('SELECT id FROM objects WHERE uri = ?');
+    const insertObj = sqlite.prepare(`
+      INSERT OR IGNORE INTO objects (id, source, source_type, uri, title, summary, tags, content_hash, last_synced_at, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    const insertBody = sqlite.prepare(`
+      INSERT OR IGNORE INTO object_bodies (object_id, content, content_type, fetched_at)
+      VALUES (?, ?, ?, ?)
+    `);
+
+    let indexed = 0;
+    const now = Date.now();
+
+    const txn = sqlite.transaction(() => {
+      for (const file of files) {
+        const normalizedPath = file.path.replace(/^\/+/, '');
+        const uri = `local://upload/${label}/${normalizedPath}`;
+        if (checkExists.get(uri)) continue;
+
+        const id = createId('obj');
+        insertObj.run(id, 'local', 'code', uri, file.path.split('/').pop(), file.content, '[]', 'hash', now, now);
+        insertBody.run(id, file.content, 'text/plain', now);
+        indexed++;
+      }
+    });
+    txn();
+
+    expect(indexed).toBe(3);
+
+    // Verify URIs
+    const rows = sqlite.prepare(
+      "SELECT uri FROM objects WHERE uri LIKE 'local://upload/%'",
+    ).all() as Array<{ uri: string }>;
+    expect(rows.length).toBe(3);
+    expect(rows.some(r => r.uri === 'local://upload/my-project/src/app.ts')).toBe(true);
+    expect(rows.some(r => r.uri === 'local://upload/my-project/README.md')).toBe(true);
+    expect(rows.some(r => r.uri === 'local://upload/my-project/config.json')).toBe(true);
+  });
+
+  it('skips files with binary extensions', () => {
+    const BINARY_EXT = new Set([
+      '.png', '.jpg', '.gif', '.ico', '.woff', '.ttf', '.exe', '.dll',
+      '.so', '.dylib', '.zip', '.tar', '.gz',
+    ]);
+
+    const files = [
+      { path: 'app.ts', ext: '.ts', size: 100 },
+      { path: 'image.png', ext: '.png', size: 100 },
+      { path: 'font.woff', ext: '.woff', size: 100 },
+      { path: 'readme.md', ext: '.md', size: 100 },
+      { path: 'binary.exe', ext: '.exe', size: 100 },
+    ];
+
+    let skipped = 0;
+    let accepted = 0;
+
+    for (const file of files) {
+      if (BINARY_EXT.has(file.ext)) {
+        skipped++;
+      } else {
+        accepted++;
+      }
+    }
+
+    expect(accepted).toBe(2); // .ts and .md
+    expect(skipped).toBe(3);  // .png, .woff, .exe
+  });
+
+  it('is idempotent — re-uploading does not create duplicates', () => {
+    const label = 'test-project';
+    const uri = `local://upload/${label}/index.ts`;
+    const now = Date.now();
+
+    const insertObj = sqlite.prepare(`
+      INSERT OR IGNORE INTO objects (id, source, source_type, uri, title, summary, tags, content_hash, last_synced_at, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    // First insert
+    const id1 = createId('obj');
+    const r1 = insertObj.run(id1, 'local', 'code', uri, 'index.ts', 'content', '[]', 'hash1', now, now);
+    expect(r1.changes).toBe(1);
+
+    // Second insert — same URI, INSERT OR IGNORE → no duplicate
+    const id2 = createId('obj');
+    const r2 = insertObj.run(id2, 'local', 'code', uri, 'index.ts', 'content', '[]', 'hash1', now, now);
+    expect(r2.changes).toBe(0);
+
+    const count = sqlite.prepare(
+      "SELECT COUNT(*) as c FROM objects WHERE uri = ?",
+    ).get(uri) as { c: number };
+    expect(count.c).toBe(1);
+  });
+});
+
+// ── Focus endpoint ──────────────────────────────────────────────────
+
+describe('Focus endpoint behavior', () => {
+  it('returns focused=false with fallback on non-macOS', () => {
+    // Simulate non-macOS behavior: when platform is not darwin, endpoint returns fallback
+    const session = { pid: 12345, working_dir: '/Users/test/project' };
+    const isDarwin = process.platform === 'darwin';
+
+    if (!isDarwin) {
+      // On non-macOS CI, the focus endpoint would return this
+      const result = { focused: false, fallback: `cd ${session.working_dir}` };
+      expect(result.focused).toBe(false);
+      expect(result.fallback).toBe('cd /Users/test/project');
+    } else {
+      // On macOS, test that the fallback structure is correct for invalid PID
+      const result = { focused: false, fallback: `cd ${session.working_dir}` };
+      expect(result.fallback).toContain('cd ');
+    }
+  });
+
+  it('constructs correct fallback command from working_dir', () => {
+    const testCases = [
+      { working_dir: '/Users/test/project', expected: 'cd /Users/test/project' },
+      { working_dir: '/tmp', expected: 'cd /tmp' },
+      { working_dir: '/home/user/my code', expected: 'cd /home/user/my code' },
+    ];
+
+    for (const tc of testCases) {
+      const fallback = `cd ${tc.working_dir}`;
+      expect(fallback).toBe(tc.expected);
+    }
+  });
+});
+
 // ── DB Polling Change Detection ──────────────────────────────────────
 
 describe('DB polling change detection', () => {

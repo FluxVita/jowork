@@ -417,11 +417,18 @@ body {
 .drop-zone.active {
   border-color: var(--accent);
   background: var(--accent-dim);
+  box-shadow: 0 0 24px var(--accent-dim);
 }
 
 .drop-zone-text {
   font-size: 13px;
   color: var(--text-tertiary);
+  transition: color 200ms ease-out;
+}
+
+.drop-zone.active .drop-zone-text {
+  color: var(--accent);
+  font-weight: 500;
 }
 
 .drop-zone-hint {
@@ -429,6 +436,84 @@ body {
   color: var(--text-tertiary);
   margin-top: 4px;
   opacity: 0.7;
+}
+
+/* Upload progress bar */
+.upload-progress-bar {
+  position: relative;
+  height: 3px;
+  background: var(--bg-2);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.upload-progress-fill {
+  height: 100%;
+  background: var(--warning);
+  transition: width 300ms ease-out;
+}
+
+/* Focus button (session card) */
+.focus-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-tertiary);
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 100ms ease-out;
+}
+
+.focus-btn:hover {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Toast */
+.toast-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.toast {
+  padding: 10px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  color: var(--bg-0);
+  pointer-events: auto;
+  animation: toastIn 300ms ease-out;
+}
+
+.toast.success {
+  background: var(--success);
+}
+
+.toast.error {
+  background: var(--error);
+}
+
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Goal cards */

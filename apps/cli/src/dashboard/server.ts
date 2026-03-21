@@ -3,12 +3,14 @@ import { serve, type ServerType } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { randomBytes } from 'node:crypto';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { join, dirname, extname, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { execSync } from 'node:child_process';
 import { WebSocketServer, WebSocket } from 'ws';
 import type { IncomingMessage } from 'node:http';
 import Database from 'better-sqlite3';
 import { createId } from '@jowork/core';
+import { contentHash } from '../sync/feishu.js';
 import { DbManager } from '../db/manager.js';
 import { dbPath, joworkDir } from '../utils/paths.js';
 import { indexDirectory } from '../sync/local.js';
@@ -42,6 +44,9 @@ export async function startDashboard(opts: DashboardServerOptions = {}): Promise
   const goalManager = new GoalManager(sqlite);
 
   const app = new Hono();
+
+  // WebSocket clients — declared early so route handlers can reference it
+  const clients = new Set<WebSocket>();
 
   // ── CSRF middleware ──────────────────────────────────────────────────
   app.use('*', async (c, next) => {
@@ -154,6 +159,159 @@ export async function startDashboard(opts: DashboardServerOptions = {}): Promise
       return c.json({ error: 'Context entry not found' }, 404);
     }
     return c.json({ deleted: id });
+  });
+
+  // ── Upload endpoint (browser drag-and-drop file indexing) ──────────
+  app.post('/api/context/upload', async (c) => {
+    const body = await c.req.json() as {
+      label: string;
+      files: Array<{ path: string; content: string; size: number }>;
+    };
+    const { label, files } = body;
+    if (!label || !Array.isArray(files) || files.length === 0) {
+      return c.json({ error: 'label and files[] are required' }, 400);
+    }
+
+    const contextId = createId('ctx');
+    const now = Date.now();
+
+    // Binary extensions to skip on server side (defense-in-depth)
+    const BINARY_EXT = new Set([
+      '.png', '.jpg', '.jpeg', '.gif', '.bmp', '.ico', '.svg', '.webp',
+      '.mp3', '.mp4', '.wav', '.avi', '.mov', '.mkv', '.flac',
+      '.zip', '.tar', '.gz', '.bz2', '.xz', '.rar', '.7z',
+      '.exe', '.dll', '.so', '.dylib', '.bin', '.dat',
+      '.woff', '.woff2', '.ttf', '.otf', '.eot',
+      '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx',
+      '.sqlite', '.db', '.o', '.a', '.pyc', '.class', '.wasm',
+    ]);
+
+    const detectFileType = (ext: string): string => {
+      const map: Record<string, string> = {
+        '.ts': 'code', '.js': 'code', '.tsx': 'code', '.jsx': 'code',
+        '.py': 'code', '.go': 'code', '.rs': 'code', '.rb': 'code',
+        '.java': 'code', '.swift': 'code', '.c': 'code', '.cpp': 'code',
+        '.md': 'document', '.txt': 'document', '.html': 'document',
+        '.css': 'code', '.scss': 'code', '.json': 'config',
+        '.yaml': 'config', '.yml': 'config', '.toml': 'config',
+        '.sh': 'code', '.bash': 'code', '.sql': 'code',
+        '.vue': 'code', '.svelte': 'code',
+      };
+      return map[ext.toLowerCase()] ?? 'file';
+    };
+
+    const mimeForExt = (ext: string): string => {
+      const map: Record<string, string> = {
+        '.ts': 'text/typescript', '.js': 'text/javascript',
+        '.json': 'application/json', '.md': 'text/markdown',
+        '.html': 'text/html', '.css': 'text/css',
+        '.py': 'text/x-python', '.go': 'text/x-go',
+      };
+      return map[ext.toLowerCase()] ?? 'text/plain';
+    };
+
+    const checkExists = sqlite.prepare('SELECT id FROM objects WHERE uri = ?');
+    const insertObj = sqlite.prepare(`
+      INSERT OR IGNORE INTO objects (id, source, source_type, uri, title, summary, tags, content_hash, last_synced_at, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    const insertBody = sqlite.prepare(`
+      INSERT OR IGNORE INTO object_bodies (object_id, content, content_type, fetched_at)
+      VALUES (?, ?, ?, ?)
+    `);
+    const insertFts = sqlite.prepare(`
+      INSERT INTO objects_fts(rowid, title, summary, tags, source, source_type, body_excerpt)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `);
+    const getRowid = sqlite.prepare('SELECT rowid FROM objects WHERE id = ?');
+
+    let indexed = 0;
+    let skipped = 0;
+
+    // Process in batches of 100
+    for (let i = 0; i < files.length; i += 100) {
+      const batch = files.slice(i, i + 100);
+
+      const txn = sqlite.transaction((batchFiles: typeof files) => {
+        for (const file of batchFiles) {
+          try {
+            const ext = extname(file.path).toLowerCase();
+            // Skip binary
+            if (BINARY_EXT.has(ext)) { skipped++; continue; }
+            // Skip >1MB
+            if (file.size > 1024 * 1024) { skipped++; continue; }
+
+            const normalizedPath = file.path.replace(/^\/+/, '');
+            const uri = `local://upload/${label}/${normalizedPath}`;
+
+            // Skip if already indexed
+            if (checkExists.get(uri)) { skipped++; continue; }
+
+            const hash = contentHash(file.content);
+            const id = createId('obj');
+            const fileName = basename(file.path);
+            const summary = file.content.length > 200 ? file.content.slice(0, 200) + '...' : file.content;
+            const tags = JSON.stringify(['local', 'upload', ext.replace('.', '')].filter(Boolean));
+            const sourceType = detectFileType(ext);
+
+            insertObj.run(id, 'local', sourceType, uri, fileName, summary, tags, hash, now, now);
+            insertBody.run(id, file.content, mimeForExt(ext), now);
+
+            // FTS
+            try {
+              const rowid = getRowid.get(id) as { rowid: number } | undefined;
+              if (rowid) {
+                const excerpt = file.content.length > 500 ? file.content.slice(0, 500) : file.content;
+                insertFts.run(rowid.rowid, fileName, summary, tags, 'local', sourceType, excerpt);
+              }
+            } catch { /* FTS insert non-critical */ }
+
+            indexed++;
+          } catch {
+            skipped++;
+          }
+        }
+      });
+
+      txn(batch);
+
+      // Push progress over WebSocket
+      const progress = JSON.stringify({
+        type: 'index_progress',
+        data: { indexed, total: files.length, done: i + 100 >= files.length },
+      });
+      for (const client of clients) {
+        if (client.readyState === WebSocket.OPEN) {
+          client.send(progress);
+        }
+      }
+    }
+
+    // Also add to active_context so it shows in the Context tab
+    sqlite.prepare(
+      'INSERT INTO active_context (id, type, value, label, session_id, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+    ).run(contextId, 'upload', `local://upload/${label}`, label, null, now);
+
+    logInfo('dashboard', `Upload indexed ${indexed} files from "${label}"`, { skipped });
+    return c.json({ indexed, skipped, contextId }, 201);
+  });
+
+  // ── Focus endpoint (terminal window focus) ─────────────────────────
+  app.post('/api/sessions/:id/focus', (c) => {
+    const id = c.req.param('id');
+    const session = sqlite.prepare('SELECT * FROM active_sessions WHERE id = ?').get(id) as
+      { pid: number; working_dir: string } | undefined;
+
+    if (!session) {
+      return c.json({ error: 'Session not found' }, 404);
+    }
+
+    if (process.platform !== 'darwin') {
+      return c.json({ focused: false, fallback: `cd ${session.working_dir}` });
+    }
+
+    const result = focusMacOS(session.pid);
+    return c.json(result);
   });
 
   app.post('/api/sync/:source', async (c) => {
@@ -282,7 +440,6 @@ export async function startDashboard(opts: DashboardServerOptions = {}): Promise
 
   // ── WebSocket server for real-time updates ──────────────────────────
   const wss = new WebSocketServer({ noServer: true });
-  const clients = new Set<WebSocket>();
 
   server.on('upgrade', (request: IncomingMessage, socket: import('node:net').Socket, head: Buffer) => {
     const url = new URL(request.url ?? '', `http://127.0.0.1:${port}`);
@@ -382,6 +539,81 @@ function getDbState(sqlite: Database.Database): {
   } catch { /* table may not exist */ }
 
   return { lastSyncAt, sessionCount, contextCount, objectCount };
+}
+
+function focusMacOS(pid: number): { focused: boolean; method: string; fallback?: string } {
+  // 1. Get TTY from PID
+  let tty: string;
+  try {
+    tty = execSync(`ps -p ${pid} -o tty=`, { encoding: 'utf-8' }).trim();
+  } catch {
+    return { focused: false, method: 'no-process' };
+  }
+  if (!tty || tty === '??') {
+    return { focused: false, method: 'no-tty' };
+  }
+
+  // 2. Detect terminal app from parent process
+  let parentComm = '';
+  try {
+    const ppid = execSync(`ps -p ${pid} -o ppid=`, { encoding: 'utf-8' }).trim();
+    parentComm = execSync(`ps -p ${ppid} -o comm=`, { encoding: 'utf-8' }).trim();
+  } catch { /* ignore — will fall through to generic */ }
+
+  // 3. Try AppleScript based on detected terminal
+  if (parentComm.includes('Terminal')) {
+    try {
+      execSync(`osascript -e '
+        tell application "Terminal"
+          repeat with w in windows
+            repeat with t in tabs of w
+              if tty of t is "/dev/${tty}" then
+                set frontmost of w to true
+                set selected tab of w to t
+                activate
+                return
+              end if
+            end repeat
+          end repeat
+        end tell
+      '`, { encoding: 'utf-8', timeout: 3000 });
+      return { focused: true, method: 'terminal-applescript' };
+    } catch { /* fallthrough */ }
+  }
+
+  if (parentComm.includes('iTerm')) {
+    try {
+      execSync(`osascript -e '
+        tell application "iTerm2"
+          repeat with w in windows
+            repeat with t in tabs of w
+              repeat with s in sessions of t
+                if tty of s is "/dev/${tty}" then
+                  select w
+                  select t
+                  select s
+                  activate
+                  return
+                end if
+              end repeat
+            end repeat
+          end repeat
+        end tell
+      '`, { encoding: 'utf-8', timeout: 3000 });
+      return { focused: true, method: 'iterm-applescript' };
+    } catch { /* fallthrough */ }
+  }
+
+  // 4. Fallback: bring Terminal.app to front generically
+  try {
+    execSync(`osascript -e 'tell application "Terminal" to activate'`, {
+      encoding: 'utf-8',
+      timeout: 3000,
+    });
+    return { focused: true, method: 'generic-activate' };
+  } catch {
+    return { focused: false, method: 'failed' };
+  }
 }
 
 function getPublicDir(): string {

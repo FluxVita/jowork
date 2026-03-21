@@ -5,6 +5,24 @@ const { createApp, ref, reactive, computed, onMounted, onUnmounted, nextTick } =
 
 const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
 
+// Binary extensions skipped during browser-side file reading
+const BINARY_EXTENSIONS = new Set([
+  'png', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'svg', 'webp',
+  'mp3', 'mp4', 'wav', 'avi', 'mov', 'mkv', 'flac',
+  'zip', 'tar', 'gz', 'bz2', 'xz', 'rar', '7z',
+  'exe', 'dll', 'so', 'dylib', 'bin', 'dat',
+  'woff', 'woff2', 'ttf', 'otf', 'eot',
+  'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx',
+  'sqlite', 'db', 'o', 'a', 'pyc', 'class', 'wasm',
+]);
+
+const SKIP_DIRS = new Set(['.git', 'node_modules', '.DS_Store', '__pycache__', '.next', '.nuxt',
+  '.turbo', 'dist', 'build', '.cache', '.vscode', '.idea', 'coverage', 'vendor', '.svn', '.hg']);
+
+const MAX_FILE_SIZE = 1024 * 1024; // 1MB
+const MAX_DEPTH = 10;
+const UPLOAD_BATCH_SIZE = 50;
+
 async function api(path, opts = {}) {
   const headers = { 'Content-Type': 'application/json', ...opts.headers };
   if (opts.method === 'POST' || opts.method === 'DELETE') {
@@ -33,6 +51,47 @@ function formatTimeAgo(timestamp) {
   return formatDuration(diff) + ' ago';
 }
 
+/** Recursively read a dropped directory via webkitGetAsEntry API */
+async function readDroppedDirectory(entry) {
+  const files = [];
+
+  async function readAllEntries(reader) {
+    const entries = [];
+    let batch;
+    do {
+      batch = await new Promise((resolve, reject) => reader.readEntries(resolve, reject));
+      entries.push(...batch);
+    } while (batch.length > 0);
+    return entries;
+  }
+
+  async function traverse(dirEntry, path = '', depth = 0) {
+    if (depth > MAX_DEPTH) return;
+    const reader = dirEntry.createReader();
+    const entries = await readAllEntries(reader);
+    for (const e of entries) {
+      if (e.isFile) {
+        const ext = e.name.split('.').pop()?.toLowerCase() ?? '';
+        if (BINARY_EXTENSIONS.has(ext)) continue;
+
+        const file = await new Promise((resolve, reject) => e.file(resolve, reject));
+        if (file.size > MAX_FILE_SIZE || file.size === 0) continue;
+
+        try {
+          const content = await file.text();
+          files.push({ path: path + '/' + e.name, content, size: file.size });
+        } catch { /* skip unreadable files */ }
+      } else if (e.isDirectory) {
+        if (SKIP_DIRS.has(e.name) || e.name.startsWith('.')) continue;
+        await traverse(e, path + '/' + e.name, depth + 1);
+      }
+    }
+  }
+
+  await traverse(entry);
+  return files;
+}
+
 const App = {
   setup() {
     const activeTab = ref('sessions');
@@ -48,6 +107,22 @@ const App = {
 
     // Drop zone
     const dropActive = ref(false);
+
+    // Progress bar
+    const uploadProgress = ref(0);     // 0-100
+    const uploadActive = ref(false);
+
+    // Toast system
+    const toasts = ref([]);
+    let toastIdCounter = 0;
+
+    function showToast(message, variant = 'success') {
+      const id = ++toastIdCounter;
+      toasts.value.push({ id, message, variant });
+      setTimeout(() => {
+        toasts.value = toasts.value.filter(t => t.id !== id);
+      }, 4000);
+    }
 
     // WebSocket
     let ws = null;
@@ -66,8 +141,20 @@ const App = {
         try {
           const msg = JSON.parse(event.data);
           if (msg.type === 'state_change') {
-            // Refresh all data on state change
             fetchAll();
+          } else if (msg.type === 'index_progress') {
+            const { indexed, total, done } = msg.data;
+            if (total > 0) {
+              uploadProgress.value = Math.round((indexed / total) * 100);
+            }
+            if (done) {
+              // Keep at 100% briefly, then hide
+              uploadProgress.value = 100;
+              setTimeout(() => {
+                uploadActive.value = false;
+                uploadProgress.value = 0;
+              }, 500);
+            }
           }
         } catch { /* ignore parse errors */ }
       };
@@ -141,9 +228,23 @@ const App = {
       }
     }
 
-    function copyCommand(session) {
-      const text = `cd ${session.working_dir}`;
-      navigator.clipboard.writeText(text).catch(() => {});
+    async function focusSession(session) {
+      try {
+        const result = await api(`/api/sessions/${session.id}/focus`, { method: 'POST' });
+        if (result.focused) {
+          showToast('Focused terminal window', 'success');
+        } else {
+          // Fallback: copy cd command
+          const text = result.fallback || `cd ${session.working_dir}`;
+          await navigator.clipboard.writeText(text).catch(() => {});
+          showToast('Command copied to clipboard', 'success');
+        }
+      } catch (err) {
+        // On error, fall back to copy
+        const text = `cd ${session.working_dir}`;
+        await navigator.clipboard.writeText(text).catch(() => {});
+        showToast('Command copied to clipboard', 'success');
+      }
     }
 
     function toggleTheme() {
@@ -170,19 +271,57 @@ const App = {
       e.stopPropagation();
       dropActive.value = false;
 
-      // File API provides items
       const items = e.dataTransfer?.items;
       if (!items) return;
 
       for (const item of items) {
-        // Try to get the path from the file
-        const file = item.getAsFile?.();
-        if (file) {
-          // Browsers don't expose full paths for security; use the relative path as a label
-          // For real directory drops, the path must be sent via the API
-          const path = file.path || file.webkitRelativePath || file.name;
-          if (path) {
-            await addContext('directory', path, file.name || path);
+        const entry = item.webkitGetAsEntry?.();
+        if (!entry) continue;
+
+        if (entry.isDirectory) {
+          const label = entry.name;
+          uploadActive.value = true;
+          uploadProgress.value = 0;
+
+          try {
+            const files = await readDroppedDirectory(entry);
+            if (files.length === 0) {
+              uploadActive.value = false;
+              showToast('No indexable files found in directory', 'error');
+              return;
+            }
+
+            // Send in batches of UPLOAD_BATCH_SIZE
+            let totalIndexed = 0;
+            for (let i = 0; i < files.length; i += UPLOAD_BATCH_SIZE) {
+              const batch = files.slice(i, i + UPLOAD_BATCH_SIZE);
+              const result = await api('/api/context/upload', {
+                method: 'POST',
+                body: JSON.stringify({ label, files: batch }),
+              });
+              totalIndexed += result.indexed;
+              uploadProgress.value = Math.round(((i + batch.length) / files.length) * 100);
+            }
+
+            uploadProgress.value = 100;
+            setTimeout(() => {
+              uploadActive.value = false;
+              uploadProgress.value = 0;
+            }, 500);
+
+            showToast(`Indexed ${totalIndexed} files from ${label}`, 'success');
+            await fetchAll();
+          } catch (err) {
+            uploadActive.value = false;
+            uploadProgress.value = 0;
+            showToast(`Failed to index: ${err.message}`, 'error');
+          }
+        } else if (entry.isFile) {
+          // Single file — use existing addContext approach
+          const file = item.getAsFile?.();
+          if (file) {
+            const path = file.webkitRelativePath || file.name;
+            await addContext('file', path, file.name || path);
           }
         }
       }
@@ -266,7 +405,8 @@ const App = {
       activeTab, theme, wsStatus,
       status, sessions, sources, goals, context,
       sourceList, dropActive,
-      addContext, removeContext, triggerSync, copyCommand, toggleTheme,
+      uploadProgress, uploadActive, toasts,
+      addContext, removeContext, triggerSync, focusSession, toggleTheme,
       onDragOver, onDragLeave, onDrop,
       goalProgress, goalMeasureCounts,
       formatTimeAgo, formatDuration,
@@ -334,6 +474,11 @@ const App = {
 
       <!-- Main -->
       <main class="main-area">
+        <!-- Upload progress bar -->
+        <div v-if="uploadActive" class="upload-progress-bar">
+          <div class="upload-progress-fill" :style="{ width: uploadProgress + '%' }"></div>
+        </div>
+
         <div class="tab-bar">
           <button class="tab-btn" :class="{ active: activeTab === 'sessions' }" @click="activeTab = 'sessions'">
             Sessions <span class="tab-hint">1</span>
@@ -366,8 +511,8 @@ const App = {
                     <span class="tag">{{ formatDuration(Date.now() - session.connected_at) }}</span>
                   </div>
                 </div>
-                <button class="copy-btn" @click="copyCommand(session)" title="Copy cd command">
-                  cd
+                <button class="focus-btn" @click="focusSession(session)" title="Focus terminal or copy cd command">
+                  Focus
                 </button>
               </div>
             </div>
@@ -386,7 +531,7 @@ const App = {
               <div class="context-item">
                 <div class="context-info">
                   <div class="context-value">{{ item.value }}</div>
-                  <div class="context-label">{{ item.type }}{{ item.label ? ' — ' + item.label : '' }}</div>
+                  <div class="context-label">{{ item.type }}{{ item.label ? ' \u2014 ' + item.label : '' }}</div>
                 </div>
                 <button class="remove-btn" @click="removeContext(item.id)" title="Remove">&times;</button>
               </div>
@@ -400,7 +545,7 @@ const App = {
               @drop="onDrop"
             >
               <div class="drop-zone-text">
-                {{ dropActive ? 'Drop to index' : 'Drag a folder here to index' }}
+                {{ dropActive ? 'Release to index' : 'Drag a folder here to index' }}
               </div>
               <div class="drop-zone-hint">
                 Files will be indexed into the JoWork database, making them searchable by AI agents
@@ -444,6 +589,13 @@ const App = {
           </div>
         </div>
       </main>
+
+      <!-- Toast container -->
+      <div class="toast-container">
+        <div v-for="toast in toasts" :key="toast.id" class="toast" :class="toast.variant">
+          {{ toast.message }}
+        </div>
+      </div>
     </div>
   `,
 };
