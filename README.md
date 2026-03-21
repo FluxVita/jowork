@@ -1,106 +1,106 @@
-# JoWork
+<p align="center">
+  <h1 align="center">JoWork</h1>
+  <p align="center"><strong>The missing GUI for AI coding agents.</strong></p>
+  <p align="center">
+    Manage multiple agent sessions, drag files into context, monitor data sources — all from a companion panel beside your terminal.
+  </p>
+  <p align="center">
+    <a href="https://www.npmjs.com/package/jowork"><img src="https://img.shields.io/npm/v/jowork?style=flat-square&color=E8B931" alt="npm version"></a>
+    <a href="https://github.com/FluxVita/jowork/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-blue?style=flat-square" alt="License"></a>
+    <a href="https://jowork.work"><img src="https://img.shields.io/badge/docs-jowork.work-black?style=flat-square" alt="Docs"></a>
+  </p>
+  <p align="center">
+    <a href="./README.zh-CN.md">中文文档</a>
+    <span>&nbsp;&nbsp;·&nbsp;&nbsp;</span>
+    <a href="https://jowork.work">Website</a>
+    <span>&nbsp;&nbsp;·&nbsp;&nbsp;</span>
+    <a href="https://github.com/FluxVita/jowork/issues">Issues</a>
+  </p>
+</p>
 
-**The missing GUI for AI coding agents.**
-
-[中文文档](./README.zh-CN.md)
-
-CLI agents like Claude Code, Codex, and OpenClaw are powerful — but managing multiple conversations, dragging files into context, and monitoring data sources? That's painful in a raw terminal.
-
-JoWork fixes this. It's a **companion panel** that sits beside your terminal — not replacing it, but filling the gaps terminals can't.
+<br>
 
 ```
-┌─ Your Terminal ──────────┐ ┌─ JoWork Dashboard ──────────────┐
-│                          │ │ DATA SOURCES                     │
-│  $ claude                │ │ ● feishu  583 msgs  synced 2m    │
-│  > What did the team     │ │ ● github  30 PRs    synced 5m    │
-│    discuss this week?    │ │                                   │
-│                          │ │ Sessions  Context  Goals          │
-│  Agent: Based on your    │ │ ┌─────────────────────────────┐  │
-│  Feishu messages, 3 main │ │ │ 📁 ~/project/src            │  │
-│  topics: ...             │ │ │ 📊 Feishu: Product Chat     │  │
-│                          │ │ │ ┌ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┐ │  │
-│                          │ │ │ │ Drop folder to index    │ │  │
-│                          │ │ │ └ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┘ │  │
-└──────────────────────────┘ └─────────────────────────────────┘
+┌─ Your Terminal ──────────┐  ┌─ JoWork Dashboard ──────────────┐
+│                          │  │ DATA SOURCES                     │
+│  $ claude                │  │ ● slack    1.2K msgs  synced 2m  │
+│  > What did the team     │  │ ● github   89 PRs     synced 5m  │
+│    discuss this week?    │  │                                   │
+│                          │  │ Sessions  Context  Goals          │
+│  Agent: Based on your    │  │ ┌─────────────────────────────┐  │
+│  Slack messages, 3 main  │  │ │ 📁 ~/project/src            │  │
+│  topics: ...             │  │ │ 📊 Slack: #engineering      │  │
+│                          │  │ │                             │  │
+│                          │  │ │  [ Drop folder to index ]   │  │
+│                          │  │ └─────────────────────────────┘  │
+└──────────────────────────┘  └─────────────────────────────────┘
 ```
 
-## Why JoWork?
+<br>
 
-**The problem:** Vibe coders and non-technical users build with AI agents every day. But the terminal UX has real gaps:
+## The Problem
+
+Vibe coders and non-technical users build with AI agents every day. But the terminal UX has real gaps:
 
 | What you want | What the terminal gives you |
 |---|---|
-| Switch between agent conversations like browser tabs | `tmux` (you need to learn it first) |
-| Drag a folder into your conversation for context | Copy-paste file paths manually |
-| See which data sources are connected and syncing | Run `jowork status` every time |
-| Load specific files + data source into one conversation | Type MCP tool calls manually |
+| Switch between agent conversations like browser tabs | `tmux` — good luck learning it |
+| Drag a folder into your conversation for context | Copy-paste file paths one by one |
+| See which data sources are connected and syncing | Run a status command every time |
+| Load specific files + Slack channel into one conversation | Type MCP tool calls manually |
 
-**JoWork = the companion panel that fills these gaps.** It doesn't replace your terminal — it enhances it. No chat, no terminal emulator — only the things terminals can't do well.
+**JoWork is the companion panel that fills these gaps.** No chat engine, no terminal emulator — only the things terminals can't do.
 
----
+<br>
 
 ## Quick Start
 
 ```bash
-# Install
 npm install -g jowork
+jowork init && jowork register claude-code
+```
 
-# Initialize + register with your agent
-jowork init
-jowork register claude-code    # or: codex, openclaw
+That's it. Your agent now has cross-session memory. No server, no cloud.
 
-# Done. Claude Code now has cross-session memory.
+```bash
+# Connect data sources
+jowork connect github          # uses GITHUB_PERSONAL_ACCESS_TOKEN
+jowork connect slack           # interactive OAuth
 
-# Connect a data source (optional)
-jowork connect feishu          # interactive auth
-jowork connect github          # uses GITHUB_PERSONAL_ACCESS_TOKEN from env
-
-# Sync + search
+# Sync and search
 jowork sync
-jowork search "product launch"
+jowork search "deployment plan"
 
 # Open the companion dashboard
 jowork dashboard
 ```
 
----
+> [!TIP]
+> Also works with Codex and OpenClaw: `jowork register codex` or `jowork register openclaw`
 
-## Concrete Scenarios
+<br>
 
-### 1. "I want to see all my agent sessions in one place"
+## How It Works
 
-You have Claude Code running in one terminal tab doing a frontend refactor, Codex in another analyzing data, and OpenClaw working on the API. Today, switching between them means alt-tabbing through terminal windows hoping you find the right one.
+### Scenario 1 — "I have 3 agents running. Which one is doing what?"
 
-**With JoWork Dashboard:**
-- Open `jowork dashboard` in your browser
-- See all active agent sessions with project name, engine type, and duration
-- Click "Focus" to jump to the terminal window, or copy the command
-- Sessions appear and disappear in real-time as agents connect/disconnect
+You have Claude Code refactoring the frontend, Codex analyzing data, and OpenClaw writing the API. Switching between them means alt-tabbing through terminal windows.
 
-### 2. "I want to drag a folder into my conversation"
+**With JoWork:** Open `jowork dashboard` → see all active sessions with project name, engine, and duration → click "Focus" to jump to the right terminal window.
 
-You're working with Claude Code and need it to understand your `src/components/` directory. Today, you'd have to describe the files manually or paste paths one by one.
+### Scenario 2 — "I need my agent to understand this folder"
 
-**With JoWork Dashboard:**
-- Open the Context tab
-- Drag `~/project/src/components/` into the drop zone
-- JoWork indexes all files instantly (skips `node_modules`, `.git`, binaries)
-- Your agent can now `search_data` and find any file in that folder
-- The folder appears in your agent's environment context automatically
+You need Claude Code to understand your `src/components/` directory. Today you'd describe files manually.
 
-### 3. "Show me which data sources are healthy"
+**With JoWork:** Open Context tab → drag `~/project/src/` into the drop zone → JoWork indexes all files instantly (skips `node_modules`, `.git`, binaries) → your agent can now search and reference every file.
 
-You connected Feishu, GitHub, and PostHog. Are they syncing? When was the last sync? How much data is indexed?
+### Scenario 3 — "Are my data sources syncing?"
 
-**With JoWork Dashboard:**
-- Sidebar always shows connection status: 🟢 connected / 🔴 disconnected
-- Object counts (583 messages, 30 PRs) at a glance
-- Last sync time ("2m ago", "5m ago")
-- One-click "Sync Now" button
+You connected Slack, GitHub, and Linear. Are they healthy?
 
-### 4. "I want my agent to know my goals"
+**With JoWork:** Sidebar shows live status dots (🟢/🔴), object counts, and last sync times. One-click "Sync Now" when you need fresh data.
 
-Set goals like "Ship v1 by June, DAU 10K" and JoWork monitors them automatically — tracking signals from PostHog, GitHub milestones, and more.
+### Scenario 4 — "Track my product launch goal"
 
 ```bash
 jowork goal add "Ship v1 by June, DAU 10K"
@@ -108,181 +108,166 @@ jowork signal add <goal_id> --source posthog --metric dau --direction maximize
 jowork measure add <signal_id> --threshold 10000 --type gte
 ```
 
-The Goals tab shows progress bars, signal values, and met/unmet measures. Your agent sees these goals too and can proactively alert you when something changes.
+Goals tab shows progress bars and signal values. Your agent sees these goals and alerts you when metrics change.
 
----
+<br>
 
 ## Features
 
-### Companion Dashboard (`jowork dashboard`)
+### Companion Dashboard
 
-A localhost web UI that runs beside your terminal:
+A localhost web UI that runs beside your terminal (`jowork dashboard`):
 
-- **Sidebar:** Data source status with live green/red dots, object counts, sync times
-- **Sessions tab:** Active agent sessions with engine type, PID, duration, focus button
-- **Context tab:** Active context entries + drag-and-drop file indexing
-- **Goals tab:** Goal progress with signal values and measure status
-- **Real-time:** WebSocket updates, no manual refresh needed
-- **Dark/Light mode:** Industrial-minimal design with amber accent
-- **Responsive:** Sidebar collapses at narrow widths (works as a half-screen companion)
-- **Secure:** CSRF token protection, localhost-only binding
+- **Sidebar** — data source status with live dots, object counts, sync times
+- **Sessions** — active agent sessions with engine type, focus button, duration
+- **Context** — drag-and-drop file indexing + active context entries
+- **Goals** — goal progress with signal values and measure status
+- **Real-time** — WebSocket updates, no manual refresh
+- **Dark/Light** — industrial-minimal design, amber accent
+- **Responsive** — works at half-screen width beside your terminal
+- **Secure** — CSRF protection, localhost-only binding
 
 ### Data Sources
 
-| Source | What syncs | Status |
-|--------|-----------|--------|
-| Feishu | Messages, calendar events, wiki docs, approvals | Ready |
-| GitHub | Repos, issues, pull requests | Ready |
-| GitLab | Projects, issues, merge requests | Ready |
-| Linear | Issues (GraphQL) | Ready |
-| PostHog | Insights, event definitions, metrics | Ready |
+| Source | What syncs |
+|--------|-----------|
+| GitHub | Repos, issues, pull requests |
+| GitLab | Projects, issues, merge requests |
+| Linear | Issues via GraphQL |
+| PostHog | Insights, event definitions, metrics |
+| Slack | Channel messages *(planned)* |
+| Feishu | Messages, calendar, wiki, approvals |
 
-### MCP Tools (15)
+### MCP Tools
 
 Your agent calls these automatically via [MCP protocol](https://modelcontextprotocol.io/):
 
-| Tool | What it does |
-|------|-------------|
-| `search_data` | Full-text search across all synced data |
-| `read_memory` / `write_memory` | Cross-session memory with auto-truncation |
-| `search_memory` | Time-weighted memory search with recency boost |
-| `get_goals` / `get_metrics` | Goal progress and signal values |
-| `get_hot_context` | Recent activity summary (last 24-72h) |
-| `get_briefing` | Daily briefing: activity + goals + data freshness |
-| `push_to_channel` | Send messages to Feishu (Slack/Telegram planned) |
-| `update_goal` | Modify goals (copilot mode requires human approval) |
-| `get_environment` | System info + active context entries |
+- **`search_data`** — full-text search across all synced data
+- **`read_memory` / `write_memory`** — cross-session memory with auto-truncation
+- **`search_memory`** — time-weighted search with recency boost
+- **`get_goals` / `get_metrics`** — goal progress and signal values
+- **`get_hot_context`** — recent activity summary (24-72h)
+- **`get_briefing`** — daily briefing with activity, goals, and data freshness
+- **`push_to_channel`** — send messages to connected channels
+- **`get_environment`** — system info + active context entries
 
 ### Cross-Source Linking
 
-JoWork automatically connects related data across sources — zero LLM cost:
+Automatically connects related data across sources — zero LLM cost:
 
-- `PR#123` in a Feishu message → linked to the GitHub PR
+- `PR#123` in Slack → linked to the GitHub PR
 - `LIN-456` → linked to the Linear issue
 - `@mention` → linked to the person
-- Temporal linking: objects from different sources created within 2 hours
+- Temporal linking — objects from different sources created within 2 hours
 
 ### Multi-Layer Memory
 
-| Layer | Content | Access |
-|-------|---------|--------|
-| L1 Hot | Last 24-72h summary | `get_hot_context()` |
-| L2 Warm | Per-goal weekly trends | `get_briefing()` |
-| L3 Cold | All raw data | `search_data()` |
+| Layer | Content | When to use |
+|-------|---------|-------------|
+| L1 Hot | Last 24-72h summary | "What happened today?" |
+| L2 Warm | Per-goal weekly trends | "How's the launch going?" |
+| L3 Cold | All raw data | "Find that PR discussion from last month" |
 
-Your agent gets L1-L2 summaries by default (saves tokens). When it needs to dig deeper, it queries L3.
+Agent gets L1-L2 by default (saves tokens). Digs into L3 when needed.
 
----
+<br>
 
-## How It Works
-
-```
-Your AI Agent (Claude Code, Codex, OpenClaw)
-        │
-        │  MCP Protocol (stdio)
-        ▼
-┌───────────────────────────────────────────────────┐
-│  JoWork CLI                                        │
-│                                                    │
-│  ┌──────────────┐  ┌───────────────────────────┐  │
-│  │ MCP Server   │  │ Goal System               │  │
-│  │ 15 tools     │  │ Goal → Signal → Measure   │  │
-│  │ 4 resources  │  │                           │  │
-│  └──────┬───────┘  └───────────┬───────────────┘  │
-│         │                      │                   │
-│  ┌──────▼──────────────────────▼───────────────┐  │
-│  │ Multi-layer Memory + Cross-source Linker    │  │
-│  │ L1 Hot ← Compaction ← L3 Cold ← Sync      │  │
-│  └──────────────────────┬──────────────────────┘  │
-│                         │                          │
-│  ┌──────────────────────▼──────────────────────┐  │
-│  │ Data Connectors                              │  │
-│  │ Feishu │ GitHub │ GitLab │ Linear │ PostHog  │  │
-│  └─────────────────────────────────────────────┘  │
-└───────────────────────────────────────────────────┘
-        │
-        ▼
-   Local SQLite (WAL mode, FTS5, all data on your machine)
-```
-
-The Dashboard is a separate process that shares the same SQLite database:
+## Architecture
 
 ```
-Browser (localhost:18801)  ←→  Dashboard Server (Hono + WebSocket)
-                                      │
-                                  SQLite DB  ←  Daemon (cron sync every 15 min)
-                                      │
-                                  MCP Server  ←  Your Agent
+Your AI Agent (Claude Code / Codex / OpenClaw)
+         │
+         │ MCP Protocol (stdio)
+         ▼
+┌─────────────────────────────────────────────────┐
+│  JoWork CLI                                      │
+│                                                  │
+│  MCP Server (15 tools) ─── Goal-Signal-Measure   │
+│         │                                        │
+│  Multi-layer Memory ─── Cross-source Linker      │
+│         │                                        │
+│  Data Connectors                                 │
+│  GitHub · GitLab · Linear · PostHog · Slack · …  │
+└─────────────────────────────────────────────────┘
+         │
+    Local SQLite (WAL, FTS5)
 ```
 
----
+Dashboard shares the same database as a separate process:
+
+```
+Browser (:18801)  ↔  Dashboard (Hono + WS)  ↔  SQLite  ↔  Daemon (sync)
+                                                  ↕
+                                             MCP Server  ↔  Agent
+```
+
+<br>
 
 ## CLI Reference
+
+<details>
+<summary><strong>Full command list</strong></summary>
 
 ```bash
 # Setup
 jowork init                        # Create local database
 jowork register <engine>           # claude-code | codex | openclaw
-jowork connect <source>            # feishu | github | gitlab | linear | posthog
+jowork connect <source>            # github | gitlab | linear | posthog | feishu
 jowork doctor                      # Diagnostic checks
 
 # Daily use
 jowork dashboard                   # Open companion panel in browser
-jowork sync [--source <s>]         # Sync data from connected sources
-jowork search <query>              # Full-text search across all data
+jowork sync [--source <s>]         # Sync from connected sources
+jowork search <query>              # Full-text search
 jowork status                      # System overview
-jowork serve --daemon              # Background daemon (sync + signals + triggers)
+jowork serve --daemon              # Background sync + signal polling
 
 # Goals
 jowork goal add|list|status        # Goal management
-jowork signal add <goal_id>        # Add signal to goal
-jowork measure add <signal_id>     # Add measure to signal
+jowork signal add <goal_id>        # Bind signal to goal
+jowork measure add <signal_id>     # Set threshold for signal
 
 # Maintenance
 jowork export [--format json]      # Backup database
-jowork gc [--retention-days N]     # Cleanup old data + vacuum
-jowork device-sync export|import   # Sync between devices
-jowork install-service             # Generate LaunchAgent / systemd unit
+jowork gc [--retention-days N]     # Cleanup + vacuum
+jowork device-sync export|import   # Sync between machines
+jowork install-service             # Generate LaunchAgent / systemd
 ```
 
----
+</details>
+
+<br>
 
 ## Comparison
 
-| Capability | JoWork | claude-mem | Supermemory | Dust.tt |
-|-----------|--------|-----------|-------------|---------|
-| Local-first | ✅ | ✅ | ❌ cloud | ❌ cloud |
-| Companion Dashboard | ✅ | ❌ | ❌ | ❌ |
-| Multi-source sync | ✅ | ❌ | Partial | ✅ |
-| Goal-Signal-Measure | ✅ | ❌ | ❌ | ❌ |
-| Cross-source linking | ✅ | ❌ | ❌ | ❌ |
-| Proactive push | ✅ | ❌ | ❌ | Partial |
-| CLI-first + MCP | ✅ | ✅ | ❌ | ❌ Web |
-| Free & open source | AGPL | AGPL | MIT | ❌ |
+| | JoWork | claude-mem | Supermemory | Dust.tt |
+|---|:---:|:---:|:---:|:---:|
+| Local-first | ✅ | ✅ | ❌ | ❌ |
+| Companion Dashboard | ✅ | — | — | — |
+| Multi-source sync | ✅ | — | Partial | ✅ |
+| Goal-Signal-Measure | ✅ | — | — | — |
+| Cross-source linking | ✅ | — | — | — |
+| Proactive alerts | ✅ | — | — | Partial |
+| CLI + MCP | ✅ | ✅ | — | — |
+| Open source | AGPL | AGPL | MIT | ❌ |
 
----
-
-## Data Privacy
-
-All data stays on your machine. JoWork uses local SQLite with WAL mode. No cloud, no telemetry, no third-party services — except the APIs you explicitly connect.
-
-## Requirements
-
-- Node.js >= 20
-- macOS or Linux (Windows: community contributions welcome)
+<br>
 
 ## Roadmap
 
-- [ ] Tauri desktop app wrapper for system-level drag-and-drop
-- [ ] More data sources: Slack, Notion, Jira, Firebase
-- [ ] Team collaboration (shared goals, multi-user sync)
+- [ ] Tauri desktop wrapper for system-level drag-and-drop
+- [ ] Slack and Notion connectors
+- [ ] Team collaboration with shared goals
 - [ ] Cloud sync for multi-device setups
+
+## Data Privacy
+
+All data stays on your machine. Local SQLite, no cloud, no telemetry. The only network calls are to APIs you explicitly connect.
+
+## Requirements
+
+Node.js >= 20 · macOS or Linux · Windows contributions welcome
 
 ## License
 
 [AGPL-3.0](LICENSE) — free for personal use. Commercial embedding requires a license.
-
-## Links
-
-- Website: [jowork.work](https://jowork.work)
-- Issues: [GitHub Issues](https://github.com/FluxVita/jowork/issues)
