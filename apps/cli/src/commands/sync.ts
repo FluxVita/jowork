@@ -191,10 +191,33 @@ async function syncFeishu(db: DbManager, data: Record<string, string>): Promise<
     }
   }
 
-  // Update FTS index
+  // Update FTS index — contentless FTS5 requires manual INSERT per row
   try {
-    sqlite.exec(`INSERT INTO objects_fts(objects_fts) VALUES('rebuild')`);
-  } catch { /* FTS might not exist yet */ }
+    // Find objects not yet in FTS (use rowid tracking)
+    const unindexed = sqlite.prepare(`
+      SELECT o.rowid, o.title, o.summary, o.tags, o.source, o.source_type,
+             SUBSTR(COALESCE(ob.content, ''), 1, 500) as body_excerpt
+      FROM objects o
+      LEFT JOIN object_bodies ob ON ob.object_id = o.id
+      WHERE o.rowid NOT IN (SELECT rowid FROM objects_fts)
+    `).all() as Array<{ rowid: number; title: string; summary: string; tags: string; source: string; source_type: string; body_excerpt: string }>;
+
+    if (unindexed.length > 0) {
+      const insertFts = sqlite.prepare(`
+        INSERT INTO objects_fts(rowid, title, summary, tags, source, source_type, body_excerpt)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `);
+      const ftsTransaction = sqlite.transaction(() => {
+        for (const row of unindexed) {
+          insertFts.run(row.rowid, row.title ?? '', row.summary ?? '', row.tags ?? '', row.source, row.source_type, row.body_excerpt ?? '');
+        }
+      });
+      ftsTransaction();
+      logInfo('sync', `FTS index updated: ${unindexed.length} new entries`);
+    }
+  } catch (err) {
+    logError('sync', `FTS index update failed: ${err}`);
+  }
 
   console.log(`  \u2713 Synced ${totalMessages} messages (${newMessages} new)`);
   logInfo('sync', 'Feishu sync complete', { totalMessages, newMessages, chats: chats.length });

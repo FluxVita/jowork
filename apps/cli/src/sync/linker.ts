@@ -15,8 +15,9 @@ const PATTERNS: Array<{ type: string; regex: RegExp; confidence: 'high' | 'mediu
   { type: 'issue', regex: /(?:issue|Issue|ISSUE)\s*#?(\d+)/g, confidence: 'high' },
   { type: 'issue', regex: /#(\d{2,6})\b/g, confidence: 'medium' }, // bare #123
 
-  // Linear-style issue keys
-  { type: 'issue', regex: /\b([A-Z]{2,10}-\d{1,6})\b/g, confidence: 'high' },
+  // Linear-style issue keys (e.g. LIN-234, PROJ-56)
+  // Requires 2+ digit number to reduce false positives (GPT-5, GLP-1 are NOT issues)
+  { type: 'issue', regex: /\b([A-Z]{2,10}-\d{2,6})\b/g, confidence: 'high' },
 
   // Git commit SHA
   { type: 'commit', regex: /\b([0-9a-f]{7,40})\b/g, confidence: 'low' },
