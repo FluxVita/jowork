@@ -7,6 +7,7 @@ import { objects, objectBodies, connectorConfigs, memories, createId, buildFtsQu
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { logInfo, logError } from '../utils/logger.js';
+import { GoalManager } from '../goals/manager.js';
 
 export interface McpServerOptions {
   dbPath: string;
@@ -77,7 +78,9 @@ export function createJoWorkMcpServer(opts: McpServerOptions): McpServer {
   const sqlite = new Database(opts.dbPath);
   sqlite.pragma('journal_mode = WAL');
   sqlite.pragma('busy_timeout = 5000');
+  sqlite.pragma('foreign_keys = ON');
   const db = drizzle(sqlite);
+  const goalManager = new GoalManager(sqlite);
 
   const server = new McpServer({ name: 'jowork', version: '0.1.0' });
 
@@ -260,10 +263,12 @@ export function createJoWorkMcpServer(opts: McpServerOptions): McpServer {
         .limit(limit).all()
         .filter((r) => r.scope === 'personal' || process.env['JOWORK_MODE'] === 'team');
 
+      // Batch update access tracking in a single transaction
       const now = Date.now();
-      for (const row of rows) {
-        sqlite.prepare(`UPDATE memories SET last_used_at = ?, access_count = access_count + 1 WHERE id = ?`).run(now, row.id);
-      }
+      const touchMemory = sqlite.prepare('UPDATE memories SET last_used_at = ?, access_count = access_count + 1 WHERE id = ?');
+      sqlite.transaction(() => {
+        for (const row of rows) touchMemory.run(now, row.id);
+      })();
 
       const results = rows.map((r) => ({
         id: r.id, title: r.title, content: r.content,
@@ -399,11 +404,12 @@ export function createJoWorkMcpServer(opts: McpServerOptions): McpServer {
         }));
       }
 
-      // Touch accessed memories
+      // Batch touch accessed memories in a single transaction
       const now = Date.now();
-      for (const r of results) {
-        sqlite.prepare('UPDATE memories SET last_used_at = ?, access_count = access_count + 1 WHERE id = ?').run(now, r.id);
-      }
+      const touchMem = sqlite.prepare('UPDATE memories SET last_used_at = ?, access_count = access_count + 1 WHERE id = ?');
+      sqlite.transaction(() => {
+        for (const r of results) touchMem.run(now, r.id);
+      })();
 
       logInfo('mcp', `search_memory: "${query}"`, { resultCount: results.length, ms: Date.now() - t0 });
       if (results.length === 0) return { content: [{ type: 'text' as const, text: `No memories found for: ${query}` }] };
@@ -529,11 +535,7 @@ export function createJoWorkMcpServer(opts: McpServerOptions): McpServer {
       status: z.string().optional().describe('Filter: active, paused, completed'),
     },
     async ({ status }) => {
-      const goals = sqlite.prepare(
-        status
-          ? `SELECT g.*, (SELECT COUNT(*) FROM signals WHERE goal_id = g.id) as signal_count FROM goals g WHERE g.status = ? ORDER BY g.created_at DESC`
-          : `SELECT g.*, (SELECT COUNT(*) FROM signals WHERE goal_id = g.id) as signal_count FROM goals g ORDER BY g.created_at DESC`
-      ).all(...(status ? [status] : []));
+      const goals = goalManager.listGoals({ status });
       return { content: [{ type: 'text' as const, text: JSON.stringify(goals, null, 2) }] };
     },
   );
@@ -569,11 +571,11 @@ export function createJoWorkMcpServer(opts: McpServerOptions): McpServer {
       status: z.enum(['active', 'paused', 'completed']).optional().describe('New status'),
     },
     async ({ goal_id, title, description, status }) => {
-      const existing = sqlite.prepare('SELECT * FROM goals WHERE id = ?').get(goal_id) as Record<string, unknown> | undefined;
+      const existing = goalManager.getGoal(goal_id);
       if (!existing) return { content: [{ type: 'text' as const, text: `Goal not found: ${goal_id}` }] };
 
       // Copilot mode requires human confirmation before changes
-      if (existing.autonomy_level === 'copilot') {
+      if (existing.autonomyLevel === 'copilot') {
         const proposed = { goal_id, title, description, status };
         return {
           content: [{
@@ -589,16 +591,11 @@ export function createJoWorkMcpServer(opts: McpServerOptions): McpServer {
         };
       }
 
-      const now = Date.now();
-      const sets: string[] = ['updated_at = ?'];
-      const args: unknown[] = [now];
-      if (title) { sets.push('title = ?'); args.push(title); }
-      if (description) { sets.push('description = ?'); args.push(description); }
-      if (status) { sets.push('status = ?'); args.push(status); }
-      args.push(goal_id);
-      sqlite.prepare(`UPDATE goals SET ${sets.join(', ')} WHERE id = ?`).run(...args);
-
-      const updated = sqlite.prepare('SELECT * FROM goals WHERE id = ?').get(goal_id);
+      const updated = goalManager.updateGoal(goal_id, {
+        ...(title ? { title } : {}),
+        ...(description ? { description } : {}),
+        ...(status ? { status: status as 'active' | 'paused' | 'completed' } : {}),
+      });
       return { content: [{ type: 'text' as const, text: JSON.stringify(updated, null, 2) }] };
     },
   );

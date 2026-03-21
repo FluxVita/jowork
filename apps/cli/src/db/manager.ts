@@ -140,6 +140,12 @@ const MIGRATIONS: string[] = [
     CREATE INDEX IF NOT EXISTS idx_signals_goal ON signals(goal_id);
     CREATE INDEX IF NOT EXISTS idx_measures_signal ON measures(signal_id);
   `,
+
+  // 004 — Add links_processed flag to objects
+  `
+    ALTER TABLE objects ADD COLUMN links_processed INTEGER NOT NULL DEFAULT 0;
+    CREATE INDEX IF NOT EXISTS idx_objects_links_processed ON objects(links_processed);
+  `,
 ];
 
 export class DbManager {

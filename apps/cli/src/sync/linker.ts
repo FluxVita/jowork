@@ -45,8 +45,8 @@ export function extractLinks(content: string): ExtractedLink[] {
       if (seen.has(key)) continue;
       seen.add(key);
 
-      // Skip very short identifiers (likely false positives)
-      if (identifier.length < 3) continue;
+      // Skip very short identifiers (likely false positives) — except for PR numbers (have explicit PR prefix)
+      if (identifier.length < 3 && pattern.type !== 'pr') continue;
       // Skip commit SHAs that look like hex numbers less than 7 chars
       if (pattern.type === 'commit' && identifier.length < 7) continue;
 
@@ -95,23 +95,29 @@ export function processObjectLinks(sqlite: Database.Database, objectId: string, 
 }
 
 /**
- * Run entity extraction on all objects that don't have links yet.
- * Called after sync to process new objects.
+ * Run entity extraction on all objects not yet processed.
+ * Uses `links_processed` flag to avoid re-processing objects with no extractable identifiers.
  */
 export function linkAllUnprocessed(sqlite: Database.Database): { processed: number; linksCreated: number } {
-  // Find objects that have no links yet
   const unprocessed = sqlite.prepare(`
     SELECT o.id, ob.content FROM objects o
     JOIN object_bodies ob ON ob.object_id = o.id
-    LEFT JOIN object_links ol ON ol.source_object_id = o.id
-    WHERE ol.id IS NULL
+    WHERE o.links_processed = 0
     LIMIT 1000
   `).all() as Array<{ id: string; content: string }>;
 
+  if (unprocessed.length === 0) return { processed: 0, linksCreated: 0 };
+
   let linksCreated = 0;
-  for (const obj of unprocessed) {
-    linksCreated += processObjectLinks(sqlite, obj.id, obj.content);
-  }
+  const markProcessed = sqlite.prepare('UPDATE objects SET links_processed = 1 WHERE id = ?');
+
+  const batch = sqlite.transaction(() => {
+    for (const obj of unprocessed) {
+      linksCreated += processObjectLinks(sqlite, obj.id, obj.content);
+      markProcessed.run(obj.id);
+    }
+  });
+  batch();
 
   logInfo('linker', `Processed ${unprocessed.length} objects, created ${linksCreated} links`);
   return { processed: unprocessed.length, linksCreated };
