@@ -175,6 +175,24 @@ const MIGRATIONS: string[] = [
     CREATE INDEX IF NOT EXISTS idx_memory_warm_goal ON memory_warm(goal_id);
     CREATE INDEX IF NOT EXISTS idx_memory_warm_period ON memory_warm(period_start, period_end);
   `,
+
+  // 006 — Sync queue for device-to-device sync
+  `
+    CREATE TABLE IF NOT EXISTS sync_queue (
+      id TEXT PRIMARY KEY,
+      table_name TEXT NOT NULL,
+      record_id TEXT NOT NULL,
+      operation TEXT NOT NULL,
+      data TEXT,
+      version INTEGER NOT NULL DEFAULT 1,
+      device_id TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      synced_at INTEGER
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_sync_queue_unsynced ON sync_queue(synced_at) WHERE synced_at IS NULL;
+    CREATE INDEX IF NOT EXISTS idx_sync_queue_table ON sync_queue(table_name, record_id);
+  `,
 ];
 
 export class DbManager {

@@ -14,6 +14,7 @@ import { searchCommand } from './commands/search.js';
 import { goalCommand } from './commands/goal.js';
 import { installServiceCommand } from './commands/install-service.js';
 import { gcCommand } from './commands/gc.js';
+import { deviceSyncCommand } from './commands/device-sync.js';
 
 const program = new Command();
 
@@ -34,5 +35,6 @@ searchCommand(program);
 goalCommand(program);
 installServiceCommand(program);
 gcCommand(program);
+deviceSyncCommand(program);
 
 program.parse();
