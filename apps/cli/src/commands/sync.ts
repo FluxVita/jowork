@@ -7,6 +7,8 @@ import { logError } from '../utils/logger.js';
 import { linkAllUnprocessed } from '../sync/linker.js';
 import { syncFeishu } from '../sync/feishu.js';
 import { syncGitHub } from '../sync/github.js';
+import { syncGitLab } from '../sync/gitlab.js';
+import { syncLinear } from '../sync/linear.js';
 
 export function syncCommand(program: Command): void {
   program
@@ -57,6 +59,26 @@ export function syncCommand(program: Command): void {
               };
               const result = await syncGitHub(db.getSqlite(), cred.data, ghLogger);
               console.log(`  \u2713 Synced ${result.repos} repos: ${result.issues} issues, ${result.prs} PRs (${result.newObjects} new)`);
+              break;
+            }
+            case 'gitlab': {
+              const glLogger = {
+                info: (msg: string) => console.log(`  ${msg}`),
+                warn: (msg: string) => console.log(`  \u26A0 ${msg}`),
+                error: (msg: string) => console.error(`  \u2717 ${msg}`),
+              };
+              const glResult = await syncGitLab(db.getSqlite(), cred.data, glLogger);
+              console.log(`  \u2713 Synced ${glResult.projects} projects: ${glResult.issues} issues, ${glResult.mrs} MRs (${glResult.newObjects} new)`);
+              break;
+            }
+            case 'linear': {
+              const linLogger = {
+                info: (msg: string) => console.log(`  ${msg}`),
+                warn: (msg: string) => console.log(`  \u26A0 ${msg}`),
+                error: (msg: string) => console.error(`  \u2717 ${msg}`),
+              };
+              const linResult = await syncLinear(db.getSqlite(), cred.data, linLogger);
+              console.log(`  \u2713 Synced ${linResult.issues} Linear issues (${linResult.newObjects} new)`);
               break;
             }
             default:

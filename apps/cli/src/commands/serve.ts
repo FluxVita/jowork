@@ -10,6 +10,10 @@ import { listCredentials, loadCredential } from '../connectors/credential-store.
 import { linkAllUnprocessed } from '../sync/linker.js';
 import { syncFeishu, type FeishuSyncLogger } from '../sync/feishu.js';
 import { syncGitHub } from '../sync/github.js';
+import { syncGitLab } from '../sync/gitlab.js';
+import { syncLinear } from '../sync/linear.js';
+import { pollSignals } from '../goals/signal-poller.js';
+import { evaluateTriggers } from '../goals/trigger-engine.js';
 
 export function serveCommand(program: Command): void {
   program
@@ -133,6 +137,12 @@ async function runSync(): Promise<void> {
           case 'github':
             await syncGitHub(sqlite, cred.data, daemonSyncLogger);
             break;
+          case 'gitlab':
+            await syncGitLab(sqlite, cred.data, daemonSyncLogger);
+            break;
+          case 'linear':
+            await syncLinear(sqlite, cred.data, daemonSyncLogger);
+            break;
           default:
             daemonLog('info', `Source ${source} sync not implemented yet`);
         }
@@ -147,6 +157,22 @@ async function runSync(): Promise<void> {
     const { processed, linksCreated } = linkAllUnprocessed(sqlite);
     if (processed > 0) {
       daemonLog('info', 'Entity extraction complete', { processed, linksCreated });
+    }
+
+    // Poll signals
+    const pollResult = await pollSignals(sqlite);
+    if (pollResult.polled > 0) {
+      daemonLog('info', 'Signal polling complete', { ...pollResult });
+    }
+
+    // Evaluate triggers
+    const triggerResult = evaluateTriggers(sqlite);
+    if (triggerResult.triggersFired > 0) {
+      daemonLog('info', 'Triggers fired', {
+        count: triggerResult.triggersFired,
+        notifications: triggerResult.notifications.map(n => n.message),
+      });
+      // TODO: Send notifications via push_to_channel when channel push is configured
     }
   } catch (err) {
     daemonLog('error', 'Sync cycle failed', {

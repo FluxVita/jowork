@@ -91,16 +91,23 @@ export function goalCommand(program: Command): void {
     .requiredOption('--direction <dir>', 'Direction: maximize, minimize, maintain')
     .option('--title <title>', 'Signal title (auto-generated if omitted)')
     .option('--interval <seconds>', 'Poll interval in seconds', '3600')
-    .action(async (goalId: string, opts: { source: string; metric: string; direction: string; title?: string; interval: string }) => {
+    .option('--config <json>', 'JSON config (e.g. \'{"repo":"owner/name"}\')')
+    .action(async (goalId: string, opts: { source: string; metric: string; direction: string; title?: string; interval: string; config?: string }) => {
       const db = new DbManager(dbPath());
       db.ensureTables();
       const gm = new GoalManager(db.getSqlite());
       const goal = gm.getGoal(goalId);
       if (!goal) { console.error(`Goal not found: ${goalId}`); process.exit(1); }
       const title = opts.title ?? `${opts.metric} (${opts.source})`;
+      let config: Record<string, unknown> | undefined;
+      if (opts.config) {
+        try { config = JSON.parse(opts.config) as Record<string, unknown>; }
+        catch { console.error('Error: --config must be valid JSON'); process.exit(1); }
+      }
       const sig = gm.createSignal({
         goalId, title, source: opts.source, metric: opts.metric,
         direction: opts.direction, pollInterval: parseInt(opts.interval),
+        config,
       });
       console.log(`✓ Signal added: "${sig.title}" → ${goal.title} (${sig.id})`);
       db.close();
