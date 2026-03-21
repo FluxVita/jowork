@@ -98,8 +98,17 @@ Daemon log: `~/.jowork/logs/daemon.log` (JSONL)
 - better-sqlite3 requires native rebuild per Node.js version: `pnpm rebuild better-sqlite3`
 - SQLite batch writes must use short transactions (100/txn) to avoid SQLITE_BUSY with concurrent MCP + daemon
 
+## Design System
+
+Always read `DESIGN.md` before making any visual or UI decisions.
+All font choices, colors, spacing, and aesthetic direction are defined there.
+Do not deviate without explicit user approval.
+In QA mode, flag any code that doesn't match DESIGN.md.
+
 ## Project References
 
 - **Plan**: `plan-v3.md`
+- **Design System**: `DESIGN.md`
+- **Dashboard Design**: `~/.gstack/projects/jowork/signalz-main-design-20260321-134638.md`
 - **Old codebase**: `git tag v2-desktop-archive`
 - **Domain**: jowork.work (not jowork.dev)
