@@ -3,6 +3,7 @@ import { existsSync, statSync } from 'node:fs';
 import { DbManager } from '../db/manager.js';
 import { dbPath, joworkDir } from '../utils/paths.js';
 import { listCredentials } from '../connectors/credential-store.js';
+import { readConfig } from '../utils/config.js';
 
 export function statusCommand(program: Command): void {
   program
@@ -21,10 +22,14 @@ export function statusCommand(program: Command): void {
       console.log('\u2500'.repeat(40));
       console.log(`  Data dir:    ${joworkDir()}`);
 
-      // DB size
+      // DB size + warning
+      const config = readConfig();
       const stats = statSync(dbPath());
       const sizeMB = (stats.size / 1024 / 1024).toFixed(2);
-      console.log(`  Database:    ${sizeMB} MB`);
+      const maxMB = config.maxDbSizeMB ?? 1024;
+      const pct = (stats.size / (maxMB * 1024 * 1024)) * 100;
+      const sizeWarning = pct > 80 ? ` ⚠ ${pct.toFixed(0)}% of ${maxMB}MB limit` : '';
+      console.log(`  Database:    ${sizeMB} MB${sizeWarning}`);
       console.log('');
 
       // Table counts

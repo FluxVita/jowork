@@ -13,6 +13,7 @@ import { syncCommand } from './commands/sync.js';
 import { searchCommand } from './commands/search.js';
 import { goalCommand } from './commands/goal.js';
 import { installServiceCommand } from './commands/install-service.js';
+import { gcCommand } from './commands/gc.js';
 
 const program = new Command();
 
@@ -32,5 +33,6 @@ exportCommand(program);
 searchCommand(program);
 goalCommand(program);
 installServiceCommand(program);
+gcCommand(program);
 
 program.parse();

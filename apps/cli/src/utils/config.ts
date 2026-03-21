@@ -5,12 +5,18 @@ export interface JoWorkConfig {
   version: string;
   initialized: boolean;
   connectors: Record<string, { type: string; status: string }>;
+  /** Max DB size in MB before warning (default 1024 = 1GB) */
+  maxDbSizeMB?: number;
+  /** Days to keep raw object bodies (0 = forever, default 0) */
+  retentionDays?: number;
 }
 
 const DEFAULT_CONFIG: JoWorkConfig = {
   version: '0.1.0',
   initialized: false,
   connectors: {},
+  maxDbSizeMB: 1024,
+  retentionDays: 0,
 };
 
 export function readConfig(): JoWorkConfig {

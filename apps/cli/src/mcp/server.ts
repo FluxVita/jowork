@@ -10,7 +10,9 @@ import { logInfo, logError } from '../utils/logger.js';
 import { GoalManager } from '../goals/manager.js';
 
 export interface McpServerOptions {
-  dbPath: string;
+  dbPath?: string;
+  /** Inject an existing Database instance instead of creating a new one. */
+  sqlite?: Database.Database;
 }
 
 /**
@@ -75,17 +77,24 @@ function checkPushRateLimit(channel: string): boolean {
 }
 
 export function createJoWorkMcpServer(opts: McpServerOptions): McpServer {
-  const sqlite = new Database(opts.dbPath);
-  sqlite.pragma('journal_mode = WAL');
-  sqlite.pragma('busy_timeout = 5000');
-  sqlite.pragma('foreign_keys = ON');
+  const ownsSqlite = !opts.sqlite;
+  const sqlite = opts.sqlite ?? (() => {
+    const db = new Database(opts.dbPath!);
+    db.pragma('journal_mode = WAL');
+    db.pragma('busy_timeout = 5000');
+    db.pragma('foreign_keys = ON');
+    return db;
+  })();
   const db = drizzle(sqlite);
   const goalManager = new GoalManager(sqlite);
 
   const server = new McpServer({ name: 'jowork', version: '0.1.0' });
 
   server.server.onclose = () => {
-    try { sqlite.close(); } catch { /* already closed */ }
+    // Only close if we created the connection ourselves
+    if (ownsSqlite) {
+      try { sqlite.close(); } catch { /* already closed */ }
+    }
   };
 
   // ── Data Tools ────────────────────────────────────────────────────────
