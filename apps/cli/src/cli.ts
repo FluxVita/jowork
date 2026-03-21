@@ -39,4 +39,28 @@ gcCommand(program);
 deviceSyncCommand(program);
 dashboardCommand(program);
 
+// Default action: when no subcommand is given, show wizard or quick status
+program.action(async () => {
+  const { existsSync } = await import('node:fs');
+  const { dbPath } = await import('./utils/paths.js');
+  const { readConfig } = await import('./utils/config.js');
+
+  const config = readConfig();
+  if (!config.initialized || !existsSync(dbPath())) {
+    const { runSetupWizard } = await import('./commands/setup.js');
+    await runSetupWizard();
+  } else {
+    const { listCredentials } = await import('./connectors/credential-store.js');
+    const creds = listCredentials();
+    console.log(`JoWork v0.1.0 — ${creds.length} data source${creds.length !== 1 ? 's' : ''} connected`);
+    console.log('');
+    console.log('  jowork status       Show data overview');
+    console.log('  jowork dashboard    Open companion panel');
+    console.log('  jowork sync         Sync data now');
+    console.log('  jowork search <q>   Search across all data');
+    console.log('  jowork --help       All commands');
+    console.log('');
+  }
+});
+
 program.parse();

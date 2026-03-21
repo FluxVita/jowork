@@ -28,8 +28,24 @@ export function initCommand(program: Command): void {
       console.log('✓ Database created at', dbPath());
       console.log('✓ Config saved at', joworkDir());
       console.log('');
-      console.log('Next steps:');
-      console.log('  jowork register claude-code   # Connect to Claude Code');
-      console.log('  jowork connect feishu          # Connect Feishu data source');
+
+      // Offer guided setup
+      const { default: inquirer } = await import('inquirer');
+      const { continueSetup } = await inquirer.prompt([{
+        type: 'confirm',
+        name: 'continueSetup',
+        message: 'Continue with guided setup? (connect agent + data sources)',
+        default: true,
+      }]);
+
+      if (continueSetup) {
+        const { runSetupWizard } = await import('./setup.js');
+        await runSetupWizard();
+      } else {
+        console.log('');
+        console.log('Next steps:');
+        console.log('  jowork register claude-code   # Connect to Claude Code');
+        console.log('  jowork connect feishu          # Connect Feishu data source');
+      }
     });
 }
