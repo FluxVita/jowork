@@ -287,13 +287,15 @@ const App = {
           <div v-if="sourceList.length === 0" style="font-size: 13px; color: var(--text-tertiary); padding: 8px;">
             No sources connected
           </div>
-          <div v-for="src in sourceList" :key="src.name" class="source-item">
-            <span class="status-dot" :class="src.connected ? 'connected' : 'disconnected'"></span>
-            <span class="source-name">{{ src.name }}</span>
-            <span class="source-count">{{ src.count }}</span>
-          </div>
-          <div v-for="src in sourceList" :key="src.name + '-time'" class="source-time" v-if="src.lastSync">
-            {{ formatTimeAgo(src.lastSync) }}
+          <div v-for="item in sourceList" :key="item.name" class="source-item-group">
+            <div class="source-item">
+              <span class="status-dot" :class="item.connected ? 'connected' : 'disconnected'"></span>
+              <span class="source-name">{{ item.name }}</span>
+              <span class="source-count">{{ item.count }}</span>
+            </div>
+            <div v-if="item.lastSync" class="source-time">
+              {{ formatTimeAgo(item.lastSync) }}
+            </div>
           </div>
 
           <button v-if="sourceList.some(s => s.connected)" class="sidebar-btn primary" @click="triggerSync(sourceList.find(s => s.connected)?.name)">

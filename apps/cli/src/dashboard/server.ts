@@ -363,12 +363,20 @@ function getDbState(sqlite: Database.Database): {
 }
 
 function getPublicDir(): string {
-  // Try relative to this file (source or dist)
+  // Try relative to this file (source or dist), plus package root fallback
   const thisDir = dirname(fileURLToPath(import.meta.url));
+  // When running from `npm install -g`, the package root has the dist/ + src/ dirs
+  // Find package root by looking for package.json upward
+  let pkgRoot = thisDir;
+  for (let i = 0; i < 5; i++) {
+    if (existsSync(join(pkgRoot, 'package.json'))) break;
+    pkgRoot = dirname(pkgRoot);
+  }
   const candidates = [
-    join(thisDir, 'public'),            // When running from src/dashboard/
-    join(thisDir, '..', 'dashboard', 'public'), // When running from dist/
-    join(thisDir, '..', '..', 'src', 'dashboard', 'public'), // From dist/ to src/
+    join(thisDir, 'public'),                              // src/dashboard/server.ts → src/dashboard/public
+    join(thisDir, '..', 'dashboard', 'public'),           // dist/ → dist/../dashboard/public
+    join(thisDir, '..', '..', 'src', 'dashboard', 'public'), // dist/ → src/dashboard/public
+    join(pkgRoot, 'src', 'dashboard', 'public'),          // package root → src/dashboard/public
   ];
   for (const candidate of candidates) {
     if (existsSync(join(candidate, 'index.html'))) {
