@@ -1,6 +1,8 @@
 # JoWork
 
-**The missing GUI for AI coding agents.** 让 AI Agent 用户更好地创造。
+**The missing GUI for AI coding agents.**
+
+[中文文档](./README.zh-CN.md)
 
 CLI agents like Claude Code, Codex, and OpenClaw are powerful — but managing multiple conversations, dragging files into context, and monitoring data sources? That's painful in a raw terminal.
 
@@ -24,18 +26,16 @@ JoWork fixes this. It's a **companion panel** that sits beside your terminal —
 
 ## Why JoWork?
 
-**The problem:** Vibe coders and non-technical users are building with AI agents every day. But the terminal UX has real gaps:
+**The problem:** Vibe coders and non-technical users build with AI agents every day. But the terminal UX has real gaps:
 
 | What you want | What the terminal gives you |
 |---|---|
-| Switch between multiple agent conversations like browser tabs | `tmux` (you need to learn it first) |
+| Switch between agent conversations like browser tabs | `tmux` (you need to learn it first) |
 | Drag a folder into your conversation for context | Copy-paste file paths manually |
 | See which data sources are connected and syncing | Run `jowork status` every time |
-| Load specific files + Feishu messages into one conversation | Type MCP tool calls manually |
+| Load specific files + data source into one conversation | Type MCP tool calls manually |
 
-**JoWork = the companion panel that fills these gaps.** It doesn't replace your terminal — it enhances it.
-
-> JoWork 的价值不只是数据层，而是帮助 Claude Code / Codex / OpenClaw 的用户更好地创造。不在终端产品做得好的地方重复造轮子，只补终端做不好的事。
+**JoWork = the companion panel that fills these gaps.** It doesn't replace your terminal — it enhances it. No chat, no terminal emulator — only the things terminals can't do well.
 
 ---
 
@@ -74,7 +74,7 @@ You have Claude Code running in one terminal tab doing a frontend refactor, Code
 **With JoWork Dashboard:**
 - Open `jowork dashboard` in your browser
 - See all active agent sessions with project name, engine type, and duration
-- Click "cd" to copy the command to jump to any session
+- Click "Focus" to jump to the terminal window, or copy the command
 - Sessions appear and disappear in real-time as agents connect/disconnect
 
 ### 2. "I want to drag a folder into my conversation"
@@ -119,7 +119,7 @@ The Goals tab shows progress bars, signal values, and met/unmet measures. Your a
 A localhost web UI that runs beside your terminal:
 
 - **Sidebar:** Data source status with live green/red dots, object counts, sync times
-- **Sessions tab:** Active agent sessions with engine type, PID, duration, copy-cd button
+- **Sessions tab:** Active agent sessions with engine type, PID, duration, focus button
 - **Context tab:** Active context entries + drag-and-drop file indexing
 - **Goals tab:** Goal progress with signal values and measure status
 - **Real-time:** WebSocket updates, no manual refresh needed
@@ -131,7 +131,7 @@ A localhost web UI that runs beside your terminal:
 
 | Source | What syncs | Status |
 |--------|-----------|--------|
-| Feishu (飞书) | Messages, calendar events, wiki docs, approvals | Ready |
+| Feishu | Messages, calendar events, wiki docs, approvals | Ready |
 | GitHub | Repos, issues, pull requests | Ready |
 | GitLab | Projects, issues, merge requests | Ready |
 | Linear | Issues (GraphQL) | Ready |
@@ -143,7 +143,7 @@ Your agent calls these automatically via [MCP protocol](https://modelcontextprot
 
 | Tool | What it does |
 |------|-------------|
-| `search_data` | Full-text search across all synced data (FTS5 + LIKE fallback) |
+| `search_data` | Full-text search across all synced data |
 | `read_memory` / `write_memory` | Cross-session memory with auto-truncation |
 | `search_memory` | Time-weighted memory search with recency boost |
 | `get_goals` / `get_metrics` | Goal progress and signal values |
@@ -273,8 +273,7 @@ All data stays on your machine. JoWork uses local SQLite with WAL mode. No cloud
 
 ## Roadmap
 
-- [ ] Native terminal window focus (AppleScript / wmctrl)
-- [ ] Tauri desktop app wrapper for system-level integration
+- [ ] Tauri desktop app wrapper for system-level drag-and-drop
 - [ ] More data sources: Slack, Notion, Jira, Firebase
 - [ ] Team collaboration (shared goals, multi-user sync)
 - [ ] Cloud sync for multi-device setups

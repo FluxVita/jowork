@@ -35,3 +35,8 @@ GEMINI.md
 .collaborator
 .gstack/
 *.txt
+
+# Internal plans (not for public repo)
+plan-*.md
+PLAN.md
+plans/
