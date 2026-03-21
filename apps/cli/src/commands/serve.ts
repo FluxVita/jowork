@@ -222,12 +222,13 @@ async function syncFeishuDaemon(db: DbManager, data: Record<string, string>): Pr
 
       const messages = msgData.data?.items ?? [];
 
+      const checkExists = sqlite.prepare(`SELECT id FROM objects WHERE uri = ?`);
       const insertObj = sqlite.prepare(`
-        INSERT OR IGNORE INTO objects (id, source, source_type, uri, title, summary, tags, content_hash, last_synced_at, created_at)
+        INSERT INTO objects (id, source, source_type, uri, title, summary, tags, content_hash, last_synced_at, created_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
       const insertBody = sqlite.prepare(`
-        INSERT OR IGNORE INTO object_bodies (object_id, content, content_type, fetched_at)
+        INSERT OR REPLACE INTO object_bodies (object_id, content, content_type, fetched_at)
         VALUES (?, ?, ?, ?)
       `);
 
@@ -246,6 +247,9 @@ async function syncFeishuDaemon(db: DbManager, data: Record<string, string>): Pr
           if (!content || typeof content !== 'string') continue;
 
           const uri = `feishu://message/${msg.message_id}`;
+          const existing = checkExists.get(uri) as { id: string } | undefined;
+          if (existing) continue;
+
           const hash = simpleHash(content);
           const now = Date.now();
           const id = createId('obj');

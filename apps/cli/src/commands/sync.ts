@@ -131,12 +131,13 @@ async function syncFeishu(db: DbManager, data: Record<string, string>): Promise<
       const messages = msgData.data?.items ?? [];
 
       // Batch insert (100 per transaction)
+      const checkExists = sqlite.prepare(`SELECT id FROM objects WHERE uri = ?`);
       const insertObj = sqlite.prepare(`
-        INSERT OR IGNORE INTO objects (id, source, source_type, uri, title, summary, tags, content_hash, last_synced_at, created_at)
+        INSERT INTO objects (id, source, source_type, uri, title, summary, tags, content_hash, last_synced_at, created_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
       const insertBody = sqlite.prepare(`
-        INSERT OR IGNORE INTO object_bodies (object_id, content, content_type, fetched_at)
+        INSERT OR REPLACE INTO object_bodies (object_id, content, content_type, fetched_at)
         VALUES (?, ?, ?, ?)
       `);
 
@@ -155,6 +156,11 @@ async function syncFeishu(db: DbManager, data: Record<string, string>): Promise<
           if (!content || typeof content !== 'string') continue;
 
           const uri = `feishu://message/${msg.message_id}`;
+
+          // Skip if already synced (dedupe by URI)
+          const existing = checkExists.get(uri) as { id: string } | undefined;
+          if (existing) continue;
+
           const hash = simpleHash(content);
           const now = Date.now();
           const id = createId('obj');
