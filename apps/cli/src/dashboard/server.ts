@@ -232,26 +232,48 @@ export async function startDashboard(opts: DashboardServerOptions = {}): Promise
   let port = opts.port ?? DEFAULT_PORT;
   let server: ServerType;
 
+  // Pre-check: probe the port before binding.
+  // macOS SO_REUSEADDR allows duplicate binds without EADDRINUSE,
+  // so we detect conflicts by checking if something already responds.
+  let portInUse = false;
   try {
-    server = serve({
+    const probe = await fetch(`http://127.0.0.1:${port}/api/status`, {
+      signal: AbortSignal.timeout(1000),
+    });
+    if (probe.ok) portInUse = true;
+  } catch { /* no response = port is free */ }
+
+  if (portInUse) {
+    logInfo('dashboard', `Port ${port} already has a running dashboard, using random port`);
+    port = 0;
+  }
+
+  // Bind with EADDRINUSE fallback for Linux/Windows
+  server = await new Promise<ServerType>((resolve, reject) => {
+    const s = serve({
       fetch: app.fetch,
       hostname: '127.0.0.1',
       port,
     });
-  } catch {
-    // Port busy — use random port
-    port = 0;
-    server = serve({
-      fetch: app.fetch,
-      hostname: '127.0.0.1',
-      port: 0,
+    s.on('error', (err: NodeJS.ErrnoException) => {
+      if (err.code === 'EADDRINUSE') {
+        const s2 = serve({ fetch: app.fetch, hostname: '127.0.0.1', port: 0 });
+        const addr = s2.address();
+        if (addr && typeof addr === 'object') port = addr.port;
+        resolve(s2);
+      } else {
+        reject(err);
+      }
     });
-    // Get actual port from the underlying server
-    const addr = server.address();
-    if (addr && typeof addr === 'object') {
-      port = addr.port;
-    }
-  }
+    s.on('listening', () => {
+      // If we asked for port 0, read the actual assigned port
+      if (port === 0) {
+        const addr = s.address();
+        if (addr && typeof addr === 'object') port = addr.port;
+      }
+      resolve(s);
+    });
+  });
 
   // Write port file for other processes
   const portFile = join(joworkDir(), 'dashboard.port');
