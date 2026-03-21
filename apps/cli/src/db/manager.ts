@@ -146,6 +146,35 @@ const MIGRATIONS: string[] = [
     ALTER TABLE objects ADD COLUMN links_processed INTEGER NOT NULL DEFAULT 0;
     CREATE INDEX IF NOT EXISTS idx_objects_links_processed ON objects(links_processed);
   `,
+
+  // 005 — Multi-layer memory (hot + warm)
+  `
+    CREATE TABLE IF NOT EXISTS memory_hot (
+      id TEXT PRIMARY KEY,
+      window_start INTEGER NOT NULL,
+      window_end INTEGER NOT NULL,
+      summary TEXT NOT NULL,
+      source_count INTEGER NOT NULL DEFAULT 0,
+      sources TEXT,
+      created_at INTEGER NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS memory_warm (
+      id TEXT PRIMARY KEY,
+      goal_id TEXT,
+      period_start INTEGER NOT NULL,
+      period_end INTEGER NOT NULL,
+      summary TEXT NOT NULL,
+      key_decisions TEXT,
+      trends TEXT,
+      source_count INTEGER NOT NULL DEFAULT 0,
+      created_at INTEGER NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_memory_hot_window ON memory_hot(window_start, window_end);
+    CREATE INDEX IF NOT EXISTS idx_memory_warm_goal ON memory_warm(goal_id);
+    CREATE INDEX IF NOT EXISTS idx_memory_warm_period ON memory_warm(period_start, period_end);
+  `,
 ];
 
 export class DbManager {

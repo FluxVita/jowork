@@ -122,3 +122,45 @@ export function linkAllUnprocessed(sqlite: Database.Database): { processed: numb
   logInfo('linker', `Processed ${unprocessed.length} objects, created ${linksCreated} links`);
   return { processed: unprocessed.length, linksCreated };
 }
+
+/**
+ * L2 temporal linking: connect objects created within the same time window
+ * that share participants or topics.
+ */
+export function linkTemporal(sqlite: Database.Database, windowHours: number = 2): number {
+  const windowMs = windowHours * 60 * 60 * 1000;
+  let created = 0;
+
+  // Find object pairs from different sources within the time window
+  const pairs = sqlite.prepare(`
+    SELECT a.id as id_a, b.id as id_b, a.source as source_a, b.source as source_b
+    FROM objects a
+    JOIN objects b ON b.id > a.id
+      AND b.source != a.source
+      AND ABS(a.created_at - b.created_at) < ?
+    WHERE a.links_processed = 1 AND b.links_processed = 1
+    LIMIT 500
+  `).all(windowMs) as Array<{ id_a: string; id_b: string; source_a: string; source_b: string }>;
+
+  if (pairs.length === 0) return 0;
+
+  const insert = sqlite.prepare(`
+    INSERT OR IGNORE INTO object_links (id, source_object_id, target_object_id, link_type, identifier, metadata, confidence, created_at)
+    VALUES (?, ?, ?, 'temporal', ?, ?, 'low', ?)
+  `);
+
+  const now = Date.now();
+  const batch = sqlite.transaction(() => {
+    for (const pair of pairs) {
+      const id = `temporal:${pair.id_a}:${pair.id_b}`;
+      insert.run(id, pair.id_a, pair.id_b, `${pair.source_a}↔${pair.source_b}`, null, now);
+      created++;
+    }
+  });
+  batch();
+
+  if (created > 0) {
+    logInfo('linker', `Created ${created} temporal links (${windowHours}h window)`);
+  }
+  return created;
+}

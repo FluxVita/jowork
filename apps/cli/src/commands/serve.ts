@@ -14,6 +14,7 @@ import { syncGitLab } from '../sync/gitlab.js';
 import { syncLinear } from '../sync/linear.js';
 import { pollSignals } from '../goals/signal-poller.js';
 import { evaluateTriggers } from '../goals/trigger-engine.js';
+import { runCompaction } from '../memory/compaction.js';
 
 export function serveCommand(program: Command): void {
   program
@@ -173,6 +174,12 @@ async function runSync(): Promise<void> {
         notifications: triggerResult.notifications.map(n => n.message),
       });
       // TODO: Send notifications via push_to_channel when channel push is configured
+    }
+
+    // Run compaction
+    const compactionResult = await runCompaction(sqlite);
+    if (compactionResult.hotEntries > 0 || compactionResult.warmEntries > 0) {
+      daemonLog('info', 'Compaction complete', { hotEntries: compactionResult.hotEntries, warmEntries: compactionResult.warmEntries });
     }
   } catch (err) {
     daemonLog('error', 'Sync cycle failed', {

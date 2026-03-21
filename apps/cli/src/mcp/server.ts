@@ -33,6 +33,8 @@ export const JOWORK_MCP_TOOLS = [
   'get_metrics',
   'update_goal',
   'push_to_channel',
+  'get_hot_context',
+  'get_briefing',
 ] as const;
 
 /** Escape SQL LIKE wildcards so user input is matched literally. */
@@ -657,6 +659,78 @@ export function createJoWorkMcpServer(opts: McpServerOptions): McpServer {
         }
       }
       return { content: [{ type: 'text' as const, text: `Channel "${channel}" not yet supported. Available: feishu` }] };
+    },
+  );
+
+  // ── Multi-layer Memory Tools (Phase 5) ──────────────────────────────
+
+  server.tool(
+    'get_hot_context',
+    {
+      hours: z.number().optional().default(24).describe('Time window in hours (default 24, max 72)'),
+    },
+    async ({ hours }) => {
+      const h = Math.min(hours, 72);
+      const since = Date.now() - h * 60 * 60 * 1000;
+      const summaries = sqlite.prepare(
+        `SELECT summary, source_count, window_start, window_end FROM memory_hot
+         WHERE window_end > ? ORDER BY window_start DESC`
+      ).all(since) as Array<{ summary: string; source_count: number; window_start: number; window_end: number }>;
+
+      if (summaries.length === 0) {
+        // Fallback: get recent objects directly
+        const recent = sqlite.prepare(
+          `SELECT title, summary, source FROM objects WHERE created_at > ? ORDER BY created_at DESC LIMIT 20`
+        ).all(since);
+        return { content: [{ type: 'text' as const, text: JSON.stringify({ source: 'raw_objects', data: recent }, null, 2) }] };
+      }
+
+      return { content: [{ type: 'text' as const, text: JSON.stringify(summaries, null, 2) }] };
+    },
+  );
+
+  server.tool(
+    'get_briefing',
+    {},
+    async () => {
+      const now = Date.now();
+      const parts: string[] = ['# JoWork Daily Briefing\n'];
+
+      // Hot context (last 24h)
+      const hot = sqlite.prepare(
+        `SELECT summary, source_count FROM memory_hot WHERE window_end > ? ORDER BY window_start DESC LIMIT 1`
+      ).get(now - 24 * 60 * 60 * 1000) as { summary: string; source_count: number } | undefined;
+      if (hot) {
+        parts.push(`## Recent Activity (${hot.source_count} items)\n${hot.summary}\n`);
+      }
+
+      // Active goals status
+      const goals = sqlite.prepare(
+        `SELECT g.title, g.status,
+           (SELECT COUNT(*) FROM measures m JOIN signals s ON s.id = m.signal_id WHERE s.goal_id = g.id AND m.met = 1) as met_count,
+           (SELECT COUNT(*) FROM measures m JOIN signals s ON s.id = m.signal_id WHERE s.goal_id = g.id) as total_measures
+         FROM goals g WHERE g.status = 'active'`
+      ).all() as Array<{ title: string; met_count: number; total_measures: number }>;
+      if (goals.length > 0) {
+        parts.push('## Goals\n');
+        for (const g of goals) {
+          const pct = g.total_measures > 0 ? Math.round((g.met_count / g.total_measures) * 100) : 0;
+          parts.push(`- ${g.title}: ${g.met_count}/${g.total_measures} measures met (${pct}%)`);
+        }
+        parts.push('');
+      }
+
+      // Data freshness
+      const sources = sqlite.prepare(
+        `SELECT source, COUNT(*) as count, MAX(last_synced_at) as last_sync FROM objects GROUP BY source`
+      ).all() as Array<{ source: string; count: number; last_sync: number }>;
+      parts.push('## Data Sources\n');
+      for (const s of sources) {
+        const ago = Math.round((now - s.last_sync) / 60000);
+        parts.push(`- ${s.source}: ${s.count} objects (last sync: ${ago} min ago)`);
+      }
+
+      return { content: [{ type: 'text' as const, text: parts.join('\n') }] };
     },
   );
 
