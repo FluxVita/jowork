@@ -49,13 +49,13 @@ export class GoalManager {
 
   // ── Goals ──
 
-  createGoal(opts: { title: string; description?: string; parentId?: string; autonomyLevel?: string }): Goal {
+  createGoal(opts: { title: string; description?: string; parentId?: string; autonomyLevel?: string; evolvedFrom?: string }): Goal {
     const now = Date.now();
     const id = createId('goal');
     this.sqlite.prepare(`
-      INSERT INTO goals (id, title, description, status, autonomy_level, parent_id, created_at, updated_at)
-      VALUES (?, ?, ?, 'active', ?, ?, ?, ?)
-    `).run(id, opts.title, opts.description ?? null, opts.autonomyLevel ?? 'copilot', opts.parentId ?? null, now, now);
+      INSERT INTO goals (id, title, description, status, autonomy_level, parent_id, evolved_from, created_at, updated_at)
+      VALUES (?, ?, ?, 'active', ?, ?, ?, ?, ?)
+    `).run(id, opts.title, opts.description ?? null, opts.autonomyLevel ?? 'copilot', opts.parentId ?? null, opts.evolvedFrom ?? null, now, now);
     logInfo('goals', `Goal created: "${opts.title}"`, { id });
     return this.getGoal(id)!;
   }

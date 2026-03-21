@@ -58,9 +58,25 @@ function escapeFtsQuery(query: string): string {
 
 const MAX_MEMORIES = 100;
 
+// ── Push rate limiter ──────────────────────────────────────────────────
+const pushRateTracker = new Map<string, number[]>();
+const PUSH_RATE_LIMIT = 5; // max per minute
+const PUSH_RATE_WINDOW = 60_000; // 1 minute
+
+function checkPushRateLimit(channel: string): boolean {
+  const now = Date.now();
+  const timestamps = pushRateTracker.get(channel) ?? [];
+  const recent = timestamps.filter(t => now - t < PUSH_RATE_WINDOW);
+  if (recent.length >= PUSH_RATE_LIMIT) return false;
+  recent.push(now);
+  pushRateTracker.set(channel, recent);
+  return true;
+}
+
 export function createJoWorkMcpServer(opts: McpServerOptions): McpServer {
   const sqlite = new Database(opts.dbPath);
   sqlite.pragma('journal_mode = WAL');
+  sqlite.pragma('busy_timeout = 5000');
   const db = drizzle(sqlite);
 
   const server = new McpServer({ name: 'jowork', version: '0.1.0' });
@@ -102,7 +118,11 @@ export function createJoWorkMcpServer(opts: McpServerOptions): McpServer {
 
           if (ftsResults.length > 0) {
             logInfo('mcp', `search_data: "${query}" (FTS)`, { source, resultCount: ftsResults.length, ms: Date.now() - t0 });
-            return { content: [{ type: 'text' as const, text: JSON.stringify(ftsResults, null, 2) }] };
+            const resultText = JSON.stringify(ftsResults, null, 2);
+            const hint = ftsResults.length >= 3
+              ? `\n\nShowing ${ftsResults.length} results (summaries only). Use fetch_content with a specific URI to get full content.`
+              : '';
+            return { content: [{ type: 'text' as const, text: resultText + hint }] };
           }
         } catch { /* FTS unavailable, fallback to LIKE */ }
       }
@@ -148,7 +168,11 @@ export function createJoWorkMcpServer(opts: McpServerOptions): McpServer {
       }
 
       logInfo('mcp', `search_data: "${query}"`, { source, resultCount: rows.length, ms: Date.now() - t0 });
-      return { content: [{ type: 'text' as const, text: JSON.stringify(rows, null, 2) }] };
+      const resultText = JSON.stringify(rows, null, 2);
+      const hint = rows.length >= 3
+        ? `\n\nShowing ${rows.length} results (summaries only). Use fetch_content with a specific URI to get full content.`
+        : '';
+      return { content: [{ type: 'text' as const, text: resultText + hint }] };
     },
   );
 
@@ -475,6 +499,28 @@ export function createJoWorkMcpServer(opts: McpServerOptions): McpServer {
     },
   );
 
+  server.resource(
+    'goals',
+    'jowork://goals',
+    async (uri) => {
+      try {
+        const goals = sqlite.prepare(
+          `SELECT g.*, (SELECT COUNT(*) FROM signals WHERE goal_id = g.id) as signal_count
+           FROM goals g WHERE g.status = 'active' ORDER BY g.created_at DESC`,
+        ).all();
+        return {
+          contents: [{
+            uri: uri.href,
+            mimeType: 'application/json',
+            text: JSON.stringify(goals, null, 2),
+          }],
+        };
+      } catch {
+        return { contents: [{ uri: uri.href, mimeType: 'application/json', text: '[]' }] };
+      }
+    },
+  );
+
   // ── Goal Tools ──────────────────────────────────────────────────────
 
   server.tool(
@@ -523,8 +569,25 @@ export function createJoWorkMcpServer(opts: McpServerOptions): McpServer {
       status: z.enum(['active', 'paused', 'completed']).optional().describe('New status'),
     },
     async ({ goal_id, title, description, status }) => {
-      const existing = sqlite.prepare('SELECT * FROM goals WHERE id = ?').get(goal_id);
+      const existing = sqlite.prepare('SELECT * FROM goals WHERE id = ?').get(goal_id) as Record<string, unknown> | undefined;
       if (!existing) return { content: [{ type: 'text' as const, text: `Goal not found: ${goal_id}` }] };
+
+      // Copilot mode requires human confirmation before changes
+      if (existing.autonomy_level === 'copilot') {
+        const proposed = { goal_id, title, description, status };
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({
+              action: 'pending_confirmation',
+              message: `Goal "${existing.title}" is in copilot mode. Proposed changes need human approval.`,
+              proposed_changes: Object.fromEntries(Object.entries(proposed).filter(([_, v]) => v !== undefined)),
+              current: existing,
+              hint: 'To apply, update the goal autonomy_level to "semipilot" or "autopilot", or ask the user to confirm.',
+            }, null, 2),
+          }],
+        };
+      }
 
       const now = Date.now();
       const sets: string[] = ['updated_at = ?'];
@@ -548,6 +611,11 @@ export function createJoWorkMcpServer(opts: McpServerOptions): McpServer {
       message: z.string().describe('Message content'),
     },
     async ({ channel, target, message }) => {
+      if (!checkPushRateLimit(`${channel}:${target}`)) {
+        return { content: [{ type: 'text' as const, text: `Rate limited: max ${PUSH_RATE_LIMIT} pushes per minute per target. Try again shortly.` }] };
+      }
+      logInfo('mcp', `push_to_channel: ${channel}/${target}`, { length: message.length });
+
       if (channel === 'feishu') {
         // Try to send via Feishu API
         try {

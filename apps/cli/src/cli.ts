@@ -12,6 +12,7 @@ import { connectCommand } from './commands/connect.js';
 import { syncCommand } from './commands/sync.js';
 import { searchCommand } from './commands/search.js';
 import { goalCommand } from './commands/goal.js';
+import { installServiceCommand } from './commands/install-service.js';
 
 const program = new Command();
 
@@ -30,5 +31,6 @@ doctorCommand(program);
 exportCommand(program);
 searchCommand(program);
 goalCommand(program);
+installServiceCommand(program);
 
 program.parse();

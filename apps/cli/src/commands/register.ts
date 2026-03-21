@@ -1,5 +1,5 @@
 import type { Command } from 'commander';
-import { readFileSync, writeFileSync, copyFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, copyFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 const HOME = process.env['HOME'] ?? '';
@@ -20,7 +20,7 @@ export function registerCommand(program: Command): void {
           registerClaudeCode();
           break;
         case 'codex':
-          console.log('Codex registration not yet implemented.');
+          registerCodex();
           break;
         default:
           console.error(`Unknown engine: ${engine}. Supported: claude-code, codex`);
@@ -64,4 +64,39 @@ function registerClaudeCode(): void {
   console.log('');
   console.log('Claude Code will now have access to JoWork tools:');
   console.log('  search_data, read_memory, write_memory, search_memory, ...');
+}
+
+function registerCodex(): void {
+  const codexDir = join(HOME, '.codex');
+  const configPath = join(codexDir, 'config.toml');
+
+  mkdirSync(codexDir, { recursive: true });
+
+  // Backup existing config
+  if (existsSync(configPath)) {
+    copyFileSync(configPath, configPath + '.bak');
+    console.log(`✓ Backed up existing config to ${configPath}.bak`);
+  }
+
+  // Read or create config
+  let content = '';
+  if (existsSync(configPath)) {
+    content = readFileSync(configPath, 'utf-8');
+  }
+
+  // Check if jowork MCP entry already exists
+  if (content.includes('[mcp_servers.jowork]')) {
+    console.log('✓ JoWork already registered with Codex');
+    return;
+  }
+
+  // Append MCP server config (TOML format)
+  const mcpEntry = `
+[mcp_servers.jowork]
+command = "jowork"
+args = ["serve"]
+`;
+
+  writeFileSync(configPath, content + mcpEntry);
+  console.log(`✓ Registered JoWork MCP server in ${configPath}`);
 }
