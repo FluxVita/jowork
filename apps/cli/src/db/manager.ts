@@ -93,6 +93,53 @@ const MIGRATIONS: string[] = [
     CREATE INDEX IF NOT EXISTS idx_object_links_target ON object_links(target_object_id);
     CREATE INDEX IF NOT EXISTS idx_object_links_type ON object_links(link_type);
   `,
+
+  // 003 — Goal-Signal-Measure system
+  `
+    CREATE TABLE IF NOT EXISTS goals (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      description TEXT,
+      status TEXT NOT NULL DEFAULT 'active',
+      autonomy_level TEXT NOT NULL DEFAULT 'copilot',
+      parent_id TEXT,
+      evolved_from TEXT,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS signals (
+      id TEXT PRIMARY KEY,
+      goal_id TEXT NOT NULL REFERENCES goals(id),
+      title TEXT NOT NULL,
+      source TEXT NOT NULL,
+      metric TEXT NOT NULL,
+      direction TEXT NOT NULL,
+      poll_interval INTEGER DEFAULT 3600,
+      config TEXT,
+      current_value REAL,
+      last_polled_at INTEGER,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS measures (
+      id TEXT PRIMARY KEY,
+      signal_id TEXT NOT NULL REFERENCES signals(id),
+      threshold REAL NOT NULL,
+      comparison TEXT NOT NULL,
+      upper_bound REAL,
+      current REAL,
+      met INTEGER DEFAULT 0,
+      last_evaluated_at INTEGER,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_goals_status ON goals(status);
+    CREATE INDEX IF NOT EXISTS idx_signals_goal ON signals(goal_id);
+    CREATE INDEX IF NOT EXISTS idx_measures_signal ON measures(signal_id);
+  `,
 ];
 
 export class DbManager {

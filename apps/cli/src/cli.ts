@@ -11,6 +11,7 @@ import { exportCommand } from './commands/export.js';
 import { connectCommand } from './commands/connect.js';
 import { syncCommand } from './commands/sync.js';
 import { searchCommand } from './commands/search.js';
+import { goalCommand } from './commands/goal.js';
 
 const program = new Command();
 
@@ -28,5 +29,6 @@ statusCommand(program);
 doctorCommand(program);
 exportCommand(program);
 searchCommand(program);
+goalCommand(program);
 
 program.parse();

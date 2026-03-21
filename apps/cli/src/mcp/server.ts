@@ -4,6 +4,8 @@ import Database from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { like, eq, or, desc } from 'drizzle-orm';
 import { objects, objectBodies, connectorConfigs, memories, createId, buildFtsQuery, detectSourceFromQuery } from '@jowork/core';
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { logInfo, logError } from '../utils/logger.js';
 
 export interface McpServerOptions {
@@ -24,6 +26,10 @@ export const JOWORK_MCP_TOOLS = [
   'write_memory',
   'search_memory',
   'get_environment',
+  'get_goals',
+  'get_metrics',
+  'update_goal',
+  'push_to_channel',
 ] as const;
 
 /** Escape SQL LIKE wildcards so user input is matched literally. */
@@ -466,6 +472,117 @@ export function createJoWorkMcpServer(opts: McpServerOptions): McpServer {
           text: JSON.stringify({ tableCounts: counts, lastSync }, null, 2),
         }],
       };
+    },
+  );
+
+  // ── Goal Tools ──────────────────────────────────────────────────────
+
+  server.tool(
+    'get_goals',
+    {
+      status: z.string().optional().describe('Filter: active, paused, completed'),
+    },
+    async ({ status }) => {
+      const goals = sqlite.prepare(
+        status
+          ? `SELECT g.*, (SELECT COUNT(*) FROM signals WHERE goal_id = g.id) as signal_count FROM goals g WHERE g.status = ? ORDER BY g.created_at DESC`
+          : `SELECT g.*, (SELECT COUNT(*) FROM signals WHERE goal_id = g.id) as signal_count FROM goals g ORDER BY g.created_at DESC`
+      ).all(...(status ? [status] : []));
+      return { content: [{ type: 'text' as const, text: JSON.stringify(goals, null, 2) }] };
+    },
+  );
+
+  server.tool(
+    'get_metrics',
+    {
+      goal_id: z.string().optional().describe('Goal ID (shows all active if omitted)'),
+    },
+    async ({ goal_id }) => {
+      const query = goal_id
+        ? `SELECT s.*, m.threshold, m.comparison, m.current, m.met, g.title as goal_title
+           FROM signals s
+           JOIN goals g ON g.id = s.goal_id
+           LEFT JOIN measures m ON m.signal_id = s.id
+           WHERE s.goal_id = ? ORDER BY s.created_at`
+        : `SELECT s.*, m.threshold, m.comparison, m.current, m.met, g.title as goal_title
+           FROM signals s
+           JOIN goals g ON g.id = s.goal_id AND g.status = 'active'
+           LEFT JOIN measures m ON m.signal_id = s.id
+           ORDER BY g.created_at DESC, s.created_at`;
+      const rows = sqlite.prepare(query).all(...(goal_id ? [goal_id] : []));
+      return { content: [{ type: 'text' as const, text: JSON.stringify(rows, null, 2) }] };
+    },
+  );
+
+  server.tool(
+    'update_goal',
+    {
+      goal_id: z.string().describe('Goal ID'),
+      title: z.string().optional().describe('New title'),
+      description: z.string().optional().describe('New description'),
+      status: z.enum(['active', 'paused', 'completed']).optional().describe('New status'),
+    },
+    async ({ goal_id, title, description, status }) => {
+      const existing = sqlite.prepare('SELECT * FROM goals WHERE id = ?').get(goal_id);
+      if (!existing) return { content: [{ type: 'text' as const, text: `Goal not found: ${goal_id}` }] };
+
+      const now = Date.now();
+      const sets: string[] = ['updated_at = ?'];
+      const args: unknown[] = [now];
+      if (title) { sets.push('title = ?'); args.push(title); }
+      if (description) { sets.push('description = ?'); args.push(description); }
+      if (status) { sets.push('status = ?'); args.push(status); }
+      args.push(goal_id);
+      sqlite.prepare(`UPDATE goals SET ${sets.join(', ')} WHERE id = ?`).run(...args);
+
+      const updated = sqlite.prepare('SELECT * FROM goals WHERE id = ?').get(goal_id);
+      return { content: [{ type: 'text' as const, text: JSON.stringify(updated, null, 2) }] };
+    },
+  );
+
+  server.tool(
+    'push_to_channel',
+    {
+      channel: z.string().describe('Channel: feishu, slack, telegram'),
+      target: z.string().describe('Target ID (chat_id for feishu, channel for slack)'),
+      message: z.string().describe('Message content'),
+    },
+    async ({ channel, target, message }) => {
+      if (channel === 'feishu') {
+        // Try to send via Feishu API
+        try {
+          const credFile = join(process.env['HOME'] ?? '', '.jowork', 'credentials', 'feishu.json');
+          if (!existsSync(credFile)) {
+            return { content: [{ type: 'text' as const, text: 'Feishu not connected. Run `jowork connect feishu` first.' }] };
+          }
+          const cred = JSON.parse(readFileSync(credFile, 'utf-8'));
+          const tokenRes = await fetch('https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ app_id: cred.data.appId, app_secret: cred.data.appSecret }),
+          });
+          const tokenData = await tokenRes.json() as { code: number; tenant_access_token: string };
+          if (tokenData.code !== 0) return { content: [{ type: 'text' as const, text: `Feishu auth failed: ${tokenData.code}` }] };
+
+          const msgRes = await fetch('https://open.feishu.cn/open-apis/im/v1/messages?receive_id_type=chat_id', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tokenData.tenant_access_token}` },
+            body: JSON.stringify({
+              receive_id: target,
+              msg_type: 'text',
+              content: JSON.stringify({ text: message }),
+            }),
+          });
+          const msgData = await msgRes.json() as { code: number };
+          if (msgData.code !== 0) return { content: [{ type: 'text' as const, text: `Feishu send failed: ${msgData.code}` }] };
+
+          logInfo('mcp', `push_to_channel: feishu/${target}`, { length: message.length });
+          return { content: [{ type: 'text' as const, text: `✓ Message sent to Feishu chat ${target}` }] };
+        } catch (err) {
+          return { content: [{ type: 'text' as const, text: `Error: ${err}` }] };
+        }
+      }
+      return { content: [{ type: 'text' as const, text: `Channel "${channel}" not yet supported. Available: feishu` }] };
     },
   );
 
