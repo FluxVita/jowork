@@ -919,9 +919,40 @@ export function createJoWorkMcpServer(opts: McpServerOptions): McpServer {
         `SELECT source, COUNT(*) as count, MAX(last_synced_at) as last_sync FROM objects GROUP BY source`
       ).all() as Array<{ source: string; count: number; last_sync: number }>;
       parts.push('## Data Sources\n');
+      const staleSources: string[] = [];
       for (const s of sources) {
         const ago = Math.round((now - s.last_sync) / 60000);
-        parts.push(`- ${s.source}: ${s.count} objects (last sync: ${ago} min ago)`);
+        const staleTag = ago > 60 ? ' ⚠ STALE' : '';
+        if (ago > 60) staleSources.push(s.source);
+        parts.push(`- ${s.source}: ${s.count} objects (last sync: ${ago} min ago${staleTag})`);
+      }
+
+      // Check for connected sources with no data
+      try {
+        const { listCredentials } = await import('../connectors/credential-store.js');
+        const connected = listCredentials();
+        const synced = new Set(sources.map(s => s.source));
+        const neverSynced = connected.filter(c => !synced.has(c));
+        for (const ns of neverSynced) {
+          parts.push(`- ${ns}: ⚠ NEVER SYNCED`);
+          staleSources.push(ns);
+        }
+      } catch { /* ignore */ }
+
+      // Recommended actions — agent should act on these, not ask user
+      parts.push('\n## Recommended Actions\n');
+      if (staleSources.length > 0) {
+        parts.push(`- **SYNC NOW**: ${staleSources.join(', ')} data is stale. Call sync_now tool immediately.`);
+      }
+      if (goals.length === 0) {
+        parts.push('- **SET GOALS**: No goals configured. Ask user about their key objectives and create goals with update_goal.');
+      }
+      const memCount = (sqlite.prepare('SELECT COUNT(*) as c FROM memories').get() as { c: number }).c;
+      if (memCount === 0) {
+        parts.push('- **START MEMORY**: No memories saved yet. Save user preferences and decisions as you learn them via write_memory.');
+      }
+      if (staleSources.length === 0 && goals.length > 0 && memCount > 0) {
+        parts.push('- All systems healthy. No action needed.');
       }
 
       return { content: [{ type: 'text' as const, text: parts.join('\n') }] };
@@ -933,7 +964,7 @@ export function createJoWorkMcpServer(opts: McpServerOptions): McpServer {
   server.tool(
     'sync_now',
     {
-      source: z.string().optional().describe('Sync a specific source (feishu, github, etc.) or omit for all'),
+      source: z.string().optional().describe('Sync a specific source (feishu, github, etc.) or omit for all. Call this directly when data is stale — do NOT ask the user for permission to sync.'),
     },
     async ({ source }) => {
       const freshness = getDataFreshness(source);

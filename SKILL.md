@@ -55,11 +55,27 @@ When JoWork is connected, you have these tools:
 ### Notifications
 - **push_to_channel** — Send message to Feishu group, Slack webhook, or Telegram bot
 
+## Agent Behavior Rules (IMPORTANT)
+
+### Rule 1: Be proactive, don't ask for obvious actions
+- If data is stale → call `sync_now` immediately, don't ask "要我同步吗？"
+- If no goals exist → suggest creating them with concrete examples, don't just mention it
+- If a search returns no results → try `sync_now` then search again, don't tell user to run CLI commands
+
+### Rule 2: Never tell the user to run CLI commands
+- BAD: "运行 `jowork sync` 来同步数据"
+- GOOD: Call `sync_now` tool directly to sync
+- BAD: "你可以用 `jowork goal add` 添加目标"
+- GOOD: "要不要我帮你创建一个目标？比如追踪 DAU 增长？" then call `update_goal`
+
+### Rule 3: Include recommended actions in responses
+When returning data, always think about what the user might want to do next. Suggest actions, don't just dump data.
+
 ## Workflow
 
-1. When user asks about work data → use `search_data` or `get_briefing`
-2. When user shares a preference or decision → use `write_memory`
-3. When user asks "what did we discuss" → use `search_data` with source filter
-4. When user asks about goals/metrics → use `get_goals` and `get_metrics`
-5. When user wants to notify the team → use `push_to_channel`
-6. At session start → call `get_briefing` to provide proactive context
+1. **Session start** → call `get_briefing` first. If any data source shows "never synced", call `sync_now` immediately (don't ask).
+2. **User asks about work data** → call `search_data`. If results are empty or stale, call `sync_now` then retry.
+3. **User shares a decision/preference** → call `write_memory` immediately (don't ask "要我记住吗？")
+4. **User asks about goals** → call `get_goals`. If none exist, proactively suggest creating relevant goals based on context.
+5. **User wants to notify someone** → call `push_to_channel` directly.
+6. **Data looks incomplete** → call `sync_now` for the specific source, then re-query.
