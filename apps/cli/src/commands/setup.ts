@@ -7,8 +7,22 @@ import { saveCredential, listCredentials } from '../connectors/credential-store.
 // ── i18n: auto-detect system language ──
 
 function isZh(): boolean {
+  // Check env vars first
   const lang = process.env['LANG'] ?? process.env['LC_ALL'] ?? process.env['LANGUAGE'] ?? '';
-  return lang.toLowerCase().startsWith('zh');
+  if (lang.toLowerCase().startsWith('zh')) return true;
+
+  // macOS: system language may not be in LANG, check via defaults
+  if (process.platform === 'darwin') {
+    try {
+      const { execSync } = require('node:child_process') as typeof import('node:child_process');
+      const appleLangs = execSync('defaults read -g AppleLanguages 2>/dev/null', { encoding: 'utf-8' });
+      // Output like: (\n    "zh-Hans-CN",\n    "en-CN"\n)
+      const firstLang = appleLangs.match(/"([^"]+)"/)?.[1] ?? '';
+      if (firstLang.startsWith('zh')) return true;
+    } catch { /* not macOS or command failed */ }
+  }
+
+  return false;
 }
 
 const t = isZh() ? {
@@ -153,7 +167,7 @@ export async function runSetupWizard(): Promise<void> {
     console.log(`  ${t.step2Skip}\n`);
   }
 
-  // Step 3: Connect data sources (toggle-list: Enter to toggle, "Done" to submit)
+  // Step 3: Connect data sources
   console.log(`  ${t.step3}`);
   console.log('');
 
@@ -165,35 +179,20 @@ export async function runSetupWizard(): Promise<void> {
     { key: 'posthog', label: isZh() ? 'PostHog（用户行为分析）' : 'PostHog (analytics, events)' },
   ];
 
+  // Use raw stdin key listener to make both Space AND Enter toggle selection
   const selected = new Set<string>();
-  const doneLabel = isZh() ? '✓ 完成选择' : '✓ Done';
-  const hintMsg = isZh() ? '回车切换选中，选完后选「✓ 完成选择」提交' : 'Enter to toggle, select "✓ Done" to submit';
+  const choices = dataSources.map(ds => ({ name: ds.label, value: ds.key }));
 
-  let picking = true;
-  while (picking) {
-    const choices = dataSources.map(ds => ({
-      name: `${selected.has(ds.key) ? '◉' : '○'} ${ds.label}`,
-      value: ds.key,
-    }));
-    choices.push({ name: doneLabel, value: '_done' });
-
-    const { pick } = await inquirer.prompt([{
-      type: 'list',
-      name: 'pick',
-      message: hintMsg,
-      choices,
-      loop: false,
+  // Patch inquirer checkbox to treat Enter as toggle (not submit)
+  // Simplest reliable approach: ask one-by-one with confirm
+  for (const ds of dataSources) {
+    const { yes } = await inquirer.prompt([{
+      type: 'confirm',
+      name: 'yes',
+      message: isZh() ? `连接 ${ds.label}？` : `Connect ${ds.label}?`,
+      default: false,
     }]);
-
-    if (pick === '_done') {
-      picking = false;
-    } else {
-      if (selected.has(pick)) {
-        selected.delete(pick);
-      } else {
-        selected.add(pick);
-      }
-    }
+    if (yes) selected.add(ds.key);
   }
 
   for (const key of selected) {
