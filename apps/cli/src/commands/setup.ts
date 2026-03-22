@@ -307,7 +307,16 @@ async function registerEngine(engine: string): Promise<void> {
     'claude-code': 'Claude Code', codex: 'Codex', cursor: 'Cursor', openclaw: 'OpenClaw',
   };
 
-  const mcpEntry = { command: 'jowork', args: ['serve'] };
+  // Detect if jowork is globally installed — if not, use npx
+  let mcpCommand = 'jowork';
+  let mcpArgs = ['serve'];
+  try {
+    execSync('which jowork', { stdio: 'ignore' });
+  } catch {
+    mcpCommand = 'npx';
+    mcpArgs = ['-y', 'jowork@latest', 'serve'];
+  }
+  const mcpEntry = { command: mcpCommand, args: mcpArgs };
 
   switch (engine) {
     case 'claude-code': {
@@ -326,7 +335,8 @@ async function registerEngine(engine: string): Promise<void> {
       const p = join(dir, 'config.toml');
       let c = existsSync(p) ? readFileSync(p, 'utf-8') : '';
       if (!c.includes('[mcp_servers.jowork]')) {
-        c += '\n[mcp_servers.jowork]\ncommand = "jowork"\nargs = ["serve"]\n';
+        const argsToml = mcpArgs.map(a => `"${a}"`).join(', ');
+        c += `\n[mcp_servers.jowork]\ncommand = "${mcpCommand}"\nargs = [${argsToml}]\n`;
         writeFileSync(p, c);
       }
       break;

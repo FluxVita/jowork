@@ -1,8 +1,19 @@
 import type { Command } from 'commander';
 import { readFileSync, writeFileSync, copyFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { execSync } from 'node:child_process';
 
 const HOME = process.env['HOME'] ?? '';
+
+/** Detect if jowork is globally installed. If not, use npx. */
+function getMcpCommand(): { command: string; args: string[] } {
+  try {
+    execSync('which jowork', { stdio: 'ignore' });
+    return { command: 'jowork', args: ['serve'] };
+  } catch {
+    return { command: 'npx', args: ['-y', 'jowork@latest', 'serve'] };
+  }
+}
 
 interface ClaudeConfig {
   mcpServers?: Record<string, { command: string; args?: string[]; env?: Record<string, string> }>;
@@ -57,9 +68,10 @@ function registerClaudeCode(): void {
   // Merge JoWork MCP server entry (don't overwrite other entries)
   if (!config.mcpServers) config.mcpServers = {};
 
+  const mcp = getMcpCommand();
   config.mcpServers['jowork'] = {
-    command: 'jowork',
-    args: ['serve'],
+    command: mcp.command,
+    args: mcp.args,
     env: { JOWORK_ENGINE: 'claude-code' },
   };
 
@@ -95,9 +107,10 @@ function registerOpenClaw(): void {
 
   // Merge JoWork MCP server entry
   if (!config['mcpServers']) config['mcpServers'] = {};
+  const mcp = getMcpCommand();
   (config['mcpServers'] as Record<string, unknown>)['jowork'] = {
-    command: 'jowork',
-    args: ['serve'],
+    command: mcp.command,
+    args: mcp.args,
     env: { JOWORK_ENGINE: 'openclaw' },
   };
 
@@ -133,10 +146,12 @@ function registerCodex(): void {
   }
 
   // Append MCP server config (TOML format)
+  const mcp = getMcpCommand();
+  const argsToml = mcp.args.map(a => `"${a}"`).join(', ');
   const mcpEntry = `
 [mcp_servers.jowork]
-command = "jowork"
-args = ["serve"]
+command = "${mcp.command}"
+args = [${argsToml}]
 
 [mcp_servers.jowork.env]
 JOWORK_ENGINE = "codex"
