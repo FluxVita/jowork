@@ -150,24 +150,28 @@ export async function runSetupWizard(): Promise<void> {
     console.log(`  ${t.step2Skip}\n`);
   }
 
-  // Step 3: Connect data sources
+  // Step 3: Connect data sources (one by one, avoid checkbox confusion)
   console.log(`  ${t.step3}`);
   console.log('');
-  const { sources } = await inquirer.prompt([{
-    type: 'checkbox',
-    name: 'sources',
-    message: t.step3Q,
-    choices: [
-      { name: isZh() ? '飞书 — 消息、会议、文档' : 'Feishu (飞书) — messages, meetings, docs', value: 'feishu' },
-      { name: 'GitHub — repos, issues, PRs', value: 'github' },
-      { name: 'GitLab — projects, issues, MRs', value: 'gitlab' },
-      { name: 'Linear — issues', value: 'linear' },
-      { name: isZh() ? 'PostHog — 用户行为分析' : 'PostHog — analytics, events', value: 'posthog' },
-    ],
-  }]);
 
-  for (const source of sources as string[]) {
-    await connectSource(source, inquirer);
+  const dataSources = [
+    { key: 'feishu', label: isZh() ? '飞书（消息、会议、文档）' : 'Feishu (messages, meetings, docs)' },
+    { key: 'github', label: 'GitHub (repos, issues, PRs)' },
+    { key: 'gitlab', label: 'GitLab (projects, issues, MRs)' },
+    { key: 'linear', label: 'Linear (issues)' },
+    { key: 'posthog', label: isZh() ? 'PostHog（用户行为分析）' : 'PostHog (analytics, events)' },
+  ];
+
+  for (const ds of dataSources) {
+    const { connect } = await inquirer.prompt([{
+      type: 'confirm',
+      name: 'connect',
+      message: isZh() ? `连接 ${ds.label}？` : `Connect ${ds.label}?`,
+      default: false,
+    }]);
+    if (connect) {
+      await connectSource(ds.key, inquirer);
+    }
   }
 
   // Step 4: First sync
