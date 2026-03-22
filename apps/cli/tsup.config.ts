@@ -1,5 +1,5 @@
 import { defineConfig } from 'tsup';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, chmodSync } from 'node:fs';
 
 export default defineConfig({
   entry: {
@@ -15,11 +15,12 @@ export default defineConfig({
   noExternal: ['@jowork/core'],
   shims: true,
   onSuccess: async () => {
-    // Add shebang to cli.js only (not transport or chunks)
+    // Add shebang + executable permission to cli.js
     const cliPath = 'dist/cli.js';
     const content = readFileSync(cliPath, 'utf-8');
     if (!content.startsWith('#!')) {
       writeFileSync(cliPath, '#!/usr/bin/env node\n' + content);
     }
+    chmodSync(cliPath, 0o755);
   },
 });
