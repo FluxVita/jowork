@@ -9,6 +9,10 @@ export interface JoWorkConfig {
   maxDbSizeMB?: number;
   /** Days to keep raw object bodies (0 = forever, default 0) */
   retentionDays?: number;
+  /** Default sync interval in minutes (for daemon mode) */
+  syncIntervalMinutes?: number;
+  /** Per-source sync intervals in minutes (overrides default) */
+  syncIntervals?: Record<string, number>;
 }
 
 const DEFAULT_CONFIG: JoWorkConfig = {

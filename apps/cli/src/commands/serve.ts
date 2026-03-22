@@ -19,6 +19,7 @@ import { GitManager, type SyncSummary } from '../sync/git-manager.js';
 import { pollSignals } from '../goals/signal-poller.js';
 import { evaluateTriggers } from '../goals/trigger-engine.js';
 import { runCompaction } from '../memory/compaction.js';
+import { readConfig } from '../utils/config.js';
 
 export function serveCommand(program: Command): void {
   program
@@ -45,8 +46,6 @@ export function serveCommand(program: Command): void {
 }
 
 // ── Daemon mode ──────────────────────────────────────────────────────
-
-const SYNC_INTERVAL = '*/15 * * * *'; // every 15 minutes
 
 function daemonLog(level: string, msg: string, ctx?: Record<string, unknown>): void {
   const logFile = join(logsDir(), 'daemon.log');
@@ -92,24 +91,49 @@ async function startDaemon(): Promise<void> {
   process.on('SIGINT', cleanup);
   process.on('SIGTERM', cleanup);
 
-  daemonLog('info', 'Daemon started', { pid: process.pid });
+  const config = readConfig();
+  const intervalMinutes = config.syncIntervalMinutes ?? 15;
+  const cronExpr = `*/${intervalMinutes} * * * *`;
+
+  daemonLog('info', 'Daemon started', { pid: process.pid, intervalMinutes });
 
   // Run initial sync immediately
   await runSync();
 
-  // Schedule sync every 15 minutes
-  const _syncJob = new Cron(SYNC_INTERVAL, async () => {
+  // Schedule sync at configured interval
+  const _syncJob = new Cron(cronExpr, async () => {
     await runSync();
   });
 
   console.log(`Daemon started (PID ${process.pid})`);
-  console.log(`  Sync: every 15 minutes`);
+  console.log(`  Sync: every ${intervalMinutes} minutes`);
   console.log(`  PID file: ${pidFile}`);
   console.log(`  Log file: ${join(logsDir(), 'daemon.log')}`);
   console.log('  Press Ctrl+C to stop');
 
   // Keep process alive
   setInterval(() => {}, 60_000);
+}
+
+/** Check if a source should be skipped based on its per-source sync interval */
+function shouldSkipSource(
+  sqlite: import('better-sqlite3').Database,
+  source: string,
+  config: ReturnType<typeof readConfig>,
+): boolean {
+  const perSource = config.syncIntervals;
+  if (!perSource || !(source in perSource)) return false;
+
+  const intervalMs = perSource[source] * 60_000;
+  try {
+    const cursor = sqlite.prepare(
+      `SELECT last_synced_at FROM sync_cursors WHERE connector_id LIKE ? ORDER BY last_synced_at DESC LIMIT 1`,
+    ).get(`${source}%`) as { last_synced_at: number } | undefined;
+    if (!cursor) return false; // Never synced — don't skip
+    return Date.now() - cursor.last_synced_at < intervalMs;
+  } catch {
+    return false;
+  }
 }
 
 async function runSync(): Promise<void> {
@@ -138,7 +162,12 @@ async function runSync(): Promise<void> {
     const sqlite = db.getSqlite();
     const fileWriter = new FileWriter();
 
+    const syncConfig = readConfig();
     for (const source of sources) {
+      if (shouldSkipSource(sqlite, source, syncConfig)) {
+        daemonLog('info', `Skipping ${source} — within per-source interval`);
+        continue;
+      }
       const cred = loadCredential(source);
       if (!cred) {
         daemonLog('warn', `No credentials for ${source}, skipping`);

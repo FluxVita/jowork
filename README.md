@@ -112,6 +112,39 @@ Goals tab shows progress bars and signal values. Your agent sees these goals and
 
 <br>
 
+## Data Sync Architecture
+
+JoWork stores your data as **local files** — markdown for messages/docs/issues, JSON for analytics. Like a code repository, managed by git.
+
+```
+~/.jowork/data/repo/
+├── feishu/messages/资料分享/2026-03-21.md   ← daily chat log
+├── github/FluxVita-jowork/issues/42.md     ← issue with YAML frontmatter
+├── posthog/insights/DAU-trend.json         ← analytics as JSON
+└── .git/                                    ← version-controlled
+```
+
+### Sync modes
+- **Pull**: `jowork sync` — fetch latest from all sources
+- **Push**: `jowork push` — push local edits back to GitHub/GitLab/Linear
+- **Auto**: `jowork serve --daemon` — sync every 15 min (configurable per source)
+
+### Bidirectional sync
+| Source | Pull | Push | What can be pushed |
+|--------|------|------|--------------------|
+| GitHub/GitLab | ✅ | ✅ | Issue title, body, state, labels |
+| Linear | ✅ | ✅ | Issue title |
+| Feishu messages | ✅ | ❌ | Read-only (use push_to_channel) |
+| PostHog/Sentry | ✅ | ❌ | Analytics are read-only |
+
+### Configure sync frequency
+```bash
+jowork config set syncIntervalMinutes 10                    # All sources
+jowork config set syncIntervals '{"feishu":5,"github":30}'  # Per-source
+```
+
+<br>
+
 ## Features
 
 ### Companion Dashboard
@@ -220,7 +253,14 @@ jowork dashboard                   # Open companion panel in browser
 jowork sync [--source <s>]         # Sync from connected sources
 jowork search <query>              # Full-text search
 jowork status                      # System overview
+jowork log                         # Show sync history
+jowork push                        # Push local changes back to sources
 jowork serve --daemon              # Background sync + signal polling
+
+# Configuration
+jowork config get <key>            # Get a config value
+jowork config set <key> <value>    # Set a config value
+jowork config list                 # Show all configuration
 
 # Goals
 jowork goal add|list|status        # Goal management

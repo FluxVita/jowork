@@ -18,6 +18,7 @@ import { deviceSyncCommand } from './commands/device-sync.js';
 import { dashboardCommand } from './commands/dashboard.js';
 import { logCommand } from './commands/log.js';
 import { pushCommand } from './commands/push.js';
+import { configCommand } from './commands/config-cmd.js';
 
 const program = new Command();
 
@@ -42,6 +43,7 @@ deviceSyncCommand(program);
 dashboardCommand(program);
 logCommand(program);
 pushCommand(program);
+configCommand(program);
 
 // Default action: when no subcommand is given, show wizard or quick status
 program.action(async () => {
