@@ -23,9 +23,6 @@ importers:
       '@hono/node-server':
         specifier: ^1.14.0
         version: 1.19.11(hono@4.12.7)
-      '@jowork/core':
-        specifier: workspace:*
-        version: link:../../packages/core
       '@modelcontextprotocol/sdk':
         specifier: ^1.27.0
         version: 1.27.1(zod@3.25.76)
@@ -69,6 +66,9 @@ importers:
         specifier: ^3.24.0
         version: 3.25.76
     devDependencies:
+      '@jowork/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@types/better-sqlite3':
         specifier: ^7.6.0
         version: 7.6.13

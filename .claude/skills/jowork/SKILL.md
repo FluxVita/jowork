@@ -1,72 +1,85 @@
 ---
 name: jowork
-version: 0.1.0
+version: 0.2.0
 description: |
-  AI Agent companion panel — connect data sources, manage sessions, drag files
-  into context, track goals. Enhances Claude Code / Codex / OpenClaw with
-  persistent memory, multi-source search, and a visual dashboard.
+  AI Agent companion — connect data sources, manage sessions, drag files into
+  context, track goals. Works with Claude Code, Codex, and OpenClaw.
+  Use /jowork for status, or just ask naturally ("connect my GitHub", "sync data",
+  "open dashboard", "search PRs").
 allowed-tools:
   - Bash
   - Read
-  - Write
-  - Edit
   - AskUserQuestion
 ---
 
-# JoWork — Agent Infrastructure Skill
+# JoWork — Agent Infrastructure
 
-JoWork gives your AI agent eyes (data connectors), memory (cross-session persistence),
-purpose (goal tracking), and a companion dashboard for visual management.
+JoWork gives your AI agent data awareness (connectors), memory (cross-session),
+goal tracking, and a companion dashboard. All data stays local.
 
-## Auto-Setup
+## How it works
 
-On first use, check if JoWork is initialized:
+JoWork runs as an MCP server. Your agent already has these tools available:
+- **search_data** — search across all synced data
+- **read_memory / write_memory** — cross-session memory
+- **search_memory** — time-weighted memory search
+- **get_goals / get_metrics** — goal progress
+- **get_hot_context** — recent 24-72h activity summary
+- **get_briefing** — daily briefing
+- **sync_now** — trigger data sync
+- **push_to_channel** — send messages to connected channels
 
-```bash
-command -v jowork >/dev/null 2>&1 && echo "CLI_INSTALLED" || echo "CLI_MISSING"
-[ -d ~/.jowork ] && echo "INITIALIZED" || echo "NOT_INITIALIZED"
-```
+Use these MCP tools directly. No slash commands needed for data queries.
 
-If `CLI_MISSING`: run `npm install -g jowork` (ask user first).
-If `NOT_INITIALIZED`: run `jowork init`.
+## When the user asks to connect a data source
 
-Then verify MCP registration:
-```bash
-grep -q "jowork" ~/.claude.json 2>/dev/null && echo "MCP_REGISTERED" || echo "MCP_MISSING"
-```
+Run the appropriate bash command. Ask for credentials via AskUserQuestion
+if not in environment. Never display tokens in output.
 
-If `MCP_MISSING`: run `jowork register claude-code`.
-Tell user: "JoWork is set up. Restart Claude Code to activate MCP tools (search_data, read_memory, etc.)."
+\`\`\`
+GitHub:   jowork connect github --token "$GITHUB_PERSONAL_ACCESS_TOKEN"
+GitLab:   jowork connect gitlab --token "<token>"
+Linear:   jowork connect linear --api-key "<key>"
+PostHog:  jowork connect posthog --api-key "<key>" --project-id "<id>"
+Feishu:   jowork connect feishu --app-id "<id>" --app-secret "<secret>"
+\`\`\`
 
-## Proactive Suggestions
+After connecting, call the \`sync_now\` MCP tool or run \`jowork sync\`.
 
-When you notice the user is at these stages, suggest the appropriate action:
+## When the user asks to open the dashboard
 
-- User asks about team discussions, messages, or what happened → suggest `jowork sync` then use `search_data`
-- User wants to search across data sources → use MCP tool `search_data` directly
-- User mentions connecting Slack/GitHub/Feishu/data → suggest `/jowork-connect`
-- User wants to see dashboard or manage sessions → suggest `/jowork-dashboard`
-- User sets goals or wants to track metrics → suggest `jowork goal add`
-- User drops a file path or mentions "index this folder" → suggest `/jowork-context`
-- User asks "what's new" or wants a briefing → use MCP tool `get_briefing`
+\`\`\`bash
+PORT=$(cat ~/.jowork/dashboard.port 2>/dev/null || echo 18801)
+if curl -s --max-time 1 "http://127.0.0.1:$PORT/api/status" >/dev/null 2>&1; then
+  open "http://127.0.0.1:$PORT" 2>/dev/null || echo "Open http://127.0.0.1:$PORT"
+else
+  jowork dashboard &
+  sleep 2
+  open "http://127.0.0.1:$(cat ~/.jowork/dashboard.port 2>/dev/null || echo 18801)"
+fi
+\`\`\`
 
-## Available Commands
+## When the user asks to index a folder
 
-- `/jowork` — Status overview + setup check
-- `/jowork-connect` — Connect a data source (GitHub, Slack, Feishu, etc.)
-- `/jowork-sync` — Sync all connected data sources
-- `/jowork-dashboard` — Open the companion dashboard in browser
-- `/jowork-context` — Add a directory to agent context
+\`\`\`bash
+jowork context add "<directory_path>"
+\`\`\`
 
-## Status Check
+Or if dashboard is running, use its API for progress feedback.
 
-When invoked as `/jowork`, run:
+## Proactive behavior
 
-```bash
-jowork status 2>/dev/null || echo "JoWork not initialized. Run: npm install -g jowork && jowork init"
-```
+When you notice these patterns, act without being asked:
+- User asks about team discussions → call \`search_data\` or \`get_hot_context\`
+- User mentions connecting a service → guide through connection (see above)
+- User asks "what's new" or wants a briefing → call \`get_briefing\`
+- User mentions a folder to index → offer to index it
+- User wants to track a metric → guide through \`jowork goal add\`
 
-Show the output and suggest next actions based on what's missing:
-- No data sources → suggest `/jowork-connect`
-- Data sources connected but not synced recently → suggest `/jowork-sync`
-- Everything healthy → suggest opening dashboard or searching data
+## Status check (when invoked as /jowork)
+
+\`\`\`bash
+jowork status 2>/dev/null || echo "Not initialized. Run: npx jowork@latest setup"
+\`\`\`
+
+Show results and suggest next action based on state.
