@@ -228,17 +228,62 @@ export function setupSkillCommand(program: Command): void {
         } catch { /* already registered */ }
       } catch { /* not installed */ }
 
+      // Step 5: Check connected sources and guide next action
+      const { listCredentials } = await import('../connectors/credential-store.js');
+      const connectedSources = listCredentials();
+
       console.log('');
       console.log('  ============');
       console.log('  JoWork is ready!');
       console.log('');
-      console.log('  ⚠  Restart Claude Code to activate MCP tools');
+
+      if (!mcpRegistered) {
+        console.log('  ⚠  Restart Claude Code to activate MCP tools (search_data, read_memory, etc.)');
+        console.log('');
+      }
+
+      if (connectedSources.length === 0) {
+        console.log('  Next: Connect your first data source. Run one of:');
+        console.log('');
+        console.log('    jowork connect github          # Uses GITHUB_PERSONAL_ACCESS_TOKEN env var');
+        console.log('    jowork connect gitlab --token <token>');
+        console.log('    jowork connect linear --api-key <key>');
+        console.log('    jowork connect posthog --api-key <key> --project-id <id>');
+        console.log('    jowork connect feishu --app-id <id> --app-secret <secret>');
+        console.log('');
+        console.log('  Or in Claude Code, just say: "connect my GitHub"');
+      } else {
+        console.log(`  ${connectedSources.length} data source(s) connected: ${connectedSources.join(', ')}`);
+        console.log('');
+        console.log('  Try in Claude Code:');
+        console.log('    /jowork            Status overview');
+        console.log('    /jowork-dashboard  Open companion panel');
+        console.log('    "search my PRs"   Agent uses search_data automatically');
+      }
       console.log('');
-      console.log('  Then try in Claude Code:');
-      console.log('    /jowork            Status overview');
-      console.log('    /jowork-connect    Connect GitHub, Slack, etc.');
-      console.log('    /jowork-dashboard  Open companion panel');
-      console.log('    "search my PRs"   Agent uses search_data automatically');
-      console.log('');
+
+      // Auto-connect GitHub if token is available and not already connected
+      if (!connectedSources.includes('github') && process.env['GITHUB_PERSONAL_ACCESS_TOKEN']) {
+        console.log('  Detected GITHUB_PERSONAL_ACCESS_TOKEN in environment.');
+        console.log('  Connecting GitHub automatically...');
+        try {
+          execSync('jowork connect github --token "$GITHUB_PERSONAL_ACCESS_TOKEN"', {
+            stdio: 'pipe',
+            env: process.env,
+          });
+          console.log('  ✓ GitHub connected! Running initial sync...');
+          try {
+            const output = execSync('jowork sync --source github', {
+              encoding: 'utf-8',
+              timeout: 30000,
+              env: process.env,
+            });
+            console.log(output.trim().split('\n').map(l => '  ' + l).join('\n'));
+          } catch { /* sync timeout is ok */ }
+        } catch (err) {
+          console.log(`  ⚠ Could not auto-connect GitHub: ${err}`);
+        }
+        console.log('');
+      }
     });
 }
