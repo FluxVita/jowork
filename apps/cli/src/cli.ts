@@ -47,8 +47,12 @@ program.action(async () => {
 
   const config = readConfig();
   if (!config.initialized || !existsSync(dbPath())) {
-    const { runSetupWizard } = await import('./commands/setup.js');
-    await runSetupWizard();
+    if (process.stdin.isTTY) {
+      const { runSetupWizard } = await import('./commands/setup.js');
+      await runSetupWizard();
+    } else {
+      console.log('JoWork is not initialized. Run `jowork init` in an interactive terminal.');
+    }
   } else {
     const { listCredentials } = await import('./connectors/credential-store.js');
     const creds = listCredentials();

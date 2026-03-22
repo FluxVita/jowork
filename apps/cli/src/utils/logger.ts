@@ -8,16 +8,22 @@ function getLogDir(): string {
   return dir;
 }
 
-// Use stderr for logs so stdout stays clean for MCP stdio transport
+// Determine log destination:
+// - JOWORK_LOG_FILE=1 → write to file only
+// - jowork serve (MCP mode) → stderr (pino-pretty)
+// - Interactive CLI commands → file only (don't pollute terminal UI)
+const isServeMode = process.argv.some(a => a === 'serve');
+const useFileLog = process.env['JOWORK_LOG_FILE'] || !isServeMode;
+
 export const logger = pino({
   level: process.env['LOG_LEVEL'] ?? 'info',
   redact: {
     paths: ['*.secret', '*.token', '*.appSecret', '*.apiKey', '*.password', '*.credential'],
     censor: '***REDACTED***',
   },
-  transport: process.env['JOWORK_LOG_FILE']
+  transport: useFileLog
     ? { target: 'pino/file', options: { destination: join(getLogDir(), 'jowork.log') } }
-    : { target: 'pino-pretty', options: { destination: 2 } }, // stderr
+    : { target: 'pino-pretty', options: { destination: 2 } }, // stderr for serve mode
 });
 
 // Sanitize arbitrary strings before logging (for free-form content)
