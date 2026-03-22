@@ -35,7 +35,11 @@ export const JOWORK_MCP_TOOLS = [
   'push_to_channel',
   'get_hot_context',
   'get_briefing',
+  'sync_now',
 ] as const;
+
+/** Default staleness threshold: data older than this triggers auto-sync */
+const STALE_THRESHOLD_MS = 60 * 60 * 1000; // 1 hour
 
 /** Escape SQL LIKE wildcards so user input is matched literally. */
 function escapeLike(input: string): string {
@@ -99,17 +103,80 @@ export function createJoWorkMcpServer(opts: McpServerOptions): McpServer {
     }
   };
 
+  // ── Data Freshness ───────────────────────────────────────────────────
+
+  /** Check if data for a source is stale (older than threshold) */
+  function getDataFreshness(source?: string): { isStale: boolean; lastSync: number | null; agoMinutes: number | null; hint: string } {
+    try {
+      const query = source
+        ? `SELECT MAX(last_synced_at) as last FROM sync_cursors WHERE connector_id LIKE ?`
+        : `SELECT MAX(last_synced_at) as last FROM sync_cursors`;
+      const args = source ? [`${source}:%`] : [];
+      const row = sqlite.prepare(query).get(...args) as { last: number | null } | undefined;
+      const last = row?.last ?? null;
+      if (!last) return { isStale: true, lastSync: null, agoMinutes: null, hint: 'never synced' };
+      const agoMs = Date.now() - last;
+      const agoMinutes = Math.round(agoMs / 60000);
+      const isStale = agoMs > STALE_THRESHOLD_MS;
+      const hint = isStale
+        ? `data is ${agoMinutes} min old (stale — consider running sync_now)`
+        : `data is ${agoMinutes} min old (fresh)`;
+      return { isStale, lastSync: last, agoMinutes, hint };
+    } catch {
+      return { isStale: true, lastSync: null, agoMinutes: null, hint: 'cannot check freshness' };
+    }
+  }
+
+  /** Auto-sync a source if stale. Returns true if sync was triggered. */
+  async function autoSyncIfStale(source?: string): Promise<boolean> {
+    const freshness = getDataFreshness(source);
+    if (!freshness.isStale) return false;
+
+    try {
+      // Dynamic import to avoid circular deps
+      const { loadCredential, listCredentials } = await import('../connectors/credential-store.js');
+      const sources = source ? [source] : listCredentials();
+      if (sources.length === 0) return false;
+
+      logInfo('mcp', `Auto-syncing stale data (${freshness.hint})`, { source });
+
+      for (const src of sources) {
+        const cred = loadCredential(src);
+        if (!cred) continue;
+        try {
+          switch (src) {
+            case 'feishu': {
+              const { syncFeishu } = await import('../sync/feishu.js');
+              await syncFeishu(sqlite, cred.data);
+              break;
+            }
+            case 'github': {
+              const { syncGitHub } = await import('../sync/github.js');
+              await syncGitHub(sqlite, cred.data);
+              break;
+            }
+          }
+        } catch { /* sync failed, continue with stale data */ }
+      }
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   // ── Data Tools ────────────────────────────────────────────────────────
 
   server.tool(
     'search_data',
     {
-      query: z.string().describe('Keywords to search -- works like grep across all synced data'),
+      query: z.string().describe('Keywords to search across all synced data. JoWork auto-syncs if data is stale (>1 hour old).'),
       source: z.string().optional().describe('Filter by data source: github, feishu, gitlab, notion, slack, local'),
       path: z.string().optional().describe('Filter local files by path prefix (only applies to source=local)'),
       limit: z.number().optional().default(20).describe('Max results (default 20)'),
     },
     async ({ query, source, path, limit }) => {
+      // Auto-sync if data is stale
+      await autoSyncIfStale(source);
       const t0 = Date.now();
       // Auto-detect source from query if not explicitly provided
       if (!source) {
@@ -802,6 +869,8 @@ export function createJoWorkMcpServer(opts: McpServerOptions): McpServer {
     'get_briefing',
     {},
     async () => {
+      // Auto-sync if any source is stale
+      await autoSyncIfStale();
       const now = Date.now();
       const parts: string[] = ['# JoWork Daily Briefing\n'];
 
@@ -840,6 +909,58 @@ export function createJoWorkMcpServer(opts: McpServerOptions): McpServer {
       }
 
       return { content: [{ type: 'text' as const, text: parts.join('\n') }] };
+    },
+  );
+
+  // ── Sync Control ─────────────────────────────────────────────────────
+
+  server.tool(
+    'sync_now',
+    {
+      source: z.string().optional().describe('Sync a specific source (feishu, github, etc.) or omit for all'),
+    },
+    async ({ source }) => {
+      const freshness = getDataFreshness(source);
+
+      try {
+        const { loadCredential, listCredentials } = await import('../connectors/credential-store.js');
+        const sources = source ? [source] : listCredentials();
+        if (sources.length === 0) {
+          return { content: [{ type: 'text' as const, text: 'No data sources connected. Run `jowork connect <source>` first.' }] };
+        }
+
+        const results: string[] = [];
+        for (const src of sources) {
+          const cred = loadCredential(src);
+          if (!cred) continue;
+          try {
+            switch (src) {
+              case 'feishu': {
+                const { syncFeishu } = await import('../sync/feishu.js');
+                const r = await syncFeishu(sqlite, cred.data);
+                results.push(`feishu: ${r.newMessages} new messages`);
+                break;
+              }
+              case 'github': {
+                const { syncGitHub } = await import('../sync/github.js');
+                const r = await syncGitHub(sqlite, cred.data);
+                results.push(`github: ${r.newObjects} new objects`);
+                break;
+              }
+              default:
+                results.push(`${src}: sync not implemented in MCP context`);
+            }
+          } catch (err) {
+            results.push(`${src}: sync failed — ${err instanceof Error ? err.message : String(err)}`);
+          }
+        }
+
+        const summary = results.join('\n');
+        logInfo('mcp', 'sync_now completed', { results });
+        return { content: [{ type: 'text' as const, text: `Sync complete:\n${summary}\n\nPrevious data was ${freshness.hint}.` }] };
+      } catch (err) {
+        return { content: [{ type: 'text' as const, text: `Sync failed: ${err}` }] };
+      }
     },
   );
 
