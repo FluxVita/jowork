@@ -18,8 +18,13 @@ const t = isZh() ? {
   step1Done: '✓ 数据库已创建',
   step1Exists: '第 1/4 步：数据库已存在 ✓',
   step2: '第 2/4 步：连接你的 AI 助手',
-  step2Q: '你想安装到哪些 AI 助手？（空格选择，回车确认）',
-  step2Skip: '已跳过。稍后运行 `jowork register <engine>` 添加。',
+  step2Q: '如何注册到你的 AI 助手？',
+  step2Skills: '使用 skills.sh 自动注册（推荐，支持 42+ 种 Agent）',
+  step2Manual: '手动选择 Agent 注册',
+  step2SkipOpt: '跳过',
+  step2ManualQ: '你想安装到哪些 AI 助手？（空格选择，回车确认）',
+  step2SkillsHint: '\n  运行以下命令完成注册（在新终端窗口中执行）：\n\n    npx skills add FluxVita/jowork\n\n  它会自动检测你系统里的所有 Agent 并注册 JoWork。\n  完成后回来继续下一步。\n',
+  step2Skip: '已跳过。稍后运行 `jowork register <engine>` 或 `npx skills add FluxVita/jowork` 添加。',
   step3: '第 3/4 步：连接数据源（可选）',
   step3Q: '你想连接哪些数据源？（空格选择，回车确认）',
   step4Syncing: '第 4/4 步：正在同步你的数据...',
@@ -48,8 +53,13 @@ const t = isZh() ? {
   step1Done: '✓ Database created',
   step1Exists: 'Step 1/4: Database already exists ✓',
   step2: 'Step 2/4: Connect to your AI agents',
-  step2Q: 'Which agents do you want to install to? (space to select, enter to confirm)',
-  step2Skip: 'Skipped. Run `jowork register <engine>` later.',
+  step2Q: 'How do you want to register with your AI agents?',
+  step2Skills: 'Use skills.sh (recommended, supports 42+ agents)',
+  step2Manual: 'Manually select agents',
+  step2SkipOpt: 'Skip',
+  step2ManualQ: 'Which agents do you want to install to? (space to select, enter to confirm)',
+  step2SkillsHint: '\n  Run this command to register (in a new terminal window):\n\n    npx skills add FluxVita/jowork\n\n  It auto-detects all AI agents on your system and registers JoWork.\n  Come back here when done.\n',
+  step2Skip: 'Skipped. Run `jowork register <engine>` or `npx skills add FluxVita/jowork` later.',
   step3: 'Step 3/4: Connect a data source (optional)',
   step3Q: 'Which data sources do you want to connect? (space to select, enter to confirm)',
   step4Syncing: 'Step 4/4: Syncing your data...',
@@ -97,24 +107,44 @@ export async function runSetupWizard(): Promise<void> {
     console.log(`  ${t.step1Exists}\n`);
   }
 
-  // Step 2: Register with agent engines (multi-select)
+  // Step 2: Register with agent engines
   console.log(`  ${t.step2}`);
   console.log('');
-  const { engines } = await inquirer.prompt([{
-    type: 'checkbox',
-    name: 'engines',
+  const { regMethod } = await inquirer.prompt([{
+    type: 'list',
+    name: 'regMethod',
     message: t.step2Q,
     choices: [
-      { name: 'Claude Code', value: 'claude-code', checked: true },
-      { name: 'OpenAI Codex', value: 'codex' },
-      { name: 'Cursor', value: 'cursor' },
-      { name: 'OpenClaw', value: 'openclaw' },
+      { name: t.step2Skills, value: 'skills' },
+      { name: t.step2Manual, value: 'manual' },
+      { name: t.step2SkipOpt, value: 'skip' },
     ],
   }]);
 
-  if ((engines as string[]).length > 0) {
-    for (const engine of engines as string[]) {
-      await registerEngine(engine);
+  if (regMethod === 'skills') {
+    console.log(t.step2SkillsHint);
+    await inquirer.prompt([{
+      type: 'input',
+      name: 'continue',
+      message: isZh() ? '完成后按回车继续...' : 'Press Enter when done...',
+    }]);
+  } else if (regMethod === 'manual') {
+    const { engines } = await inquirer.prompt([{
+      type: 'checkbox',
+      name: 'engines',
+      message: t.step2ManualQ,
+      choices: [
+        { name: 'Claude Code', value: 'claude-code', checked: true },
+        { name: 'OpenAI Codex', value: 'codex' },
+        { name: 'Cursor', value: 'cursor' },
+        { name: 'OpenClaw', value: 'openclaw' },
+      ],
+    }]);
+
+    if ((engines as string[]).length > 0) {
+      for (const engine of engines as string[]) {
+        await registerEngine(engine);
+      }
     }
   } else {
     console.log(`  ${t.step2Skip}\n`);
