@@ -326,10 +326,9 @@ async function connectSource(source: string, inquirer: any): Promise<void> {
           ? '  飞书连接需要 App ID 和 App Secret\n  获取方式：https://open.feishu.cn/app → 创建应用 → 凭证'
           : '  Feishu requires App ID and App Secret\n  Get them: https://open.feishu.cn/app → Create App → Credentials');
         console.log('');
-
         const answers = await inquirer.prompt([
-          { type: 'input', name: 'appId', message: zh ? '飞书 App ID:' : 'Feishu App ID:', when: !appId },
-          { type: 'password', name: 'appSecret', message: zh ? '飞书 App Secret:' : 'Feishu App Secret:', when: !appSecret },
+          { type: 'input', name: 'appId', message: zh ? '飞书 App ID (cli_xxx):' : 'Feishu App ID (cli_xxx):', when: !appId },
+          { type: 'input', name: 'appSecret', message: zh ? '飞书 App Secret:' : 'Feishu App Secret:', when: !appSecret },
         ]);
         appId = appId ?? answers.appId;
         appSecret = appSecret ?? answers.appSecret;
@@ -346,12 +345,12 @@ async function connectSource(source: string, inquirer: any): Promise<void> {
           const data = await res.json() as { code: number };
           if (data.code === 0) {
             saveCredential('feishu', { type: 'feishu', data: { appId, appSecret }, createdAt: Date.now(), updatedAt: Date.now() });
-            console.log(zh ? '  ✓ 飞书已连接' : '  ✓ Feishu connected');
+            console.log(zh ? '  ✓ 飞书已连接（验证通过）' : '  ✓ Feishu connected (verified)');
           } else {
-            console.log(zh ? '  ✗ 飞书凭证无效' : '  ✗ Invalid Feishu credentials');
+            console.log(zh ? '  ✗ 飞书凭证无效，请检查 App ID 和 Secret' : '  ✗ Invalid Feishu credentials');
           }
         } catch {
-          console.log(zh ? '  ✗ 无法连接飞书 API' : '  ✗ Cannot reach Feishu API');
+          console.log(zh ? '  ✗ 无法连接飞书 API，请检查网络' : '  ✗ Cannot reach Feishu API');
         }
       }
       break;
@@ -368,14 +367,27 @@ async function connectSource(source: string, inquirer: any): Promise<void> {
           : '  GitHub requires a Personal Access Token\n  Create at: https://github.com/settings/tokens');
         console.log('');
         const answers = await inquirer.prompt([
-          { type: 'password', name: 'token', message: 'GitHub Token:' },
+          { type: 'input', name: 'token', message: zh ? 'GitHub Token (ghp_xxx):' : 'GitHub Token (ghp_xxx):' },
         ]);
         token = answers.token;
       }
 
       if (token) {
-        saveCredential('github', { type: 'github', data: { token }, createdAt: Date.now(), updatedAt: Date.now() });
-        console.log(zh ? '  ✓ GitHub 已连接' : '  ✓ GitHub connected');
+        console.log(zh ? '  验证中...' : '  Verifying...');
+        try {
+          const res = await fetch('https://api.github.com/user', {
+            headers: { Authorization: `Bearer ${token}`, 'User-Agent': 'jowork' },
+          });
+          if (res.ok) {
+            const user = await res.json() as { login: string };
+            saveCredential('github', { type: 'github', data: { token }, createdAt: Date.now(), updatedAt: Date.now() });
+            console.log(zh ? `  ✓ GitHub 已连接（用户：${user.login}）` : `  ✓ GitHub connected (user: ${user.login})`);
+          } else {
+            console.log(zh ? '  ✗ GitHub Token 无效' : '  ✗ Invalid GitHub token');
+          }
+        } catch {
+          console.log(zh ? '  ✗ 无法连接 GitHub API' : '  ✗ Cannot reach GitHub API');
+        }
       }
       break;
     }
@@ -385,13 +397,26 @@ async function connectSource(source: string, inquirer: any): Promise<void> {
         ? '  GitLab 连接需要 Personal Access Token\n  创建方式：GitLab → Settings → Access Tokens'
         : '  GitLab requires a Personal Access Token\n  Create at: GitLab → Settings → Access Tokens');
       console.log('');
-      const answers = await inquirer.prompt([
-        { type: 'password', name: 'token', message: 'GitLab Token:' },
+      const glAnswers = await inquirer.prompt([
+        { type: 'input', name: 'token', message: zh ? 'GitLab Token (glpat-xxx):' : 'GitLab Token (glpat-xxx):' },
         { type: 'input', name: 'apiUrl', message: zh ? 'GitLab 地址（默认 https://gitlab.com）:' : 'GitLab URL (default: https://gitlab.com):', default: 'https://gitlab.com' },
       ]);
-      if (answers.token) {
-        saveCredential('gitlab', { type: 'gitlab', data: { token: answers.token, apiUrl: answers.apiUrl }, createdAt: Date.now(), updatedAt: Date.now() });
-        console.log(zh ? '  ✓ GitLab 已连接' : '  ✓ GitLab connected');
+      if (glAnswers.token) {
+        console.log(zh ? '  验证中...' : '  Verifying...');
+        try {
+          const res = await fetch(`${glAnswers.apiUrl}/api/v4/user`, {
+            headers: { 'PRIVATE-TOKEN': glAnswers.token },
+          });
+          if (res.ok) {
+            const user = await res.json() as { username: string };
+            saveCredential('gitlab', { type: 'gitlab', data: { token: glAnswers.token, apiUrl: glAnswers.apiUrl }, createdAt: Date.now(), updatedAt: Date.now() });
+            console.log(zh ? `  ✓ GitLab 已连接（用户：${user.username}）` : `  ✓ GitLab connected (user: ${user.username})`);
+          } else {
+            console.log(zh ? '  ✗ GitLab Token 无效' : '  ✗ Invalid GitLab token');
+          }
+        } catch {
+          console.log(zh ? '  ✗ 无法连接 GitLab API' : '  ✗ Cannot reach GitLab API');
+        }
       }
       break;
     }
@@ -401,12 +426,28 @@ async function connectSource(source: string, inquirer: any): Promise<void> {
         ? '  Linear 连接需要 API Key\n  获取方式：Linear → Settings → API → Personal API keys'
         : '  Linear requires an API key\n  Get it: Linear → Settings → API → Personal API keys');
       console.log('');
-      const answers = await inquirer.prompt([
-        { type: 'password', name: 'apiKey', message: 'Linear API Key:' },
+      const linAnswers = await inquirer.prompt([
+        { type: 'input', name: 'apiKey', message: zh ? 'Linear API Key (lin_api_xxx):' : 'Linear API Key (lin_api_xxx):' },
       ]);
-      if (answers.apiKey) {
-        saveCredential('linear', { type: 'linear', data: { apiKey: answers.apiKey }, createdAt: Date.now(), updatedAt: Date.now() });
-        console.log(zh ? '  ✓ Linear 已连接' : '  ✓ Linear connected');
+      if (linAnswers.apiKey) {
+        console.log(zh ? '  验证中...' : '  Verifying...');
+        try {
+          const res = await fetch('https://api.linear.app/graphql', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: linAnswers.apiKey },
+            body: JSON.stringify({ query: '{ viewer { name } }' }),
+          });
+          if (res.ok) {
+            const data = await res.json() as { data?: { viewer?: { name: string } } };
+            const name = data.data?.viewer?.name ?? 'unknown';
+            saveCredential('linear', { type: 'linear', data: { apiKey: linAnswers.apiKey }, createdAt: Date.now(), updatedAt: Date.now() });
+            console.log(zh ? `  ✓ Linear 已连接（用户：${name}）` : `  ✓ Linear connected (user: ${name})`);
+          } else {
+            console.log(zh ? '  ✗ Linear API Key 无效' : '  ✗ Invalid Linear API key');
+          }
+        } catch {
+          console.log(zh ? '  ✗ 无法连接 Linear API' : '  ✗ Cannot reach Linear API');
+        }
       }
       break;
     }
@@ -416,13 +457,25 @@ async function connectSource(source: string, inquirer: any): Promise<void> {
         ? '  PostHog 连接需要 Personal API Key\n  获取方式：PostHog → Settings → Personal API Keys'
         : '  PostHog requires a Personal API key\n  Get it: PostHog → Settings → Personal API Keys');
       console.log('');
-      const answers = await inquirer.prompt([
-        { type: 'password', name: 'apiKey', message: 'PostHog API Key:' },
+      const phAnswers = await inquirer.prompt([
+        { type: 'input', name: 'apiKey', message: zh ? 'PostHog API Key (phx_xxx):' : 'PostHog API Key (phx_xxx):' },
         { type: 'input', name: 'host', message: zh ? 'PostHog 地址（默认 https://app.posthog.com）:' : 'PostHog host (default: https://app.posthog.com):', default: 'https://app.posthog.com' },
       ]);
-      if (answers.apiKey) {
-        saveCredential('posthog', { type: 'posthog', data: { apiKey: answers.apiKey, host: answers.host, projectId: '1' }, createdAt: Date.now(), updatedAt: Date.now() });
-        console.log(zh ? '  ✓ PostHog 已连接' : '  ✓ PostHog connected');
+      if (phAnswers.apiKey) {
+        console.log(zh ? '  验证中...' : '  Verifying...');
+        try {
+          const res = await fetch(`${phAnswers.host}/api/projects/`, {
+            headers: { Authorization: `Bearer ${phAnswers.apiKey}` },
+          });
+          if (res.ok) {
+            saveCredential('posthog', { type: 'posthog', data: { apiKey: phAnswers.apiKey, host: phAnswers.host, projectId: '1' }, createdAt: Date.now(), updatedAt: Date.now() });
+            console.log(zh ? '  ✓ PostHog 已连接（验证通过）' : '  ✓ PostHog connected (verified)');
+          } else {
+            console.log(zh ? '  ✗ PostHog API Key 无效' : '  ✗ Invalid PostHog API key');
+          }
+        } catch {
+          console.log(zh ? '  ✗ 无法连接 PostHog API' : '  ✗ Cannot reach PostHog API');
+        }
       }
       break;
     }
