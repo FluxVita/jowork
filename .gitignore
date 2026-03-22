@@ -29,8 +29,9 @@ findings.md
 progress.md
 task_plan.md
 
-# AI tool config
-.claude/
+# AI tool config (keep skills/ for distribution)
+.claude/*
+!.claude/skills/
 GEMINI.md
 .collaborator
 .gstack/

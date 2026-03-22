@@ -1,0 +1,89 @@
+#!/bin/bash
+set -e
+
+# JoWork Skill Setup
+# Installs jowork CLI, initializes DB, registers MCP server with Claude Code
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+VERSION=$(cat "$SCRIPT_DIR/VERSION" 2>/dev/null || echo "unknown")
+
+echo "JoWork Skill Setup v${VERSION}"
+echo "================================"
+
+# Step 1: Check/install jowork CLI
+if command -v jowork >/dev/null 2>&1; then
+  echo "✓ jowork CLI found: $(which jowork)"
+else
+  echo "Installing jowork CLI..."
+  npm install -g jowork
+  if command -v jowork >/dev/null 2>&1; then
+    echo "✓ jowork CLI installed"
+  else
+    echo "✗ Failed to install jowork. Try: npm install -g jowork"
+    exit 1
+  fi
+fi
+
+# Step 2: Initialize JoWork
+if [ -d ~/.jowork ]; then
+  echo "✓ JoWork already initialized"
+else
+  echo "Initializing JoWork..."
+  jowork init
+  echo "✓ JoWork initialized"
+fi
+
+# Step 3: Register MCP server with Claude Code
+if [ -f ~/.claude.json ]; then
+  if grep -q '"jowork"' ~/.claude.json 2>/dev/null; then
+    echo "✓ MCP server already registered with Claude Code"
+  else
+    echo "Registering MCP server with Claude Code..."
+    jowork register claude-code
+    echo "✓ MCP server registered"
+    echo ""
+    echo "⚠ Restart Claude Code to activate MCP tools"
+  fi
+else
+  echo "Registering MCP server with Claude Code..."
+  jowork register claude-code
+  echo "✓ MCP server registered"
+fi
+
+# Step 4: Register with Codex if available
+if command -v codex >/dev/null 2>&1; then
+  if [ -f ~/.codex/config.toml ] && grep -q "jowork" ~/.codex/config.toml 2>/dev/null; then
+    echo "✓ MCP server already registered with Codex"
+  else
+    echo "Registering MCP server with Codex..."
+    jowork register codex
+    echo "✓ MCP server registered with Codex"
+  fi
+fi
+
+# Step 5: Register with OpenClaw if available
+if command -v openclaw >/dev/null 2>&1; then
+  if [ -f ~/.openclaw/config.json ] && grep -q "jowork" ~/.openclaw/config.json 2>/dev/null; then
+    echo "✓ MCP server already registered with OpenClaw"
+  else
+    echo "Registering MCP server with OpenClaw..."
+    jowork register openclaw
+    echo "✓ MCP server registered with OpenClaw"
+  fi
+fi
+
+echo ""
+echo "================================"
+echo "JoWork is ready!"
+echo ""
+echo "Skills installed:"
+echo "  /jowork           — Status overview"
+echo "  /jowork-connect   — Connect data sources"
+echo "  /jowork-sync      — Sync data"
+echo "  /jowork-dashboard — Open companion panel"
+echo "  /jowork-context   — Index local directories"
+echo ""
+echo "MCP tools available after restart:"
+echo "  search_data, read_memory, write_memory, get_goals, get_briefing, ..."
+echo ""
+echo "Next: Open Claude Code and try /jowork or say 'connect my GitHub'"
