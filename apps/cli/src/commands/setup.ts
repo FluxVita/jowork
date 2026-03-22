@@ -150,7 +150,7 @@ export async function runSetupWizard(): Promise<void> {
     console.log(`  ${t.step2Skip}\n`);
   }
 
-  // Step 3: Connect data sources (one by one, avoid checkbox confusion)
+  // Step 3: Connect data sources (toggle-list: Enter to toggle, "Done" to submit)
   console.log(`  ${t.step3}`);
   console.log('');
 
@@ -162,16 +162,39 @@ export async function runSetupWizard(): Promise<void> {
     { key: 'posthog', label: isZh() ? 'PostHog（用户行为分析）' : 'PostHog (analytics, events)' },
   ];
 
-  for (const ds of dataSources) {
-    const { connect } = await inquirer.prompt([{
-      type: 'confirm',
-      name: 'connect',
-      message: isZh() ? `连接 ${ds.label}？` : `Connect ${ds.label}?`,
-      default: false,
+  const selected = new Set<string>();
+  const doneLabel = isZh() ? '✓ 完成选择' : '✓ Done';
+  const hintMsg = isZh() ? '回车切换选中，选完后选「✓ 完成选择」提交' : 'Enter to toggle, select "✓ Done" to submit';
+
+  let picking = true;
+  while (picking) {
+    const choices = dataSources.map(ds => ({
+      name: `${selected.has(ds.key) ? '◉' : '○'} ${ds.label}`,
+      value: ds.key,
+    }));
+    choices.push({ name: doneLabel, value: '_done' });
+
+    const { pick } = await inquirer.prompt([{
+      type: 'list',
+      name: 'pick',
+      message: hintMsg,
+      choices,
+      loop: false,
     }]);
-    if (connect) {
-      await connectSource(ds.key, inquirer);
+
+    if (pick === '_done') {
+      picking = false;
+    } else {
+      if (selected.has(pick)) {
+        selected.delete(pick);
+      } else {
+        selected.add(pick);
+      }
     }
+  }
+
+  for (const key of selected) {
+    await connectSource(key, inquirer);
   }
 
   // Step 4: First sync
