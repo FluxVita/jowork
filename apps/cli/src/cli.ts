@@ -16,6 +16,7 @@ import { installServiceCommand } from './commands/install-service.js';
 import { gcCommand } from './commands/gc.js';
 import { deviceSyncCommand } from './commands/device-sync.js';
 import { dashboardCommand } from './commands/dashboard.js';
+import { logCommand } from './commands/log.js';
 
 const program = new Command();
 
@@ -38,6 +39,7 @@ installServiceCommand(program);
 gcCommand(program);
 deviceSyncCommand(program);
 dashboardCommand(program);
+logCommand(program);
 
 // Default action: when no subcommand is given, show wizard or quick status
 program.action(async () => {

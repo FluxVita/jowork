@@ -1,7 +1,7 @@
 import type { Command } from 'commander';
 import { existsSync } from 'node:fs';
 import { DbManager } from '../db/manager.js';
-import { dbPath } from '../utils/paths.js';
+import { dbPath, fileRepoDir } from '../utils/paths.js';
 import { loadCredential, listCredentials } from '../connectors/credential-store.js';
 import { logError } from '../utils/logger.js';
 import { linkAllUnprocessed } from '../sync/linker.js';
@@ -12,6 +12,7 @@ import { syncLinear } from '../sync/linear.js';
 import { syncPostHog } from '../sync/posthog.js';
 import { syncFirebase } from '../sync/firebase.js';
 import { FileWriter } from '../sync/file-writer.js';
+import { GitManager, type SyncSummary } from '../sync/git-manager.js';
 
 /**
  * Core sync logic — callable from both the CLI command and the setup wizard.
@@ -20,6 +21,16 @@ export async function runSync(sources: string[]): Promise<void> {
   const db = new DbManager(dbPath());
   db.ensureTables();
   const fileWriter = new FileWriter();
+  const syncResults: SyncSummary['sources'] = [];
+
+  // Initialize git repo before syncing so init commit only contains .gitignore
+  let gitManager: GitManager | null = null;
+  try {
+    gitManager = new GitManager(fileRepoDir());
+    await gitManager.init();
+  } catch {
+    // Git not available — sync continues without version tracking
+  }
 
   for (const source of sources) {
     const cred = loadCredential(source);
@@ -39,12 +50,14 @@ export async function runSync(sources: string[]): Promise<void> {
           };
           const result = await syncFeishu(db.getSqlite(), cred.data, logger, fileWriter);
           console.log(`  \u2713 Synced ${result.totalMessages} messages (${result.newMessages} new) from ${result.chats} chats`);
+          syncResults.push({ source: 'feishu', newObjects: result.newMessages, label: 'messages' });
 
           // Also sync meetings/calendar
           try {
             const meetResult = await syncFeishuMeetings(db.getSqlite(), cred.data, logger, fileWriter);
             if (meetResult.meetings > 0) {
               console.log(`  \u2713 Synced ${meetResult.meetings} calendar events (${meetResult.newObjects} new)`);
+              syncResults.push({ source: 'feishu/meetings', newObjects: meetResult.newObjects, label: 'events' });
             }
           } catch (err) {
             console.log(`  \u26A0 Meeting sync: ${err}`);
@@ -55,6 +68,7 @@ export async function runSync(sources: string[]): Promise<void> {
             const docResult = await syncFeishuDocs(db.getSqlite(), cred.data, logger, fileWriter);
             if (docResult.docs > 0) {
               console.log(`  \u2713 Synced ${docResult.docs} documents (${docResult.newObjects} new)`);
+              syncResults.push({ source: 'feishu/docs', newObjects: docResult.newObjects, label: 'docs' });
             }
           } catch (err) {
             console.log(`  \u26A0 Document sync: ${err}`);
@@ -65,6 +79,7 @@ export async function runSync(sources: string[]): Promise<void> {
             const approvalResult = await syncFeishuApprovals(db.getSqlite(), cred.data, logger, fileWriter);
             if (approvalResult.approvals > 0) {
               console.log(`  \u2713 Synced ${approvalResult.approvals} approvals (${approvalResult.newObjects} new)`);
+              syncResults.push({ source: 'feishu/approvals', newObjects: approvalResult.newObjects, label: 'approvals' });
             }
           } catch (err) {
             console.log(`  \u26A0 Approval sync: ${err}`);
@@ -79,6 +94,7 @@ export async function runSync(sources: string[]): Promise<void> {
           };
           const result = await syncGitHub(db.getSqlite(), cred.data, ghLogger, fileWriter);
           console.log(`  \u2713 Synced ${result.repos} repos: ${result.issues} issues, ${result.prs} PRs (${result.newObjects} new)`);
+          syncResults.push({ source: 'github', newObjects: result.newObjects });
           break;
         }
         case 'gitlab': {
@@ -89,6 +105,7 @@ export async function runSync(sources: string[]): Promise<void> {
           };
           const glResult = await syncGitLab(db.getSqlite(), cred.data, glLogger, fileWriter);
           console.log(`  \u2713 Synced ${glResult.projects} projects: ${glResult.issues} issues, ${glResult.mrs} MRs (${glResult.newObjects} new)`);
+          syncResults.push({ source: 'gitlab', newObjects: glResult.newObjects });
           break;
         }
         case 'linear': {
@@ -99,6 +116,7 @@ export async function runSync(sources: string[]): Promise<void> {
           };
           const linResult = await syncLinear(db.getSqlite(), cred.data, linLogger, fileWriter);
           console.log(`  \u2713 Synced ${linResult.issues} Linear issues (${linResult.newObjects} new)`);
+          syncResults.push({ source: 'linear', newObjects: linResult.newObjects, label: 'issues' });
           break;
         }
         case 'posthog': {
@@ -109,6 +127,7 @@ export async function runSync(sources: string[]): Promise<void> {
           };
           const phResult = await syncPostHog(db.getSqlite(), cred.data, phLogger, fileWriter);
           console.log(`  \u2713 Synced ${phResult.insights} insights, ${phResult.events} events (${phResult.newObjects} new)`);
+          syncResults.push({ source: 'posthog', newObjects: phResult.newObjects });
           break;
         }
         case 'firebase': {
@@ -119,6 +138,7 @@ export async function runSync(sources: string[]): Promise<void> {
           };
           const fbResult = await syncFirebase(db.getSqlite(), cred.data, fbLogger, fileWriter);
           console.log(`  \u2713 Synced ${fbResult.events} Firebase events (${fbResult.newObjects} new)`);
+          syncResults.push({ source: 'firebase', newObjects: fbResult.newObjects, label: 'events' });
           break;
         }
         default:
@@ -136,6 +156,21 @@ export async function runSync(sources: string[]): Promise<void> {
   console.log(`  \u2713 Extracted ${linksCreated} links from ${processed} objects`);
 
   db.close();
+
+  // Git commit sync results
+  if (gitManager) {
+    try {
+      const sha = await gitManager.commitSync({
+        timestamp: new Date().toISOString(),
+        sources: syncResults,
+      });
+      if (sha) {
+        console.log(`  \u2713 Committed: ${sha.slice(0, 7)}`);
+      }
+    } catch (err) {
+      logError('sync', 'Git commit failed', { error: String(err) });
+    }
+  }
 }
 
 export function syncCommand(program: Command): void {

@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { Cron } from 'croner';
 import { createJoWorkMcpServer } from '../mcp/server.js';
-import { dbPath, joworkDir, logsDir } from '../utils/paths.js';
+import { dbPath, joworkDir, logsDir, fileRepoDir } from '../utils/paths.js';
 import { DbManager } from '../db/manager.js';
 import { listCredentials, loadCredential } from '../connectors/credential-store.js';
 import { linkAllUnprocessed } from '../sync/linker.js';
@@ -15,6 +15,7 @@ import { syncLinear } from '../sync/linear.js';
 import { syncPostHog } from '../sync/posthog.js';
 import { syncFirebase } from '../sync/firebase.js';
 import { FileWriter } from '../sync/file-writer.js';
+import { GitManager, type SyncSummary } from '../sync/git-manager.js';
 import { pollSignals } from '../goals/signal-poller.js';
 import { evaluateTriggers } from '../goals/trigger-engine.js';
 import { runCompaction } from '../memory/compaction.js';
@@ -120,6 +121,16 @@ async function runSync(): Promise<void> {
 
   daemonLog('info', 'Sync cycle starting', { sources });
 
+  // Initialize git repo before syncing so init commit only contains .gitignore
+  let gitManager: GitManager | null = null;
+  try {
+    gitManager = new GitManager(fileRepoDir());
+    await gitManager.init();
+  } catch {
+    // Git not available — daemon sync continues without version tracking
+  }
+
+  const syncResults: SyncSummary['sources'] = [];
   let db: DbManager | null = null;
   try {
     db = new DbManager(dbPath());
@@ -136,27 +147,48 @@ async function runSync(): Promise<void> {
 
       try {
         switch (source) {
-          case 'feishu':
-            await syncFeishu(sqlite, cred.data, daemonSyncLogger, fileWriter);
-            try { await syncFeishuMeetings(sqlite, cred.data, daemonSyncLogger, fileWriter); } catch (e) { daemonLog('warn', `Feishu meetings sync: ${e}`); }
-            try { await syncFeishuDocs(sqlite, cred.data, daemonSyncLogger, fileWriter); } catch (e) { daemonLog('warn', `Feishu docs sync: ${e}`); }
-            try { await syncFeishuApprovals(sqlite, cred.data, daemonSyncLogger, fileWriter); } catch (e) { daemonLog('warn', `Feishu approvals sync: ${e}`); }
+          case 'feishu': {
+            const r = await syncFeishu(sqlite, cred.data, daemonSyncLogger, fileWriter);
+            syncResults.push({ source: 'feishu', newObjects: r.newMessages, label: 'messages' });
+            try {
+              const mr = await syncFeishuMeetings(sqlite, cred.data, daemonSyncLogger, fileWriter);
+              syncResults.push({ source: 'feishu/meetings', newObjects: mr.newObjects, label: 'events' });
+            } catch (e) { daemonLog('warn', `Feishu meetings sync: ${e}`); }
+            try {
+              const dr = await syncFeishuDocs(sqlite, cred.data, daemonSyncLogger, fileWriter);
+              syncResults.push({ source: 'feishu/docs', newObjects: dr.newObjects, label: 'docs' });
+            } catch (e) { daemonLog('warn', `Feishu docs sync: ${e}`); }
+            try {
+              const ar = await syncFeishuApprovals(sqlite, cred.data, daemonSyncLogger, fileWriter);
+              syncResults.push({ source: 'feishu/approvals', newObjects: ar.newObjects, label: 'approvals' });
+            } catch (e) { daemonLog('warn', `Feishu approvals sync: ${e}`); }
             break;
-          case 'github':
-            await syncGitHub(sqlite, cred.data, daemonSyncLogger, fileWriter);
+          }
+          case 'github': {
+            const r = await syncGitHub(sqlite, cred.data, daemonSyncLogger, fileWriter);
+            syncResults.push({ source: 'github', newObjects: r.newObjects });
             break;
-          case 'gitlab':
-            await syncGitLab(sqlite, cred.data, daemonSyncLogger, fileWriter);
+          }
+          case 'gitlab': {
+            const r = await syncGitLab(sqlite, cred.data, daemonSyncLogger, fileWriter);
+            syncResults.push({ source: 'gitlab', newObjects: r.newObjects });
             break;
-          case 'linear':
-            await syncLinear(sqlite, cred.data, daemonSyncLogger, fileWriter);
+          }
+          case 'linear': {
+            const r = await syncLinear(sqlite, cred.data, daemonSyncLogger, fileWriter);
+            syncResults.push({ source: 'linear', newObjects: r.newObjects, label: 'issues' });
             break;
-          case 'posthog':
-            await syncPostHog(sqlite, cred.data, daemonSyncLogger, fileWriter);
+          }
+          case 'posthog': {
+            const r = await syncPostHog(sqlite, cred.data, daemonSyncLogger, fileWriter);
+            syncResults.push({ source: 'posthog', newObjects: r.newObjects });
             break;
-          case 'firebase':
-            await syncFirebase(sqlite, cred.data, daemonSyncLogger, fileWriter);
+          }
+          case 'firebase': {
+            const r = await syncFirebase(sqlite, cred.data, daemonSyncLogger, fileWriter);
+            syncResults.push({ source: 'firebase', newObjects: r.newObjects, label: 'events' });
             break;
+          }
           default:
             daemonLog('info', `Source ${source} sync not implemented yet`);
         }
@@ -200,6 +232,21 @@ async function runSync(): Promise<void> {
     });
   } finally {
     db?.close();
+  }
+
+  // Git commit sync results
+  if (gitManager) {
+    try {
+      const sha = await gitManager.commitSync({
+        timestamp: new Date().toISOString(),
+        sources: syncResults,
+      });
+      if (sha) {
+        daemonLog('info', `Git committed sync: ${sha.slice(0, 7)}`);
+      }
+    } catch (err) {
+      daemonLog('warn', `Git commit failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
   }
 
   daemonLog('info', 'Sync cycle complete');

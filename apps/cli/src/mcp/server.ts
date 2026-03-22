@@ -130,10 +130,10 @@ export function createJoWorkMcpServer(opts: McpServerOptions): McpServer {
       if (ftsMatchQuery) {
         try {
           const ftsQuery = source
-            ? `SELECT o.id, o.title, o.summary, o.source, o.source_type, o.uri, o.tags
+            ? `SELECT o.id, o.title, o.summary, o.source, o.source_type, o.uri, o.tags, o.file_path
                FROM objects_fts JOIN objects o ON o.rowid = objects_fts.rowid
                WHERE objects_fts MATCH ? AND o.source = ?${pathFilter} LIMIT ?`
-            : `SELECT o.id, o.title, o.summary, o.source, o.source_type, o.uri, o.tags
+            : `SELECT o.id, o.title, o.summary, o.source, o.source_type, o.uri, o.tags, o.file_path
                FROM objects_fts JOIN objects o ON o.rowid = objects_fts.rowid
                WHERE objects_fts MATCH ?${pathFilter} LIMIT ?`;
           const ftsArgs = source ? [ftsMatchQuery, source, limit] : [ftsMatchQuery, limit];
@@ -171,7 +171,7 @@ export function createJoWorkMcpServer(opts: McpServerOptions): McpServer {
           }
           params.push(source, limit);
           rows = sqlite.prepare(`
-            SELECT id, title, summary, source, source_type, uri, tags FROM objects
+            SELECT id, title, summary, source, source_type, uri, tags, file_path FROM objects
             WHERE (${conditions}) AND source = ?${likePathFilter} ORDER BY last_synced_at DESC LIMIT ?
           `).all(...params);
         } else {
@@ -179,13 +179,13 @@ export function createJoWorkMcpServer(opts: McpServerOptions): McpServer {
         }
       } else if (source) {
         rows = sqlite.prepare(`
-          SELECT id, title, summary, source, source_type, uri, tags FROM objects
+          SELECT id, title, summary, source, source_type, uri, tags, file_path FROM objects
           WHERE source = ?${likePathFilter} ORDER BY last_synced_at DESC LIMIT ?
         `).all(source, limit);
       } else if (cleanedQuery.length >= 2) {
         const pattern = `%${escapeLike(cleanedQuery)}%`;
         rows = sqlite.prepare(`
-          SELECT id, title, summary, source, source_type, uri, tags FROM objects
+          SELECT id, title, summary, source, source_type, uri, tags, file_path FROM objects
           WHERE (title LIKE ? OR summary LIKE ? OR tags LIKE ? OR source LIKE ? OR source_type LIKE ?)${likePathFilter}
           ORDER BY last_synced_at DESC LIMIT ?
         `).all(pattern, pattern, pattern, pattern, pattern, limit);
@@ -556,6 +556,42 @@ export function createJoWorkMcpServer(opts: McpServerOptions): McpServer {
       } catch {
         return { contents: [{ uri: uri.href, mimeType: 'application/json', text: '[]' }] };
       }
+    },
+  );
+
+  server.resource(
+    'data-files',
+    'jowork://data-files',
+    async (uri) => {
+      const { readdirSync, statSync } = await import('node:fs');
+      const { join: pathJoin } = await import('node:path');
+
+      function walkDir(dir: string, prefix = ''): string[] {
+        const files: string[] = [];
+        try {
+          for (const entry of readdirSync(dir)) {
+            if (entry.startsWith('.')) continue;
+            const full = pathJoin(dir, entry);
+            const rel = prefix ? `${prefix}/${entry}` : entry;
+            if (statSync(full).isDirectory()) {
+              files.push(...walkDir(full, rel));
+            } else {
+              files.push(rel);
+            }
+          }
+        } catch { /* ignore */ }
+        return files;
+      }
+
+      const repoDir = join(process.env['HOME'] ?? '', '.jowork', 'data', 'repo');
+      const tree = walkDir(repoDir);
+      return {
+        contents: [{
+          uri: uri.href,
+          mimeType: 'application/json',
+          text: JSON.stringify({ repoDir, files: tree, count: tree.length }, null, 2),
+        }],
+      };
     },
   );
 
