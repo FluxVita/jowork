@@ -174,6 +174,42 @@ export async function runSetupWizard(): Promise<void> {
         name: zh ? 'Firebase（用户行为埋点）' : 'Firebase (analytics events)',
         value: 'firebase',
       },
+      {
+        name: zh ? 'Notion（文档、数据库、知识库）' : 'Notion (docs, databases, wikis)',
+        value: 'notion',
+      },
+      {
+        name: zh ? 'Jira（任务追踪）' : 'Jira (issue tracking)',
+        value: 'jira',
+      },
+      {
+        name: zh ? 'Confluence（企业文档）' : 'Confluence (enterprise wiki)',
+        value: 'confluence',
+      },
+      {
+        name: zh ? 'Google Calendar（日历、会议）' : 'Google Calendar (events, meetings)',
+        value: 'google-calendar',
+      },
+      {
+        name: zh ? 'Sentry（错误监控、崩溃追踪）' : 'Sentry (error tracking, crashes)',
+        value: 'sentry',
+      },
+      {
+        name: zh ? 'Figma（设计文件）' : 'Figma (design files)',
+        value: 'figma',
+      },
+      {
+        name: zh ? 'Discord（社区消息）' : 'Discord (community messages)',
+        value: 'discord',
+      },
+      {
+        name: zh ? 'Trello（看板、任务管理）' : 'Trello (kanban boards)',
+        value: 'trello',
+      },
+      {
+        name: zh ? 'Asana（项目管理）' : 'Asana (project management)',
+        value: 'asana',
+      },
     ],
   }]);
 
@@ -349,6 +385,15 @@ async function connectSource(source: string, inquirer: any): Promise<void> {
     slack: '── Slack ──',
     telegram: '── Telegram ──',
     firebase: '── Firebase ──',
+    notion: '── Notion ──',
+    jira: '── Jira ──',
+    confluence: '── Confluence ──',
+    'google-calendar': '── Google Calendar ──',
+    sentry: '── Sentry ──',
+    figma: '── Figma ──',
+    discord: '── Discord ──',
+    trello: '── Trello ──',
+    asana: '── Asana ──',
   };
   console.log(`\n  ${titles[source] ?? source}`);
 
@@ -597,6 +642,206 @@ async function connectSource(source: string, inquirer: any): Promise<void> {
       if (fbAnswers.apiKey && fbAnswers.propertyId) {
         saveCredential('firebase', { type: 'firebase', data: { apiKey: fbAnswers.apiKey, projectId: fbAnswers.propertyId, propertyId: fbAnswers.propertyId }, createdAt: Date.now(), updatedAt: Date.now() });
         console.log(zh ? '  ✓ Firebase 已连接' : '  ✓ Firebase connected');
+      }
+      break;
+    }
+    case 'notion': {
+      console.log(zh
+        ? '  需要 Integration Token\n  创建方式：https://www.notion.so/my-integrations → New integration'
+        : '  Requires an Integration Token\n  Create at: https://www.notion.so/my-integrations → New integration');
+      console.log('');
+      const answers = await inquirer.prompt([
+        { type: 'input', name: 'token', message: 'Notion Token (secret_xxx / ntn_xxx):' },
+      ]);
+      if (answers.token) {
+        console.log(zh ? '  验证中...' : '  Verifying...');
+        try {
+          const res = await fetch('https://api.notion.com/v1/users/me', {
+            headers: { Authorization: `Bearer ${answers.token}`, 'Notion-Version': '2022-06-28' },
+          });
+          if (res.ok) {
+            const data = await res.json() as { name?: string; bot?: { owner?: { user?: { name?: string } } } };
+            const name = data.bot?.owner?.user?.name ?? data.name ?? '';
+            saveCredential('notion', { type: 'notion', data: { token: answers.token }, createdAt: Date.now(), updatedAt: Date.now() });
+            console.log(zh ? `  ✓ Notion 已连接${name ? `（${name}）` : '（验证通过）'}` : `  ✓ Notion connected${name ? ` (${name})` : ' (verified)'}`);
+          } else {
+            console.log(zh ? '  ✗ Notion Token 无效' : '  ✗ Invalid Notion token');
+          }
+        } catch {
+          console.log(zh ? '  ✗ 无法连接 Notion API' : '  ✗ Cannot reach Notion API');
+        }
+      }
+      break;
+    }
+    case 'jira': {
+      console.log(zh
+        ? '  需要 API Token + 邮箱 + 域名\n  创建方式：https://id.atlassian.com/manage-profile/security/api-tokens'
+        : '  Requires API Token + email + domain\n  Create at: https://id.atlassian.com/manage-profile/security/api-tokens');
+      console.log('');
+      const answers = await inquirer.prompt([
+        { type: 'input', name: 'domain', message: zh ? 'Jira 域名 (xxx.atlassian.net):' : 'Jira domain (xxx.atlassian.net):' },
+        { type: 'input', name: 'email', message: zh ? '邮箱:' : 'Email:' },
+        { type: 'input', name: 'token', message: 'API Token:' },
+      ]);
+      if (answers.token && answers.email && answers.domain) {
+        console.log(zh ? '  验证中...' : '  Verifying...');
+        try {
+          const auth = Buffer.from(`${answers.email}:${answers.token}`).toString('base64');
+          const res = await fetch(`https://${answers.domain}/rest/api/3/myself`, {
+            headers: { Authorization: `Basic ${auth}`, Accept: 'application/json' },
+          });
+          if (res.ok) {
+            const data = await res.json() as { displayName?: string };
+            saveCredential('jira', { type: 'jira', data: { domain: answers.domain, email: answers.email, token: answers.token }, createdAt: Date.now(), updatedAt: Date.now() });
+            console.log(zh ? `  ✓ Jira 已连接（${data.displayName ?? '验证通过'}）` : `  ✓ Jira connected (${data.displayName ?? 'verified'})`);
+          } else {
+            console.log(zh ? '  ✗ Jira 凭证无效' : '  ✗ Invalid Jira credentials');
+          }
+        } catch {
+          console.log(zh ? '  ✗ 无法连接 Jira API' : '  ✗ Cannot reach Jira API');
+        }
+      }
+      break;
+    }
+    case 'confluence': {
+      console.log(zh
+        ? '  需要 API Token + 邮箱 + 域名（与 Jira 相同）\n  创建方式：https://id.atlassian.com/manage-profile/security/api-tokens'
+        : '  Requires API Token + email + domain (same as Jira)\n  Create at: https://id.atlassian.com/manage-profile/security/api-tokens');
+      console.log('');
+      const answers = await inquirer.prompt([
+        { type: 'input', name: 'domain', message: zh ? 'Confluence 域名 (xxx.atlassian.net):' : 'Confluence domain (xxx.atlassian.net):' },
+        { type: 'input', name: 'email', message: zh ? '邮箱:' : 'Email:' },
+        { type: 'input', name: 'token', message: 'API Token:' },
+      ]);
+      if (answers.token && answers.email && answers.domain) {
+        saveCredential('confluence', { type: 'confluence', data: { domain: answers.domain, email: answers.email, token: answers.token }, createdAt: Date.now(), updatedAt: Date.now() });
+        console.log(zh ? '  ✓ Confluence 已连接' : '  ✓ Confluence connected');
+      }
+      break;
+    }
+    case 'google-calendar': {
+      console.log(zh
+        ? '  需要 OAuth Client ID（或 Service Account Key）\n  创建方式：https://console.cloud.google.com → APIs → Credentials'
+        : '  Requires OAuth Client ID (or Service Account Key)\n  Create at: https://console.cloud.google.com → APIs → Credentials');
+      console.log('');
+      const answers = await inquirer.prompt([
+        { type: 'input', name: 'clientId', message: 'Client ID:' },
+        { type: 'input', name: 'clientSecret', message: 'Client Secret:' },
+      ]);
+      if (answers.clientId) {
+        saveCredential('google-calendar', { type: 'google-calendar', data: { clientId: answers.clientId, clientSecret: answers.clientSecret ?? '' }, createdAt: Date.now(), updatedAt: Date.now() });
+        console.log(zh ? '  ✓ Google Calendar 已连接' : '  ✓ Google Calendar connected');
+      }
+      break;
+    }
+    case 'sentry': {
+      console.log(zh
+        ? '  需要 Auth Token\n  创建方式：https://sentry.io/settings/account/api/auth-tokens/'
+        : '  Requires Auth Token\n  Create at: https://sentry.io/settings/account/api/auth-tokens/');
+      console.log('');
+      const answers = await inquirer.prompt([
+        { type: 'input', name: 'token', message: 'Sentry Auth Token (sntrys_xxx):' },
+        { type: 'input', name: 'org', message: zh ? 'Organization slug:' : 'Organization slug:' },
+      ]);
+      if (answers.token && answers.org) {
+        console.log(zh ? '  验证中...' : '  Verifying...');
+        try {
+          const res = await fetch(`https://sentry.io/api/0/organizations/${answers.org}/`, {
+            headers: { Authorization: `Bearer ${answers.token}` },
+          });
+          if (res.ok) {
+            saveCredential('sentry', { type: 'sentry', data: { token: answers.token, org: answers.org }, createdAt: Date.now(), updatedAt: Date.now() });
+            console.log(zh ? '  ✓ Sentry 已连接（验证通过）' : '  ✓ Sentry connected (verified)');
+          } else {
+            console.log(zh ? '  ✗ Sentry Token 无效' : '  ✗ Invalid Sentry token');
+          }
+        } catch {
+          console.log(zh ? '  ✗ 无法连接 Sentry API' : '  ✗ Cannot reach Sentry API');
+        }
+      }
+      break;
+    }
+    case 'figma': {
+      console.log(zh
+        ? '  需要 Personal Access Token\n  创建方式：Figma → Settings → Personal access tokens'
+        : '  Requires Personal Access Token\n  Create at: Figma → Settings → Personal access tokens');
+      console.log('');
+      const answers = await inquirer.prompt([
+        { type: 'input', name: 'token', message: 'Figma Token (figd_xxx):' },
+      ]);
+      if (answers.token) {
+        console.log(zh ? '  验证中...' : '  Verifying...');
+        try {
+          const res = await fetch('https://api.figma.com/v1/me', {
+            headers: { 'X-FIGMA-TOKEN': answers.token },
+          });
+          if (res.ok) {
+            const data = await res.json() as { handle?: string; email?: string };
+            saveCredential('figma', { type: 'figma', data: { token: answers.token }, createdAt: Date.now(), updatedAt: Date.now() });
+            console.log(zh ? `  ✓ Figma 已连接（${data.handle ?? data.email ?? '验证通过'}）` : `  ✓ Figma connected (${data.handle ?? data.email ?? 'verified'})`);
+          } else {
+            console.log(zh ? '  ✗ Figma Token 无效' : '  ✗ Invalid Figma token');
+          }
+        } catch {
+          console.log(zh ? '  ✗ 无法连接 Figma API' : '  ✗ Cannot reach Figma API');
+        }
+      }
+      break;
+    }
+    case 'discord': {
+      console.log(zh
+        ? '  需要 Bot Token\n  创建方式：https://discord.com/developers/applications → New Application → Bot'
+        : '  Requires Bot Token\n  Create at: https://discord.com/developers/applications → New Application → Bot');
+      console.log('');
+      const answers = await inquirer.prompt([
+        { type: 'input', name: 'token', message: 'Discord Bot Token:' },
+        { type: 'input', name: 'guildId', message: zh ? 'Server ID（右键服务器 → 复制 ID）:' : 'Server/Guild ID (right-click server → Copy ID):' },
+      ]);
+      if (answers.token) {
+        saveCredential('discord', { type: 'discord', data: { token: answers.token, guildId: answers.guildId ?? '' }, createdAt: Date.now(), updatedAt: Date.now() });
+        console.log(zh ? '  ✓ Discord 已连接' : '  ✓ Discord connected');
+      }
+      break;
+    }
+    case 'trello': {
+      console.log(zh
+        ? '  需要 API Key 和 Token\n  获取方式：https://trello.com/power-ups/admin → API Key → 生成 Token'
+        : '  Requires API Key and Token\n  Get at: https://trello.com/power-ups/admin → API Key → Generate Token');
+      console.log('');
+      const answers = await inquirer.prompt([
+        { type: 'input', name: 'apiKey', message: 'Trello API Key:' },
+        { type: 'input', name: 'token', message: 'Trello Token:' },
+      ]);
+      if (answers.apiKey && answers.token) {
+        saveCredential('trello', { type: 'trello', data: { apiKey: answers.apiKey, token: answers.token }, createdAt: Date.now(), updatedAt: Date.now() });
+        console.log(zh ? '  ✓ Trello 已连接' : '  ✓ Trello connected');
+      }
+      break;
+    }
+    case 'asana': {
+      console.log(zh
+        ? '  需要 Personal Access Token\n  创建方式：https://app.asana.com/0/developer-console → Personal access tokens'
+        : '  Requires Personal Access Token\n  Create at: https://app.asana.com/0/developer-console → Personal access tokens');
+      console.log('');
+      const answers = await inquirer.prompt([
+        { type: 'input', name: 'token', message: 'Asana Token (1/xxx):' },
+      ]);
+      if (answers.token) {
+        console.log(zh ? '  验证中...' : '  Verifying...');
+        try {
+          const res = await fetch('https://app.asana.com/api/1.0/users/me', {
+            headers: { Authorization: `Bearer ${answers.token}` },
+          });
+          if (res.ok) {
+            const data = await res.json() as { data?: { name?: string } };
+            saveCredential('asana', { type: 'asana', data: { token: answers.token }, createdAt: Date.now(), updatedAt: Date.now() });
+            console.log(zh ? `  ✓ Asana 已连接（${data.data?.name ?? '验证通过'}）` : `  ✓ Asana connected (${data.data?.name ?? 'verified'})`);
+          } else {
+            console.log(zh ? '  ✗ Asana Token 无效' : '  ✗ Invalid Asana token');
+          }
+        } catch {
+          console.log(zh ? '  ✗ 无法连接 Asana API' : '  ✗ Cannot reach Asana API');
+        }
       }
       break;
     }
