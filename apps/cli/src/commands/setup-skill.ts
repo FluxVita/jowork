@@ -32,6 +32,9 @@ allowed-tools:
 JoWork gives your AI agent data awareness (connectors), memory (cross-session),
 goal tracking, and a companion dashboard. All data stays local.
 
+**IMPORTANT:** Always use the global \`jowork\` command (not \`node apps/cli/dist/...\`).
+JoWork is installed globally via npm. Run \`jowork <subcommand>\` directly.
+
 ## How it works
 
 JoWork runs as an MCP server. Your agent already has these tools available:
