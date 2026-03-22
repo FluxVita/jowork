@@ -122,12 +122,15 @@ export async function runSetupWizard(): Promise<void> {
   }]);
 
   if (regMethod === 'skills') {
-    console.log(t.step2SkillsHint);
-    await inquirer.prompt([{
-      type: 'input',
-      name: 'continue',
-      message: isZh() ? '完成后按回车继续...' : 'Press Enter when done...',
-    }]);
+    console.log(isZh() ? '\n  正在通过 skills.sh 注册...\n' : '\n  Registering via skills.sh...\n');
+    const { execSync } = await import('node:child_process');
+    try {
+      execSync('npx -y skills add FluxVita/jowork', { stdio: 'inherit' });
+    } catch {
+      console.log(isZh() ? '  ⚠ skills.sh 注册失败，已切换为手动注册' : '  ⚠ skills.sh failed, falling back to manual');
+      // Fallback: register claude-code directly
+      await registerEngine('claude-code');
+    }
   } else if (regMethod === 'manual') {
     const { engines } = await inquirer.prompt([{
       type: 'checkbox',
