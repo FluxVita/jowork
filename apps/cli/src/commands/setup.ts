@@ -131,28 +131,42 @@ export async function runSetupWizard(): Promise<void> {
     github: !!process.env['GITHUB_PERSONAL_ACCESS_TOKEN'],
   };
 
-  // Show unified list — mark env-detected ones
-  const allSources = [
-    { key: 'feishu', label: zh ? '飞书（消息、会议、文档）' : 'Feishu (messages, meetings, docs)' },
-    { key: 'github', label: 'GitHub (repos, issues, PRs)' },
-    { key: 'gitlab', label: 'GitLab (projects, issues, MRs)' },
-    { key: 'linear', label: 'Linear (issues)' },
-    { key: 'posthog', label: zh ? 'PostHog（用户行为数据）' : 'PostHog (analytics)' },
-  ];
+  // Multi-select list — same UX as skills.sh
+  // Pre-check sources with env vars detected
+  const { selectedSources } = await inquirer.prompt([{
+    type: 'checkbox',
+    name: 'selectedSources',
+    message: zh
+      ? '选择要连接的数据源（空格选择，回车确认）'
+      : 'Select data sources to connect (space to select, enter to confirm)',
+    choices: [
+      {
+        name: zh ? '飞书（消息、会议、文档）' : 'Feishu (messages, meetings, docs)',
+        value: 'feishu',
+        checked: envHints.feishu,
+      },
+      {
+        name: 'GitHub (repos, issues, PRs)',
+        value: 'github',
+        checked: envHints.github,
+      },
+      {
+        name: 'GitLab (projects, issues, MRs)',
+        value: 'gitlab',
+      },
+      {
+        name: 'Linear (issues)',
+        value: 'linear',
+      },
+      {
+        name: zh ? 'PostHog（用户行为数据）' : 'PostHog (analytics)',
+        value: 'posthog',
+      },
+    ],
+  }]);
 
-  for (const ds of allSources) {
-    const hasEnv = envHints[ds.key];
-    const hint = hasEnv
-      ? (zh ? '（已检测到环境变量，自动填充）' : '(credentials detected in env)')
-      : '';
-    const displayLabel = hint ? `${ds.label} ${hint}` : ds.label;
-
-    const yes = await askYesNo(
-      zh ? `连接 ${displayLabel}？` : `Connect ${displayLabel}?`,
-      hasEnv ?? false,
-    );
-
-    if (yes) await connectSource(ds.key, inquirer);
+  for (const key of selectedSources as string[]) {
+    await connectSource(key, inquirer);
   }
 
   // ── Step 4: First sync ──
