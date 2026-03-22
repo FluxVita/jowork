@@ -549,7 +549,7 @@ function focusMacOS(pid: number): { focused: boolean; method: string; fallback?:
   } catch {
     return { focused: false, method: 'no-process' };
   }
-  if (!tty || tty === '??') {
+  if (!tty || tty === '??' || !/^[a-zA-Z0-9/]+$/.test(tty)) {
     return { focused: false, method: 'no-tty' };
   }
 

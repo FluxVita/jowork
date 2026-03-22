@@ -195,8 +195,9 @@ export function createJoWorkMcpServer(opts: McpServerOptions): McpServer {
         source = 'local';
       }
 
-      // Build path filter clause
-      const pathFilter = path ? ` AND o.uri LIKE 'local://${escapeLike(path)}%'` : '';
+      // Build path filter clause (parameterized to prevent SQL injection)
+      const pathFilter = path ? ` AND o.uri LIKE ?` : '';
+      const pathParam = path ? `local://${escapeLike(path)}%` : null;
 
       // Build FTS match query (null if CJK-only -> skip FTS, go straight to LIKE)
       const ftsMatchQuery = buildFtsQuery(query);
@@ -211,7 +212,9 @@ export function createJoWorkMcpServer(opts: McpServerOptions): McpServer {
             : `SELECT o.id, o.title, o.summary, o.source, o.source_type, o.uri, o.tags, o.file_path
                FROM objects_fts JOIN objects o ON o.rowid = objects_fts.rowid
                WHERE objects_fts MATCH ?${pathFilter} LIMIT ?`;
-          const ftsArgs = source ? [ftsMatchQuery, source, limit] : [ftsMatchQuery, limit];
+          const ftsArgs: unknown[] = source ? [ftsMatchQuery, source] : [ftsMatchQuery];
+          if (pathParam) ftsArgs.push(pathParam);
+          ftsArgs.push(limit);
           const ftsResults = sqlite.prepare(ftsQuery).all(...ftsArgs);
 
           if (ftsResults.length > 0) {
@@ -231,8 +234,8 @@ export function createJoWorkMcpServer(opts: McpServerOptions): McpServer {
         .replace(/群里|最近|在|讨论|什么|话题|有哪些|是什么|怎么样|帮我|告诉我|查一下/g, '')
         .trim();
 
-      // Build path filter for LIKE queries
-      const likePathFilter = path ? ` AND uri LIKE 'local://${escapeLike(path)}%'` : '';
+      // Build path filter for LIKE queries (parameterized)
+      const likePathFilter = path ? ` AND uri LIKE ?` : '';
 
       let rows: unknown[] = [];
       if (source && cleanedQuery.length >= 2) {
@@ -244,7 +247,9 @@ export function createJoWorkMcpServer(opts: McpServerOptions): McpServer {
             const p = `%${escapeLike(seg)}%`;
             params.push(p, p, p);
           }
-          params.push(source, limit);
+          params.push(source);
+          if (pathParam) params.push(pathParam);
+          params.push(limit);
           rows = sqlite.prepare(`
             SELECT id, title, summary, source, source_type, uri, tags, file_path FROM objects
             WHERE (${conditions}) AND source = ?${likePathFilter} ORDER BY last_synced_at DESC LIMIT ?
@@ -253,10 +258,13 @@ export function createJoWorkMcpServer(opts: McpServerOptions): McpServer {
           rows = [];
         }
       } else if (source) {
+        const srcParams: unknown[] = [source];
+        if (pathParam) srcParams.push(pathParam);
+        srcParams.push(limit);
         rows = sqlite.prepare(`
           SELECT id, title, summary, source, source_type, uri, tags, file_path FROM objects
           WHERE source = ?${likePathFilter} ORDER BY last_synced_at DESC LIMIT ?
-        `).all(source, limit);
+        `).all(...srcParams);
       } else if (cleanedQuery.length >= 2) {
         const pattern = `%${escapeLike(cleanedQuery)}%`;
         rows = sqlite.prepare(`
