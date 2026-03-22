@@ -36,10 +36,11 @@ async function askYesNo(message: string, defaultYes = true): Promise<boolean> {
     type: 'list',
     name: 'answer',
     message,
-    choices: defaultYes
-      ? [{ name: yesLabel, value: true }, { name: noLabel, value: false }]
-      : [{ name: noLabel, value: false }, { name: yesLabel, value: true }],
-    default: defaultYes ? 0 : 0,
+    choices: [
+      { name: yesLabel, value: true },
+      { name: noLabel, value: false },
+    ],
+    default: defaultYes ? 0 : 1,
   }]);
   return answer;
 }
