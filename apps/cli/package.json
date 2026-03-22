@@ -1,6 +1,6 @@
 {
   "name": "jowork",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "description": "AI Agent Infrastructure — let AI agents truly understand your work. Connect data sources, give agents awareness and goals. Local-first, one command.",
   "type": "module",
   "license": "AGPL-3.0",
