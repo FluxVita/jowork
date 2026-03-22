@@ -1,8 +1,12 @@
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, copyFileSync, mkdirSync } from 'node:fs';
+import { join } from 'node:path';
+import { execSync } from 'node:child_process';
 import { DbManager } from '../db/manager.js';
 import { readConfig, writeConfig } from '../utils/config.js';
 import { dbPath } from '../utils/paths.js';
 import { saveCredential, listCredentials } from '../connectors/credential-store.js';
+
+const HOME = process.env['HOME'] ?? '';
 
 // ── Language detection ──
 
@@ -11,7 +15,6 @@ function isZh(): boolean {
   if (lang.toLowerCase().startsWith('zh')) return true;
   if (process.platform === 'darwin') {
     try {
-      const { execSync } = require('node:child_process') as typeof import('node:child_process');
       const appleLangs = execSync('defaults read -g AppleLanguages 2>/dev/null', { encoding: 'utf-8' });
       const firstLang = appleLangs.match(/"([^"]+)"/)?.[1] ?? '';
       if (firstLang.startsWith('zh')) return true;
@@ -88,7 +91,6 @@ export async function runSetupWizard(): Promise<void> {
 
     if (regMethod === 'skills') {
       console.log(zh ? '\n  正在通过 skills.sh 注册...\n' : '\n  Registering via skills.sh...\n');
-      const { execSync } = await import('node:child_process');
       try {
         execSync('npx -y skills add FluxVita/jowork', { stdio: 'inherit' });
       } catch {
@@ -225,25 +227,22 @@ interface DetectedAgent {
 }
 
 function detectInstalledAgents(): DetectedAgent[] {
-  const { existsSync: exists } = require('node:fs') as typeof import('node:fs');
-  const { join } = require('node:path') as typeof import('node:path');
-  const HOME = process.env['HOME'] ?? '';
   const agents: DetectedAgent[] = [];
 
   // Claude Code: ~/.claude.json or ~/.claude/ directory
-  if (exists(join(HOME, '.claude.json')) || exists(join(HOME, '.claude'))) {
+  if (existsSync(join(HOME, '.claude.json')) || existsSync(join(HOME, '.claude'))) {
     agents.push({ key: 'claude-code', name: 'Claude Code' });
   }
   // Codex: ~/.codex/
-  if (exists(join(HOME, '.codex'))) {
+  if (existsSync(join(HOME, '.codex'))) {
     agents.push({ key: 'codex', name: 'Codex' });
   }
   // Cursor: ~/.cursor/
-  if (exists(join(HOME, '.cursor'))) {
+  if (existsSync(join(HOME, '.cursor'))) {
     agents.push({ key: 'cursor', name: 'Cursor' });
   }
   // OpenClaw: ~/.openclaw/
-  if (exists(join(HOME, '.openclaw'))) {
+  if (existsSync(join(HOME, '.openclaw'))) {
     agents.push({ key: 'openclaw', name: 'OpenClaw' });
   }
 
@@ -253,10 +252,6 @@ function detectInstalledAgents(): DetectedAgent[] {
 // ── Engine registration ──
 
 async function registerEngine(engine: string): Promise<void> {
-  const { readFileSync, writeFileSync, copyFileSync, existsSync: exists, mkdirSync } = await import('node:fs');
-  const { join } = await import('node:path');
-  const HOME = process.env['HOME'] ?? '';
-
   const names: Record<string, string> = {
     'claude-code': 'Claude Code', codex: 'Codex', cursor: 'Cursor', openclaw: 'OpenClaw',
   };
@@ -266,9 +261,9 @@ async function registerEngine(engine: string): Promise<void> {
   switch (engine) {
     case 'claude-code': {
       const p = join(HOME, '.claude.json');
-      if (exists(p)) copyFileSync(p, p + '.bak');
+      if (existsSync(p)) copyFileSync(p, p + '.bak');
       let cfg: Record<string, unknown> = {};
-      if (exists(p)) { try { cfg = JSON.parse(readFileSync(p, 'utf-8')); } catch { cfg = {}; } }
+      if (existsSync(p)) { try { cfg = JSON.parse(readFileSync(p, 'utf-8')); } catch { cfg = {}; } }
       if (!cfg.mcpServers) cfg.mcpServers = {};
       (cfg.mcpServers as Record<string, unknown>)['jowork'] = mcpEntry;
       writeFileSync(p, JSON.stringify(cfg, null, 2));
@@ -278,7 +273,7 @@ async function registerEngine(engine: string): Promise<void> {
       const dir = join(HOME, '.codex');
       mkdirSync(dir, { recursive: true });
       const p = join(dir, 'config.toml');
-      let c = exists(p) ? readFileSync(p, 'utf-8') : '';
+      let c = existsSync(p) ? readFileSync(p, 'utf-8') : '';
       if (!c.includes('[mcp_servers.jowork]')) {
         c += '\n[mcp_servers.jowork]\ncommand = "jowork"\nargs = ["serve"]\n';
         writeFileSync(p, c);
@@ -290,7 +285,7 @@ async function registerEngine(engine: string): Promise<void> {
       mkdirSync(dir, { recursive: true });
       const p = join(dir, 'mcp.json');
       let cfg: Record<string, unknown> = {};
-      if (exists(p)) { try { cfg = JSON.parse(readFileSync(p, 'utf-8')); } catch { cfg = {}; } }
+      if (existsSync(p)) { try { cfg = JSON.parse(readFileSync(p, 'utf-8')); } catch { cfg = {}; } }
       if (!cfg.mcpServers) cfg.mcpServers = {};
       (cfg.mcpServers as Record<string, unknown>)['jowork'] = mcpEntry;
       writeFileSync(p, JSON.stringify(cfg, null, 2));
@@ -301,7 +296,7 @@ async function registerEngine(engine: string): Promise<void> {
       mkdirSync(dir, { recursive: true });
       const p = join(dir, 'config.json');
       let cfg: Record<string, unknown> = {};
-      if (exists(p)) { try { cfg = JSON.parse(readFileSync(p, 'utf-8')); } catch { cfg = {}; } }
+      if (existsSync(p)) { try { cfg = JSON.parse(readFileSync(p, 'utf-8')); } catch { cfg = {}; } }
       if (!cfg.mcpServers) cfg.mcpServers = {};
       (cfg.mcpServers as Record<string, unknown>)['jowork'] = mcpEntry;
       writeFileSync(p, JSON.stringify(cfg, null, 2));
