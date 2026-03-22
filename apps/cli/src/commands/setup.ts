@@ -313,6 +313,15 @@ async function registerEngine(engine: string): Promise<void> {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function connectSource(source: string, inquirer: any): Promise<void> {
+  const titles: Record<string, string> = {
+    feishu: zh ? '── 飞书 ──' : '── Feishu ──',
+    github: '── GitHub ──',
+    gitlab: '── GitLab ──',
+    linear: '── Linear ──',
+    posthog: '── PostHog ──',
+  };
+  console.log(`\n  ${titles[source] ?? source}`);
+
   switch (source) {
     case 'feishu': {
       let appId = process.env['FEISHU_APP_ID'];
@@ -321,10 +330,9 @@ async function connectSource(source: string, inquirer: any): Promise<void> {
       if (appId && appSecret) {
         console.log(zh ? '  从环境变量读取飞书凭证...' : '  Reading Feishu credentials from env...');
       } else {
-        console.log('');
         console.log(zh
-          ? '  飞书连接需要 App ID 和 App Secret\n  获取方式：https://open.feishu.cn/app → 创建应用 → 凭证'
-          : '  Feishu requires App ID and App Secret\n  Get them: https://open.feishu.cn/app → Create App → Credentials');
+          ? '  需要 App ID 和 App Secret\n  获取方式：https://open.feishu.cn/app → 创建应用 → 凭证'
+          : '  Requires App ID and App Secret\n  Get them: https://open.feishu.cn/app → Create App → Credentials');
         console.log('');
         const answers = await inquirer.prompt([
           { type: 'input', name: 'appId', message: zh ? '飞书 App ID (cli_xxx):' : 'Feishu App ID (cli_xxx):', when: !appId },
@@ -361,10 +369,9 @@ async function connectSource(source: string, inquirer: any): Promise<void> {
       if (token) {
         console.log(zh ? '  从环境变量读取 GitHub Token...' : '  Reading GitHub token from env...');
       } else {
-        console.log('');
         console.log(zh
-          ? '  GitHub 连接需要 Personal Access Token\n  创建方式：https://github.com/settings/tokens → Generate new token'
-          : '  GitHub requires a Personal Access Token\n  Create at: https://github.com/settings/tokens');
+          ? '  需要 Personal Access Token\n  创建方式：https://github.com/settings/tokens → Generate new token'
+          : '  Requires a Personal Access Token\n  Create at: https://github.com/settings/tokens');
         console.log('');
         const answers = await inquirer.prompt([
           { type: 'input', name: 'token', message: zh ? 'GitHub Token (ghp_xxx):' : 'GitHub Token (ghp_xxx):' },
@@ -392,10 +399,9 @@ async function connectSource(source: string, inquirer: any): Promise<void> {
       break;
     }
     case 'gitlab': {
-      console.log('');
       console.log(zh
-        ? '  GitLab 连接需要 Personal Access Token\n  创建方式：GitLab → Settings → Access Tokens'
-        : '  GitLab requires a Personal Access Token\n  Create at: GitLab → Settings → Access Tokens');
+        ? '  需要 Personal Access Token\n  创建方式：GitLab → Settings → Access Tokens'
+        : '  Requires a Personal Access Token\n  Create at: GitLab → Settings → Access Tokens');
       console.log('');
       const glAnswers = await inquirer.prompt([
         { type: 'input', name: 'token', message: zh ? 'GitLab Token (glpat-xxx):' : 'GitLab Token (glpat-xxx):' },
@@ -421,10 +427,9 @@ async function connectSource(source: string, inquirer: any): Promise<void> {
       break;
     }
     case 'linear': {
-      console.log('');
       console.log(zh
-        ? '  Linear 连接需要 API Key\n  获取方式：Linear → Settings → API → Personal API keys'
-        : '  Linear requires an API key\n  Get it: Linear → Settings → API → Personal API keys');
+        ? '  需要 API Key\n  获取方式：Linear → Settings → API → Personal API keys'
+        : '  Requires an API key\n  Get it: Linear → Settings → API → Personal API keys');
       console.log('');
       const linAnswers = await inquirer.prompt([
         { type: 'input', name: 'apiKey', message: zh ? 'Linear API Key (lin_api_xxx):' : 'Linear API Key (lin_api_xxx):' },
@@ -452,10 +457,9 @@ async function connectSource(source: string, inquirer: any): Promise<void> {
       break;
     }
     case 'posthog': {
-      console.log('');
       console.log(zh
-        ? '  PostHog 连接需要 Personal API Key\n  获取方式：PostHog → Settings → Personal API Keys'
-        : '  PostHog requires a Personal API key\n  Get it: PostHog → Settings → Personal API Keys');
+        ? '  需要 Personal API Key\n  获取方式：PostHog → Settings → Personal API Keys'
+        : '  Requires a Personal API key\n  Get it: PostHog → Settings → Personal API Keys');
       console.log('');
       const phAnswers = await inquirer.prompt([
         { type: 'input', name: 'apiKey', message: zh ? 'PostHog API Key (phx_xxx):' : 'PostHog API Key (phx_xxx):' },
