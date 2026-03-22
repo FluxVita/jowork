@@ -5,7 +5,7 @@
  * SQLite remains the index/search layer; files are the primary storage layer.
  */
 
-import { writeFileSync, readFileSync, appendFileSync, existsSync, mkdirSync } from 'node:fs';
+import { writeFileSync, readFileSync, appendFileSync, existsSync, mkdirSync, chmodSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { slugify } from '../utils/slugify.js';
 import { fileRepoDir } from '../utils/paths.js';
@@ -29,6 +29,12 @@ export class FileWriter {
 
   constructor(repoDir?: string) {
     this.repoDir = repoDir ?? fileRepoDir();
+    // Harden repo directory permissions (owner-only access)
+    try {
+      chmodSync(this.repoDir, 0o700);
+    } catch {
+      /* Windows or read-only FS — non-critical */
+    }
   }
 
   /** Write an object to a file. Returns the relative path from repoDir. */

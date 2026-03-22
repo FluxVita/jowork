@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, chmodSync } from 'node:fs';
 
 const HOME = process.env['HOME'] ?? '/tmp';
 
@@ -20,6 +20,11 @@ export function dbPath(): string {
 export function credentialsDir(): string {
   const dir = join(joworkDir(), 'credentials');
   mkdirSync(dir, { recursive: true });
+  try {
+    chmodSync(dir, 0o700);
+  } catch {
+    /* Windows — non-critical */
+  }
   return dir;
 }
 

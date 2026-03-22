@@ -1,5 +1,5 @@
 import type { Command } from 'commander';
-import { existsSync } from 'node:fs';
+import { existsSync, chmodSync } from 'node:fs';
 import { DbManager } from '../db/manager.js';
 import { readConfig, writeConfig } from '../utils/config.js';
 import { dbPath, joworkDir } from '../utils/paths.js';
@@ -16,6 +16,13 @@ export function initCommand(program: Command): void {
       }
 
       console.log('Initializing JoWork...');
+
+      // Harden directory permissions (owner-only access)
+      try {
+        chmodSync(joworkDir(), 0o700);
+      } catch {
+        /* Windows or read-only FS — non-critical */
+      }
 
       // Create and migrate database
       const db = new DbManager(dbPath());
