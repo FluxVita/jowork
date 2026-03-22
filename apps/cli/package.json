@@ -1,6 +1,6 @@
 {
   "name": "jowork",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "AI Agent Infrastructure — let AI agents truly understand your work. Connect data sources, give agents awareness and goals. Local-first, one command.",
   "type": "module",
   "license": "AGPL-3.0",
@@ -34,6 +34,7 @@
   "files": [
     "dist/**/*.js",
     "dist/**/*.d.ts",
+    "src/dashboard/public/**",
     "README.md",
     "LICENSE"
   ],
@@ -46,7 +47,6 @@
   },
   "dependencies": {
     "@hono/node-server": "^1.14.0",
-    "@jowork/core": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.27.0",
     "better-sqlite3": "^12.6.2",
     "chalk": "^5.4.0",
@@ -63,6 +63,7 @@
     "zod": "^3.24.0"
   },
   "devDependencies": {
+    "@jowork/core": "workspace:*",
     "@types/better-sqlite3": "^7.6.0",
     "@types/inquirer": "^9.0.0",
     "@types/node": "^22.0.0",
