@@ -127,8 +127,15 @@ export function createJoWorkMcpServer(opts: McpServerOptions): McpServer {
     }
   }
 
+  /** Debounce: only auto-sync once per 5 minutes per session */
+  let lastAutoSyncAt = 0;
+  const AUTO_SYNC_COOLDOWN_MS = 5 * 60 * 1000;
+
   /** Auto-sync a source if stale. Returns true if sync was triggered. */
   async function autoSyncIfStale(source?: string): Promise<boolean> {
+    // Debounce: skip if we auto-synced recently in this session
+    if (Date.now() - lastAutoSyncAt < AUTO_SYNC_COOLDOWN_MS) return false;
+
     const freshness = getDataFreshness(source);
     if (!freshness.isStale) return false;
 
@@ -158,6 +165,7 @@ export function createJoWorkMcpServer(opts: McpServerOptions): McpServer {
           }
         } catch { /* sync failed, continue with stale data */ }
       }
+      lastAutoSyncAt = Date.now();
       return true;
     } catch {
       return false;
