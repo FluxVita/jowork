@@ -25,10 +25,30 @@ function isZh(): boolean {
 
 const zh = isZh();
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let _inquirer: any;
+
+/** Yes/No prompt using arrow keys + enter (not y/n typing) */
+async function askYesNo(message: string, defaultYes = true): Promise<boolean> {
+  const yesLabel = zh ? '是' : 'Yes';
+  const noLabel = zh ? '否' : 'No';
+  const { answer } = await _inquirer.prompt([{
+    type: 'list',
+    name: 'answer',
+    message,
+    choices: defaultYes
+      ? [{ name: yesLabel, value: true }, { name: noLabel, value: false }]
+      : [{ name: noLabel, value: false }, { name: yesLabel, value: true }],
+    default: defaultYes ? 0 : 0,
+  }]);
+  return answer;
+}
+
 // ── Setup Wizard ──
 
 export async function runSetupWizard(): Promise<void> {
   const { default: inquirer } = await import('inquirer');
+  _inquirer = inquirer;
 
   // ── Welcome ──
   console.log('');
@@ -61,12 +81,10 @@ export async function runSetupWizard(): Promise<void> {
       ? `  检测到 ${detected.length} 个 AI 助手：${detected.map(a => a.name).join('、')}`
       : `  Detected ${detected.length} agent${detected.length > 1 ? 's' : ''}: ${detected.map(a => a.name).join(', ')}`);
 
-    const { doRegister } = await inquirer.prompt([{
-      type: 'confirm',
-      name: 'doRegister',
-      message: zh ? '注册 JoWork 到这些助手？' : 'Register JoWork with these agents?',
-      default: true,
-    }]);
+    const doRegister = await askYesNo(
+      zh ? '注册 JoWork 到这些助手？' : 'Register JoWork with these agents?',
+      true,
+    );
 
     if (doRegister) {
       for (const agent of detected) {
@@ -106,64 +124,34 @@ export async function runSetupWizard(): Promise<void> {
     : '  Now connect your data sources (optional, can add anytime)');
   console.log('');
 
-  // Auto-detect available credentials from environment
-  const autoDetected: Array<{ key: string; label: string; envHint: string }> = [];
-  if (process.env['FEISHU_APP_ID'] && process.env['FEISHU_APP_SECRET']) {
-    autoDetected.push({ key: 'feishu', label: zh ? '飞书' : 'Feishu', envHint: 'FEISHU_APP_ID' });
-  }
-  if (process.env['GITHUB_PERSONAL_ACCESS_TOKEN']) {
-    autoDetected.push({ key: 'github', label: 'GitHub', envHint: 'GITHUB_PERSONAL_ACCESS_TOKEN' });
-  }
+  // Check which credentials are available from environment
+  const envHints: Record<string, boolean> = {
+    feishu: !!(process.env['FEISHU_APP_ID'] && process.env['FEISHU_APP_SECRET']),
+    github: !!process.env['GITHUB_PERSONAL_ACCESS_TOKEN'],
+  };
 
-  // If env vars detected, auto-connect them
-  if (autoDetected.length > 0) {
-    console.log(zh
-      ? `  检测到环境变量中的凭证：${autoDetected.map(d => d.label).join('、')}`
-      : `  Detected credentials in environment: ${autoDetected.map(d => d.label).join(', ')}`);
-
-    const { autoConnect } = await inquirer.prompt([{
-      type: 'confirm',
-      name: 'autoConnect',
-      message: zh ? '自动连接这些数据源？' : 'Auto-connect these sources?',
-      default: true,
-    }]);
-
-    if (autoConnect) {
-      for (const src of autoDetected) {
-        await connectSource(src.key, inquirer);
-      }
-    }
-  }
-
-  // Ask about additional sources not auto-detected
-  const alreadyConnected = new Set([...listCredentials(), ...autoDetected.map(d => d.key)]);
-  const remaining = [
+  // Show unified list — mark env-detected ones
+  const allSources = [
     { key: 'feishu', label: zh ? '飞书（消息、会议、文档）' : 'Feishu (messages, meetings, docs)' },
     { key: 'github', label: 'GitHub (repos, issues, PRs)' },
     { key: 'gitlab', label: 'GitLab (projects, issues, MRs)' },
     { key: 'linear', label: 'Linear (issues)' },
     { key: 'posthog', label: zh ? 'PostHog（用户行为数据）' : 'PostHog (analytics)' },
-  ].filter(s => !alreadyConnected.has(s.key));
+  ];
 
-  if (remaining.length > 0) {
-    const { addMore } = await inquirer.prompt([{
-      type: 'confirm',
-      name: 'addMore',
-      message: zh ? '要连接其他数据源吗？' : 'Connect additional data sources?',
-      default: false,
-    }]);
+  for (const ds of allSources) {
+    const hasEnv = envHints[ds.key];
+    const hint = hasEnv
+      ? (zh ? '（已检测到环境变量，自动填充）' : '(credentials detected in env)')
+      : '';
+    const displayLabel = hint ? `${ds.label} ${hint}` : ds.label;
 
-    if (addMore) {
-      for (const ds of remaining) {
-        const { yes } = await inquirer.prompt([{
-          type: 'confirm',
-          name: 'yes',
-          message: zh ? `  连接 ${ds.label}？` : `  Connect ${ds.label}?`,
-          default: false,
-        }]);
-        if (yes) await connectSource(ds.key, inquirer);
-      }
-    }
+    const yes = await askYesNo(
+      zh ? `连接 ${displayLabel}？` : `Connect ${displayLabel}?`,
+      hasEnv ?? false,
+    );
+
+    if (yes) await connectSource(ds.key, inquirer);
   }
 
   // ── Step 4: First sync ──
