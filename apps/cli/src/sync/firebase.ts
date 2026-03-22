@@ -129,6 +129,10 @@ export async function syncFirebase(
     logger.warn('Firebase sync requires apiKey. Provide via jowork connect firebase --api-key <key>');
   }
 
+  // Update sync_cursors so `jowork status` shows last sync time
+  sqlite.prepare('INSERT OR REPLACE INTO sync_cursors (connector_id, cursor, last_synced_at) VALUES (?, ?, ?)')
+    .run('firebase', null, Date.now());
+
   logger.info('Firebase sync complete', { events, newObjects });
   return { events, newObjects };
 }

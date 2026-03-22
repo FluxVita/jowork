@@ -183,6 +183,10 @@ export async function syncPostHog(
     logger.error(`Events sync error: ${err}`);
   }
 
+  // Update sync_cursors so `jowork status` shows last sync time
+  sqlite.prepare('INSERT OR REPLACE INTO sync_cursors (connector_id, cursor, last_synced_at) VALUES (?, ?, ?)')
+    .run('posthog', null, Date.now());
+
   logger.info('PostHog sync complete', { events, insights, newObjects });
   return { events, insights, newObjects };
 }

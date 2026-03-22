@@ -25,7 +25,7 @@ const defaultLogger: GitHubSyncLogger = {
 };
 
 const GITHUB_API = 'https://api.github.com';
-const MAX_REPOS = 30;
+const MAX_REPOS = 100;
 const RATE_LIMIT_DELAY_MS = 200;
 
 interface GitHubRepo {
@@ -75,7 +75,7 @@ export async function syncGitHub(
 
   // 1. Fetch user's repos (owned + collaborator, sorted by most recently pushed)
   const reposRes = await fetch(
-    `${GITHUB_API}/user/repos?per_page=30&sort=pushed&affiliation=owner,collaborator`,
+    `${GITHUB_API}/user/repos?per_page=100&sort=pushed&affiliation=owner,collaborator`,
     { headers },
   );
   if (!reposRes.ok) {
@@ -200,6 +200,10 @@ export async function syncGitHub(
     // Conservative rate limiting (GitHub allows 5000 req/hr)
     await new Promise((r) => setTimeout(r, RATE_LIMIT_DELAY_MS));
   }
+
+  // Update sync_cursors so `jowork status` shows last sync time
+  sqlite.prepare('INSERT OR REPLACE INTO sync_cursors (connector_id, cursor, last_synced_at) VALUES (?, ?, ?)')
+    .run('github', null, Date.now());
 
   logger.info('GitHub sync complete', { repos, issues, prs, newObjects });
   return { repos, issues, prs, newObjects };

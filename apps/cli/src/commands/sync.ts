@@ -202,6 +202,35 @@ export async function runSync(sources: string[]): Promise<void> {
     resultLine(true, `${linksCreated} links from ${processed} objects`);
   }
 
+  // Backfill file_path for objects that don't have one
+  try {
+    const sqlite = db.getSqlite();
+    const noFilePath = sqlite.prepare(`
+      SELECT o.id, o.source, o.source_type, o.uri, o.title, ob.content
+      FROM objects o
+      JOIN object_bodies ob ON ob.object_id = o.id
+      WHERE o.file_path IS NULL
+      LIMIT 500
+    `).all() as Array<{ id: string; source: string; source_type: string; uri: string; title: string; content: string }>;
+
+    if (noFilePath.length > 0) {
+      console.log(`  ${icon.sync} ${c.dim}backfilling ${noFilePath.length} objects without files...${c.reset}`);
+      let backfilled = 0;
+      for (const obj of noFilePath) {
+        try {
+          const filePath = fileWriter.writeObject(obj.source, obj.source_type, {
+            id: obj.id, title: obj.title, uri: obj.uri,
+          }, obj.content);
+          sqlite.prepare('UPDATE objects SET file_path = ? WHERE id = ?').run(filePath, obj.id);
+          backfilled++;
+        } catch { /* non-critical */ }
+      }
+      if (backfilled > 0) {
+        resultLine(true, `${backfilled} files backfilled`);
+      }
+    }
+  } catch { /* backfill non-critical */ }
+
   db.close();
 
   // Git commit

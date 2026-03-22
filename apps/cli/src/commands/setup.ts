@@ -131,6 +131,14 @@ export async function runSetupWizard(): Promise<void> {
     github: !!process.env['GITHUB_PERSONAL_ACCESS_TOKEN'],
   };
 
+  // Sources that have no sync implementation yet
+  const COMING_SOON_SOURCES = new Set([
+    'notion', 'jira', 'confluence', 'google-calendar',
+    'sentry', 'figma', 'discord', 'trello', 'asana',
+  ]);
+
+  const comingSoonSuffix = zh ? '（即将推出）' : ' (coming soon)';
+
   // Multi-select list — same UX as skills.sh
   // Pre-check sources with env vars detected
   const { selectedSources } = await inquirer.prompt([{
@@ -159,61 +167,67 @@ export async function runSetupWizard(): Promise<void> {
         value: 'linear',
       },
       {
-        name: zh ? 'PostHog（用户行为数据）' : 'PostHog (analytics)',
+        name: (zh ? 'PostHog（用户行为数据）' : 'PostHog (analytics)'),
         value: 'posthog',
       },
       {
-        name: zh ? 'Slack（消息推送）' : 'Slack (notifications)',
+        name: (zh ? 'Slack（消息推送）' : 'Slack (notifications)'),
         value: 'slack',
       },
       {
-        name: zh ? 'Telegram（消息推送）' : 'Telegram (notifications)',
+        name: (zh ? 'Telegram（消息推送）' : 'Telegram (notifications)'),
         value: 'telegram',
       },
       {
-        name: zh ? 'Firebase（用户行为埋点）' : 'Firebase (analytics events)',
+        name: (zh ? 'Firebase（用户行为埋点）' : 'Firebase (analytics events)'),
         value: 'firebase',
       },
       {
-        name: zh ? 'Notion（文档、数据库、知识库）' : 'Notion (docs, databases, wikis)',
+        name: (zh ? 'Notion（文档、数据库、知识库）' : 'Notion (docs, databases, wikis)') + comingSoonSuffix,
         value: 'notion',
       },
       {
-        name: zh ? 'Jira（任务追踪）' : 'Jira (issue tracking)',
+        name: (zh ? 'Jira（任务追踪）' : 'Jira (issue tracking)') + comingSoonSuffix,
         value: 'jira',
       },
       {
-        name: zh ? 'Confluence（企业文档）' : 'Confluence (enterprise wiki)',
+        name: (zh ? 'Confluence（企业文档）' : 'Confluence (enterprise wiki)') + comingSoonSuffix,
         value: 'confluence',
       },
       {
-        name: zh ? 'Google Calendar（日历、会议）' : 'Google Calendar (events, meetings)',
+        name: (zh ? 'Google Calendar（日历、会议）' : 'Google Calendar (events, meetings)') + comingSoonSuffix,
         value: 'google-calendar',
       },
       {
-        name: zh ? 'Sentry（错误监控、崩溃追踪）' : 'Sentry (error tracking, crashes)',
+        name: (zh ? 'Sentry（错误监控、崩溃追踪）' : 'Sentry (error tracking, crashes)') + comingSoonSuffix,
         value: 'sentry',
       },
       {
-        name: zh ? 'Figma（设计文件）' : 'Figma (design files)',
+        name: (zh ? 'Figma（设计文件）' : 'Figma (design files)') + comingSoonSuffix,
         value: 'figma',
       },
       {
-        name: zh ? 'Discord（社区消息）' : 'Discord (community messages)',
+        name: (zh ? 'Discord（社区消息）' : 'Discord (community messages)') + comingSoonSuffix,
         value: 'discord',
       },
       {
-        name: zh ? 'Trello（看板、任务管理）' : 'Trello (kanban boards)',
+        name: (zh ? 'Trello（看板、任务管理）' : 'Trello (kanban boards)') + comingSoonSuffix,
         value: 'trello',
       },
       {
-        name: zh ? 'Asana（项目管理）' : 'Asana (project management)',
+        name: (zh ? 'Asana（项目管理）' : 'Asana (project management)') + comingSoonSuffix,
         value: 'asana',
       },
     ],
   }]);
 
   for (const key of selectedSources as string[]) {
+    if (COMING_SOON_SOURCES.has(key)) {
+      console.log(zh
+        ? `\n  ${key}: 即将推出！关注 github.com/FluxVita/jowork 获取更新。`
+        : `\n  ${key}: Coming soon! Follow github.com/FluxVita/jowork for updates.`);
+      continue;
+    }
     await connectSource(key, inquirer);
   }
 

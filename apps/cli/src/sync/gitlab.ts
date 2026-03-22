@@ -24,7 +24,7 @@ const defaultLogger: GitLabSyncLogger = {
   error: (msg, ctx) => logError('sync', msg, ctx),
 };
 
-const MAX_PROJECTS = 20;
+const MAX_PROJECTS = 100;
 const RATE_LIMIT_DELAY_MS = 200;
 
 interface GitLabProject {
@@ -85,7 +85,7 @@ export async function syncGitLab(
 
   // 1. Fetch user's projects (membership=true, sorted by last activity)
   const projectsRes = await fetch(
-    `${baseUrl}/api/v4/projects?membership=true&per_page=20&order_by=last_activity_at`,
+    `${baseUrl}/api/v4/projects?membership=true&per_page=100&order_by=last_activity_at`,
     { headers },
   );
   if (!projectsRes.ok) {
@@ -249,6 +249,10 @@ export async function syncGitLab(
 
     await new Promise((r) => setTimeout(r, RATE_LIMIT_DELAY_MS));
   }
+
+  // Update sync_cursors so `jowork status` shows last sync time
+  sqlite.prepare('INSERT OR REPLACE INTO sync_cursors (connector_id, cursor, last_synced_at) VALUES (?, ?, ?)')
+    .run('gitlab', null, Date.now());
 
   logger.info('GitLab sync complete', { projects, issues, mrs, newObjects });
   return { projects, issues, mrs, newObjects };

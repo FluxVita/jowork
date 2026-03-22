@@ -37,9 +37,12 @@ interface LinearIssue {
   updatedAt: string;
 }
 
-const ISSUES_QUERY = `
+function issuesQuery(afterCursor?: string | null): string {
+  const afterClause = afterCursor ? `, after: "${afterCursor}"` : '';
+  return `
   query {
-    issues(first: 50, orderBy: updatedAt) {
+    issues(first: 50${afterClause}, orderBy: updatedAt) {
+      pageInfo { hasNextPage endCursor }
       nodes {
         id
         identifier
@@ -55,6 +58,7 @@ const ISSUES_QUERY = `
     }
   }
 `;
+}
 
 /** Sync Linear issues for the authenticated user. */
 export async function syncLinear(
@@ -74,30 +78,6 @@ export async function syncLinear(
   let issues = 0;
   let newObjects = 0;
 
-  // Fetch issues via GraphQL
-  const res = await fetch(LINEAR_API, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({ query: ISSUES_QUERY }),
-  });
-  if (!res.ok) {
-    if (res.status === 401) throw new Error('Linear API key expired or invalid');
-    throw new Error(`Linear API error: ${res.status}`);
-  }
-
-  const body = await res.json() as {
-    data?: { issues?: { nodes?: LinearIssue[] } };
-    errors?: Array<{ message: string }>;
-  };
-
-  if (body.errors?.length) {
-    throw new Error(`Linear GraphQL error: ${body.errors[0].message}`);
-  }
-
-  const issueList = body.data?.issues?.nodes ?? [];
-  issues = issueList.length;
-  logger.info(`Found ${issues} Linear issues`);
-
   // Prepared statements
   const checkExists = sqlite.prepare('SELECT id FROM objects WHERE uri = ?');
   const insertObj = sqlite.prepare(`
@@ -114,59 +94,96 @@ export async function syncLinear(
   `);
   const getRowid = sqlite.prepare('SELECT rowid FROM objects WHERE id = ?');
 
-  const batchInsert = sqlite.transaction((items: LinearIssue[]) => {
-    for (const item of items) {
-      const uri = `linear://${item.identifier}`;
-      if (checkExists.get(uri)) continue;
+  // Cursor-based pagination
+  let hasNextPage = true;
+  let endCursor: string | null = null;
 
-      const now = Date.now();
-      const id = createId('obj');
-      const title = `${item.identifier}: ${item.title}`;
-      const summary = item.description
-        ? item.description.length > 200
-          ? item.description.slice(0, 200) + '...'
-          : item.description
-        : item.title;
-      const labelNames = item.labels.nodes.map((l) => l.name);
-      const tags = JSON.stringify(['linear', 'issue', item.state.name, ...labelNames]);
-      const bodyText = formatLinearIssueBody(item);
-      const hash = contentHash(title + (item.description ?? ''));
-
-      insertObj.run(id, 'linear', 'issue', uri, title, summary, tags, hash, now, new Date(item.createdAt).getTime());
-      insertBody.run(id, bodyText, 'text/plain', now);
-
-      try {
-        const rowid = getRowid.get(id) as { rowid: number } | undefined;
-        if (rowid) {
-          const excerpt = bodyText.length > 500 ? bodyText.slice(0, 500) : bodyText;
-          insertFts.run(rowid.rowid, title, summary ?? '', tags, 'linear', 'issue', excerpt);
-        }
-      } catch { /* FTS insert non-critical */ }
-
-      // Write to file repo
-      if (fileWriter) {
-        try {
-          const labelNames = item.labels.nodes.map((l) => l.name);
-          const fileContent = formatIssue({
-            source: 'linear', repo: item.identifier.split('-')[0] ?? 'linear',
-            number: parseInt(item.identifier.split('-')[1] ?? '0'),
-            title: item.title, state: item.state.name,
-            author: item.assignee?.name ?? 'unassigned', labels: labelNames,
-            created: item.createdAt, uri: `linear://${item.identifier}`,
-            body: item.description ?? '',
-          });
-          const filePath = fileWriter.writeObject('linear', 'issue', {
-            id, identifier: item.identifier, title: item.title,
-          }, fileContent);
-          sqlite.prepare('UPDATE objects SET file_path = ? WHERE id = ?').run(filePath, id);
-        } catch { /* file write non-critical */ }
-      }
-
-      newObjects++;
+  while (hasNextPage) {
+    const res = await fetch(LINEAR_API, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ query: issuesQuery(endCursor) }),
+    });
+    if (!res.ok) {
+      if (res.status === 401) throw new Error('Linear API key expired or invalid');
+      throw new Error(`Linear API error: ${res.status}`);
     }
-  });
 
-  batchInsert(issueList);
+    const body = await res.json() as {
+      data?: { issues?: { pageInfo?: { hasNextPage: boolean; endCursor: string }; nodes?: LinearIssue[] } };
+      errors?: Array<{ message: string }>;
+    };
+
+    if (body.errors?.length) {
+      throw new Error(`Linear GraphQL error: ${body.errors[0].message}`);
+    }
+
+    const issueList = body.data?.issues?.nodes ?? [];
+    issues += issueList.length;
+
+    const batchInsert = sqlite.transaction((items: LinearIssue[]) => {
+      for (const item of items) {
+        const uri = `linear://${item.identifier}`;
+        if (checkExists.get(uri)) continue;
+
+        const now = Date.now();
+        const id = createId('obj');
+        const title = `${item.identifier}: ${item.title}`;
+        const summary = item.description
+          ? item.description.length > 200
+            ? item.description.slice(0, 200) + '...'
+            : item.description
+          : item.title;
+        const labelNames = item.labels.nodes.map((l) => l.name);
+        const tags = JSON.stringify(['linear', 'issue', item.state.name, ...labelNames]);
+        const bodyText = formatLinearIssueBody(item);
+        const hash = contentHash(title + (item.description ?? ''));
+
+        insertObj.run(id, 'linear', 'issue', uri, title, summary, tags, hash, now, new Date(item.createdAt).getTime());
+        insertBody.run(id, bodyText, 'text/plain', now);
+
+        try {
+          const rowid = getRowid.get(id) as { rowid: number } | undefined;
+          if (rowid) {
+            const excerpt = bodyText.length > 500 ? bodyText.slice(0, 500) : bodyText;
+            insertFts.run(rowid.rowid, title, summary ?? '', tags, 'linear', 'issue', excerpt);
+          }
+        } catch { /* FTS insert non-critical */ }
+
+        // Write to file repo
+        if (fileWriter) {
+          try {
+            const labelNames = item.labels.nodes.map((l) => l.name);
+            const fileContent = formatIssue({
+              source: 'linear', repo: item.identifier.split('-')[0] ?? 'linear',
+              number: parseInt(item.identifier.split('-')[1] ?? '0'),
+              title: item.title, state: item.state.name,
+              author: item.assignee?.name ?? 'unassigned', labels: labelNames,
+              created: item.createdAt, uri: `linear://${item.identifier}`,
+              body: item.description ?? '',
+            });
+            const filePath = fileWriter.writeObject('linear', 'issue', {
+              id, identifier: item.identifier, title: item.title,
+            }, fileContent);
+            sqlite.prepare('UPDATE objects SET file_path = ? WHERE id = ?').run(filePath, id);
+          } catch { /* file write non-critical */ }
+        }
+
+        newObjects++;
+      }
+    });
+
+    batchInsert(issueList);
+
+    hasNextPage = body.data?.issues?.pageInfo?.hasNextPage ?? false;
+    endCursor = body.data?.issues?.pageInfo?.endCursor ?? null;
+  }
+
+  logger.info(`Found ${issues} Linear issues`);
+
+  // Update sync_cursors so `jowork status` shows last sync time
+  sqlite.prepare('INSERT OR REPLACE INTO sync_cursors (connector_id, cursor, last_synced_at) VALUES (?, ?, ?)')
+    .run('linear', null, Date.now());
 
   logger.info('Linear sync complete', { issues, newObjects });
   return { issues, newObjects };
