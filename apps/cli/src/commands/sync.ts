@@ -14,6 +14,72 @@ import { syncFirebase } from '../sync/firebase.js';
 import { FileWriter } from '../sync/file-writer.js';
 import { GitManager, type SyncSummary } from '../sync/git-manager.js';
 
+// ── Visual output helpers ──────────────────────────────────────────
+
+const isTTY = process.stdout.isTTY;
+
+const c = {
+  reset: isTTY ? '\x1b[0m' : '',
+  bold: isTTY ? '\x1b[1m' : '',
+  dim: isTTY ? '\x1b[2m' : '',
+  green: isTTY ? '\x1b[32m' : '',
+  yellow: isTTY ? '\x1b[33m' : '',
+  red: isTTY ? '\x1b[31m' : '',
+  cyan: isTTY ? '\x1b[36m' : '',
+  gray: isTTY ? '\x1b[90m' : '',
+  white: isTTY ? '\x1b[37m' : '',
+  bgGreen: isTTY ? '\x1b[42m' : '',
+  bgRed: isTTY ? '\x1b[41m' : '',
+  bgYellow: isTTY ? '\x1b[43m' : '',
+};
+
+const icon = {
+  ok: `${c.green}✓${c.reset}`,
+  warn: `${c.yellow}⚠${c.reset}`,
+  fail: `${c.red}✗${c.reset}`,
+  skip: `${c.gray}○${c.reset}`,
+  sync: `${c.cyan}↻${c.reset}`,
+  link: `${c.cyan}⟡${c.reset}`,
+  git: `${c.gray}⎇${c.reset}`,
+};
+
+function header(text: string): void {
+  console.log('');
+  console.log(`  ${c.bold}${text}${c.reset}`);
+  console.log(`  ${c.dim}${'─'.repeat(Math.min(text.length + 4, 50))}${c.reset}`);
+}
+
+function progressBar(current: number, total: number, width = 20): string {
+  const pct = total > 0 ? current / total : 0;
+  const filled = Math.round(pct * width);
+  const empty = width - filled;
+  const bar = `${c.green}${'█'.repeat(filled)}${c.gray}${'░'.repeat(empty)}${c.reset}`;
+  return `${bar} ${c.dim}${current}/${total}${c.reset}`;
+}
+
+function sourceLabel(name: string): string {
+  const colors: Record<string, string> = {
+    feishu: c.cyan,
+    github: c.white,
+    gitlab: c.yellow,
+    linear: c.cyan,
+    posthog: c.red,
+    firebase: c.yellow,
+  };
+  return `${colors[name] ?? c.white}${c.bold}${name}${c.reset}`;
+}
+
+function resultLine(ok: boolean, msg: string): void {
+  console.log(`    ${ok ? icon.ok : icon.warn} ${msg}`);
+}
+
+function elapsed(start: number): string {
+  const ms = Date.now() - start;
+  return ms < 1000 ? `${ms}ms` : `${(ms / 1000).toFixed(1)}s`;
+}
+
+// ── Core sync logic ──────────────────────────────────────────────
+
 /**
  * Core sync logic — callable from both the CLI command and the setup wizard.
  */
@@ -22,155 +88,135 @@ export async function runSync(sources: string[]): Promise<void> {
   db.ensureTables();
   const fileWriter = new FileWriter();
   const syncResults: SyncSummary['sources'] = [];
+  const t0 = Date.now();
+  let totalNew = 0;
 
-  // Initialize git repo before syncing so init commit only contains .gitignore
+  // Initialize git repo
   let gitManager: GitManager | null = null;
   try {
     gitManager = new GitManager(fileRepoDir());
     await gitManager.init();
-  } catch {
-    // Git not available — sync continues without version tracking
-  }
+  } catch { /* Git not available */ }
 
-  for (const source of sources) {
+  header(`Syncing ${sources.length} source${sources.length > 1 ? 's' : ''}`);
+
+  for (let i = 0; i < sources.length; i++) {
+    const source = sources[i];
     const cred = loadCredential(source);
     if (!cred) {
-      console.log(`\u2298 ${source}: no credentials found, skipping`);
+      console.log(`  ${icon.skip} ${sourceLabel(source)} ${c.dim}no credentials, skipping${c.reset}`);
       continue;
     }
 
-    console.log(`Syncing ${source}...`);
+    const sourceStart = Date.now();
+    console.log(`  ${icon.sync} ${sourceLabel(source)} ${c.dim}syncing...${c.reset}`);
+
+    const logger = {
+      info: (_msg: string) => { /* suppress during visual mode */ },
+      warn: (msg: string) => resultLine(false, `${c.dim}${msg}${c.reset}`),
+      error: (msg: string) => console.error(`    ${icon.fail} ${c.red}${msg}${c.reset}`),
+    };
+
     try {
       switch (source) {
         case 'feishu': {
-          const logger = {
-            info: (msg: string) => console.log(`  ${msg}`),
-            warn: (msg: string) => console.log(`  \u26A0 ${msg}`),
-            error: (msg: string) => console.error(`  \u2717 ${msg}`),
-          };
           const result = await syncFeishu(db.getSqlite(), cred.data, logger, fileWriter);
-          console.log(`  \u2713 Synced ${result.totalMessages} messages (${result.newMessages} new) from ${result.chats} chats`);
+          resultLine(true, `${result.newMessages} new messages from ${result.chats} chats`);
+          totalNew += result.newMessages;
           syncResults.push({ source: 'feishu', newObjects: result.newMessages, label: 'messages' });
 
-          // Also sync meetings/calendar
           try {
-            const meetResult = await syncFeishuMeetings(db.getSqlite(), cred.data, logger, fileWriter);
-            if (meetResult.meetings > 0) {
-              console.log(`  \u2713 Synced ${meetResult.meetings} calendar events (${meetResult.newObjects} new)`);
-              syncResults.push({ source: 'feishu/meetings', newObjects: meetResult.newObjects, label: 'events' });
-            }
-          } catch (err) {
-            console.log(`  \u26A0 Meeting sync: ${err}`);
-          }
+            const mr = await syncFeishuMeetings(db.getSqlite(), cred.data, logger, fileWriter);
+            if (mr.newObjects > 0) resultLine(true, `${mr.newObjects} calendar events`);
+            syncResults.push({ source: 'feishu/meetings', newObjects: mr.newObjects, label: 'events' });
+          } catch { /* warned by logger */ }
 
-          // Also sync documents
           try {
-            const docResult = await syncFeishuDocs(db.getSqlite(), cred.data, logger, fileWriter);
-            if (docResult.docs > 0) {
-              console.log(`  \u2713 Synced ${docResult.docs} documents (${docResult.newObjects} new)`);
-              syncResults.push({ source: 'feishu/docs', newObjects: docResult.newObjects, label: 'docs' });
-            }
-          } catch (err) {
-            console.log(`  \u26A0 Document sync: ${err}`);
-          }
+            const dr = await syncFeishuDocs(db.getSqlite(), cred.data, logger, fileWriter);
+            if (dr.newObjects > 0) resultLine(true, `${dr.newObjects} documents`);
+            syncResults.push({ source: 'feishu/docs', newObjects: dr.newObjects, label: 'docs' });
+          } catch { /* warned by logger */ }
 
-          // Also sync approvals
           try {
-            const approvalResult = await syncFeishuApprovals(db.getSqlite(), cred.data, logger, fileWriter);
-            if (approvalResult.approvals > 0) {
-              console.log(`  \u2713 Synced ${approvalResult.approvals} approvals (${approvalResult.newObjects} new)`);
-              syncResults.push({ source: 'feishu/approvals', newObjects: approvalResult.newObjects, label: 'approvals' });
-            }
-          } catch (err) {
-            console.log(`  \u26A0 Approval sync: ${err}`);
-          }
+            const ar = await syncFeishuApprovals(db.getSqlite(), cred.data, logger, fileWriter);
+            if (ar.newObjects > 0) resultLine(true, `${ar.newObjects} approvals`);
+            syncResults.push({ source: 'feishu/approvals', newObjects: ar.newObjects, label: 'approvals' });
+          } catch { /* warned by logger */ }
           break;
         }
         case 'github': {
-          const ghLogger = {
-            info: (msg: string) => console.log(`  ${msg}`),
-            warn: (msg: string) => console.log(`  \u26A0 ${msg}`),
-            error: (msg: string) => console.error(`  \u2717 ${msg}`),
-          };
-          const result = await syncGitHub(db.getSqlite(), cred.data, ghLogger, fileWriter);
-          console.log(`  \u2713 Synced ${result.repos} repos: ${result.issues} issues, ${result.prs} PRs (${result.newObjects} new)`);
-          syncResults.push({ source: 'github', newObjects: result.newObjects });
+          const r = await syncGitHub(db.getSqlite(), cred.data, logger, fileWriter);
+          resultLine(true, `${r.repos} repos, ${r.prs} PRs, ${r.issues} issues ${c.dim}(${r.newObjects} new)${c.reset}`);
+          totalNew += r.newObjects;
+          syncResults.push({ source: 'github', newObjects: r.newObjects });
           break;
         }
         case 'gitlab': {
-          const glLogger = {
-            info: (msg: string) => console.log(`  ${msg}`),
-            warn: (msg: string) => console.log(`  \u26A0 ${msg}`),
-            error: (msg: string) => console.error(`  \u2717 ${msg}`),
-          };
-          const glResult = await syncGitLab(db.getSqlite(), cred.data, glLogger, fileWriter);
-          console.log(`  \u2713 Synced ${glResult.projects} projects: ${glResult.issues} issues, ${glResult.mrs} MRs (${glResult.newObjects} new)`);
-          syncResults.push({ source: 'gitlab', newObjects: glResult.newObjects });
+          const r = await syncGitLab(db.getSqlite(), cred.data, logger, fileWriter);
+          resultLine(true, `${r.projects} projects, ${r.mrs} MRs, ${r.issues} issues ${c.dim}(${r.newObjects} new)${c.reset}`);
+          totalNew += r.newObjects;
+          syncResults.push({ source: 'gitlab', newObjects: r.newObjects });
           break;
         }
         case 'linear': {
-          const linLogger = {
-            info: (msg: string) => console.log(`  ${msg}`),
-            warn: (msg: string) => console.log(`  \u26A0 ${msg}`),
-            error: (msg: string) => console.error(`  \u2717 ${msg}`),
-          };
-          const linResult = await syncLinear(db.getSqlite(), cred.data, linLogger, fileWriter);
-          console.log(`  \u2713 Synced ${linResult.issues} Linear issues (${linResult.newObjects} new)`);
-          syncResults.push({ source: 'linear', newObjects: linResult.newObjects, label: 'issues' });
+          const r = await syncLinear(db.getSqlite(), cred.data, logger, fileWriter);
+          resultLine(true, `${r.issues} issues ${c.dim}(${r.newObjects} new)${c.reset}`);
+          totalNew += r.newObjects;
+          syncResults.push({ source: 'linear', newObjects: r.newObjects, label: 'issues' });
           break;
         }
         case 'posthog': {
-          const phLogger = {
-            info: (msg: string) => console.log(`  ${msg}`),
-            warn: (msg: string) => console.log(`  \u26A0 ${msg}`),
-            error: (msg: string) => console.error(`  \u2717 ${msg}`),
-          };
-          const phResult = await syncPostHog(db.getSqlite(), cred.data, phLogger, fileWriter);
-          console.log(`  \u2713 Synced ${phResult.insights} insights, ${phResult.events} events (${phResult.newObjects} new)`);
-          syncResults.push({ source: 'posthog', newObjects: phResult.newObjects });
+          const r = await syncPostHog(db.getSqlite(), cred.data, logger, fileWriter);
+          resultLine(true, `${r.insights} insights, ${r.events} events ${c.dim}(${r.newObjects} new)${c.reset}`);
+          totalNew += r.newObjects;
+          syncResults.push({ source: 'posthog', newObjects: r.newObjects });
           break;
         }
         case 'firebase': {
-          const fbLogger = {
-            info: (msg: string) => console.log(`  ${msg}`),
-            warn: (msg: string) => console.log(`  \u26A0 ${msg}`),
-            error: (msg: string) => console.error(`  \u2717 ${msg}`),
-          };
-          const fbResult = await syncFirebase(db.getSqlite(), cred.data, fbLogger, fileWriter);
-          console.log(`  \u2713 Synced ${fbResult.events} Firebase events (${fbResult.newObjects} new)`);
-          syncResults.push({ source: 'firebase', newObjects: fbResult.newObjects, label: 'events' });
+          const r = await syncFirebase(db.getSqlite(), cred.data, logger, fileWriter);
+          resultLine(true, `${r.events} events ${c.dim}(${r.newObjects} new)${c.reset}`);
+          totalNew += r.newObjects;
+          syncResults.push({ source: 'firebase', newObjects: r.newObjects, label: 'events' });
           break;
         }
         default:
-          console.log(`  Unknown source: ${source}`);
+          console.log(`    ${icon.skip} ${c.dim}unknown source${c.reset}`);
       }
+      console.log(`    ${c.dim}${elapsed(sourceStart)}${c.reset}`);
     } catch (err) {
       logError('sync', `Failed to sync ${source}`, { error: String(err) });
-      console.error(`  \u2717 ${source} sync failed: ${err}`);
+      console.log(`    ${icon.fail} ${c.red}sync failed${c.reset} ${c.dim}${String(err).slice(0, 60)}${c.reset}`);
+    }
+
+    // Show progress across sources
+    if (sources.length > 1) {
+      console.log(`  ${progressBar(i + 1, sources.length)}`);
     }
   }
 
-  // Run entity extraction on newly synced objects
-  console.log('Running entity extraction...');
+  // Entity extraction
+  console.log('');
+  console.log(`  ${icon.link} ${c.dim}extracting links...${c.reset}`);
   const { processed, linksCreated } = linkAllUnprocessed(db.getSqlite());
-  console.log(`  \u2713 Extracted ${linksCreated} links from ${processed} objects`);
+  if (processed > 0) {
+    resultLine(true, `${linksCreated} links from ${processed} objects`);
+  }
 
   db.close();
 
-  // Git commit sync results
+  // Git commit
   if (gitManager) {
     try {
-      const sha = await gitManager.commitSync({
-        timestamp: new Date().toISOString(),
-        sources: syncResults,
-      });
-      if (sha) {
-        console.log(`  \u2713 Committed: ${sha.slice(0, 7)}`);
-      }
-    } catch (err) {
-      logError('sync', 'Git commit failed', { error: String(err) });
-    }
+      const sha = await gitManager.commitSync({ timestamp: new Date().toISOString(), sources: syncResults });
+      if (sha) console.log(`  ${icon.git} ${c.dim}committed ${sha.slice(0, 7)}${c.reset}`);
+    } catch { /* git commit non-critical */ }
   }
+
+  // Summary
+  console.log('');
+  console.log(`  ${c.bold}${c.green}Done${c.reset} ${c.dim}in ${elapsed(t0)}${c.reset}`);
+  console.log(`  ${c.bold}${totalNew}${c.reset} new objects synced from ${c.bold}${syncResults.length}${c.reset} sources`);
+  console.log('');
 }
 
 export function syncCommand(program: Command): void {
