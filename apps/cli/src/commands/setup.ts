@@ -162,6 +162,18 @@ export async function runSetupWizard(): Promise<void> {
         name: zh ? 'PostHog（用户行为数据）' : 'PostHog (analytics)',
         value: 'posthog',
       },
+      {
+        name: zh ? 'Slack（消息推送）' : 'Slack (notifications)',
+        value: 'slack',
+      },
+      {
+        name: zh ? 'Telegram（消息推送）' : 'Telegram (notifications)',
+        value: 'telegram',
+      },
+      {
+        name: zh ? 'Firebase（用户行为埋点）' : 'Firebase (analytics events)',
+        value: 'firebase',
+      },
     ],
   }]);
 
@@ -334,6 +346,9 @@ async function connectSource(source: string, inquirer: any): Promise<void> {
     gitlab: '── GitLab ──',
     linear: '── Linear ──',
     posthog: '── PostHog ──',
+    slack: '── Slack ──',
+    telegram: '── Telegram ──',
+    firebase: '── Firebase ──',
   };
   console.log(`\n  ${titles[source] ?? source}`);
 
@@ -527,6 +542,61 @@ async function connectSource(source: string, inquirer: any): Promise<void> {
           console.log(zh ? '  ✗ 无法连接 PostHog API' : '  ✗ Cannot reach PostHog API');
           if (!(await askRetryOrSkip())) done = true;
         }
+      }
+      break;
+    }
+    case 'slack': {
+      console.log(zh
+        ? '  需要 Incoming Webhook URL\n  创建方式：https://api.slack.com/messaging/webhooks'
+        : '  Requires an Incoming Webhook URL\n  Create at: https://api.slack.com/messaging/webhooks');
+      console.log('');
+      const slackAnswers = await inquirer.prompt([
+        { type: 'input', name: 'webhookUrl', message: 'Slack Webhook URL (https://hooks.slack.com/...):' },
+      ]);
+      if (slackAnswers.webhookUrl) {
+        saveCredential('slack', { type: 'slack', data: { webhookUrl: slackAnswers.webhookUrl }, createdAt: Date.now(), updatedAt: Date.now() });
+        console.log(zh ? '  ✓ Slack 已连接' : '  ✓ Slack connected');
+      }
+      break;
+    }
+    case 'telegram': {
+      console.log(zh
+        ? '  需要 Bot Token 和 Chat ID\n  创建方式：在 Telegram 中搜索 @BotFather → /newbot'
+        : '  Requires Bot Token and Chat ID\n  Create: search @BotFather in Telegram → /newbot');
+      console.log('');
+      const tgAnswers = await inquirer.prompt([
+        { type: 'input', name: 'botToken', message: zh ? 'Telegram Bot Token (123456:ABC-xxx):' : 'Telegram Bot Token (123456:ABC-xxx):' },
+        { type: 'input', name: 'chatId', message: zh ? 'Telegram Chat ID:' : 'Telegram Chat ID:' },
+      ]);
+      if (tgAnswers.botToken) {
+        console.log(zh ? '  验证中...' : '  Verifying...');
+        try {
+          const res = await fetch(`https://api.telegram.org/bot${tgAnswers.botToken}/getMe`);
+          const data = await res.json() as { ok: boolean; result?: { username: string } };
+          if (data.ok) {
+            saveCredential('telegram', { type: 'telegram', data: { botToken: tgAnswers.botToken, chatId: tgAnswers.chatId ?? '' }, createdAt: Date.now(), updatedAt: Date.now() });
+            console.log(zh ? `  ✓ Telegram 已连接（Bot: @${data.result?.username}）` : `  ✓ Telegram connected (Bot: @${data.result?.username})`);
+          } else {
+            console.log(zh ? '  ✗ Telegram Bot Token 无效' : '  ✗ Invalid Telegram Bot Token');
+          }
+        } catch {
+          console.log(zh ? '  ✗ 无法连接 Telegram API' : '  ✗ Cannot reach Telegram API');
+        }
+      }
+      break;
+    }
+    case 'firebase': {
+      console.log(zh
+        ? '  需要 Google Analytics API Key 和 Property ID\n  获取方式：Google Cloud Console → APIs & Services → Credentials'
+        : '  Requires Google Analytics API Key and Property ID\n  Get it: Google Cloud Console → APIs & Services → Credentials');
+      console.log('');
+      const fbAnswers = await inquirer.prompt([
+        { type: 'input', name: 'apiKey', message: zh ? 'Firebase/GA4 API Key:' : 'Firebase/GA4 API Key:' },
+        { type: 'input', name: 'propertyId', message: zh ? 'GA4 Property ID (数字):' : 'GA4 Property ID (numbers):' },
+      ]);
+      if (fbAnswers.apiKey && fbAnswers.propertyId) {
+        saveCredential('firebase', { type: 'firebase', data: { apiKey: fbAnswers.apiKey, projectId: fbAnswers.propertyId, propertyId: fbAnswers.propertyId }, createdAt: Date.now(), updatedAt: Date.now() });
+        console.log(zh ? '  ✓ Firebase 已连接' : '  ✓ Firebase connected');
       }
       break;
     }
