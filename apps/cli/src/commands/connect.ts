@@ -1,5 +1,20 @@
 import type { Command } from 'commander';
 import { saveCredential } from '../connectors/credential-store.js';
+import { runSync } from './sync.js';
+
+/** Sources that support sync (have a sync module). */
+const SYNCABLE_SOURCES = new Set(['feishu', 'github', 'gitlab', 'linear', 'posthog', 'firebase']);
+
+/** Auto-sync after a successful connect. */
+async function autoSync(source: string): Promise<void> {
+  if (!SYNCABLE_SOURCES.has(source)) return;
+  console.log(`\nRunning initial sync for ${source}...`);
+  try {
+    await runSync([source]);
+  } catch {
+    console.log(`\u26a0 Initial sync failed. You can retry with: jowork sync --source ${source}`);
+  }
+}
 
 export function connectCommand(program: Command): void {
   program
@@ -85,6 +100,7 @@ async function connectFeishu(opts: { appId?: string; appSecret?: string }): Prom
     const data = await res.json() as { code: number; msg: string; tenant_access_token?: string };
     if (data.code !== 0) {
       console.error(`Feishu auth failed: ${data.msg}`);
+      console.error('  Hint: App ID/Secret invalid. Check at https://open.feishu.cn/app');
       process.exit(1);
     }
     console.log('\u2713 Feishu credentials verified');
@@ -100,7 +116,8 @@ async function connectFeishu(opts: { appId?: string; appSecret?: string }): Prom
     updatedAt: Date.now(),
   });
 
-  console.log('\u2713 Feishu connected. Run `jowork sync` to start syncing data.');
+  console.log('\u2713 Feishu connected.');
+  await autoSync('feishu');
 }
 
 async function connectGitHub(opts: { token?: string }): Promise<void> {
@@ -120,6 +137,24 @@ async function connectGitHub(opts: { token?: string }): Promise<void> {
     process.exit(1);
   }
 
+  // Verify credentials
+  console.log('Verifying GitHub credentials...');
+  try {
+    const res = await fetch('https://api.github.com/user', {
+      headers: { Authorization: `Bearer ${token}`, 'User-Agent': 'jowork' },
+    });
+    if (!res.ok) {
+      console.error(`GitHub auth failed: HTTP ${res.status}`);
+      console.error('  Hint: Token invalid or expired. Create a new one at https://github.com/settings/tokens');
+      process.exit(1);
+    }
+    const user = await res.json() as { login: string };
+    console.log(`\u2713 GitHub credentials verified (user: ${user.login})`);
+  } catch (err) {
+    console.error(`Network error: ${err}`);
+    process.exit(1);
+  }
+
   saveCredential('github', {
     type: 'github',
     data: { token },
@@ -128,6 +163,7 @@ async function connectGitHub(opts: { token?: string }): Promise<void> {
   });
 
   console.log('\u2713 GitHub connected.');
+  await autoSync('github');
 }
 
 async function connectGitLab(opts: { token?: string; apiUrl?: string }): Promise<void> {
@@ -161,6 +197,7 @@ async function connectGitLab(opts: { token?: string; apiUrl?: string }): Promise
     });
     if (!res.ok) {
       console.error(`GitLab auth failed: HTTP ${res.status}`);
+      console.error('  Hint: Token invalid. Check at https://gitlab.com/-/profile/personal_access_tokens');
       process.exit(1);
     }
     const user = await res.json() as { username: string };
@@ -180,7 +217,8 @@ async function connectGitLab(opts: { token?: string; apiUrl?: string }): Promise
     updatedAt: Date.now(),
   });
 
-  console.log('\u2713 GitLab connected. Run `jowork sync` to start syncing data.');
+  console.log('\u2713 GitLab connected.');
+  await autoSync('gitlab');
 }
 
 async function connectLinear(opts: { apiKey?: string }): Promise<void> {
@@ -213,11 +251,13 @@ async function connectLinear(opts: { apiKey?: string }): Promise<void> {
     });
     if (!res.ok) {
       console.error(`Linear auth failed: HTTP ${res.status}`);
+      console.error('  Hint: API key invalid. Get one at https://linear.app/settings/api');
       process.exit(1);
     }
     const data = await res.json() as { data?: { viewer?: { name: string; email: string } }; errors?: Array<{ message: string }> };
     if (data.errors?.length) {
       console.error(`Linear auth failed: ${data.errors[0].message}`);
+      console.error('  Hint: API key invalid. Get one at https://linear.app/settings/api');
       process.exit(1);
     }
     console.log(`\u2713 Linear credentials verified (user: ${data.data?.viewer?.name})`);
@@ -233,7 +273,8 @@ async function connectLinear(opts: { apiKey?: string }): Promise<void> {
     updatedAt: Date.now(),
   });
 
-  console.log('\u2713 Linear connected. Run `jowork sync` to start syncing data.');
+  console.log('\u2713 Linear connected.');
+  await autoSync('linear');
 }
 
 async function connectPostHog(opts: { apiKey?: string; host?: string; projectId?: string }): Promise<void> {
@@ -262,7 +303,11 @@ async function connectPostHog(opts: { apiKey?: string; host?: string; projectId?
     const res = await fetch(`${host}/api/projects/${projectId}/`, {
       headers: { Authorization: `Bearer ${apiKey}` },
     });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    if (!res.ok) {
+      console.error(`PostHog auth failed: HTTP ${res.status}`);
+      console.error('  Hint: API key invalid. Get one at https://app.posthog.com/project/settings');
+      process.exit(1);
+    }
     console.log('\u2713 PostHog credentials verified');
   } catch (err) {
     console.error(`PostHog verification failed: ${err}`);
@@ -276,7 +321,8 @@ async function connectPostHog(opts: { apiKey?: string; host?: string; projectId?
     updatedAt: Date.now(),
   });
 
-  console.log('\u2713 PostHog connected. Run `jowork sync` to start syncing data.');
+  console.log('\u2713 PostHog connected.');
+  await autoSync('posthog');
 }
 
 async function connectSlack(opts: Record<string, string | undefined>): Promise<void> {
@@ -354,14 +400,34 @@ async function connectFirebase(opts: Record<string, string | undefined>): Promis
     process.exit(1);
   }
 
-  const data: Record<string, string> = { projectId, apiKey };
-  if (propertyId) data.propertyId = propertyId;
+  const propId = propertyId || projectId;
+
+  // Verify credentials by hitting GA4 Data API metadata endpoint
+  console.log('Verifying Firebase/GA4 credentials...');
+  try {
+    const res = await fetch(
+      `https://analyticsdata.googleapis.com/v1beta/properties/${propId}/metadata?key=${apiKey}`,
+    );
+    if (!res.ok) {
+      console.error(`Firebase/GA4 auth failed: HTTP ${res.status}`);
+      console.error('  Hint: Check your API key and Property ID at https://console.cloud.google.com');
+      process.exit(1);
+    }
+    console.log('\u2713 Firebase/GA4 credentials verified');
+  } catch (err) {
+    console.error(`Network error: ${err}`);
+    process.exit(1);
+  }
+
+  const credData: Record<string, string> = { projectId, apiKey };
+  if (propertyId) credData.propertyId = propertyId;
 
   saveCredential('firebase', {
     type: 'firebase',
-    data,
+    data: credData,
     createdAt: Date.now(),
     updatedAt: Date.now(),
   });
-  console.log('\u2713 Firebase connected. Run `jowork sync` to start syncing data.');
+  console.log('\u2713 Firebase connected.');
+  await autoSync('firebase');
 }

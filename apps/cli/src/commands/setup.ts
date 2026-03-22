@@ -629,15 +629,18 @@ async function connectSource(source: string, inquirer: any): Promise<void> {
       break;
     }
     case 'telegram': {
-      console.log(zh
-        ? '  需要 Bot Token 和 Chat ID\n  创建方式：在 Telegram 中搜索 @BotFather → /newbot'
-        : '  Requires Bot Token and Chat ID\n  Create: search @BotFather in Telegram → /newbot');
-      console.log('');
-      const tgAnswers = await inquirer.prompt([
-        { type: 'input', name: 'botToken', message: zh ? 'Telegram Bot Token (123456:ABC-xxx):' : 'Telegram Bot Token (123456:ABC-xxx):' },
-        { type: 'input', name: 'chatId', message: zh ? 'Telegram Chat ID:' : 'Telegram Chat ID:' },
-      ]);
-      if (tgAnswers.botToken) {
+      let done = false;
+      while (!done) {
+        console.log(zh
+          ? '  需要 Bot Token 和 Chat ID\n  创建方式：在 Telegram 中搜索 @BotFather → /newbot'
+          : '  Requires Bot Token and Chat ID\n  Create: search @BotFather in Telegram → /newbot');
+        console.log('');
+        const tgAnswers = await inquirer.prompt([
+          { type: 'input', name: 'botToken', message: zh ? 'Telegram Bot Token (123456:ABC-xxx):' : 'Telegram Bot Token (123456:ABC-xxx):' },
+          { type: 'input', name: 'chatId', message: zh ? 'Telegram Chat ID:' : 'Telegram Chat ID:' },
+        ]);
+        if (!tgAnswers.botToken) { done = true; break; }
+
         console.log(zh ? '  验证中...' : '  Verifying...');
         try {
           const res = await fetch(`https://api.telegram.org/bot${tgAnswers.botToken}/getMe`);
@@ -645,27 +648,48 @@ async function connectSource(source: string, inquirer: any): Promise<void> {
           if (data.ok) {
             saveCredential('telegram', { type: 'telegram', data: { botToken: tgAnswers.botToken, chatId: tgAnswers.chatId ?? '' }, createdAt: Date.now(), updatedAt: Date.now() });
             console.log(zh ? `  ✓ Telegram 已连接（Bot: @${data.result?.username}）` : `  ✓ Telegram connected (Bot: @${data.result?.username})`);
+            done = true;
           } else {
             console.log(zh ? '  ✗ Telegram Bot Token 无效' : '  ✗ Invalid Telegram Bot Token');
+            if (!(await askRetryOrSkip())) done = true;
           }
         } catch {
           console.log(zh ? '  ✗ 无法连接 Telegram API' : '  ✗ Cannot reach Telegram API');
+          if (!(await askRetryOrSkip())) done = true;
         }
       }
       break;
     }
     case 'firebase': {
-      console.log(zh
-        ? '  需要 Google Analytics API Key 和 Property ID\n  获取方式：Google Cloud Console → APIs & Services → Credentials'
-        : '  Requires Google Analytics API Key and Property ID\n  Get it: Google Cloud Console → APIs & Services → Credentials');
-      console.log('');
-      const fbAnswers = await inquirer.prompt([
-        { type: 'input', name: 'apiKey', message: zh ? 'Firebase/GA4 API Key:' : 'Firebase/GA4 API Key:' },
-        { type: 'input', name: 'propertyId', message: zh ? 'GA4 Property ID (数字):' : 'GA4 Property ID (numbers):' },
-      ]);
-      if (fbAnswers.apiKey && fbAnswers.propertyId) {
-        saveCredential('firebase', { type: 'firebase', data: { apiKey: fbAnswers.apiKey, projectId: fbAnswers.propertyId, propertyId: fbAnswers.propertyId }, createdAt: Date.now(), updatedAt: Date.now() });
-        console.log(zh ? '  ✓ Firebase 已连接' : '  ✓ Firebase connected');
+      let done = false;
+      while (!done) {
+        console.log(zh
+          ? '  需要 Google Analytics API Key 和 Property ID\n  获取方式：Google Cloud Console → APIs & Services → Credentials'
+          : '  Requires Google Analytics API Key and Property ID\n  Get it: Google Cloud Console → APIs & Services → Credentials');
+        console.log('');
+        const fbAnswers = await inquirer.prompt([
+          { type: 'input', name: 'apiKey', message: zh ? 'Firebase/GA4 API Key:' : 'Firebase/GA4 API Key:' },
+          { type: 'input', name: 'propertyId', message: zh ? 'GA4 Property ID (数字):' : 'GA4 Property ID (numbers):' },
+        ]);
+        if (!fbAnswers.apiKey || !fbAnswers.propertyId) { done = true; break; }
+
+        console.log(zh ? '  验证中...' : '  Verifying...');
+        try {
+          const res = await fetch(
+            `https://analyticsdata.googleapis.com/v1beta/properties/${fbAnswers.propertyId}/metadata?key=${fbAnswers.apiKey}`,
+          );
+          if (res.ok) {
+            saveCredential('firebase', { type: 'firebase', data: { apiKey: fbAnswers.apiKey, projectId: fbAnswers.propertyId, propertyId: fbAnswers.propertyId }, createdAt: Date.now(), updatedAt: Date.now() });
+            console.log(zh ? '  ✓ Firebase 已连接（验证通过）' : '  ✓ Firebase connected (verified)');
+            done = true;
+          } else {
+            console.log(zh ? '  ✗ Firebase/GA4 凭证无效' : '  ✗ Invalid Firebase/GA4 credentials');
+            if (!(await askRetryOrSkip())) done = true;
+          }
+        } catch {
+          console.log(zh ? '  ✗ 无法连接 Google Analytics API' : '  ✗ Cannot reach Google Analytics API');
+          if (!(await askRetryOrSkip())) done = true;
+        }
       }
       break;
     }

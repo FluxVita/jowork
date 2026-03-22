@@ -151,6 +151,19 @@ body {
   padding-left: 24px;
 }
 
+.source-time.stale-warning {
+  color: #d97706;
+}
+
+.stale-icon {
+  margin-left: 4px;
+  font-size: 12px;
+}
+
+[data-theme="dark"] .source-time.stale-warning {
+  color: #fbbf24;
+}
+
 /* Sidebar buttons */
 .sidebar-btn {
   display: flex;

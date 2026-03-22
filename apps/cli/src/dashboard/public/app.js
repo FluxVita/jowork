@@ -360,6 +360,12 @@ const App = {
       }));
     });
 
+    /** Returns true if lastSync is more than 1 hour ago. */
+    function isStale(timestamp) {
+      if (!timestamp) return false;
+      return (Date.now() - timestamp) > 60 * 60 * 1000;
+    }
+
     function goalProgress(goal) {
       if (!goal.signals || goal.signals.length === 0) return 0;
       let met = 0;
@@ -408,7 +414,7 @@ const App = {
       uploadProgress, uploadActive, toasts,
       addContext, removeContext, triggerSync, focusSession, toggleTheme,
       onDragOver, onDragLeave, onDrop,
-      goalProgress, goalMeasureCounts,
+      goalProgress, goalMeasureCounts, isStale,
       formatTimeAgo, formatDuration,
     };
   },
@@ -433,8 +439,9 @@ const App = {
               <span class="source-name">{{ item.name }}</span>
               <span class="source-count">{{ item.count }}</span>
             </div>
-            <div v-if="item.lastSync" class="source-time">
+            <div v-if="item.lastSync" class="source-time" :class="{ 'stale-warning': isStale(item.lastSync) }">
               {{ formatTimeAgo(item.lastSync) }}
+              <span v-if="isStale(item.lastSync)" class="stale-icon" title="Data may be outdated. Click Sync Now to refresh.">&#9888;</span>
             </div>
           </div>
 

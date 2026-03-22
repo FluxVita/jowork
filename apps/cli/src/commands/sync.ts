@@ -5,7 +5,7 @@ import { dbPath, fileRepoDir } from '../utils/paths.js';
 import { loadCredential, listCredentials } from '../connectors/credential-store.js';
 import { logError } from '../utils/logger.js';
 import { linkAllUnprocessed } from '../sync/linker.js';
-import { syncFeishu, syncFeishuMeetings, syncFeishuDocs, syncFeishuApprovals } from '../sync/feishu.js';
+import { syncFeishu, syncFeishuMeetings, syncFeishuDocs, syncFeishuApprovals, syncFeishuLinks } from '../sync/feishu.js';
 import { syncGitHub } from '../sync/github.js';
 import { syncGitLab } from '../sync/gitlab.js';
 import { syncLinear } from '../sync/linear.js';
@@ -78,6 +78,35 @@ function elapsed(start: number): string {
   return ms < 1000 ? `${ms}ms` : `${(ms / 1000).toFixed(1)}s`;
 }
 
+/** Return an actionable hint for common sync errors. */
+function getSyncErrorHint(source: string, error: string): string | null {
+  const is401 = /401|unauthorized|auth.*fail/i.test(error);
+  const is403 = /403|forbidden/i.test(error);
+
+  if (is401 || is403) {
+    switch (source) {
+      case 'github':
+        return 'Token invalid or expired. Create a new one at https://github.com/settings/tokens';
+      case 'gitlab':
+        return 'Token invalid. Check at https://gitlab.com/-/profile/personal_access_tokens';
+      case 'feishu':
+        return 'App ID/Secret invalid. Check at https://open.feishu.cn/app';
+      case 'linear':
+        return 'API key invalid. Get one at https://linear.app/settings/api';
+      case 'posthog':
+        return 'API key invalid. Get one at https://app.posthog.com/project/settings';
+      case 'firebase':
+        return 'API key invalid. Check at https://console.cloud.google.com → APIs & Services → Credentials';
+    }
+  }
+
+  if (/ENOTFOUND|ECONNREFUSED|network/i.test(error)) {
+    return 'Network error. Check your internet connection and try again.';
+  }
+
+  return null;
+}
+
 // ── Core sync logic ──────────────────────────────────────────────
 
 /**
@@ -142,6 +171,13 @@ export async function runSync(sources: string[]): Promise<void> {
             if (ar.newObjects > 0) resultLine(true, `${ar.newObjects} approvals`);
             syncResults.push({ source: 'feishu/approvals', newObjects: ar.newObjects, label: 'approvals' });
           } catch { /* warned by logger */ }
+
+          try {
+            const lr = await syncFeishuLinks(db.getSqlite(), cred.data, logger, fileWriter);
+            if (lr.fetched > 0) resultLine(true, `${lr.fetched} link contents fetched (${lr.extracted} URLs found)`);
+            else if (lr.extracted > 0) resultLine(false, `${lr.extracted} URLs found, ${lr.failed} failed to fetch`);
+            syncResults.push({ source: 'feishu/links', newObjects: lr.fetched, label: 'links' });
+          } catch { /* warned by logger */ }
           break;
         }
         case 'github': {
@@ -185,7 +221,14 @@ export async function runSync(sources: string[]): Promise<void> {
       console.log(`    ${c.dim}${elapsed(sourceStart)}${c.reset}`);
     } catch (err) {
       logError('sync', `Failed to sync ${source}`, { error: String(err) });
-      console.log(`    ${icon.fail} ${c.red}sync failed${c.reset} ${c.dim}${String(err).slice(0, 60)}${c.reset}`);
+      const errStr = String(err);
+      console.log(`    ${icon.fail} ${c.red}sync failed${c.reset} ${c.dim}${errStr.slice(0, 60)}${c.reset}`);
+
+      // Actionable hints for common auth errors
+      const hint = getSyncErrorHint(source, errStr);
+      if (hint) {
+        console.log(`    ${c.yellow}Hint: ${hint}${c.reset}`);
+      }
     }
 
     // Show progress across sources

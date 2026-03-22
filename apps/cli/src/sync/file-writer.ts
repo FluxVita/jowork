@@ -113,6 +113,8 @@ export class FileWriter {
           return join('feishu', 'approvals', `${slugify(meta.title ?? 'approval')}-${meta.id}.md`);
         if (sourceType === 'document')
           return join('feishu', 'docs', `${slugify(meta.title ?? 'doc')}.md`);
+        if (sourceType === 'link')
+          return join('feishu', 'links', `${slugify(meta.title ?? meta.id)}.md`);
         return join('feishu', 'other', `${meta.id}.md`);
       }
 

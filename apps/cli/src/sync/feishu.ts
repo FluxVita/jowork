@@ -256,20 +256,20 @@ export async function syncFeishuMeetings(
 
   try {
     const now = Math.floor(Date.now() / 1000);
-    const weekAgo = now - 7 * 24 * 60 * 60;
+    const weekAgo = now - 30 * 24 * 60 * 60;
 
-    // List calendars
-    const calRes = await fetch('https://open.feishu.cn/open-apis/calendar/v4/calendars?page_size=10', {
+    // List calendars (min page_size is 50 per Feishu API)
+    const calRes = await fetch('https://open.feishu.cn/open-apis/calendar/v4/calendars?page_size=50', {
       headers: { Authorization: `Bearer ${token}` },
     });
     const calData = await calRes.json() as {
       code: number;
-      data: { items?: Array<{ calendar_id: string; summary: string }> };
+      data: { calendar_list?: Array<{ calendar_id: string; summary: string }> };
     };
-    if (calData.code !== 0 || !calData.data?.items) {
+    if (calData.code !== 0 || !calData.data?.calendar_list?.length) {
       if (calData.code === 99992402) {
         logger.warn('Calendar sync requires calendar:calendar:readonly scope. Add it at https://open.feishu.cn/app → Permissions');
-      } else {
+      } else if (calData.code !== 0) {
         logger.warn(`Calendar API returned code ${calData.code}`);
       }
       return { meetings, newObjects };
@@ -290,7 +290,7 @@ export async function syncFeishuMeetings(
     `);
     const getRowid = sqlite.prepare('SELECT rowid FROM objects WHERE id = ?');
 
-    for (const cal of calData.data.items) {
+    for (const cal of calData.data.calendar_list) {
       const eventsRes = await fetch(
         `https://open.feishu.cn/open-apis/calendar/v4/calendars/${cal.calendar_id}/events?start_time=${weekAgo}&end_time=${now}&page_size=50`,
         { headers: { Authorization: `Bearer ${token}` } },
@@ -527,8 +527,8 @@ export interface FeishuDocsSyncResult {
 }
 
 /**
- * Sync Feishu wiki documents.
- * Requires scopes: wiki:wiki:readonly, docx:document:readonly
+ * Sync Feishu documents via wiki spaces + drive API fallback.
+ * Requires scopes: wiki:wiki:readonly, docx:document:readonly, drive:drive:readonly
  */
 export async function syncFeishuDocs(
   sqlite: Database.Database,
@@ -557,149 +557,245 @@ export async function syncFeishuDocs(
   `);
   const getRowid = sqlite.prepare('SELECT rowid FROM objects WHERE id = ?');
 
-  try {
-    // List wiki spaces first, then nodes in each space
-    const spacesRes = await fetch('https://open.feishu.cn/open-apis/wiki/v2/spaces?page_size=10', {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const spacesData = await spacesRes.json() as {
-      code: number;
-      data: { items?: Array<{ space_id: string; name: string }> };
-    };
+  /** Fetch docx raw content, returns null on failure */
+  async function fetchDocContent(docToken: string): Promise<string | null> {
+    try {
+      const res = await fetch(
+        `https://open.feishu.cn/open-apis/docx/v1/documents/${docToken}/raw_content`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      if (!res.ok) return null;
+      const d = await res.json() as { code?: number; data?: { content?: string } };
+      return d.data?.content ?? null;
+    } catch { return null; }
+  }
 
-    if (spacesData.code === 0 && spacesData.data?.items?.length) {
-      // Iterate spaces and fetch top-level nodes
-      for (const space of spacesData.data.items) {
-        const nodesRes = await fetch(
-          `https://open.feishu.cn/open-apis/wiki/v2/spaces/${space.space_id}/nodes?page_size=50`,
-          { headers: { Authorization: `Bearer ${token}` } },
-        );
-        const nodesData = await nodesRes.json() as {
+  /** Insert a document into SQLite + file repo */
+  function insertDoc(uri: string, title: string, docBody: string, objType: string, createdTs?: number) {
+    if (checkExists.get(uri)) return false;
+    const nowMs = Date.now();
+    const id = createId('obj');
+    const tags = JSON.stringify(['feishu', 'document', objType]);
+    const summary = docBody.length > 200 ? docBody.slice(0, 200) + '...' : docBody;
+
+    insertObj.run(id, 'feishu', 'document', uri, title, summary, tags, contentHash(docBody), nowMs, createdTs ?? nowMs);
+    insertBody.run(id, docBody, 'text/plain', nowMs);
+
+    try {
+      const rowid = getRowid.get(id) as { rowid: number } | undefined;
+      if (rowid) {
+        const excerpt = docBody.length > 500 ? docBody.slice(0, 500) : docBody;
+        insertFts.run(rowid.rowid, title ?? '', summary ?? '', tags, 'feishu', 'document', excerpt);
+      }
+    } catch { /* FTS non-critical */ }
+
+    if (fileWriter) {
+      try {
+        const fileContent = formatDocument({ source: 'feishu', title, uri, body: docBody });
+        const filePath = fileWriter.writeObject('feishu', 'document', { id, title }, fileContent);
+        sqlite.prepare('UPDATE objects SET file_path = ? WHERE id = ?').run(filePath, id);
+      } catch { /* file write non-critical */ }
+    }
+
+    docs++;
+    newObjects++;
+    return true;
+  }
+
+  try {
+    // ── Path 1: Wiki spaces ──
+    let wikiFound = 0;
+    try {
+      const spacesRes = await fetch('https://open.feishu.cn/open-apis/wiki/v2/spaces?page_size=50', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const spacesData = await spacesRes.json() as {
+        code: number;
+        data: { items?: Array<{ space_id: string; name: string }> };
+      };
+
+      if (spacesData.code === 0 && spacesData.data?.items?.length) {
+        for (const space of spacesData.data.items) {
+          // Paginate wiki nodes
+          let nodePageToken: string | undefined;
+          let hasMoreNodes = true;
+          while (hasMoreNodes) {
+            const url = new URL(`https://open.feishu.cn/open-apis/wiki/v2/spaces/${space.space_id}/nodes`);
+            url.searchParams.set('page_size', '50');
+            if (nodePageToken) url.searchParams.set('page_token', nodePageToken);
+
+            const nodesRes = await fetch(url.toString(), { headers: { Authorization: `Bearer ${token}` } });
+            const nodesData = await nodesRes.json() as {
+              code: number;
+              data: {
+                items?: Array<{ node_token: string; title: string; obj_type: string; obj_token: string; has_child: boolean }>;
+                has_more?: boolean;
+                page_token?: string;
+              };
+            };
+
+            if (nodesData.code !== 0 || !nodesData.data?.items) break;
+
+            for (const node of nodesData.data.items) {
+              const uri = `feishu://wiki/${space.space_id}/${node.node_token}`;
+              let docBody = `Wiki: ${node.title} (${node.obj_type}, space: ${space.name})`;
+              if (node.obj_type === 'docx' || node.obj_type === 'doc') {
+                const content = await fetchDocContent(node.obj_token);
+                if (content) docBody = content;
+              }
+              if (insertDoc(uri, node.title, docBody, node.obj_type)) wikiFound++;
+              await new Promise(r => setTimeout(r, 100)); // Rate limit
+            }
+
+            hasMoreNodes = nodesData.data?.has_more ?? false;
+            nodePageToken = nodesData.data?.page_token;
+          }
+        }
+      }
+    } catch (err) {
+      logger.warn(`Wiki sync error (non-fatal): ${err}`);
+    }
+
+    // ── Path 2: Drive API (accessible files) ──
+    let driveFound = 0;
+    try {
+      let drivePageToken: string | undefined;
+      let hasMoreFiles = true;
+      while (hasMoreFiles) {
+        const url = new URL('https://open.feishu.cn/open-apis/drive/v1/files');
+        url.searchParams.set('page_size', '50');
+        if (drivePageToken) url.searchParams.set('page_token', drivePageToken);
+
+        const driveRes = await fetch(url.toString(), { headers: { Authorization: `Bearer ${token}` } });
+        const driveData = await driveRes.json() as {
           code: number;
-          data: { items?: Array<{ node_token: string; title: string; obj_type: string; obj_token: string; has_child: boolean }> };
+          data: {
+            files?: Array<{ token: string; name: string; type: string; created_time?: string; url?: string }>;
+            has_more?: boolean;
+            next_page_token?: string;
+          };
         };
 
-        if (nodesData.code !== 0 || !nodesData.data?.items) continue;
-
-        // Process nodes sequentially to allow async content fetching
-        for (const node of nodesData.data.items) {
-          const uri = `feishu://wiki/${space.space_id}/${node.node_token}`;
-          if (checkExists.get(uri)) continue;
-
-          const nowMs = Date.now();
-          const id = createId('obj');
-          const tags = JSON.stringify(['feishu', 'document', node.obj_type]);
-
-          // Try to fetch actual document content (requires docx:document:readonly scope)
-          let docBody = `Wiki: ${node.title} (${node.obj_type}, space: ${space.name})`;
-          if (node.obj_type === 'docx' || node.obj_type === 'doc') {
-            try {
-              const docRes = await fetch(
-                `https://open.feishu.cn/open-apis/docx/v1/documents/${node.obj_token}/raw_content`,
-                { headers: { Authorization: `Bearer ${token}` } },
-              );
-              if (docRes.ok) {
-                const docData = await docRes.json() as { data?: { content?: string } };
-                if (docData.data?.content) {
-                  docBody = docData.data.content;
-                }
-              }
-            } catch { /* fallback to metadata */ }
+        if (driveData.code !== 0) {
+          if (driveData.code === 99992402) {
+            logger.warn('Drive sync requires drive:drive:readonly scope. Add it at https://open.feishu.cn/app → Permissions');
           }
-
-          insertObj.run(id, 'feishu', 'document', uri, node.title, node.title, tags, contentHash(node.title + node.node_token), nowMs, nowMs);
-          insertBody.run(id, docBody, 'text/plain', nowMs);
-
-          // Incremental FTS
-          try {
-            const rowid = getRowid.get(id) as { rowid: number } | undefined;
-            if (rowid) {
-              const excerpt = docBody.length > 500 ? docBody.slice(0, 500) : docBody;
-              insertFts.run(rowid.rowid, node.title ?? '', node.title ?? '', tags, 'feishu', 'document', excerpt);
-            }
-          } catch { /* FTS insert non-critical */ }
-
-          // Write to file repo
-          if (fileWriter) {
-            try {
-              const fileContent = formatDocument({ source: 'feishu', title: node.title, uri, body: docBody });
-              const filePath = fileWriter.writeObject('feishu', 'document', { id, title: node.title }, fileContent);
-              sqlite.prepare('UPDATE objects SET file_path = ? WHERE id = ?').run(filePath, id);
-            } catch { /* file write non-critical */ }
-          }
-
-          docs++;
-          newObjects++;
+          break;
         }
 
+        for (const file of driveData.data?.files ?? []) {
+          const uri = `feishu://drive/${file.token}`;
+          let docBody = `Drive: ${file.name} (${file.type})`;
+          if (file.type === 'docx' || file.type === 'doc') {
+            const content = await fetchDocContent(file.token);
+            if (content) docBody = content;
+          }
+          const createdTs = file.created_time ? parseInt(file.created_time) * 1000 : undefined;
+          if (insertDoc(uri, file.name, docBody, file.type, createdTs)) driveFound++;
+          await new Promise(r => setTimeout(r, 100)); // Rate limit
+        }
+
+        hasMoreFiles = driveData.data?.has_more ?? false;
+        drivePageToken = driveData.data?.next_page_token;
+      }
+    } catch (err) {
+      logger.warn(`Drive sync error (non-fatal): ${err}`);
+    }
+
+    // ── Path 3: Extract doc tokens from feishu URLs in messages ──
+    let msgDocFound = 0;
+    try {
+      const msgRows = sqlite.prepare(`
+        SELECT ob.content FROM object_bodies ob
+        JOIN objects o ON o.id = ob.object_id
+        WHERE o.source = 'feishu' AND o.source_type = 'message'
+        AND ob.content LIKE '%feishu.cn%'
+      `).all() as Array<{ content: string }>;
+
+      // Extract feishu doc URLs → doc tokens
+      const docTokens = new Map<string, string>(); // token → title hint
+      const feishuUrlPattern = /https?:\/\/[a-z0-9]+\.feishu\.cn\/(docx|doc|wiki|sheets|bitable|mindnote)\/([A-Za-z0-9]+)/g;
+      for (const row of msgRows) {
+        for (const match of row.content.matchAll(feishuUrlPattern)) {
+          const docType = match[1];
+          const docToken = match[2];
+          if (!docTokens.has(docToken)) {
+            docTokens.set(docToken, docType);
+          }
+        }
+      }
+
+      if (docTokens.size > 0) {
+        logger.info(`Found ${docTokens.size} feishu doc links in messages`);
+      }
+
+      for (const [docToken, docType] of docTokens) {
+        const uri = `feishu://doc/${docToken}`;
+        if (checkExists.get(uri)) continue;
+
+        // Fetch document metadata first
+        let title = `Feishu ${docType} (${docToken})`;
+        let docBody = '';
+
+        if (docType === 'docx' || docType === 'doc') {
+          // Get doc meta for title
+          try {
+            const metaRes = await fetch(
+              `https://open.feishu.cn/open-apis/docx/v1/documents/${docToken}`,
+              { headers: { Authorization: `Bearer ${token}` } },
+            );
+            if (metaRes.ok) {
+              const metaData = await metaRes.json() as { data?: { document?: { title?: string } } };
+              if (metaData.data?.document?.title) title = metaData.data.document.title;
+            }
+          } catch { /* use default title */ }
+
+          // Get content
+          const content = await fetchDocContent(docToken);
+          if (content) {
+            docBody = content;
+          } else {
+            docBody = `(Content not accessible — doc may not be shared with the app)`;
+          }
+        } else if (docType === 'wiki') {
+          // Wiki node — try to get node info
+          try {
+            const nodeRes = await fetch(
+              `https://open.feishu.cn/open-apis/wiki/v2/spaces/get_node?token=${docToken}`,
+              { headers: { Authorization: `Bearer ${token}` } },
+            );
+            if (nodeRes.ok) {
+              const nodeData = await nodeRes.json() as {
+                data?: { node?: { title?: string; obj_token?: string; obj_type?: string } };
+              };
+              if (nodeData.data?.node?.title) title = nodeData.data.node.title;
+              if (nodeData.data?.node?.obj_token && (nodeData.data.node.obj_type === 'docx' || nodeData.data.node.obj_type === 'doc')) {
+                const content = await fetchDocContent(nodeData.data.node.obj_token);
+                if (content) docBody = content;
+              }
+            }
+          } catch { /* use default */ }
+          if (!docBody) docBody = `Wiki: ${title}`;
+        } else {
+          docBody = `Feishu ${docType}: ${title} (non-docx format, content extraction not supported)`;
+        }
+
+        if (insertDoc(uri, title, docBody, docType)) msgDocFound++;
         await new Promise(r => setTimeout(r, 200)); // Rate limit
       }
-    } else {
-      // Fallback: search wiki nodes directly
-      const searchRes = await fetch('https://open.feishu.cn/open-apis/wiki/v1/nodes/search', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ query: '', page_size: 50 }),
-      });
 
-      if (searchRes.ok) {
-        const searchData = await searchRes.json() as {
-          code: number;
-          data: { items?: Array<{ space_id: string; node_token: string; title: string; obj_type: string }> };
-        };
-        if (searchData.code === 0 && searchData.data?.items) {
-          for (const node of searchData.data.items) {
-            const uri = `feishu://wiki/${node.space_id}/${node.node_token}`;
-            if (checkExists.get(uri)) continue;
+      if (msgDocFound > 0) {
+        logger.info(`Extracted ${msgDocFound} docs from message links`);
+      }
+    } catch (err) {
+      logger.warn(`Message doc extraction error (non-fatal): ${err}`);
+    }
 
-            const nowMs = Date.now();
-            const id = createId('obj');
-            const tags = JSON.stringify(['feishu', 'document', node.obj_type]);
-
-            // Try to fetch actual document content
-            let docBody = `Wiki: ${node.title} (${node.obj_type})`;
-            if (node.obj_type === 'docx' || node.obj_type === 'doc') {
-              try {
-                const docRes = await fetch(
-                  `https://open.feishu.cn/open-apis/docx/v1/documents/${node.node_token}/raw_content`,
-                  { headers: { Authorization: `Bearer ${token}` } },
-                );
-                if (docRes.ok) {
-                  const docData = await docRes.json() as { data?: { content?: string } };
-                  if (docData.data?.content) {
-                    docBody = docData.data.content;
-                  }
-                }
-              } catch { /* fallback to metadata */ }
-            }
-
-            insertObj.run(id, 'feishu', 'document', uri, node.title, node.title, tags, contentHash(node.title + node.node_token), nowMs, nowMs);
-            insertBody.run(id, docBody, 'text/plain', nowMs);
-
-            try {
-              const rowid = getRowid.get(id) as { rowid: number } | undefined;
-              if (rowid) {
-                const excerpt = docBody.length > 500 ? docBody.slice(0, 500) : docBody;
-                insertFts.run(rowid.rowid, node.title ?? '', node.title ?? '', tags, 'feishu', 'document', excerpt);
-              }
-            } catch { /* FTS insert non-critical */ }
-
-            // Write to file repo
-            if (fileWriter) {
-              try {
-                const fileContent = formatDocument({ source: 'feishu', title: node.title, uri, body: docBody });
-                const filePath = fileWriter.writeObject('feishu', 'document', { id, title: node.title }, fileContent);
-                sqlite.prepare('UPDATE objects SET file_path = ? WHERE id = ?').run(filePath, id);
-              } catch { /* file write non-critical */ }
-            }
-
-            docs++;
-            newObjects++;
-          }
-        }
+    // Only warn if no docs exist at all (not just no NEW docs)
+    if (wikiFound === 0 && driveFound === 0 && msgDocFound === 0) {
+      const existingDocs = (sqlite.prepare("SELECT COUNT(*) as cnt FROM objects WHERE source='feishu' AND source_type='document'").get() as { cnt: number }).cnt;
+      if (existingDocs === 0) {
+        logger.warn('No documents found. Ensure docs are shared with the app, or wiki spaces include the bot as member.');
       }
     }
   } catch (err) {
@@ -708,4 +804,220 @@ export async function syncFeishuDocs(
 
   logger.info('Document sync complete', { docs, newObjects });
   return { docs, newObjects };
+}
+
+// ── Feishu Link Content Fetching ──────────────────────────────────
+
+export interface FeishuLinksSyncResult {
+  extracted: number;
+  fetched: number;
+  failed: number;
+}
+
+/** Domains/patterns that are not fetchable content (tracking links, auth-walled, internal). */
+const SKIP_URL_PATTERNS = [
+  /email\.quail-mail\.com/,     // Newsletter tracking redirects
+  /\.feishu\.cn\//,             // Feishu internal links (handled by doc sync)
+  /mp\.weixin\.qq\.com/,        // WeChat articles (need cookies)
+  /open\.weixin\.qq\.com/,      // WeChat OAuth
+  /xhslink\.com/,              // Xiaohongshu short links (need app)
+  /b23\.tv/,                   // Bilibili short links
+  /t\.co\//,                   // Twitter short links
+  /luma\.com\/event/,          // Luma events (dynamic SPA)
+];
+
+/** Extract URLs from feishu message JSON content (post format with tag:"a"). */
+function extractUrlsFromContent(content: string): Array<{ url: string; text: string }> {
+  const urls: Array<{ url: string; text: string }> = [];
+  try {
+    const parsed = JSON.parse(content);
+    // Feishu post format: [[{tag, text, href}, ...], ...]
+    const rows = Array.isArray(parsed) ? parsed : [parsed];
+    for (const row of rows) {
+      if (!Array.isArray(row)) continue;
+      for (const element of row) {
+        if (element?.tag === 'a' && element?.href) {
+          const href = String(element.href);
+          // Skip image/attachment URLs
+          if (/\.(png|jpg|jpeg|gif|webp|svg|mp4|mp3|pdf|zip|rar)(\?|$)/i.test(href)) continue;
+          // Skip feishu internal image/file links
+          if (href.includes('/file/') || href.includes('/image/')) continue;
+          // Skip known non-fetchable domains
+          if (SKIP_URL_PATTERNS.some(p => p.test(href))) continue;
+          urls.push({ url: href, text: element.text ?? href });
+        }
+      }
+    }
+  } catch { /* not JSON, try plain text URL extraction */ }
+
+  // Also extract plain http(s) URLs from text content
+  if (urls.length === 0) {
+    const matches = content.match(/https?:\/\/[^\s"'<>\]]+/g);
+    if (matches) {
+      for (const url of matches) {
+        if (/\.(png|jpg|jpeg|gif|webp|svg|mp4|mp3|pdf|zip|rar)(\?|$)/i.test(url)) continue;
+        if (SKIP_URL_PATTERNS.some(p => p.test(url))) continue;
+        urls.push({ url, text: url });
+      }
+    }
+  }
+
+  return urls;
+}
+
+/**
+ * Fetch URL content and extract into readable markdown.
+ * Uses r.jina.ai for clean markdown conversion.
+ */
+async function fetchUrlContent(url: string): Promise<{ title: string; content: string } | null> {
+  try {
+    const res = await fetch(`https://r.jina.ai/${url}`, {
+      headers: {
+        'Accept': 'text/markdown',
+        'X-No-Cache': 'true',
+      },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) return null;
+    const text = await res.text();
+    if (!text || text.length < 50) return null;
+
+    // Extract title from first line (jina.ai format: "Title: xxx\n")
+    const titleMatch = text.match(/^Title:\s*(.+)/m);
+    let fallbackHost = url;
+    try { fallbackHost = new URL(url).hostname; } catch { /* keep full url */ }
+    const title = titleMatch?.[1]?.trim() ?? fallbackHost;
+
+    return { title, content: text };
+  } catch { return null; }
+}
+
+/**
+ * Sync link content from feishu messages — extracts URLs and fetches their content.
+ * Stores as markdown files in ~/.jowork/data/repo/feishu/links/.
+ */
+export async function syncFeishuLinks(
+  sqlite: Database.Database,
+  _data: Record<string, string>,
+  logger: FeishuSyncLogger = defaultLogger,
+  fileWriter?: FileWriter,
+): Promise<FeishuLinksSyncResult> {
+  let extracted = 0, fetched = 0, failed = 0;
+
+  const checkExists = sqlite.prepare('SELECT id FROM objects WHERE uri = ?');
+  const insertObj = sqlite.prepare(`
+    INSERT INTO objects (id, source, source_type, uri, title, summary, tags, content_hash, last_synced_at, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+  const insertBody = sqlite.prepare(`
+    INSERT OR REPLACE INTO object_bodies (object_id, content, content_type, fetched_at)
+    VALUES (?, ?, ?, ?)
+  `);
+  const insertFts = sqlite.prepare(`
+    INSERT INTO objects_fts(rowid, title, summary, tags, source, source_type, body_excerpt)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `);
+  const getRowid = sqlite.prepare('SELECT rowid FROM objects WHERE id = ?');
+
+  try {
+    // Get all feishu message bodies that contain URLs
+    const messageRows = sqlite.prepare(`
+      SELECT ob.content FROM object_bodies ob
+      JOIN objects o ON o.id = ob.object_id
+      WHERE o.source = 'feishu' AND o.source_type = 'message'
+      AND ob.content LIKE '%http%'
+    `).all() as Array<{ content: string }>;
+
+    // Extract and deduplicate URLs
+    const urlSet = new Map<string, string>(); // url → text
+    for (const row of messageRows) {
+      const urls = extractUrlsFromContent(row.content);
+      for (const { url, text } of urls) {
+        if (!urlSet.has(url)) urlSet.set(url, text);
+      }
+    }
+
+    extracted = urlSet.size;
+    if (extracted === 0) {
+      logger.info('No URLs found in messages');
+      return { extracted, fetched, failed };
+    }
+
+    logger.info(`Found ${extracted} unique URLs in messages`);
+
+    // Fetch each URL that isn't already in the database
+    let i = 0;
+    for (const [url, linkText] of urlSet) {
+      i++;
+
+      // Validate URL format
+      try { new URL(url); } catch {
+        failed++;
+        continue;
+      }
+
+      const uri = `feishu://link/${contentHash(url)}`;
+      if (checkExists.get(uri)) continue;
+
+      const result = await fetchUrlContent(url);
+      if (!result) {
+        failed++;
+        continue;
+      }
+
+      const nowMs = Date.now();
+      const id = createId('obj');
+      const title = result.title || linkText;
+      const summary = result.content.length > 200 ? result.content.slice(0, 200) + '...' : result.content;
+      let hostname = 'unknown';
+      try { hostname = new URL(url).hostname; } catch { /* invalid URL */ }
+      const tags = JSON.stringify(['feishu', 'link', hostname]);
+
+      insertObj.run(id, 'feishu', 'link', uri, title, summary, tags, contentHash(result.content), nowMs, nowMs);
+      insertBody.run(id, result.content, 'text/markdown', nowMs);
+
+      try {
+        const rowid = getRowid.get(id) as { rowid: number } | undefined;
+        if (rowid) {
+          const excerpt = result.content.length > 500 ? result.content.slice(0, 500) : result.content;
+          insertFts.run(rowid.rowid, title, summary, tags, 'feishu', 'link', excerpt);
+        }
+      } catch { /* FTS non-critical */ }
+
+      // Write to file repo
+      if (fileWriter) {
+        try {
+          const fileContent = [
+            '---',
+            `source: feishu`,
+            `type: link`,
+            `url: ${url}`,
+            `title: "${title.replace(/"/g, '\\"')}"`,
+            `fetched: ${new Date(nowMs).toISOString()}`,
+            '---',
+            '',
+            result.content,
+            '',
+          ].join('\n');
+          const filePath = fileWriter.writeObject('feishu', 'link', { id, title, url }, fileContent);
+          sqlite.prepare('UPDATE objects SET file_path = ? WHERE id = ?').run(filePath, id);
+        } catch { /* file write non-critical */ }
+      }
+
+      fetched++;
+
+      // Progress logging every 10 URLs
+      if (i % 10 === 0) {
+        logger.info(`Links progress: ${i}/${extracted} (${fetched} fetched, ${failed} failed)`);
+      }
+
+      // Rate limit: 500ms between requests
+      await new Promise(r => setTimeout(r, 500));
+    }
+  } catch (err) {
+    logger.error(`Link sync error: ${err}`);
+  }
+
+  logger.info('Link sync complete', { extracted, fetched, failed });
+  return { extracted, fetched, failed };
 }
