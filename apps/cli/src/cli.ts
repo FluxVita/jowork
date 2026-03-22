@@ -19,6 +19,7 @@ import { dashboardCommand } from './commands/dashboard.js';
 import { logCommand } from './commands/log.js';
 import { pushCommand } from './commands/push.js';
 import { configCommand } from './commands/config-cmd.js';
+import { setupSkillCommand } from './commands/setup-skill.js';
 
 const program = new Command();
 
@@ -44,6 +45,7 @@ dashboardCommand(program);
 logCommand(program);
 pushCommand(program);
 configCommand(program);
+setupSkillCommand(program);
 
 // Default action: when no subcommand is given, show wizard or quick status
 program.action(async () => {
