@@ -29,8 +29,12 @@ export function serveCommand(program: Command): void {
     .action(async (opts) => {
       const resolvedDbPath = process.env['JOWORK_DB_PATH'] ?? dbPath();
       if (!existsSync(resolvedDbPath)) {
-        console.error('Error: JoWork not initialized. Run `jowork init` first.');
-        process.exit(1);
+        // Auto-init on first serve — so MCP server works immediately after install
+        const { writeConfig } = await import('../utils/config.js');
+        const db = new DbManager(dbPath());
+        db.ensureTables();
+        db.close();
+        writeConfig({ version: '0.1.0', initialized: true, connectors: {} });
       }
 
       if (opts.daemon) {
