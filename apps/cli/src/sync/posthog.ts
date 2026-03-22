@@ -2,6 +2,8 @@ import Database from 'better-sqlite3';
 import { createId } from '@jowork/core';
 import { contentHash } from './feishu.js';
 import { logInfo, logError } from '../utils/logger.js';
+import type { FileWriter } from './file-writer.js';
+import { formatAnalytics } from './formatters.js';
 
 export interface PostHogSyncLogger {
   info(msg: string, ctx?: Record<string, unknown>): void;
@@ -29,6 +31,7 @@ export async function syncPostHog(
   sqlite: Database.Database,
   data: Record<string, string>,
   logger: PostHogSyncLogger = defaultLogger,
+  fileWriter?: FileWriter,
 ): Promise<PostHogSyncResult> {
   const { apiKey, host, projectId: rawProjectId } = data;
   if (!apiKey) throw new Error('Missing PostHog API key');
@@ -97,6 +100,20 @@ export async function syncPostHog(
             }
           } catch { /* FTS insert non-critical */ }
 
+          // Write to file repo
+          if (fileWriter) {
+            try {
+              const fileContent = formatAnalytics({
+                name: insight.name, description: insight.description,
+                filters: insight.filters, lastRefresh: insight.last_refresh,
+              });
+              const filePath = fileWriter.writeObject('posthog', 'insight', {
+                id, title: insight.name,
+              }, fileContent);
+              sqlite.prepare('UPDATE objects SET file_path = ? WHERE id = ?').run(filePath, id);
+            } catch { /* file write non-critical */ }
+          }
+
           insights++;
           newObjects++;
         }
@@ -143,6 +160,17 @@ export async function syncPostHog(
               insertFts.run(rowid.rowid, event.name ?? '', summary ?? '', tags, 'posthog', 'event_definition', excerpt);
             }
           } catch { /* FTS insert non-critical */ }
+
+          // Write to file repo
+          if (fileWriter) {
+            try {
+              const fileContent = formatAnalytics(event as unknown as Record<string, unknown>);
+              const filePath = fileWriter.writeObject('posthog', 'event_definition', {
+                id, title: event.name,
+              }, fileContent);
+              sqlite.prepare('UPDATE objects SET file_path = ? WHERE id = ?').run(filePath, id);
+            } catch { /* file write non-critical */ }
+          }
 
           events++;
           newObjects++;

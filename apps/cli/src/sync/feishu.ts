@@ -2,6 +2,8 @@ import { createHash } from 'node:crypto';
 import Database from 'better-sqlite3';
 import { createId } from '@jowork/core';
 import { logInfo, logError } from '../utils/logger.js';
+import type { FileWriter } from './file-writer.js';
+import { formatCalendarEvent, formatApproval, formatDocument } from './formatters.js';
 
 export interface FeishuSyncResult {
   totalMessages: number;
@@ -43,6 +45,7 @@ export async function syncFeishu(
   sqlite: Database.Database,
   data: Record<string, string>,
   logger: FeishuSyncLogger = defaultLogger,
+  fileWriter?: FileWriter,
 ): Promise<FeishuSyncResult> {
   const { appId, appSecret } = data;
   if (!appId || !appSecret) throw new Error('Missing Feishu credentials');
@@ -74,6 +77,10 @@ export async function syncFeishu(
     VALUES (?, ?, ?, ?, ?, ?, ?)
   `);
   const getRowid = sqlite.prepare('SELECT rowid FROM objects WHERE id = ?');
+
+  // Collect messages per day for file writing
+  type DayMessage = { time: string; sender: string; content: string };
+  const dayMessages = new Map<string, { chatName: string; chatId: string; date: string; messages: DayMessage[] }>();
 
   for (const chat of chats) {
     const cursorRow = sqlite.prepare('SELECT cursor FROM sync_cursors WHERE connector_id = ?')
@@ -152,6 +159,19 @@ export async function syncFeishu(
             }
           } catch { /* FTS insert non-critical */ }
 
+          // Collect for file writing — group by day
+          if (fileWriter) {
+            const date = new Date(createTime).toISOString().slice(0, 10);
+            const time = new Date(createTime).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+            const key = `${chat.chat_id}:${date}`;
+            let group = dayMessages.get(key);
+            if (!group) {
+              group = { chatName: chat.name, chatId: chat.chat_id, date, messages: [] };
+              dayMessages.set(key, group);
+            }
+            group.messages.push({ time, sender: msg.sender?.id ?? 'unknown', content });
+          }
+
           newMessages++;
         }
       });
@@ -167,6 +187,23 @@ export async function syncFeishu(
       if (pageToken) {
         sqlite.prepare('INSERT OR REPLACE INTO sync_cursors (connector_id, cursor, last_synced_at) VALUES (?, ?, ?)')
           .run(`feishu:${chat.chat_id}`, pageToken, Date.now());
+      }
+    }
+  }
+
+  // Write collected messages to file repo grouped by day
+  if (fileWriter && dayMessages.size > 0) {
+    for (const group of dayMessages.values()) {
+      try {
+        const filePath = fileWriter.appendMessages(
+          'feishu', group.chatName, group.chatId, group.date, group.messages,
+        );
+        // Update file_path for all objects in this chat+day (best effort)
+        sqlite.prepare(
+          `UPDATE objects SET file_path = ? WHERE source = 'feishu' AND source_type = 'message' AND title = ? AND file_path IS NULL`,
+        ).run(filePath, group.chatName);
+      } catch (err) {
+        logger.warn(`Failed to write messages file for ${group.chatName}/${group.date}: ${err}`);
       }
     }
   }
@@ -190,6 +227,7 @@ export async function syncFeishuMeetings(
   sqlite: Database.Database,
   data: Record<string, string>,
   logger: FeishuSyncLogger = defaultLogger,
+  fileWriter?: FileWriter,
 ): Promise<FeishuMeetingSyncResult> {
   const { appId, appSecret } = data;
   if (!appId || !appSecret) throw new Error('Missing Feishu credentials');
@@ -278,6 +316,25 @@ export async function syncFeishuMeetings(
             }
           } catch { /* FTS insert non-critical */ }
 
+          // Write to file repo
+          if (fileWriter) {
+            try {
+              const attendeeNames = event.attendees?.map(a => a.display_name) ?? [];
+              const endTs = parseInt(event.end_time?.timestamp ?? '0') * 1000;
+              const endTime = new Date(endTs).toLocaleString('zh-CN');
+              const date = new Date(startTs).toISOString().slice(0, 10);
+              const fileContent = formatCalendarEvent({
+                source: 'feishu', title: event.summary || 'Untitled meeting',
+                startTime, endTime, attendees: attendeeNames,
+                description: event.description || '', uri,
+              });
+              const filePath = fileWriter.writeObject('feishu', 'calendar_event', {
+                id, title: event.summary, date,
+              }, fileContent);
+              sqlite.prepare('UPDATE objects SET file_path = ? WHERE id = ?').run(filePath, id);
+            } catch { /* file write non-critical */ }
+          }
+
           meetings++;
           newObjects++;
         }
@@ -310,6 +367,7 @@ export async function syncFeishuApprovals(
   sqlite: Database.Database,
   data: Record<string, string>,
   logger: FeishuSyncLogger = defaultLogger,
+  fileWriter?: FileWriter,
 ): Promise<FeishuApprovalSyncResult> {
   const { appId, appSecret } = data;
   if (!appId || !appSecret) throw new Error('Missing Feishu credentials');
@@ -405,6 +463,26 @@ export async function syncFeishuApprovals(
           }
         } catch { /* FTS insert non-critical */ }
 
+        // Write to file repo
+        if (fileWriter) {
+          try {
+            let formFields: Array<{ name: string; value: string }> = [];
+            try {
+              const fd = JSON.parse(approval.form || '[]');
+              if (Array.isArray(fd)) formFields = fd;
+            } catch { /* ignore */ }
+            const fileContent = formatApproval({
+              source: 'feishu', name: approval.approval_name,
+              status: approval.status, submitter: approval.user_id || 'unknown',
+              fields: formFields, uri,
+            });
+            const filePath = fileWriter.writeObject('feishu', 'approval', {
+              id, title: approval.approval_name,
+            }, fileContent);
+            sqlite.prepare('UPDATE objects SET file_path = ? WHERE id = ?').run(filePath, id);
+          } catch { /* file write non-critical */ }
+        }
+
         approvals++;
         newObjects++;
       }
@@ -433,6 +511,7 @@ export async function syncFeishuDocs(
   sqlite: Database.Database,
   data: Record<string, string>,
   logger: FeishuSyncLogger = defaultLogger,
+  fileWriter?: FileWriter,
 ): Promise<FeishuDocsSyncResult> {
   const { appId, appSecret } = data;
   if (!appId || !appSecret) throw new Error('Missing Feishu credentials');
@@ -488,8 +567,9 @@ export async function syncFeishuDocs(
             const id = createId('obj');
             const tags = JSON.stringify(['feishu', 'document', node.obj_type]);
 
+            const docBody = `Wiki: ${node.title} (${node.obj_type}, space: ${space.name})`;
             insertObj.run(id, 'feishu', 'document', uri, node.title, node.title, tags, contentHash(node.title + node.node_token), nowMs, nowMs);
-            insertBody.run(id, `Wiki: ${node.title} (${node.obj_type}, space: ${space.name})`, 'text/plain', nowMs);
+            insertBody.run(id, docBody, 'text/plain', nowMs);
 
             // Incremental FTS
             try {
@@ -498,6 +578,15 @@ export async function syncFeishuDocs(
                 insertFts.run(rowid.rowid, node.title ?? '', node.title ?? '', tags, 'feishu', 'document', `Wiki: ${node.title}`);
               }
             } catch { /* FTS insert non-critical */ }
+
+            // Write to file repo
+            if (fileWriter) {
+              try {
+                const fileContent = formatDocument({ source: 'feishu', title: node.title, uri, body: docBody });
+                const filePath = fileWriter.writeObject('feishu', 'document', { id, title: node.title }, fileContent);
+                sqlite.prepare('UPDATE objects SET file_path = ? WHERE id = ?').run(filePath, id);
+              } catch { /* file write non-critical */ }
+            }
 
             docs++;
             newObjects++;
@@ -533,8 +622,9 @@ export async function syncFeishuDocs(
               const id = createId('obj');
               const tags = JSON.stringify(['feishu', 'document', node.obj_type]);
 
+              const docBody = `Wiki: ${node.title} (${node.obj_type})`;
               insertObj.run(id, 'feishu', 'document', uri, node.title, node.title, tags, contentHash(node.title + node.node_token), nowMs, nowMs);
-              insertBody.run(id, `Wiki: ${node.title} (${node.obj_type})`, 'text/plain', nowMs);
+              insertBody.run(id, docBody, 'text/plain', nowMs);
 
               try {
                 const rowid = getRowid.get(id) as { rowid: number } | undefined;
@@ -542,6 +632,15 @@ export async function syncFeishuDocs(
                   insertFts.run(rowid.rowid, node.title ?? '', node.title ?? '', tags, 'feishu', 'document', `Wiki: ${node.title}`);
                 }
               } catch { /* FTS insert non-critical */ }
+
+              // Write to file repo
+              if (fileWriter) {
+                try {
+                  const fileContent = formatDocument({ source: 'feishu', title: node.title, uri, body: docBody });
+                  const filePath = fileWriter.writeObject('feishu', 'document', { id, title: node.title }, fileContent);
+                  sqlite.prepare('UPDATE objects SET file_path = ? WHERE id = ?').run(filePath, id);
+                } catch { /* file write non-critical */ }
+              }
 
               docs++;
               newObjects++;

@@ -2,6 +2,8 @@ import Database from 'better-sqlite3';
 import { createId } from '@jowork/core';
 import { contentHash } from './feishu.js';
 import { logInfo, logError } from '../utils/logger.js';
+import type { FileWriter } from './file-writer.js';
+import { formatAnalytics } from './formatters.js';
 
 export interface FirebaseSyncLogger {
   info(msg: string, ctx?: Record<string, unknown>): void;
@@ -29,6 +31,7 @@ export async function syncFirebase(
   sqlite: Database.Database,
   data: Record<string, string>,
   logger: FirebaseSyncLogger = defaultLogger,
+  fileWriter?: FileWriter,
 ): Promise<FirebaseSyncResult> {
   const { projectId, apiKey } = data;
   if (!projectId) throw new Error('Missing Firebase project ID');
@@ -99,6 +102,17 @@ export async function syncFirebase(
                 insertFts.run(rowid.rowid, eventName ?? '', summary ?? '', tags, 'firebase', 'analytics_event', body.length > 500 ? body.slice(0, 500) : body);
               }
             } catch { /* FTS insert non-critical */ }
+
+            // Write to file repo
+            if (fileWriter) {
+              try {
+                const fileContent = formatAnalytics({ eventName, eventCount, period: '7daysAgo..today' });
+                const filePath = fileWriter.writeObject('firebase', 'analytics_event', {
+                  id, title: eventName,
+                }, fileContent);
+                sqlite.prepare('UPDATE objects SET file_path = ? WHERE id = ?').run(filePath, id);
+              } catch { /* file write non-critical */ }
+            }
 
             events++;
             newObjects++;

@@ -215,6 +215,12 @@ const MIGRATIONS: string[] = [
     );
     CREATE INDEX IF NOT EXISTS idx_active_sessions_heartbeat ON active_sessions(last_heartbeat);
   `,
+
+  // 008 — File repo: add file_path to objects for file-based storage
+  `
+    ALTER TABLE objects ADD COLUMN file_path TEXT;
+    CREATE INDEX IF NOT EXISTS idx_objects_file_path ON objects(file_path);
+  `,
 ];
 
 export class DbManager {

@@ -2,6 +2,8 @@ import Database from 'better-sqlite3';
 import { createId } from '@jowork/core';
 import { contentHash } from './feishu.js';
 import { logInfo, logError } from '../utils/logger.js';
+import type { FileWriter } from './file-writer.js';
+import { formatIssue } from './formatters.js';
 
 export interface LinearSyncLogger {
   info(msg: string, ctx?: Record<string, unknown>): void;
@@ -59,6 +61,7 @@ export async function syncLinear(
   sqlite: Database.Database,
   data: Record<string, string>,
   logger: LinearSyncLogger = defaultLogger,
+  fileWriter?: FileWriter,
 ): Promise<LinearSyncResult> {
   const apiKey = data.apiKey;
   if (!apiKey) throw new Error('Missing Linear API key');
@@ -139,6 +142,25 @@ export async function syncLinear(
           insertFts.run(rowid.rowid, title, summary ?? '', tags, 'linear', 'issue', excerpt);
         }
       } catch { /* FTS insert non-critical */ }
+
+      // Write to file repo
+      if (fileWriter) {
+        try {
+          const labelNames = item.labels.nodes.map((l) => l.name);
+          const fileContent = formatIssue({
+            source: 'linear', repo: item.identifier.split('-')[0] ?? 'linear',
+            number: parseInt(item.identifier.split('-')[1] ?? '0'),
+            title: item.title, state: item.state.name,
+            author: item.assignee?.name ?? 'unassigned', labels: labelNames,
+            created: item.createdAt, uri: `linear://${item.identifier}`,
+            body: item.description ?? '',
+          });
+          const filePath = fileWriter.writeObject('linear', 'issue', {
+            id, identifier: item.identifier, title: item.title,
+          }, fileContent);
+          sqlite.prepare('UPDATE objects SET file_path = ? WHERE id = ?').run(filePath, id);
+        } catch { /* file write non-critical */ }
+      }
 
       newObjects++;
     }

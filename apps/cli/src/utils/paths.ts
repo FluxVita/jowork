@@ -32,3 +32,9 @@ export function logsDir(): string {
   mkdirSync(dir, { recursive: true });
   return dir;
 }
+
+export function fileRepoDir(): string {
+  const dir = join(joworkDir(), 'data', 'repo');
+  mkdirSync(dir, { recursive: true });
+  return dir;
+}

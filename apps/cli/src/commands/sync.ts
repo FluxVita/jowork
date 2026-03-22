@@ -11,6 +11,7 @@ import { syncGitLab } from '../sync/gitlab.js';
 import { syncLinear } from '../sync/linear.js';
 import { syncPostHog } from '../sync/posthog.js';
 import { syncFirebase } from '../sync/firebase.js';
+import { FileWriter } from '../sync/file-writer.js';
 
 /**
  * Core sync logic — callable from both the CLI command and the setup wizard.
@@ -18,6 +19,7 @@ import { syncFirebase } from '../sync/firebase.js';
 export async function runSync(sources: string[]): Promise<void> {
   const db = new DbManager(dbPath());
   db.ensureTables();
+  const fileWriter = new FileWriter();
 
   for (const source of sources) {
     const cred = loadCredential(source);
@@ -35,12 +37,12 @@ export async function runSync(sources: string[]): Promise<void> {
             warn: (msg: string) => console.log(`  \u26A0 ${msg}`),
             error: (msg: string) => console.error(`  \u2717 ${msg}`),
           };
-          const result = await syncFeishu(db.getSqlite(), cred.data, logger);
+          const result = await syncFeishu(db.getSqlite(), cred.data, logger, fileWriter);
           console.log(`  \u2713 Synced ${result.totalMessages} messages (${result.newMessages} new) from ${result.chats} chats`);
 
           // Also sync meetings/calendar
           try {
-            const meetResult = await syncFeishuMeetings(db.getSqlite(), cred.data, logger);
+            const meetResult = await syncFeishuMeetings(db.getSqlite(), cred.data, logger, fileWriter);
             if (meetResult.meetings > 0) {
               console.log(`  \u2713 Synced ${meetResult.meetings} calendar events (${meetResult.newObjects} new)`);
             }
@@ -50,7 +52,7 @@ export async function runSync(sources: string[]): Promise<void> {
 
           // Also sync documents
           try {
-            const docResult = await syncFeishuDocs(db.getSqlite(), cred.data, logger);
+            const docResult = await syncFeishuDocs(db.getSqlite(), cred.data, logger, fileWriter);
             if (docResult.docs > 0) {
               console.log(`  \u2713 Synced ${docResult.docs} documents (${docResult.newObjects} new)`);
             }
@@ -60,7 +62,7 @@ export async function runSync(sources: string[]): Promise<void> {
 
           // Also sync approvals
           try {
-            const approvalResult = await syncFeishuApprovals(db.getSqlite(), cred.data, logger);
+            const approvalResult = await syncFeishuApprovals(db.getSqlite(), cred.data, logger, fileWriter);
             if (approvalResult.approvals > 0) {
               console.log(`  \u2713 Synced ${approvalResult.approvals} approvals (${approvalResult.newObjects} new)`);
             }
@@ -75,7 +77,7 @@ export async function runSync(sources: string[]): Promise<void> {
             warn: (msg: string) => console.log(`  \u26A0 ${msg}`),
             error: (msg: string) => console.error(`  \u2717 ${msg}`),
           };
-          const result = await syncGitHub(db.getSqlite(), cred.data, ghLogger);
+          const result = await syncGitHub(db.getSqlite(), cred.data, ghLogger, fileWriter);
           console.log(`  \u2713 Synced ${result.repos} repos: ${result.issues} issues, ${result.prs} PRs (${result.newObjects} new)`);
           break;
         }
@@ -85,7 +87,7 @@ export async function runSync(sources: string[]): Promise<void> {
             warn: (msg: string) => console.log(`  \u26A0 ${msg}`),
             error: (msg: string) => console.error(`  \u2717 ${msg}`),
           };
-          const glResult = await syncGitLab(db.getSqlite(), cred.data, glLogger);
+          const glResult = await syncGitLab(db.getSqlite(), cred.data, glLogger, fileWriter);
           console.log(`  \u2713 Synced ${glResult.projects} projects: ${glResult.issues} issues, ${glResult.mrs} MRs (${glResult.newObjects} new)`);
           break;
         }
@@ -95,7 +97,7 @@ export async function runSync(sources: string[]): Promise<void> {
             warn: (msg: string) => console.log(`  \u26A0 ${msg}`),
             error: (msg: string) => console.error(`  \u2717 ${msg}`),
           };
-          const linResult = await syncLinear(db.getSqlite(), cred.data, linLogger);
+          const linResult = await syncLinear(db.getSqlite(), cred.data, linLogger, fileWriter);
           console.log(`  \u2713 Synced ${linResult.issues} Linear issues (${linResult.newObjects} new)`);
           break;
         }
@@ -105,7 +107,7 @@ export async function runSync(sources: string[]): Promise<void> {
             warn: (msg: string) => console.log(`  \u26A0 ${msg}`),
             error: (msg: string) => console.error(`  \u2717 ${msg}`),
           };
-          const phResult = await syncPostHog(db.getSqlite(), cred.data, phLogger);
+          const phResult = await syncPostHog(db.getSqlite(), cred.data, phLogger, fileWriter);
           console.log(`  \u2713 Synced ${phResult.insights} insights, ${phResult.events} events (${phResult.newObjects} new)`);
           break;
         }
@@ -115,7 +117,7 @@ export async function runSync(sources: string[]): Promise<void> {
             warn: (msg: string) => console.log(`  \u26A0 ${msg}`),
             error: (msg: string) => console.error(`  \u2717 ${msg}`),
           };
-          const fbResult = await syncFirebase(db.getSqlite(), cred.data, fbLogger);
+          const fbResult = await syncFirebase(db.getSqlite(), cred.data, fbLogger, fileWriter);
           console.log(`  \u2713 Synced ${fbResult.events} Firebase events (${fbResult.newObjects} new)`);
           break;
         }

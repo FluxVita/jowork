@@ -2,6 +2,8 @@ import Database from 'better-sqlite3';
 import { createId } from '@jowork/core';
 import { contentHash } from './feishu.js';
 import { logInfo, logError } from '../utils/logger.js';
+import type { FileWriter } from './file-writer.js';
+import { formatIssue, formatPullRequest } from './formatters.js';
 
 export interface GitHubSyncLogger {
   info(msg: string, ctx?: Record<string, unknown>): void;
@@ -55,6 +57,7 @@ export async function syncGitHub(
   sqlite: Database.Database,
   data: Record<string, string>,
   logger: GitHubSyncLogger = defaultLogger,
+  fileWriter?: FileWriter,
 ): Promise<GitHubSyncResult> {
   const token = data.token;
   if (!token) throw new Error('Missing GitHub token');
@@ -163,6 +166,24 @@ export async function syncGitHub(
             }
           } catch {
             /* FTS insert non-critical */
+          }
+
+          // Write to file repo
+          if (fileWriter) {
+            try {
+              const labelNames = item.labels.map((l) => l.name);
+              const formatter = isPR ? formatPullRequest : formatIssue;
+              const fileContent = formatter({
+                source: 'github', repo: repo.full_name, number: item.number,
+                title: item.title, state: item.state,
+                author: item.user?.login ?? 'unknown', labels: labelNames,
+                created: item.created_at, uri, body: item.body ?? '',
+              });
+              const filePath = fileWriter.writeObject('github', sourceType, {
+                id, repo: repo.full_name, number: item.number, title: item.title,
+              }, fileContent);
+              sqlite.prepare('UPDATE objects SET file_path = ? WHERE id = ?').run(filePath, id);
+            } catch { /* file write non-critical */ }
           }
 
           newObjects++;

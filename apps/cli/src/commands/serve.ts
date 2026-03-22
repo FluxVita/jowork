@@ -14,6 +14,7 @@ import { syncGitLab } from '../sync/gitlab.js';
 import { syncLinear } from '../sync/linear.js';
 import { syncPostHog } from '../sync/posthog.js';
 import { syncFirebase } from '../sync/firebase.js';
+import { FileWriter } from '../sync/file-writer.js';
 import { pollSignals } from '../goals/signal-poller.js';
 import { evaluateTriggers } from '../goals/trigger-engine.js';
 import { runCompaction } from '../memory/compaction.js';
@@ -124,6 +125,7 @@ async function runSync(): Promise<void> {
     db = new DbManager(dbPath());
     db.ensureTables();
     const sqlite = db.getSqlite();
+    const fileWriter = new FileWriter();
 
     for (const source of sources) {
       const cred = loadCredential(source);
@@ -135,25 +137,25 @@ async function runSync(): Promise<void> {
       try {
         switch (source) {
           case 'feishu':
-            await syncFeishu(sqlite, cred.data, daemonSyncLogger);
-            try { await syncFeishuMeetings(sqlite, cred.data, daemonSyncLogger); } catch (e) { daemonLog('warn', `Feishu meetings sync: ${e}`); }
-            try { await syncFeishuDocs(sqlite, cred.data, daemonSyncLogger); } catch (e) { daemonLog('warn', `Feishu docs sync: ${e}`); }
-            try { await syncFeishuApprovals(sqlite, cred.data, daemonSyncLogger); } catch (e) { daemonLog('warn', `Feishu approvals sync: ${e}`); }
+            await syncFeishu(sqlite, cred.data, daemonSyncLogger, fileWriter);
+            try { await syncFeishuMeetings(sqlite, cred.data, daemonSyncLogger, fileWriter); } catch (e) { daemonLog('warn', `Feishu meetings sync: ${e}`); }
+            try { await syncFeishuDocs(sqlite, cred.data, daemonSyncLogger, fileWriter); } catch (e) { daemonLog('warn', `Feishu docs sync: ${e}`); }
+            try { await syncFeishuApprovals(sqlite, cred.data, daemonSyncLogger, fileWriter); } catch (e) { daemonLog('warn', `Feishu approvals sync: ${e}`); }
             break;
           case 'github':
-            await syncGitHub(sqlite, cred.data, daemonSyncLogger);
+            await syncGitHub(sqlite, cred.data, daemonSyncLogger, fileWriter);
             break;
           case 'gitlab':
-            await syncGitLab(sqlite, cred.data, daemonSyncLogger);
+            await syncGitLab(sqlite, cred.data, daemonSyncLogger, fileWriter);
             break;
           case 'linear':
-            await syncLinear(sqlite, cred.data, daemonSyncLogger);
+            await syncLinear(sqlite, cred.data, daemonSyncLogger, fileWriter);
             break;
           case 'posthog':
-            await syncPostHog(sqlite, cred.data, daemonSyncLogger);
+            await syncPostHog(sqlite, cred.data, daemonSyncLogger, fileWriter);
             break;
           case 'firebase':
-            await syncFirebase(sqlite, cred.data, daemonSyncLogger);
+            await syncFirebase(sqlite, cred.data, daemonSyncLogger, fileWriter);
             break;
           default:
             daemonLog('info', `Source ${source} sync not implemented yet`);
